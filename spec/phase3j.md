@@ -65,12 +65,12 @@ RISC primitives already carry adjoints.
 
 | Module | Contents | Key Dependencies |
 |---|---|---|
-| `Nautilus.SDE` | SDE solvers (Euler-Maruyama, Milstein). Uses `Random` effect. | `Nautilus.ODE`, `Random`, cumsum |
-| `Nautilus.Integrate` | Numerical integration (trapezoidal, Simpson's, Gaussian quadrature) | fold, scalar math |
-| `Nautilus.Interpolation` | Linear, cubic, spline interpolation | sort, gather |
-| `Nautilus.Testing` | Hypothesis testing, confidence intervals, p-values | `Nautilus.Distributions`, `Nautilus.Stats` |
-| `Nautilus.Distance` | Euclidean, cosine, Mahalanobis, Manhattan distances over tensor rows | einsum, `Nautilus.LinAlg` |
-| `Nautilus.Signal` | Signal processing (FFT, STFT, filtering). **Blocked by complex numbers (Phase 5f) — stub in 3j.** | Phase 5f complex tensors |
+| `Nautilus.SDE` | SDE solvers (Euler-Maruyama, Milstein). Uses `Random` effect. **Deferred to P2.5** — needs scalar-normal-draw plumbing from a rank-1 `uniform_like` template, same gating as `Distributions.sample` runtime verification. | `Nautilus.ODE`, `Random`, cumsum |
+| `Nautilus.Integrate` | `trapezoidal`, `simpsons`, `gauss_legendre_5` (pre-tabulated 5-point Gauss-Legendre quadrature) over `f: f32 -> f32`. Scalar API with recursive helpers. **Shipped** with 9 numerical assertions against analytic integrals (x², exp(-x), sin over [0,π]). | fold, scalar math, function-typed parameters |
+| `Nautilus.Interpolation` | Linear, cubic, spline interpolation. **Deferred to P2.5** — needs `sort` + `gather` tensor plumbing that requires the shipped runtime. | sort, gather |
+| `Nautilus.Testing` | `z_statistic`, `z_p_value_two_sided` / `_upper` / `_lower`, `normal_ci_half_width`, `chi_squared_p_value`. Scalar ABI routing through `Nautilus.Distributions.{normal_cdf, normal_inv_cdf, chi_squared_cdf}` and `Nautilus.Special.{erf, erfinv}`. **Shipped** with 9 numerical assertions. t-test p-values require regularized incomplete beta (Student-t CDF), deferred to P2.5. | `Nautilus.Distributions`, `Nautilus.Special` |
+| `Nautilus.Distance` | `squared_euclidean`, `euclidean`, `manhattan`, `chebyshev`, `cosine_similarity` / `cosine_distance`, `mahalanobis` / `mahalanobis_squared`. Fold-over-zip patterns for the elementwise distances; Mahalanobis uses `Nautilus.LinAlg.matvec` + `inner_product`. **Shipped** with type-level gate via `src/apismoke.ch:smoke_distance` (runtime numerical verification deferred same as LinAlg). | `Nautilus.LinAlg` |
+| `Nautilus.Signal` | Typed API stubs: `fft_magnitude_stub`, `ifft_magnitude_stub`, `stft_magnitude_stub`, `lowpass_stub`, `highpass_stub`, `bandpass_stub`, `fftfreq`. All return NaN sentinels except `fftfreq` which is a pure-real bin-frequency helper. Real implementations blocked by complex-number support in Phase 5f. **Shipped** as typed stubs per spec. | Phase 5f complex tensors |
 
 ### Test Plan
 

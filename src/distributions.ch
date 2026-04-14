@@ -104,9 +104,14 @@ def normal_cdf(x: f32, mean: f32, std: f32) -> f32 = {
 }
 
 def normal_inv_cdf(q: f32, mean: f32, std: f32) -> f32 = {
-  two_q_minus_one = sub(mul(two_f(), q), one_f())
-  z = erfinv(two_q_minus_one)
-  add(mean, mul(std, mul(sqrt_two_f(), z)))
+  if or(lt(q, zero_f()), gt(q, one_f())) then nan_d()
+  else if lte(q, zero_f()) then neg(pos_inf_d())
+  else if gte(q, one_f()) then pos_inf_d()
+  else {
+    two_q_minus_one = sub(mul(two_f(), q), one_f())
+    z = erfinv(two_q_minus_one)
+    add(mean, mul(std, mul(sqrt_two_f(), z)))
+  }
 }
 
 def normal_sample[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random } = {

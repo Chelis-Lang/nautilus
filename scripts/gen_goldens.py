@@ -37,6 +37,14 @@ TOL = {
     "roots/scalar":              {"abs": 1.0e-8, "rel": 1.0e-8},
     "ode/scalar":                {"abs": 5.0e-7, "rel": 5.0e-7},
     "stats/vector":              {"abs": 1.0e-6, "rel": 1.0e-6},
+    # Trapezoidal is O(h^2); at n=100 on [0,1] error ~1e-5. Bound to 5e-5
+    # for the headline parity. Simpson and GL5 would be tighter but share
+    # the same category tolerance — the red-team pass can refine per-method.
+    "integrate/scalar":          {"abs": 5.0e-5, "rel": 5.0e-5},
+    # z-test p-values route through erf (AS 7.1.26, ~1.5e-7 accuracy);
+    # propagated + float cancellation gives ~2e-7 worst-case.
+    "testing/scalar":            {"abs": 1.0e-6, "rel": 1.0e-6},
+    "distance/vector":           {"abs": 1.0e-6, "rel": 1.0e-6},
 }
 
 
@@ -295,6 +303,74 @@ def goldens_stats() -> dict[str, dict]:
     return g
 
 
+def goldens_integrate() -> dict[str, dict]:
+    # Analytic integrals so goldens don't depend on scipy's numerical integration.
+    g = {}
+    # ∫_0^1 x^2 dx = 1/3
+    # ∫_0^π sin(x) dx = 2                                  — but Chelis lacks cos; RHS uses sin only
+    # ∫_1^e log(x) dx = 1                                  — actually e*log(e) - e - (log(1) - 1) = e - e - 0 + 1 = 1
+    # ∫_0^1 exp(-x) dx = 1 - 1/e
+    cases = [
+        {"label": "x_squared_0_1",   "a": 0.0, "b": 1.0, "n": 100,  "expected": 1.0 / 3.0},
+        {"label": "exp_neg_0_1",     "a": 0.0, "b": 1.0, "n": 100,  "expected": 1.0 - math.exp(-1.0)},
+        {"label": "sin_shifted_pi",  "a": 0.0, "b": math.pi, "n": 200, "expected": 2.0},
+    ]
+    g["integrate/scalar.json"] = {"cases": cases, **TOL["integrate/scalar"]}
+    return g
+
+
+def goldens_testing() -> dict[str, dict]:
+    from scipy.stats import norm, chi2
+    g = {}
+    # One-sample z-test: sample_mean=102, pop_mean=100, pop_std=15, n=25
+    # z = (102 - 100) / (15/sqrt(25)) = 2 / 3 ≈ 0.6667
+    z = (102.0 - 100.0) / (15.0 / math.sqrt(25.0))
+    cases = [
+        {"label": "z_stat_basic",
+         "sample_mean": 102.0, "pop_mean": 100.0, "pop_std": 15.0, "sample_n": 25.0,
+         "expected_z": z},
+        {"label": "z_p_two_sided_small",
+         "z": 0.6666666666666666, "expected_p": float(2.0 * (1.0 - norm.cdf(0.6666666666666666)))},
+        {"label": "z_p_two_sided_large",
+         "z": 1.96, "expected_p": float(2.0 * (1.0 - norm.cdf(1.96)))},
+        {"label": "z_p_upper_196",
+         "z": 1.96, "expected_p": float(1.0 - norm.cdf(1.96))},
+        {"label": "z_p_lower_neg196",
+         "z": -1.96, "expected_p": float(norm.cdf(-1.96))},
+        {"label": "normal_ci_95",
+         "confidence": 0.95, "pop_std": 15.0, "sample_n": 25.0,
+         "expected_half_width": float(norm.ppf(0.975) * 15.0 / math.sqrt(25.0))},
+        {"label": "normal_ci_99",
+         "confidence": 0.99, "pop_std": 10.0, "sample_n": 100.0,
+         "expected_half_width": float(norm.ppf(0.995) * 10.0 / math.sqrt(100.0))},
+        {"label": "chi2_p_df5_stat11",
+         "statistic": 11.07, "df": 5.0, "expected_p": float(1.0 - chi2.cdf(11.07, df=5))},
+        {"label": "chi2_p_df10_stat18",
+         "statistic": 18.31, "df": 10.0, "expected_p": float(1.0 - chi2.cdf(18.31, df=10))},
+    ]
+    g["testing/scalar.json"] = {"cases": cases, **TOL["testing/scalar"]}
+    return g
+
+
+def goldens_distance() -> dict[str, dict]:
+    # Scipy-derived goldens for fixed vector pairs. Runtime verification gated
+    # on the same libchelis_runtime.a that Distributions.sample / Stats need.
+    from scipy.spatial import distance as sp_d
+    g = {}
+    a = [1.0, 2.0, 3.0, 4.0]
+    b = [4.0, 3.0, 2.0, 1.0]
+    g["distance/vector.json"] = {
+        "a": a, "b": b,
+        "squared_euclidean": float(sp_d.sqeuclidean(a, b)),
+        "euclidean":         float(sp_d.euclidean(a, b)),
+        "manhattan":         float(sp_d.cityblock(a, b)),
+        "chebyshev":         float(sp_d.chebyshev(a, b)),
+        "cosine_distance":   float(sp_d.cosine(a, b)),
+        **TOL["distance/vector"],
+    }
+    return g
+
+
 def check_close(have: float, want: float, abs_tol: float, rel_tol: float) -> bool:
     if math.isnan(have) or math.isnan(want):
         return False
@@ -308,7 +384,10 @@ def check_goldens() -> int:
                      ("linalg", goldens_linalg),
                      ("roots", goldens_roots),
                      ("ode", goldens_ode),
-                     ("stats", goldens_stats)):
+                     ("stats", goldens_stats),
+                     ("integrate", goldens_integrate),
+                     ("testing", goldens_testing),
+                     ("distance", goldens_distance)):
         for rel, fresh in gen().items():
             path = GOLDENS / rel
             if not path.exists():
@@ -368,6 +447,9 @@ def main() -> int:
     all_goldens.update(goldens_roots())
     all_goldens.update(goldens_ode())
     all_goldens.update(goldens_stats())
+    all_goldens.update(goldens_integrate())
+    all_goldens.update(goldens_testing())
+    all_goldens.update(goldens_distance())
     for rel, data in all_goldens.items():
         write_json(GOLDENS / rel, data)
         print(f"wrote {rel}")
