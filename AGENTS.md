@@ -17,14 +17,15 @@ to this file so Claude-style and Codex-style entry points do not drift.
 
 ## Toolchain Pin
 
-- `chelis v0.1.2` is the single supported compiler binary. `reef.toml`
-  currently pins `compiler = "=0.1.0"` because the released v0.1.2 binary
-  still enforces the old string (hard-coded `CURRENT_COMPILER_VERSION` in
-  `chelis-reef`). This is a monorepo bug to fix upstream; once fixed,
-  Nautilus, Coral, and Shoals must all bump the pin together in a single
-  change set. Do not bump unilaterally.
-- Do not vendor or build the Chelis compiler from source inside this repo.
-  Always consume the released tarball from `Chelis-Lang/chelis`.
+- `chelis v0.1.3` is the single supported compiler binary. `reef.toml`
+  pins `compiler = "=0.1.3"`. Future version bumps must land in
+  Nautilus, Coral, and Shoals in the same change set — do not bump
+  unilaterally.
+- Do not vendor or build the Chelis compiler from source inside this
+  repo. Consume the released tarball from the public
+  [`Chelis-Lang/chelis-toolchain`](https://github.com/Chelis-Lang/chelis-toolchain)
+  mirror, which hosts release artifacts for CI pull with the default
+  `GITHUB_TOKEN`. Chelis source stays private in `Chelis-Lang/chelis`.
 
 ## Phase Status
 

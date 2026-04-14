@@ -9,40 +9,35 @@ Shoals (3m) will be copied from.
 
 ## Toolchain
 
-The released binary is `chelis v0.1.2` (download from
-`Chelis-Lang/chelis` releases). Note the pin in `reef.toml` is the
-string `"=0.1.0"`, not `"=0.1.2"`:
+Pinned to `chelis v0.1.3`:
 
 ```toml
 # reef.toml
-compiler = "=0.1.0"
+compiler = "=0.1.3"
 ```
 
-This is a **known monorepo bug**: `chelis-reef` hard-codes
-`CURRENT_COMPILER_VERSION = "=0.1.0"` and rejects any other string, so
-every released binary through v0.1.2 actually enforces `"=0.1.0"` at
-reef-manifest time. The pin should be fixed upstream in a follow-up
-Chelis commit, after which Nautilus, Coral, and Shoals should all bump
-to the real version pin in the same change set.
+The released compiler binary lives in the sibling public repo
+[`Chelis-Lang/chelis-toolchain`](https://github.com/Chelis-Lang/chelis-toolchain)
+(a mirror that hosts only the release tarballs so downstream shell CI can
+download them with the default `GITHUB_TOKEN`). The Chelis source repo
+stays private.
 
 ## Building
 
-Once the `chelis` compiler binary is on your PATH (download the release
-tarball from `Chelis-Lang/chelis` releases):
+Download and extract the pinned tarball, then run check on the
+placeholder module:
 
 ```sh
-chelis check src/core.ch
+gh release download v0.1.3 \
+  --repo Chelis-Lang/chelis-toolchain \
+  --pattern 'chelis-v0.1.3-linux-x86_64.tar.gz'
+tar xzf chelis-v0.1.3-linux-x86_64.tar.gz
+./chelis-v0.1.3-linux-x86_64/chelis check src/core.ch
 ```
 
-## Known limitation — CI auth
+## Drift Rule
 
-The `.github/workflows/ci.yml` workflow downloads the pinned chelis
-release tarball from the sibling **private** `Chelis-Lang/chelis` repo.
-The default `GITHUB_TOKEN` is scoped to this repo only and will not have
-read access to sibling private repo releases. Before the CI run can
-succeed we need one of: (a) an org-level PAT stored as a secret named
-`CHELIS_RELEASE_TOKEN`, (b) making release assets public while keeping
-source private, or (c) publishing the compiler as a GitHub Packages
-artifact with org-wide pull access. Tracked as `TODO(toolchain-auth)`
-in the workflow file. Same flag applies to Coral and Shoals when they
-are stamped from this template.
+Nautilus, Coral, and Shoals share the same scaffolding. Use
+`uv run stamp-shell --src nautilus --dst coral --old nautilus --new coral
+--description "…" --phase 3k` from the Chelis monorepo's `py/` project to
+stamp a new shell repo with the tokens swapped.
