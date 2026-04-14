@@ -1,3 +1,3 @@
 module Nautilus.Core
 export (version)
-def version() -> i32 = 0
+def version() -> i32 = 1000

@@ -1,0 +1,417 @@
+#!/usr/bin/env python3
+"""End-to-end numerical test harness for Nautilus P0.
+
+Workflow per test:
+  1. Concatenate src/special.ch + src/distributions.ch + src/linalg.ch with
+     module/import/export directives stripped.
+  2. Append a no-op `main` so chelis build emits a standalone C compilation
+     unit (no runtime ABI wrapping).
+  3. Run chelis build → C.
+  4. Patch Chelis's emitted `main` symbol so we can link our own C driver.
+  5. Compile + link with a generated driver that exercises every scalar
+     function at the inputs listed in tests/goldens/.
+  6. Parse the driver output and compare against goldens within per-function
+     tolerance.
+
+This bypasses the broken `chelis eval --file` and the unavailable
+libchelis_runtime.a — the bare scalar functions don't need either.
+
+The harness covers Nautilus.Special and Nautilus.Distributions scalar
+functions only. Nautilus.LinAlg ops that take tensor inputs are covered by
+the API-smoke type check (src/apismoke.ch + chelis check), since their
+runtime exercise requires the full chelis runtime which is not shipped in
+the v0.1.3 release tarball.
+"""
+from __future__ import annotations
+
+import json
+import math
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+SRC = REPO / "src"
+GOLDENS = REPO / "tests" / "goldens"
+CHELIS = os.environ.get("CHELIS_BIN", "/tmp/chelisbin")
+
+
+def strip_module(src: str) -> str:
+    src = re.sub(r"^module .*\n", "", src, flags=re.M)
+    src = re.sub(r"^import .*\n", "", src, flags=re.M)
+    src = re.sub(r"^export \([^)]*\)\s*\n", "", src, flags=re.M | re.S)
+    return src
+
+
+def chelis_build(bare_ch: Path, outdir: Path) -> Path:
+    if outdir.exists():
+        shutil.rmtree(outdir)
+    proc = subprocess.run(
+        [CHELIS, "build", str(bare_ch), "-o", str(outdir)],
+        capture_output=True, text=True,
+    )
+    msg = (proc.stdout + proc.stderr).strip()
+    if "cannot find libchelis_runtime.a" not in msg and proc.returncode != 0:
+        raise SystemExit(f"chelis build failed: {msg}")
+    c_file = outdir / f"{bare_ch.stem}.c"
+    h_file = outdir / f"{bare_ch.stem}.h"
+    if not c_file.exists():
+        raise SystemExit(f"no C output produced: {c_file}")
+    txt = c_file.read_text()
+    txt = txt.replace("double main", "double chelis_entry")
+    c_file.write_text(txt)
+    if h_file.exists():
+        ht = h_file.read_text()
+        ht = ht.replace("double main", "double chelis_entry")
+        h_file.write_text(ht)
+    return c_file
+
+
+SIGNATURES = [
+    # special
+    ("erf",        ("double",), "double"),
+    ("erfinv",     ("double",), "double"),
+    ("log_gamma",  ("double",), "double"),
+    ("digamma",    ("double",), "double"),
+    ("beta",       ("double", "double"), "double"),
+    ("lbeta",      ("double", "double"), "double"),
+    # distributions
+    ("normal_pdf",        ("double", "double", "double"), "double"),
+    ("normal_cdf",        ("double", "double", "double"), "double"),
+    ("normal_inv_cdf",    ("double", "double", "double"), "double"),
+    ("uniform_pdf",       ("double", "double", "double"), "double"),
+    ("uniform_cdf",       ("double", "double", "double"), "double"),
+    ("uniform_inv_cdf",   ("double", "double", "double"), "double"),
+    ("exponential_pdf",       ("double", "double"), "double"),
+    ("exponential_cdf",       ("double", "double"), "double"),
+    ("exponential_inv_cdf",   ("double", "double"), "double"),
+    ("lognormal_pdf",       ("double", "double", "double"), "double"),
+    ("lognormal_cdf",       ("double", "double", "double"), "double"),
+    ("lognormal_inv_cdf",   ("double", "double", "double"), "double"),
+    ("gamma_pdf",        ("double", "double", "double"), "double"),
+    ("gamma_cdf",        ("double", "double", "double"), "double"),
+    ("gamma_inv_cdf",    ("double", "double", "double"), "double"),
+    ("chi_squared_pdf",     ("double", "double"), "double"),
+    ("chi_squared_cdf",     ("double", "double"), "double"),
+    ("chi_squared_inv_cdf", ("double", "double"), "double"),
+    ("student_t_pdf",       ("double", "double"), "double"),
+]
+
+
+def driver_c() -> str:
+    decls = "\n".join(
+        f"{ret} {name}({', '.join(args)});"
+        for name, args, ret in SIGNATURES
+    )
+    return f"""\
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+{decls}
+
+int main(int argc, char** argv) {{
+    if (argc < 2) {{ fprintf(stderr, "usage: driver FN ARG...\\n"); return 1; }}
+    const char* fn = argv[1];
+    double a[8] = {{0}};
+    int n_args = argc - 2;
+    for (int i = 0; i < n_args && i < 8; i++) a[i] = atof(argv[2+i]);
+""" + "".join(
+        f'    if (!strcmp(fn, "{name}")) {{ printf("%.10g\\n", {name}({", ".join(f"a[{i}]" for i in range(len(args)))})); return 0; }}\n'
+        for name, args, _ in SIGNATURES
+    ) + """\
+    fprintf(stderr, "unknown function: %s\\n", fn);
+    return 2;
+}
+"""
+
+
+RUNTIME_STUBS = """\
+#include <stdint.h>
+#include <stdlib.h>
+typedef struct chelis_tensor chelis_tensor;
+typedef struct chelis_list chelis_list;
+typedef struct chelis_tuple chelis_tuple;
+typedef struct chelis_value_s { int dummy; } chelis_value;
+int64_t chelis_list_len(const chelis_list* x) { return 0; }
+chelis_value chelis_list_index(const chelis_list* x, int64_t i) { chelis_value v={0}; return v; }
+chelis_tuple* chelis_value_as_tuple(chelis_value v) { return NULL; }
+chelis_value chelis_tuple_get(const chelis_tuple* t, int64_t i) { chelis_value v={0}; return v; }
+double chelis_value_as_f64(chelis_value v) { return 0.0; }
+chelis_value chelis_value_from_f64(double x) { chelis_value v={0}; return v; }
+chelis_list* chelis_list_append(chelis_list* l, chelis_value v) { return l; }
+chelis_list* chelis_list_empty(void) { return NULL; }
+chelis_list* chelis_list_zip(const chelis_list* a, const chelis_list* b) { return NULL; }
+chelis_list* chelis_list_from_tensor(const chelis_tensor* t) { return NULL; }
+chelis_tensor* chelis_tensor_from_value_list(const chelis_list* l) { return NULL; }
+chelis_tensor* chelis_alloc(int ndim, int* shape, int dtype) { return NULL; }
+chelis_tensor* chelis_uniform_like_f32(chelis_tensor* t, float lo, float hi) { return NULL; }
+void chelis_contiguous(chelis_tensor* t) {}
+void chelis_free(chelis_tensor* t) {}
+"""
+
+
+def build_native_binary() -> Path:
+    # Bundle only Special + Distributions: linalg.ch / roots.ch / ode.ch / stats.ch
+    # need runtime symbols or function-pointer call paths that have their own
+    # integration gates. LinAlg correctness is covered by the type-level api
+    # smoke check (src/apismoke.ch). Roots + ODE are covered by build_p1_binary().
+    bare = "\n".join(
+        strip_module((SRC / f).read_text())
+        for f in ("special.ch", "distributions.ch")
+    ) + "\ndef main() -> f32 = erf(cast(0.5, f32))\n"
+    workdir = Path(tempfile.mkdtemp(prefix="nautilus-num-"))
+    bare_ch = workdir / "nautilus_bare.ch"
+    bare_ch.write_text(bare)
+    chelis_build(bare_ch, workdir / "out")
+    c_file = workdir / "out" / "nautilus_bare.c"
+    drv_c = workdir / "driver.c"
+    drv_c.write_text(driver_c())
+    rt_c = workdir / "runtime_stubs.c"
+    rt_c.write_text(RUNTIME_STUBS)
+    binary = workdir / "nautilus_test_bin"
+    cc = subprocess.run(
+        ["gcc", "-O2", "-o", str(binary),
+         str(c_file), str(drv_c), str(rt_c),
+         "-I", str(workdir / "out"), "-lm"],
+        capture_output=True, text=True,
+    )
+    if cc.returncode != 0:
+        raise SystemExit(f"gcc failed: {cc.stderr}")
+    return binary
+
+
+P1_TEST_HELPERS_CH = r"""
+def p1_poly1(x: f32) -> f32 = {
+  x2 = mul(x, x)
+  sub(x2, cast(2.0, f32))
+}
+def p1_dpoly1(x: f32) -> f32 = mul(cast(2.0, f32), x)
+def p1_poly2(x: f32) -> f32 = {
+  x2 = mul(x, x)
+  x3 = mul(x2, x)
+  sub(sub(x3, mul(cast(2.0, f32), x)), cast(5.0, f32))
+}
+def p1_dpoly2(x: f32) -> f32 = {
+  x2 = mul(x, x)
+  sub(mul(cast(3.0, f32), x2), cast(2.0, f32))
+}
+def p1_cos_minus_x(x: f32) -> f32 = sub(sin(add(x, cast(1.5707963267948966, f32))), x)
+def p1_dcos_minus_x(x: f32) -> f32 = sub(neg(sin(x)), cast(1.0, f32))
+def p1_decay(y: f32, t: f32) -> f32 = neg(y)
+"""
+
+P1_DRIVER_C = r"""
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+double bisection(double (*f)(double), double, double, double, int64_t);
+double newton(double (*f)(double), double (*df)(double), double, double, int64_t);
+double brent(double (*f)(double), double, double, double, int64_t);
+double euler_solve(double (*f)(double, double), double, double, double, int64_t);
+double rk4_solve(double (*f)(double, double), double, double, double, int64_t);
+double p1_poly1(double), p1_dpoly1(double);
+double p1_poly2(double), p1_dpoly2(double);
+double p1_cos_minus_x(double), p1_dcos_minus_x(double);
+double p1_decay(double, double);
+
+int main(int argc, char** argv) {
+    if (argc < 2) { fprintf(stderr, "usage: p1_driver CASE [...]\n"); return 1; }
+    const char* c = argv[1];
+    if (!strcmp(c, "sqrt2_bisect"))  { printf("%.15g\n", bisection(p1_poly1, 1.0, 2.0, 1e-10, 200)); return 0; }
+    if (!strcmp(c, "sqrt2_brent"))   { printf("%.15g\n", brent(p1_poly1, 1.0, 2.0, 1e-10, 200)); return 0; }
+    if (!strcmp(c, "sqrt2_newton"))  { printf("%.15g\n", newton(p1_poly1, p1_dpoly1, 1.5, 1e-12, 50)); return 0; }
+    if (!strcmp(c, "cubic_brent"))   { printf("%.15g\n", brent(p1_poly2, 2.0, 3.0, 1e-10, 200)); return 0; }
+    if (!strcmp(c, "cubic_newton"))  { printf("%.15g\n", newton(p1_poly2, p1_dpoly2, 2.0, 1e-12, 50)); return 0; }
+    if (!strcmp(c, "cosmx_newton"))  { printf("%.15g\n", newton(p1_cos_minus_x, p1_dcos_minus_x, 0.5, 1e-12, 50)); return 0; }
+    if (!strcmp(c, "decay_rk4"))     { int64_t n = atoll(argv[2]); printf("%.15g\n", rk4_solve(p1_decay, 1.0, 0.0, 1.0, n)); return 0; }
+    if (!strcmp(c, "decay_euler"))   { int64_t n = atoll(argv[2]); printf("%.15g\n", euler_solve(p1_decay, 1.0, 0.0, 1.0, n)); return 0; }
+    fprintf(stderr, "unknown case: %s\n", c);
+    return 2;
+}
+"""
+
+
+def build_p1_binary() -> Path:
+    bare = "\n".join(
+        strip_module((SRC / f).read_text())
+        for f in ("special.ch", "roots.ch", "ode.ch")
+    ) + P1_TEST_HELPERS_CH + "\ndef main() -> f32 = p1_poly1(cast(1.0, f32))\n"
+    workdir = Path(tempfile.mkdtemp(prefix="nautilus-p1-"))
+    bare_ch = workdir / "p1_bare.ch"
+    bare_ch.write_text(bare)
+    chelis_build(bare_ch, workdir / "out")
+    c_file = workdir / "out" / "p1_bare.c"
+    drv_c = workdir / "p1_driver.c"
+    drv_c.write_text(P1_DRIVER_C)
+    binary = workdir / "p1_test_bin"
+    cc = subprocess.run(
+        ["gcc", "-O2", "-o", str(binary),
+         str(c_file), str(drv_c),
+         "-I", str(workdir / "out"), "-lm"],
+        capture_output=True, text=True,
+    )
+    if cc.returncode != 0:
+        raise SystemExit(f"p1 gcc failed: {cc.stderr}")
+    return binary
+
+
+def call_fn(binary: Path, fn: str, *args: float) -> float:
+    res = subprocess.run(
+        [str(binary), fn, *(str(a) for a in args)],
+        capture_output=True, text=True, check=True,
+    )
+    return float(res.stdout.strip())
+
+
+def close(have: float, want: float, atol: float, rtol: float) -> bool:
+    if math.isnan(have) or math.isnan(want):
+        return False
+    return abs(have - want) <= max(atol, rtol * abs(want))
+
+
+def golden(name: str) -> dict:
+    return json.loads((GOLDENS / name).read_text())
+
+
+def main() -> int:
+    binary = build_native_binary()
+    print(f"# binary: {binary}")
+    fails = 0
+    total = 0
+
+    def run(label, fn, args, expected, atol, rtol):
+        nonlocal fails, total
+        total += 1
+        got = call_fn(binary, fn, *args)
+        ok = close(got, expected, atol, rtol)
+        if not ok:
+            fails += 1
+            print(f"  FAIL {label}: got {got!r}, want {expected!r}, atol={atol}, rtol={rtol}")
+        else:
+            pass  # quiet on pass
+
+    print("== Special ==")
+    g = golden("special/erf.json")
+    for x, y in zip(g["inputs"], g["outputs"]):
+        run(f"erf({x})", "erf", (x,), y, g["abs"], g["rel"])
+    g = golden("special/erfinv.json")
+    for x, y in zip(g["inputs"], g["outputs"]):
+        run(f"erfinv({x})", "erfinv", (x,), y, g["abs"], g["rel"])
+    g = golden("special/log_gamma.json")
+    for x, y in zip(g["inputs"], g["outputs"]):
+        run(f"log_gamma({x})", "log_gamma", (x,), y, g["abs"], g["rel"])
+    g = golden("special/digamma.json")
+    for x, y in zip(g["inputs"], g["outputs"]):
+        run(f"digamma({x})", "digamma", (x,), y, g["abs"], g["rel"])
+    g = golden("special/beta.json")
+    for (a, b), y in zip(g["inputs"], g["outputs"]):
+        run(f"beta({a},{b})", "beta", (a, b), y, g["abs"], g["rel"])
+
+    print("== Distributions: Normal ==")
+    g = golden("distributions/normal.json")
+    p = g["params"]
+    for x, y in zip(g["inputs_x"], g["pdf"]):
+        run(f"normal_pdf({x})", "normal_pdf", (x, p["mean"], p["std"]), y, g["abs"], g["rel"])
+    for x, y in zip(g["inputs_x"], g["cdf"]):
+        run(f"normal_cdf({x})", "normal_cdf", (x, p["mean"], p["std"]), y, g["abs"], g["rel"])
+    for q, y in zip(g["inputs_q"], g["inv_cdf"]):
+        run(f"normal_inv_cdf({q})", "normal_inv_cdf", (q, p["mean"], p["std"]), y, g["abs"], g["rel"])
+
+    print("== Distributions: Uniform ==")
+    g = golden("distributions/uniform.json")
+    p = g["params"]
+    for x, y in zip(g["inputs_x"], g["pdf"]):
+        run(f"uniform_pdf({x})", "uniform_pdf", (x, p["lo"], p["hi"]), y, g["abs"], g["rel"])
+    for x, y in zip(g["inputs_x"], g["cdf"]):
+        run(f"uniform_cdf({x})", "uniform_cdf", (x, p["lo"], p["hi"]), y, g["abs"], g["rel"])
+    for q, y in zip(g["inputs_q"], g["inv_cdf"]):
+        run(f"uniform_inv_cdf({q})", "uniform_inv_cdf", (q, p["lo"], p["hi"]), y, g["abs"], g["rel"])
+
+    print("== Distributions: Exponential ==")
+    g = golden("distributions/exponential.json")
+    p = g["params"]
+    for x, y in zip(g["inputs_x"], g["pdf"]):
+        run(f"exponential_pdf({x})", "exponential_pdf", (x, p["rate"]), y, g["abs"], g["rel"])
+    for x, y in zip(g["inputs_x"], g["cdf"]):
+        run(f"exponential_cdf({x})", "exponential_cdf", (x, p["rate"]), y, g["abs"], g["rel"])
+    for q, y in zip(g["inputs_q"], g["inv_cdf"]):
+        run(f"exponential_inv_cdf({q})", "exponential_inv_cdf", (q, p["rate"]), y, g["abs"], g["rel"])
+
+    print("== Distributions: LogNormal ==")
+    g = golden("distributions/lognormal.json")
+    p = g["params"]
+    for x, y in zip(g["inputs_x"], g["pdf"]):
+        run(f"lognormal_pdf({x})", "lognormal_pdf", (x, p["mu"], p["sigma"]), y, g["abs"], g["rel"])
+    for x, y in zip(g["inputs_x"], g["cdf"]):
+        run(f"lognormal_cdf({x})", "lognormal_cdf", (x, p["mu"], p["sigma"]), y, g["abs"], g["rel"])
+    for q, y in zip(g["inputs_q"], g["inv_cdf"]):
+        run(f"lognormal_inv_cdf({q})", "lognormal_inv_cdf", (q, p["mu"], p["sigma"]), y, g["abs"], g["rel"])
+
+    print("== Distributions: Gamma ==")
+    g = golden("distributions/gamma.json")
+    p = g["params"]
+    for x, y in zip(g["inputs_x"], g["pdf"]):
+        run(f"gamma_pdf({x})", "gamma_pdf", (x, p["shape"], p["scale"]), y, g["abs"], g["rel"])
+    for x, y in zip(g["inputs_x"], g["cdf"]):
+        run(f"gamma_cdf({x})", "gamma_cdf", (x, p["shape"], p["scale"]), y, g["abs"], g["rel"])
+    for q, y in zip(g["inputs_q"], g["inv_cdf"]):
+        run(f"gamma_inv_cdf({q})", "gamma_inv_cdf", (q, p["shape"], p["scale"]), y, g["abs"], g["rel"])
+
+    print("== Distributions: Chi-squared ==")
+    g = golden("distributions/chi_squared.json")
+    p = g["params"]
+    for x, y in zip(g["inputs_x"], g["pdf"]):
+        run(f"chi_squared_pdf({x})", "chi_squared_pdf", (x, p["df"]), y, g["abs"], g["rel"])
+    for x, y in zip(g["inputs_x"], g["cdf"]):
+        run(f"chi_squared_cdf({x})", "chi_squared_cdf", (x, p["df"]), y, g["abs"], g["rel"])
+    for q, y in zip(g["inputs_q"], g["inv_cdf"]):
+        run(f"chi_squared_inv_cdf({q})", "chi_squared_inv_cdf", (q, p["df"]), y, g["abs"], g["rel"])
+
+    print("== Distributions: Student-t ==")
+    g = golden("distributions/student_t.json")
+    p = g["params"]
+    for x, y in zip(g["inputs_x"], g["pdf"]):
+        run(f"student_t_pdf({x})", "student_t_pdf", (x, p["df"]), y, g["abs"], g["rel"])
+
+    # --- P1: Roots + ODE via a separate binary (function-pointer ABI) ---
+    p1_binary = build_p1_binary()
+    print(f"# p1_binary: {p1_binary}")
+
+    def p1_run(label, case, args, expected, atol, rtol):
+        nonlocal fails, total
+        total += 1
+        res = subprocess.run(
+            [str(p1_binary), case, *(str(a) for a in args)],
+            capture_output=True, text=True, check=True,
+        )
+        got = float(res.stdout.strip())
+        if not close(got, expected, atol, rtol):
+            fails += 1
+            print(f"  FAIL {label}: got {got!r}, want {expected!r}, atol={atol}, rtol={rtol}")
+
+    print("== Roots ==")
+    g = golden("roots/scalar.json")
+    for case in g["cases"]:
+        p1_run(case["label"], case["label"], (), case["expected"], g["abs"], g["rel"])
+
+    print("== ODE ==")
+    g = golden("ode/scalar.json")
+    decay_true = g["decay_analytic"]
+    for case in g["rk4_cases"]:
+        p1_run(case["label"], "decay_rk4", (case["n_steps"],), decay_true,
+                case["expected_abs_err"], 0.0)
+    for case in g["euler_cases"]:
+        p1_run(case["label"], "decay_euler", (case["n_steps"],), decay_true,
+                case["expected_abs_err"], 0.0)
+
+    print(f"\n{total - fails} / {total} numerical assertions passed")
+    return 1 if fails else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
