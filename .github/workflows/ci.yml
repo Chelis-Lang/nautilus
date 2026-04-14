@@ -31,5 +31,57 @@ jobs:
           chelis --version
           test "$(chelis --version)" = "chelis 0.1.3"
 
-      - name: chelis check
-        run: chelis check src/core.ch
+      - name: chelis check (all modules)
+        run: |
+          for f in src/core.ch src/special.ch src/distributions.ch src/linalg.ch src/apismoke.ch; do
+            echo "=== $f ==="
+            out=$(chelis check "$f")
+            echo "$out"
+            echo "$out" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); sys.exit(0 if d['score']==1 and not d['errors'] else 1)"
+          done
+
+      - name: chelis reef build
+        run: chelis reef build
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install scipy + numpy
+        run: pip install --no-cache-dir 'numpy>=1.26' 'scipy>=1.11'
+
+      - name: Static API cross-checks
+        run: python tests/run_static_checks.py
+
+      - name: Goldens drift check (scipy parity)
+        run: python scripts/gen_goldens.py --check
+
+      - name: End-to-end numerical tests vs scipy goldens
+        env:
+          CHELIS_BIN: chelis
+        run: python tests/run_numeric_tests.py
+
+      - name: Sanity-check chelis import gate (mutation test)
+        run: |
+          # Prove the apismoke gate actually has teeth by mutating one
+          # import to a typo and asserting chelis check rejects it. If
+          # this step ever passes silently, the import gate is broken.
+          cp src/apismoke.ch src/apismoke.ch.bak
+          sed -i 's/(erf, erfinv/(erf_TYPO_THAT_DOES_NOT_EXIST, erfinv/' src/apismoke.ch
+          if chelis check src/apismoke.ch 2>&1 | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); sys.exit(0 if d.get('errors') or 'error' in (d.get('msg','') or '') else 1)" 2>/dev/null; then
+            echo "chelis check correctly rejected typo'd import"
+            mv src/apismoke.ch.bak src/apismoke.ch
+          else
+            # The check command may print 'error: ...' to stdout instead of JSON.
+            output=$(chelis check src/apismoke.ch 2>&1 || true)
+            mv src/apismoke.ch.bak src/apismoke.ch
+            if echo "$output" | grep -q "does not export"; then
+              echo "chelis check correctly rejected typo'd import"
+              echo "$output"
+            else
+              echo "FAIL: chelis check accepted a typo'd import (gate is broken)"
+              echo "$output"
+              exit 1
+            fi
+          fi

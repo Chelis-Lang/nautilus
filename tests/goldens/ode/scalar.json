@@ -1,0 +1,35 @@
+{
+  "decay_analytic": 0.36787944117144233,
+  "forced_analytic": 0.506946924752297,
+  "rk4_cases": [
+    {
+      "label": "decay_rk4_n10",
+      "n_steps": 10,
+      "expected_abs_err": 5e-07
+    },
+    {
+      "label": "decay_rk4_n100",
+      "n_steps": 100,
+      "expected_abs_err": 1e-10
+    },
+    {
+      "label": "decay_rk4_n1000",
+      "n_steps": 1000,
+      "expected_abs_err": 1e-13
+    }
+  ],
+  "euler_cases": [
+    {
+      "label": "decay_euler_n100",
+      "n_steps": 100,
+      "expected_abs_err": 0.0025
+    },
+    {
+      "label": "decay_euler_n1000",
+      "n_steps": 1000,
+      "expected_abs_err": 0.00025
+    }
+  ],
+  "abs": 5e-07,
+  "rel": 5e-07
+}
