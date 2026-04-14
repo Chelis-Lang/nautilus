@@ -55,18 +55,18 @@ CI runs all five steps. It authenticates to the sibling private
 |---|---|---|
 | `Nautilus.Special` | `erf`, `erfinv`, `log_gamma`, `digamma`, `beta`, `lbeta` | scipy-parity, runtime-tested |
 | `Nautilus.Distributions` | Normal, LogNormal, Uniform, Exponential, Gamma, Chi-squared, Student-t — `pdf` / `cdf` / `inv_cdf` / `sample` | scipy-parity, runtime-tested |
-| `Nautilus.LinAlg` | `transpose`, `matmul_wrap`, `gram`, `aat`, `diag`, `trace_mat`, `trace_scalar`, `l2_norm_vec`, `inner_product`, `frobenius_sq`, `frobenius_norm`, `scale_vec`, `matvec`, `vecmat`, `det_2x2`, `det_3x3`, `la_vec_add`, `la_vec_sub`, `la_vec_saxpy`, `cg_solve` | type-checked + reef-built; runtime numerical verification deferred until upstream ships `libchelis_runtime.a` |
+| `Nautilus.LinAlg` | `transpose`, `matmul_wrap`, `gram`, `aat`, `diag`, `trace_mat`, `trace_scalar`, `l2_norm_vec`, `inner_product`, `frobenius_sq`, `frobenius_norm`, `scale_vec`, `matvec`, `vecmat`, `det_2x2`, `det_3x3`, `la_vec_add`, `la_vec_sub`, `la_vec_saxpy`, `cg_solve`, `inv_2x2`, `inv_3x3`, `solve_2x2`, `solve_3x3`, `eig_2x2_real`, `cholesky_2x2` | type-checked + reef-built; runtime numerical verification deferred until upstream ships `libchelis_runtime.a` |
 | `Nautilus.Roots` | `bisection`, `newton`, `brent` over `f: f32 -> f32` | scipy-parity, runtime-tested |
 | `Nautilus.ODE` | `euler_step` / `euler_solve`, `rk4_step` / `rk4_solve` over `f: f32 -> f32 -> f32` | runtime-tested vs analytic decay (RK4 ~4e-15 error at n=1000) |
 | `Nautilus.Stats` | `mean_vec`, `variance_vec`, `std_vec`, `skewness_vec`, `kurtosis_vec`, `median_vec`, `covariance_scalar`, `correlation_scalar` | type-checked; runtime verification deferred with LinAlg |
-| `Nautilus.Integrate` | `trapezoidal`, `simpsons`, `gauss_legendre_5` over `f: f32 -> f32` | 9 analytic-integral assertions runtime-tested |
+| `Nautilus.Integrate` | `trapezoidal`, `simpsons`, `gauss_legendre_5`, `adaptive_simpson`, `romberg_5`, `gauss_legendre_10` over `f: f32 -> f32` | 9 + 12 analytic-integral assertions runtime-tested |
 | `Nautilus.Testing` | `z_statistic`, `z_p_value_*`, `normal_ci_half_width`, `chi_squared_p_value`, `t_statistic_one_sample`, `t_statistic_two_sample_pooled`, `welch_t_statistic`, `welch_t_df`, `t_p_value_two_sided`, `t_p_value_upper`, `t_p_value_lower` | runtime-tested against scipy |
 | `Nautilus.Distributions` (P2.5 add) | `student_t_cdf`, `betai` / `betacf` (regularized incomplete beta via Lentz continued fraction) | runtime-tested against scipy |
 | `Nautilus.Distance` | `squared_euclidean`, `euclidean`, `manhattan`, `chebyshev`, `cosine_similarity`, `cosine_distance`, `mahalanobis`, `mahalanobis_squared` | type-checked; runtime verification deferred with LinAlg |
 | `Nautilus.Signal` | Typed API stubs — `fft_magnitude_stub`, `ifft_magnitude_stub`, `stft_magnitude_stub`, `lowpass_stub`, `highpass_stub`, `bandpass_stub`, `fftfreq` | spec-stub; real implementations blocked on complex numbers (Phase 5f) |
 | `Nautilus.Optim` | `golden_section_search`, `brent_minimize`, `gradient_descent_1d`, `newton_minimize_1d` | runtime-tested against scipy (parabola argmin, quartic argmin) |
 | `Nautilus.Interpolation` | `linear_interp_uniform`, `linear_interp_sorted`, `cubic_hermite` | `cubic_hermite` runtime-tested against scipy CubicHermiteSpline; tensor-input variants type-checked |
-| `Nautilus.SDE` | — | deferred to P3 (needs scalar normal draw from rank-1 uniform_like template) |
+| `Nautilus.SDE` | `euler_maruyama_fixed`, `milstein_fixed` over scalar drift/diffusion + caller-supplied noise tensor | type-checked + reef-built; runtime verification deferred with the other tensor-input modules. The `_fixed` suffix reserves the clean `euler_maruyama` / `milstein` names for a future autonomous-sampling version once upstream exposes a scalar `Random` primitive. |
 
 See `spec/phase3j.md` for the authoritative scope and acceptance criteria.
 

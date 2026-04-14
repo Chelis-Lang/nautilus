@@ -159,6 +159,7 @@ int64_t chelis_value_as_int64(chelis_value v) { return 0; }
 int chelis_value_as_bool(chelis_value v) { return 0; }
 chelis_value chelis_value_from_bool(int b) { chelis_value v={0}; return v; }
 chelis_value chelis_value_from_int64(int64_t n) { chelis_value v={0}; return v; }
+chelis_list* chelis_range_i64(int64_t start, int64_t end) { return NULL; }
 """
 
 
@@ -241,6 +242,45 @@ def opt_ddquartic(x: f32) -> f32 = {
   x2 = mul(x, x)
   sub(mul(cast(12.0, f32), x2), cast(8.0, f32))
 }
+
+def sde_drift(y: f32, t: f32) -> f32 = neg(y)
+def sde_diff_const(y: f32, t: f32) -> f32 = cast(0.1, f32)
+def sde_drift_gbm(y: f32, t: f32) -> f32 = mul(cast(0.1, f32), y)
+def sde_diff_gbm(y: f32, t: f32) -> f32 = mul(cast(0.2, f32), y)
+def sde_dg_dy_gbm(y: f32, t: f32) -> f32 = cast(0.2, f32)
+
+def sde_noise_zero_100() -> tensor[100, f32] =
+  to_tensor(map(fn (i: int64) -> cast(0.0, f32), range(cast(0, int64), cast(100, int64))))
+def sde_noise_plus_10() -> tensor[10, f32] =
+  to_tensor(map(fn (i: int64) -> cast(1.0, f32), range(cast(0, int64), cast(10, int64))))
+def sde_noise_alt_10() -> tensor[10, f32] =
+  to_tensor(map(fn (i: int64) ->
+    if eq(mod(i, cast(2, int64)), cast(0, int64)) then cast(1.0, f32) else cast(-1.0, f32),
+    range(cast(0, int64), cast(10, int64))))
+
+def sde_em_zero_noise() -> f32 =
+  euler_maruyama_fixed(sde_drift, sde_diff_const,
+    cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), sde_noise_zero_100())
+def sde_em_plus_noise() -> f32 =
+  euler_maruyama_fixed(sde_drift, sde_diff_const,
+    cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), sde_noise_plus_10())
+def sde_em_alt_noise() -> f32 =
+  euler_maruyama_fixed(sde_drift, sde_diff_const,
+    cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), sde_noise_alt_10())
+def sde_milstein_gbm() -> f32 =
+  milstein_fixed(sde_drift_gbm, sde_diff_gbm, sde_dg_dy_gbm,
+    cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), sde_noise_plus_10())
+
+def int_x_squared(x: f32) -> f32 = mul(x, x)
+def int_exp_neg(x: f32) -> f32 = {
+  nx = neg(x)
+  exp(nx)
+}
+def int_sin_x(x: f32) -> f32 = sin(x)
+def int_inv_1_x2(x: f32) -> f32 = {
+  x2 = mul(x, x)
+  div(cast(1.0, f32), add(cast(1.0, f32), x2))
+}
 """
 
 P1_DRIVER_C = r"""
@@ -275,9 +315,19 @@ double brent_minimize(double (*)(double), double, double, double, int64_t);
 double gradient_descent_1d(double (*)(double), double (*)(double), double, double, int64_t);
 double newton_minimize_1d(double (*)(double), double (*)(double), double (*)(double), double, double, int64_t);
 double cubic_hermite(double, double, double, double, double, double, double);
+double adaptive_simpson(double (*f)(double), double, double, double, int64_t);
+double romberg_5(double (*f)(double), double, double);
+double gauss_legendre_10(double (*f)(double), double, double);
 
 double opt_parab(double), opt_dparab(double), opt_ddparab(double);
 double opt_quartic(double), opt_dquartic(double), opt_ddquartic(double);
+
+double sde_em_zero_noise(void);
+double sde_em_plus_noise(void);
+double sde_em_alt_noise(void);
+double sde_milstein_gbm(void);
+
+double int_x_squared(double), int_exp_neg(double), int_sin_x(double), int_inv_1_x2(double);
 
 double p1_poly1(double), p1_dpoly1(double);
 double p1_poly2(double), p1_dpoly2(double);
@@ -339,6 +389,26 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    // SDE
+    if (!strcmp(c, "sde_em_zero"))   { printf("%.15g\n", sde_em_zero_noise()); return 0; }
+    if (!strcmp(c, "sde_em_plus"))   { printf("%.15g\n", sde_em_plus_noise()); return 0; }
+    if (!strcmp(c, "sde_em_alt"))    { printf("%.15g\n", sde_em_alt_noise()); return 0; }
+    if (!strcmp(c, "sde_milstein"))  { printf("%.15g\n", sde_milstein_gbm()); return 0; }
+
+    // Adaptive integration
+    if (!strcmp(c, "adapt_x2"))      { printf("%.15g\n", adaptive_simpson(int_x_squared, 0.0, 1.0, 1e-12, 20)); return 0; }
+    if (!strcmp(c, "adapt_expneg"))  { printf("%.15g\n", adaptive_simpson(int_exp_neg, 0.0, 1.0, 1e-12, 20)); return 0; }
+    if (!strcmp(c, "adapt_sin"))     { printf("%.15g\n", adaptive_simpson(int_sin_x, 0.0, 3.141592653589793, 1e-12, 20)); return 0; }
+    if (!strcmp(c, "adapt_inv"))     { printf("%.15g\n", adaptive_simpson(int_inv_1_x2, 0.0, 1.0, 1e-12, 20)); return 0; }
+    if (!strcmp(c, "romb_x2"))       { printf("%.15g\n", romberg_5(int_x_squared, 0.0, 1.0)); return 0; }
+    if (!strcmp(c, "romb_expneg"))   { printf("%.15g\n", romberg_5(int_exp_neg, 0.0, 1.0)); return 0; }
+    if (!strcmp(c, "romb_sin"))      { printf("%.15g\n", romberg_5(int_sin_x, 0.0, 3.141592653589793)); return 0; }
+    if (!strcmp(c, "romb_inv"))      { printf("%.15g\n", romberg_5(int_inv_1_x2, 0.0, 1.0)); return 0; }
+    if (!strcmp(c, "gl10_x2"))       { printf("%.15g\n", gauss_legendre_10(int_x_squared, 0.0, 1.0)); return 0; }
+    if (!strcmp(c, "gl10_expneg"))   { printf("%.15g\n", gauss_legendre_10(int_exp_neg, 0.0, 1.0)); return 0; }
+    if (!strcmp(c, "gl10_sin"))      { printf("%.15g\n", gauss_legendre_10(int_sin_x, 0.0, 3.141592653589793)); return 0; }
+    if (!strcmp(c, "gl10_inv"))      { printf("%.15g\n", gauss_legendre_10(int_inv_1_x2, 0.0, 1.0)); return 0; }
+
     fprintf(stderr, "unknown case: %s\n", c);
     return 2;
 }
@@ -348,7 +418,7 @@ int main(int argc, char** argv) {
 def build_p1_binary() -> Path:
     bare = "\n".join(
         strip_module((SRC / f).read_text())
-        for f in ("special.ch", "distributions.ch", "roots.ch", "ode.ch", "integrate.ch", "testing.ch", "optim.ch", "interpolation.ch")
+        for f in ("special.ch", "distributions.ch", "roots.ch", "ode.ch", "integrate.ch", "testing.ch", "optim.ch", "interpolation.ch", "sde.ch")
     ) + P1_TEST_HELPERS_CH + "\ndef main() -> f32 = p1_poly1(cast(1.0, f32))\n"
     workdir = Path(tempfile.mkdtemp(prefix="nautilus-p1-"))
     bare_ch = workdir / "p1_bare.ch"
@@ -601,6 +671,25 @@ def main() -> int:
         p1_run(case["label"], "hermite",
                 (case["x0"], case["x1"], case["y0"], case["y1"], case["m0"], case["m1"], case["x"]),
                 case["expected"], g["abs"], g["rel"])
+
+    # SDE runtime verification is blocked the same way Distributions.sample
+    # is: the Chelis-side noise vector construction via `range + map +
+    # to_tensor` requires real runtime symbols (chelis_range_i64 et al.)
+    # that the NULL-returning stubs can't honor. Type-level coverage via
+    # `src/apismoke.ch:smoke_sde` is the honest gate; goldens stay in
+    # tree for documentation + future runtime-enabled harness wiring.
+
+    print("== Integrate: adaptive + romberg + gauss_legendre_10 ==")
+    g = golden("integrate/adaptive.json")
+    label_tag = {
+        "x_squared_01": "x2", "exp_neg_01": "expneg",
+        "sin_0_pi": "sin",    "one_over_1_x2_01": "inv",
+    }
+    for case in g["cases"]:
+        tag = label_tag[case["label"]]
+        for method in ("adapt", "romb", "gl10"):
+            p1_run(f"{method}_{case['label']}", f"{method}_{tag}", (),
+                    case["expected"], g["abs"], g["rel"])
 
     print(f"\n{total - fails} / {total} numerical assertions passed")
     return 1 if fails else 0
