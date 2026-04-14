@@ -45,6 +45,8 @@ TOL = {
     # propagated + float cancellation gives ~2e-7 worst-case.
     "testing/scalar":            {"abs": 1.0e-6, "rel": 1.0e-6},
     "distance/vector":           {"abs": 1.0e-6, "rel": 1.0e-6},
+    "optim/scalar":              {"abs": 1.0e-5, "rel": 1.0e-5},
+    "interpolation/scalar":      {"abs": 1.0e-7, "rel": 1.0e-7},
 }
 
 
@@ -169,12 +171,15 @@ def goldens_distributions() -> dict[str, dict]:
         **TOL["distributions/chi_squared"],
     }
 
-    # Student-t(df=5) — PDF only (CDF via incomplete beta not in scope)
+    # Student-t(df=5) — pdf + cdf (incomplete beta via Lentz in Phase 2.5)
     tx = np.linspace(-4.0, 4.0, 17).tolist()
     g["distributions/student_t.json"] = {
         "inputs_x": tx,
         "params": {"df": df},
         "pdf":     [float(sp_stats.t.pdf(x, df=df)) for x in tx],
+        "cdf":     [float(sp_stats.t.cdf(x, df=df)) for x in tx],
+        "cdf_df1": [float(sp_stats.t.cdf(x, df=1)) for x in tx],
+        "cdf_df30":[float(sp_stats.t.cdf(x, df=30)) for x in tx],
         **TOL["distributions/student_t"],
     }
 
@@ -320,7 +325,7 @@ def goldens_integrate() -> dict[str, dict]:
 
 
 def goldens_testing() -> dict[str, dict]:
-    from scipy.stats import norm, chi2
+    from scipy.stats import norm, chi2, t
     g = {}
     # One-sample z-test: sample_mean=102, pop_mean=100, pop_std=15, n=25
     # z = (102 - 100) / (15/sqrt(25)) = 2 / 3 ≈ 0.6667
@@ -347,7 +352,46 @@ def goldens_testing() -> dict[str, dict]:
          "statistic": 11.07, "df": 5.0, "expected_p": float(1.0 - chi2.cdf(11.07, df=5))},
         {"label": "chi2_p_df10_stat18",
          "statistic": 18.31, "df": 10.0, "expected_p": float(1.0 - chi2.cdf(18.31, df=10))},
+        # t-test: one-sample, sample_mean=5.1, sample_std=1.5, sample_n=16, pop_mean=5.0
+        # t = (5.1 - 5.0) / (1.5 / sqrt(16)) = 0.1 / 0.375 = 0.2667
+        {"label": "t_stat_one_sample",
+         "sample_mean": 5.1, "sample_std": 1.5, "sample_n": 16.0, "pop_mean": 5.0,
+         "expected_t": (5.1 - 5.0) / (1.5 / math.sqrt(16))},
+        # Pooled two-sample: m1=10, s1=2, n1=20, m2=12, s2=2.5, n2=25
+        {"label": "t_stat_two_sample_pooled",
+         "mean1": 10.0, "std1": 2.0, "n1": 20.0,
+         "mean2": 12.0, "std2": 2.5, "n2": 25.0,
+         # Pooled SE manually: ssq = 19*4 + 24*6.25 = 76 + 150 = 226; df_pool=43; sp2=5.2558; se=sqrt(5.2558*(1/20+1/25))=sqrt(5.2558*0.09)=0.6880
+         "expected_t": -2.9068},
+        # Welch two-sample: same inputs as pooled
+        {"label": "welch_t_stat",
+         "mean1": 10.0, "std1": 2.0, "n1": 20.0,
+         "mean2": 12.0, "std2": 2.5, "n2": 25.0,
+         "expected_t": -2.981423969999729},
+        {"label": "welch_df",
+         "std1": 2.0, "n1": 20.0, "std2": 2.5, "n2": 25.0,
+         "expected_df": (0.45**2) / ((0.04/19.0) + (0.0625/24.0))},
+        {"label": "t_p_two_df5_t1",
+         "t": 1.0, "df": 5.0, "expected_p": float(2.0 * (1.0 - t.cdf(1.0, df=5)))},
+        {"label": "t_p_two_df5_t2",
+         "t": 2.0, "df": 5.0, "expected_p": float(2.0 * (1.0 - t.cdf(2.0, df=5)))},
+        {"label": "t_p_two_df30_t196",
+         "t": 1.96, "df": 30.0, "expected_p": float(2.0 * (1.0 - t.cdf(1.96, df=30)))},
+        {"label": "t_p_upper_df10_t2",
+         "t": 2.0, "df": 10.0, "expected_p": float(1.0 - t.cdf(2.0, df=10))},
+        {"label": "t_p_lower_df10_tneg2",
+         "t": -2.0, "df": 10.0, "expected_p": float(t.cdf(-2.0, df=10))},
     ]
+    # Recompute expected_t for pooled with higher precision
+    import math as _m
+    ssq = 19.0*4.0 + 24.0*6.25
+    df_pool = 43.0
+    sp2 = ssq / df_pool
+    se = _m.sqrt(sp2 * (1/20 + 1/25))
+    pooled_t = (10.0 - 12.0) / se
+    for case in cases:
+        if case.get("label") == "t_stat_two_sample_pooled":
+            case["expected_t"] = pooled_t
     g["testing/scalar.json"] = {"cases": cases, **TOL["testing/scalar"]}
     return g
 
@@ -371,6 +415,53 @@ def goldens_distance() -> dict[str, dict]:
     return g
 
 
+def goldens_optim() -> dict[str, dict]:
+    g = {}
+    cases = [
+        # (x-2)^2 - 3, argmin at 2.0
+        {"label": "gss_parabola",     "method": "gss",      "lo": 0.0, "hi": 5.0, "expected": 2.0},
+        {"label": "brent_parabola",   "method": "brent",    "lo": 0.0, "hi": 5.0, "expected": 2.0},
+        {"label": "gd_parabola",      "method": "gd",       "x0": 0.0, "lr": 0.1, "iters": 500, "expected": 2.0},
+        {"label": "newton_parabola",  "method": "newton",   "x0": 0.0, "expected": 2.0},
+        # x^4 - 4x^2 + 5, local minima at ±sqrt(2)
+        {"label": "gss_quartic",      "method": "gss",      "lo": 0.0, "hi": 3.0, "expected": math.sqrt(2.0)},
+        {"label": "brent_quartic",    "method": "brent",    "lo": 0.5, "hi": 3.0, "expected": math.sqrt(2.0)},
+        {"label": "newton_quartic",   "method": "newton",   "x0": 1.2, "expected": math.sqrt(2.0)},
+    ]
+    g["optim/scalar.json"] = {"cases": cases, **TOL["optim/scalar"]}
+    return g
+
+
+def goldens_interpolation() -> dict[str, dict]:
+    g = {}
+    # cubic_hermite unit tests
+    cases = [
+        # flat slopes, identity-ish values
+        {"label": "hermite_half_flat",
+         "x0": 0.0, "x1": 1.0, "y0": 0.0, "y1": 1.0, "m0": 0.0, "m1": 0.0, "x": 0.5,
+         "expected": 0.5},
+        # unit slopes, should be a true linear interp at midpoint (since endpoint slopes equal secant)
+        {"label": "hermite_half_unit",
+         "x0": 0.0, "x1": 1.0, "y0": 0.0, "y1": 1.0, "m0": 1.0, "m1": 1.0, "x": 0.5,
+         "expected": 0.5},
+        # general case with non-trivial slopes; verified via numpy polynomial
+        {"label": "hermite_mid",
+         "x0": 0.0, "x1": 2.0, "y0": 1.0, "y1": 3.0, "m0": 0.0, "m1": 2.0, "x": 1.0,
+         # t=0.5, h=2; h00=0.5, h10=0.125, h01=0.5, h11=-0.125
+         # 0.5*1 + 0.125*2*0 + 0.5*3 + (-0.125)*2*2 = 0.5 + 0 + 1.5 - 0.5 = 1.5
+         "expected": 1.5},
+        # endpoints (degenerate)
+        {"label": "hermite_left",
+         "x0": 0.0, "x1": 1.0, "y0": 7.0, "y1": -3.0, "m0": 2.0, "m1": 5.0, "x": 0.0,
+         "expected": 7.0},
+        {"label": "hermite_right",
+         "x0": 0.0, "x1": 1.0, "y0": 7.0, "y1": -3.0, "m0": 2.0, "m1": 5.0, "x": 1.0,
+         "expected": -3.0},
+    ]
+    g["interpolation/scalar.json"] = {"cases": cases, **TOL["interpolation/scalar"]}
+    return g
+
+
 def check_close(have: float, want: float, abs_tol: float, rel_tol: float) -> bool:
     if math.isnan(have) or math.isnan(want):
         return False
@@ -387,7 +478,9 @@ def check_goldens() -> int:
                      ("stats", goldens_stats),
                      ("integrate", goldens_integrate),
                      ("testing", goldens_testing),
-                     ("distance", goldens_distance)):
+                     ("distance", goldens_distance),
+                     ("optim", goldens_optim),
+                     ("interpolation", goldens_interpolation)):
         for rel, fresh in gen().items():
             path = GOLDENS / rel
             if not path.exists():
@@ -450,6 +543,8 @@ def main() -> int:
     all_goldens.update(goldens_integrate())
     all_goldens.update(goldens_testing())
     all_goldens.update(goldens_distance())
+    all_goldens.update(goldens_optim())
+    all_goldens.update(goldens_interpolation())
     for rel, data in all_goldens.items():
         write_json(GOLDENS / rel, data)
         print(f"wrote {rel}")

@@ -39,6 +39,8 @@ MODULES = {
     "Nautilus.Testing":       SRC / "testing.ch",
     "Nautilus.Distance":      SRC / "distance.ch",
     "Nautilus.Signal":        SRC / "signal.ch",
+    "Nautilus.Optim":         SRC / "optim.ch",
+    "Nautilus.Interpolation": SRC / "interpolation.ch",
 }
 
 

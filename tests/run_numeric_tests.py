@@ -99,6 +99,7 @@ SIGNATURES = [
     ("chi_squared_cdf",     ("double", "double"), "double"),
     ("chi_squared_inv_cdf", ("double", "double"), "double"),
     ("student_t_pdf",       ("double", "double"), "double"),
+    ("student_t_cdf",       ("double", "double"), "double"),
 ]
 
 
@@ -151,6 +152,13 @@ chelis_tensor* chelis_alloc(int ndim, int* shape, int dtype) { return NULL; }
 chelis_tensor* chelis_uniform_like_f32(chelis_tensor* t, float lo, float hi) { return NULL; }
 void chelis_contiguous(chelis_tensor* t) {}
 void chelis_free(chelis_tensor* t) {}
+int64_t chelis_tensor_numel(const chelis_tensor* t) { return 0; }
+chelis_list* chelis_list_enumerate(const chelis_list* l) { return NULL; }
+chelis_tuple* chelis_tuple_from_values(const chelis_value* vs, int64_t n) { return NULL; }
+int64_t chelis_value_as_int64(chelis_value v) { return 0; }
+int chelis_value_as_bool(chelis_value v) { return 0; }
+chelis_value chelis_value_from_bool(int b) { chelis_value v={0}; return v; }
+chelis_value chelis_value_from_int64(int64_t n) { chelis_value v={0}; return v; }
 """
 
 
@@ -209,6 +217,30 @@ def p2_exp_neg(x: f32) -> f32 = {
   exp(nx)
 }
 def p2_sin_shifted(x: f32) -> f32 = sin(x)
+
+def opt_parab(x: f32) -> f32 = {
+  d = sub(x, cast(2.0, f32))
+  d2 = mul(d, d)
+  sub(d2, cast(3.0, f32))
+}
+def opt_dparab(x: f32) -> f32 = mul(cast(2.0, f32), sub(x, cast(2.0, f32)))
+def opt_ddparab(x: f32) -> f32 = cast(2.0, f32)
+
+def opt_quartic(x: f32) -> f32 = {
+  x2 = mul(x, x)
+  x4 = mul(x2, x2)
+  four_x2 = mul(cast(4.0, f32), x2)
+  add(sub(x4, four_x2), cast(5.0, f32))
+}
+def opt_dquartic(x: f32) -> f32 = {
+  x2 = mul(x, x)
+  x3 = mul(x2, x)
+  sub(mul(cast(4.0, f32), x3), mul(cast(8.0, f32), x))
+}
+def opt_ddquartic(x: f32) -> f32 = {
+  x2 = mul(x, x)
+  sub(mul(cast(12.0, f32), x2), cast(8.0, f32))
+}
 """
 
 P1_DRIVER_C = r"""
@@ -231,6 +263,21 @@ double z_p_value_upper(double);
 double z_p_value_lower(double);
 double normal_ci_half_width(double, double, double);
 double chi_squared_p_value(double, double);
+double t_statistic_one_sample(double, double, double, double);
+double t_statistic_two_sample_pooled(double, double, double, double, double, double);
+double welch_t_statistic(double, double, double, double, double, double);
+double welch_t_df(double, double, double, double);
+double t_p_value_two_sided(double, double);
+double t_p_value_upper(double, double);
+double t_p_value_lower(double, double);
+double golden_section_search(double (*)(double), double, double, double, int64_t);
+double brent_minimize(double (*)(double), double, double, double, int64_t);
+double gradient_descent_1d(double (*)(double), double (*)(double), double, double, int64_t);
+double newton_minimize_1d(double (*)(double), double (*)(double), double (*)(double), double, double, int64_t);
+double cubic_hermite(double, double, double, double, double, double, double);
+
+double opt_parab(double), opt_dparab(double), opt_ddparab(double);
+double opt_quartic(double), opt_dquartic(double), opt_ddquartic(double);
 
 double p1_poly1(double), p1_dpoly1(double);
 double p1_poly2(double), p1_dpoly2(double);
@@ -268,6 +315,29 @@ int main(int argc, char** argv) {
     if (!strcmp(c, "z_p_lower"))     { printf("%.15g\n", z_p_value_lower(atof(argv[2]))); return 0; }
     if (!strcmp(c, "ci_half"))       { printf("%.15g\n", normal_ci_half_width(atof(argv[2]), atof(argv[3]), atof(argv[4]))); return 0; }
     if (!strcmp(c, "chi2_p"))        { printf("%.15g\n", chi_squared_p_value(atof(argv[2]), atof(argv[3]))); return 0; }
+    if (!strcmp(c, "t_stat_one"))    { printf("%.15g\n", t_statistic_one_sample(atof(argv[2]), atof(argv[3]), atof(argv[4]), atof(argv[5]))); return 0; }
+    if (!strcmp(c, "t_stat_pool"))   { printf("%.15g\n", t_statistic_two_sample_pooled(atof(argv[2]), atof(argv[3]), atof(argv[4]), atof(argv[5]), atof(argv[6]), atof(argv[7]))); return 0; }
+    if (!strcmp(c, "welch_t"))       { printf("%.15g\n", welch_t_statistic(atof(argv[2]), atof(argv[3]), atof(argv[4]), atof(argv[5]), atof(argv[6]), atof(argv[7]))); return 0; }
+    if (!strcmp(c, "welch_df"))      { printf("%.15g\n", welch_t_df(atof(argv[2]), atof(argv[3]), atof(argv[4]), atof(argv[5]))); return 0; }
+    if (!strcmp(c, "t_p_two"))       { printf("%.15g\n", t_p_value_two_sided(atof(argv[2]), atof(argv[3]))); return 0; }
+    if (!strcmp(c, "t_p_upper"))     { printf("%.15g\n", t_p_value_upper(atof(argv[2]), atof(argv[3]))); return 0; }
+    if (!strcmp(c, "t_p_lower"))     { printf("%.15g\n", t_p_value_lower(atof(argv[2]), atof(argv[3]))); return 0; }
+
+    // Optim
+    if (!strcmp(c, "gss_parab"))     { printf("%.15g\n", golden_section_search(opt_parab, 0.0, 5.0, 1e-8, 200)); return 0; }
+    if (!strcmp(c, "brent_parab"))   { printf("%.15g\n", brent_minimize(opt_parab, 0.0, 5.0, 1e-8, 200)); return 0; }
+    if (!strcmp(c, "gd_parab"))      { printf("%.15g\n", gradient_descent_1d(opt_parab, opt_dparab, 0.0, 0.1, 500)); return 0; }
+    if (!strcmp(c, "newton_parab"))  { printf("%.15g\n", newton_minimize_1d(opt_parab, opt_dparab, opt_ddparab, 0.0, 1e-10, 50)); return 0; }
+    if (!strcmp(c, "gss_quartic"))   { printf("%.15g\n", golden_section_search(opt_quartic, 0.0, 3.0, 1e-8, 200)); return 0; }
+    if (!strcmp(c, "brent_quartic")) { printf("%.15g\n", brent_minimize(opt_quartic, 0.5, 3.0, 1e-8, 200)); return 0; }
+    if (!strcmp(c, "newton_quartic")){ printf("%.15g\n", newton_minimize_1d(opt_quartic, opt_dquartic, opt_ddquartic, 1.2, 1e-10, 100)); return 0; }
+
+    // Interpolation: cubic_hermite (scalar)
+    if (!strcmp(c, "hermite")) {
+        printf("%.15g\n", cubic_hermite(atof(argv[2]), atof(argv[3]), atof(argv[4]),
+                                         atof(argv[5]), atof(argv[6]), atof(argv[7]), atof(argv[8])));
+        return 0;
+    }
 
     fprintf(stderr, "unknown case: %s\n", c);
     return 2;
@@ -278,7 +348,7 @@ int main(int argc, char** argv) {
 def build_p1_binary() -> Path:
     bare = "\n".join(
         strip_module((SRC / f).read_text())
-        for f in ("special.ch", "distributions.ch", "roots.ch", "ode.ch", "integrate.ch", "testing.ch")
+        for f in ("special.ch", "distributions.ch", "roots.ch", "ode.ch", "integrate.ch", "testing.ch", "optim.ch", "interpolation.ch")
     ) + P1_TEST_HELPERS_CH + "\ndef main() -> f32 = p1_poly1(cast(1.0, f32))\n"
     workdir = Path(tempfile.mkdtemp(prefix="nautilus-p1-"))
     bare_ch = workdir / "p1_bare.ch"
@@ -418,6 +488,12 @@ def main() -> int:
     p = g["params"]
     for x, y in zip(g["inputs_x"], g["pdf"]):
         run(f"student_t_pdf({x})", "student_t_pdf", (x, p["df"]), y, g["abs"], g["rel"])
+    for x, y in zip(g["inputs_x"], g["cdf"]):
+        run(f"student_t_cdf({x},df=5)", "student_t_cdf", (x, p["df"]), y, g["abs"], g["rel"])
+    for x, y in zip(g["inputs_x"], g["cdf_df1"]):
+        run(f"student_t_cdf({x},df=1)", "student_t_cdf", (x, 1.0), y, g["abs"], g["rel"])
+    for x, y in zip(g["inputs_x"], g["cdf_df30"]):
+        run(f"student_t_cdf({x},df=30)", "student_t_cdf", (x, 30.0), y, g["abs"], g["rel"])
 
     # --- P1: Roots + ODE via a separate binary (function-pointer ABI) ---
     p1_binary = build_p1_binary()
@@ -482,6 +558,49 @@ def main() -> int:
             p1_run(label, "chi2_p",
                     (case["statistic"], case["df"]),
                     case["expected_p"], g["abs"], g["rel"])
+        elif label == "t_stat_one_sample":
+            p1_run(label, "t_stat_one",
+                    (case["sample_mean"], case["sample_std"], case["sample_n"], case["pop_mean"]),
+                    case["expected_t"], g["abs"], g["rel"])
+        elif label == "t_stat_two_sample_pooled":
+            p1_run(label, "t_stat_pool",
+                    (case["mean1"], case["std1"], case["n1"], case["mean2"], case["std2"], case["n2"]),
+                    case["expected_t"], g["abs"], g["rel"])
+        elif label == "welch_t_stat":
+            p1_run(label, "welch_t",
+                    (case["mean1"], case["std1"], case["n1"], case["mean2"], case["std2"], case["n2"]),
+                    case["expected_t"], g["abs"], g["rel"])
+        elif label == "welch_df":
+            p1_run(label, "welch_df",
+                    (case["std1"], case["n1"], case["std2"], case["n2"]),
+                    case["expected_df"], g["abs"], g["rel"])
+        elif label.startswith("t_p_two"):
+            p1_run(label, "t_p_two", (case["t"], case["df"]),
+                    case["expected_p"], g["abs"], g["rel"])
+        elif label.startswith("t_p_upper"):
+            p1_run(label, "t_p_upper", (case["t"], case["df"]),
+                    case["expected_p"], g["abs"], g["rel"])
+        elif label.startswith("t_p_lower"):
+            p1_run(label, "t_p_lower", (case["t"], case["df"]),
+                    case["expected_p"], g["abs"], g["rel"])
+
+    print("== Optim ==")
+    g = golden("optim/scalar.json")
+    case_tag = {
+        "gss_parabola": "gss_parab", "brent_parabola": "brent_parab",
+        "gd_parabola": "gd_parab",  "newton_parabola": "newton_parab",
+        "gss_quartic": "gss_quartic", "brent_quartic": "brent_quartic",
+        "newton_quartic": "newton_quartic",
+    }
+    for case in g["cases"]:
+        p1_run(case["label"], case_tag[case["label"]], (), case["expected"], g["abs"], g["rel"])
+
+    print("== Interpolation ==")
+    g = golden("interpolation/scalar.json")
+    for case in g["cases"]:
+        p1_run(case["label"], "hermite",
+                (case["x0"], case["x1"], case["y0"], case["y1"], case["m0"], case["m1"], case["x"]),
+                case["expected"], g["abs"], g["rel"])
 
     print(f"\n{total - fails} / {total} numerical assertions passed")
     return 1 if fails else 0

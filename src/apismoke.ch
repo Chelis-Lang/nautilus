@@ -14,7 +14,8 @@ import Nautilus.LinAlg (
   diag, trace_mat, trace_scalar,
   l2_norm_vec, inner_product, frobenius_sq, frobenius_norm,
   scale_vec, matvec, vecmat,
-  det_2x2, det_3x3
+  det_2x2, det_3x3,
+  la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve
 )
 import Nautilus.Roots (bisection, newton, brent)
 import Nautilus.ODE (euler_step, euler_solve, rk4_step, rk4_solve)
@@ -37,10 +38,13 @@ import Nautilus.Signal (
   fft_magnitude_stub, ifft_magnitude_stub, stft_magnitude_stub,
   lowpass_stub, highpass_stub, bandpass_stub, fftfreq
 )
+import Nautilus.Optim (golden_section_search, brent_minimize, gradient_descent_1d, newton_minimize_1d)
+import Nautilus.Interpolation (linear_interp_uniform, linear_interp_sorted, cubic_hermite)
 export (
   smoke_special, smoke_distributions, smoke_linalg,
   smoke_roots, smoke_ode, smoke_stats,
-  smoke_integrate, smoke_testing, smoke_distance, smoke_signal
+  smoke_integrate, smoke_testing, smoke_distance, smoke_signal,
+  smoke_optim, smoke_interpolation, smoke_cg_solve
 )
 
 def smoke_poly(x: f32) -> f32 = {
@@ -164,3 +168,34 @@ def smoke_distance[n](v: tensor[n, f32], w: tensor[n, f32], cov_inv: tensor[n, n
 }
 
 def smoke_signal[n](x: tensor[n, f32]) -> tensor[n, f32] = fft_magnitude_stub(x)
+
+def smoke_optim_parab(x: f32) -> f32 = {
+  d = sub(x, cast(2.0, f32))
+  mul(d, d)
+}
+def smoke_optim_dparab(x: f32) -> f32 = mul(cast(2.0, f32), sub(x, cast(2.0, f32)))
+def smoke_optim_ddparab(x: f32) -> f32 = cast(2.0, f32)
+
+def smoke_optim() -> f32 = {
+  g = golden_section_search(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(1.0e-8, f32), cast(200, int64))
+  b = brent_minimize(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(1.0e-8, f32), cast(200, int64))
+  gd = gradient_descent_1d(smoke_optim_parab, smoke_optim_dparab, cast(0.0, f32), cast(0.1, f32), cast(500, int64))
+  nm = newton_minimize_1d(smoke_optim_parab, smoke_optim_dparab, smoke_optim_ddparab, cast(0.0, f32), cast(1.0e-10, f32), cast(50, int64))
+  add(add(add(g, b), gd), nm)
+}
+
+def smoke_interpolation[n](ys: tensor[n, f32]) -> f32 = {
+  lu = linear_interp_uniform(copy(ys), cast(0.0, f32), cast(1.0, f32), cast(0.5, f32))
+  ignore_ls = ys
+  ch = cubic_hermite(cast(0.0, f32), cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(0.0, f32), cast(0.0, f32), cast(0.5, f32))
+  add(lu, ch)
+}
+
+def smoke_cg_solve[n](
+  a_mat: tensor[n, n, f32],
+  b: tensor[n, f32],
+  x0: tensor[n, f32]
+) -> f32 = {
+  x = cg_solve(a_mat, b, x0, cast(1.0e-10, f32), cast(100, int64))
+  l2_norm_vec(x)
+}
