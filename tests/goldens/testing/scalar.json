@@ -53,6 +53,72 @@
       "statistic": 18.31,
       "df": 10.0,
       "expected_p": 0.04995416634369676
+    },
+    {
+      "label": "t_stat_one_sample",
+      "sample_mean": 5.1,
+      "sample_std": 1.5,
+      "sample_n": 16.0,
+      "pop_mean": 5.0,
+      "expected_t": 0.2666666666666657
+    },
+    {
+      "label": "t_stat_two_sample_pooled",
+      "mean1": 10.0,
+      "std1": 2.0,
+      "n1": 20.0,
+      "mean2": 12.0,
+      "std2": 2.5,
+      "n2": 25.0,
+      "expected_t": -2.9079621480469697
+    },
+    {
+      "label": "welch_t_stat",
+      "mean1": 10.0,
+      "std1": 2.0,
+      "n1": 20.0,
+      "mean2": 12.0,
+      "std2": 2.5,
+      "n2": 25.0,
+      "expected_t": -2.981423969999729
+    },
+    {
+      "label": "welch_df",
+      "std1": 2.0,
+      "n1": 20.0,
+      "std2": 2.5,
+      "n2": 25.0,
+      "expected_df": 42.99883585564611
+    },
+    {
+      "label": "t_p_two_df5_t1",
+      "t": 1.0,
+      "df": 5.0,
+      "expected_p": 0.3632174676491229
+    },
+    {
+      "label": "t_p_two_df5_t2",
+      "t": 2.0,
+      "df": 5.0,
+      "expected_p": 0.10193947882985843
+    },
+    {
+      "label": "t_p_two_df30_t196",
+      "t": 1.96,
+      "df": 30.0,
+      "expected_p": 0.05934231289605041
+    },
+    {
+      "label": "t_p_upper_df10_t2",
+      "t": 2.0,
+      "df": 10.0,
+      "expected_p": 0.03669401738537015
+    },
+    {
+      "label": "t_p_lower_df10_tneg2",
+      "t": -2.0,
+      "df": 10.0,
+      "expected_p": 0.03669401738537018
     }
   ],
   "abs": 1e-06,

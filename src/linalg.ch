@@ -5,7 +5,9 @@ export (
   l2_norm_vec, inner_product, frobenius_sq, frobenius_norm,
   scale_vec,
   matvec, vecmat,
-  det_2x2, det_3x3
+  det_2x2, det_3x3,
+  la_vec_add, la_vec_sub, la_vec_saxpy,
+  cg_solve
 )
 
 def transpose[m, n](a: tensor[m, n, f32]) -> tensor[n, m, f32] = permute(a, 1, 0)
@@ -71,6 +73,59 @@ def det_2x2(a: tensor[2, 2, f32]) -> f32 = {
   t2 = trace_scalar(a2)
   half = cast(0.5, f32)
   mul(half, sub(mul(t, t), t2))
+}
+
+def la_vec_add[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32] =
+  to_tensor(map(fn (pair: (f32, f32)) -> add(pair.0, pair.1),
+                  zip(to_list(a), to_list(b))))
+
+def la_vec_sub[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32] =
+  to_tensor(map(fn (pair: (f32, f32)) -> sub(pair.0, pair.1),
+                  zip(to_list(a), to_list(b))))
+
+def la_vec_saxpy[n](alpha: f32, x: tensor[n, f32], y: tensor[n, f32]) -> tensor[n, f32] =
+  to_tensor(map(fn (pair: (f32, f32)) -> add(pair.0, mul(alpha, pair.1)),
+                  zip(to_list(x), to_list(y))))
+
+def cg_step_rec[n](
+  a_mat: tensor[n, n, f32],
+  x: tensor[n, f32],
+  r: tensor[n, f32],
+  p: tensor[n, f32],
+  rs_old: f32,
+  tol: f32,
+  iters: int64
+) -> tensor[n, f32] = {
+  zero_i = cast(0, int64)
+  one_i = cast(1, int64)
+  if lte(iters, zero_i) then x
+  else if lt(rs_old, tol) then x
+  else {
+    ap = matvec(copy(a_mat), copy(p))
+    pap = inner_product(copy(p), copy(ap))
+    alpha = div(rs_old, pap)
+    x_next = la_vec_saxpy(alpha, x, copy(p))
+    neg_alpha = neg(alpha)
+    r_next = la_vec_saxpy(neg_alpha, r, ap)
+    rs_new = inner_product(copy(r_next), copy(r_next))
+    beta = div(rs_new, rs_old)
+    p_next = la_vec_saxpy(beta, copy(r_next), p)
+    cg_step_rec(a_mat, x_next, r_next, p_next, rs_new, tol, sub(iters, one_i))
+  }
+}
+
+def cg_solve[n](
+  a_mat: tensor[n, n, f32],
+  b: tensor[n, f32],
+  x0: tensor[n, f32],
+  tol: f32,
+  max_iters: int64
+) -> tensor[n, f32] = {
+  ax0 = matvec(copy(a_mat), copy(x0))
+  r0 = la_vec_sub(b, ax0)
+  p0 = la_vec_add(copy(r0), to_tensor(map(fn (x: f32) -> cast(0.0, f32), to_list(copy(r0)))))
+  rs0 = inner_product(copy(r0), copy(r0))
+  cg_step_rec(a_mat, x0, r0, p0, rs0, tol, max_iters)
 }
 
 def det_3x3(a: tensor[3, 3, f32]) -> f32 = {

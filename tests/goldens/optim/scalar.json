@@ -1,0 +1,54 @@
+{
+  "cases": [
+    {
+      "label": "gss_parabola",
+      "method": "gss",
+      "lo": 0.0,
+      "hi": 5.0,
+      "expected": 2.0
+    },
+    {
+      "label": "brent_parabola",
+      "method": "brent",
+      "lo": 0.0,
+      "hi": 5.0,
+      "expected": 2.0
+    },
+    {
+      "label": "gd_parabola",
+      "method": "gd",
+      "x0": 0.0,
+      "lr": 0.1,
+      "iters": 500,
+      "expected": 2.0
+    },
+    {
+      "label": "newton_parabola",
+      "method": "newton",
+      "x0": 0.0,
+      "expected": 2.0
+    },
+    {
+      "label": "gss_quartic",
+      "method": "gss",
+      "lo": 0.0,
+      "hi": 3.0,
+      "expected": 1.4142135623730951
+    },
+    {
+      "label": "brent_quartic",
+      "method": "brent",
+      "lo": 0.5,
+      "hi": 3.0,
+      "expected": 1.4142135623730951
+    },
+    {
+      "label": "newton_quartic",
+      "method": "newton",
+      "x0": 1.2,
+      "expected": 1.4142135623730951
+    }
+  ],
+  "abs": 1e-05,
+  "rel": 1e-05
+}

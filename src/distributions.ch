@@ -8,7 +8,8 @@ export (
   gamma_pdf, chi_squared_pdf, student_t_pdf,
   gamma_cdf, chi_squared_cdf,
   gamma_inv_cdf, chi_squared_inv_cdf,
-  chi_squared_sample, student_t_sample, gamma_sample
+  chi_squared_sample, student_t_sample, gamma_sample,
+  student_t_cdf
 )
 
 def zero_f() -> f32 = cast(0.0, f32)
@@ -251,6 +252,95 @@ def gammaq_cf_rec(a: f32, x: f32, b: f32, c: f32, d: f32, h: f32, i: int64) -> f
 }
 
 def abs_f32_inner(x: f32) -> f32 = if lt(x, zero_f()) then neg(x) else x
+
+def betacf_rec(
+  a: f32, b: f32, x: f32,
+  c: f32, d: f32, h: f32,
+  m: int64, max_m: int64
+) -> f32 = {
+  one_i = cast(1, int64)
+  if gt(m, max_m) then h
+  else {
+    eps = cast(1.0e-30, f32)
+    m_f = cast(m, f32)
+    m2_f = mul(cast(2.0, f32), m_f)
+    qab = add(a, b)
+    qap = add(a, one_f())
+    qam = sub(a, one_f())
+    aa1_num = mul(m_f, mul(sub(b, m_f), x))
+    aa1_den = mul(add(qam, m2_f), add(a, m2_f))
+    aa1 = div(aa1_num, aa1_den)
+    d1_raw = add(one_f(), mul(aa1, d))
+    d1 = if lt(abs_f32_inner(d1_raw), eps) then eps else d1_raw
+    c1_raw = add(one_f(), div(aa1, c))
+    c1 = if lt(abs_f32_inner(c1_raw), eps) then eps else c1_raw
+    d1_inv = div(one_f(), d1)
+    h1 = mul(mul(h, d1_inv), c1)
+    aa2_num_neg = mul(neg(add(a, m_f)), mul(add(qab, m_f), x))
+    aa2_den = mul(add(a, m2_f), add(qap, m2_f))
+    aa2 = div(aa2_num_neg, aa2_den)
+    d2_raw = add(one_f(), mul(aa2, d1_inv))
+    d2 = if lt(abs_f32_inner(d2_raw), eps) then eps else d2_raw
+    c2_raw = add(one_f(), div(aa2, c1))
+    c2 = if lt(abs_f32_inner(c2_raw), eps) then eps else c2_raw
+    d2_inv = div(one_f(), d2)
+    delta = mul(d2_inv, c2)
+    h2 = mul(h1, delta)
+    betacf_rec(a, b, x, c2, d2_inv, h2, add(m, one_i), max_m)
+  }
+}
+
+def betacf(a: f32, b: f32, x: f32) -> f32 = {
+  eps = cast(1.0e-30, f32)
+  qab = add(a, b)
+  qap = add(a, one_f())
+  d0_raw = sub(one_f(), div(mul(qab, x), qap))
+  d0 = if lt(abs_f32_inner(d0_raw), eps) then eps else d0_raw
+  d0_inv = div(one_f(), d0)
+  c0 = one_f()
+  betacf_rec(a, b, x, c0, d0_inv, d0_inv, cast(1, int64), cast(200, int64))
+}
+
+def betai(a: f32, b: f32, x: f32) -> f32 = {
+  if lte(x, zero_f()) then zero_f()
+  else if gte(x, one_f()) then one_f()
+  else {
+    lg_ab = log_gamma(add(a, b))
+    lg_a = log_gamma(a)
+    lg_b = log_gamma(b)
+    lx = log(x)
+    l1mx = log(sub(one_f(), x))
+    front_exp_arg = add(sub(sub(lg_ab, lg_a), lg_b), add(mul(a, lx), mul(b, l1mx)))
+    front = exp(front_exp_arg)
+    threshold_num = add(a, one_f())
+    threshold_den = add(add(a, b), cast(2.0, f32))
+    threshold = div(threshold_num, threshold_den)
+    if lt(x, threshold) then {
+      cf = betacf(a, b, x)
+      mul(front, div(cf, a))
+    } else {
+      one_minus_x = sub(one_f(), x)
+      cf = betacf(b, a, one_minus_x)
+      val = mul(front, div(cf, b))
+      sub(one_f(), val)
+    }
+  }
+}
+
+def student_t_cdf(t: f32, df: f32) -> f32 = {
+  if lte(df, zero_f()) then nan_d()
+  else {
+    half_df = mul(half_f(), df)
+    half = half_f()
+    t2 = mul(t, t)
+    df_plus_t2 = add(df, t2)
+    x_arg = div(df, df_plus_t2)
+    bi = betai(half_df, half, x_arg)
+    half_bi = mul(half, bi)
+    if gte(t, zero_f()) then sub(one_f(), half_bi)
+    else half_bi
+  }
+}
 
 def gammaq(a: f32, x: f32) -> f32 = {
   if lte(x, zero_f()) then one_f()
