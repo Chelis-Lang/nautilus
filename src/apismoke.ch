@@ -23,7 +23,25 @@ import Nautilus.Stats (
   skewness_vec, kurtosis_vec, median_vec,
   covariance_scalar, correlation_scalar
 )
-export (smoke_special, smoke_distributions, smoke_linalg, smoke_roots, smoke_ode, smoke_stats)
+import Nautilus.Integrate (trapezoidal, simpsons, gauss_legendre_5)
+import Nautilus.Testing (
+  z_statistic, z_p_value_two_sided, z_p_value_upper, z_p_value_lower,
+  normal_ci_half_width, chi_squared_p_value
+)
+import Nautilus.Distance (
+  squared_euclidean, euclidean, manhattan, chebyshev,
+  cosine_similarity, cosine_distance,
+  mahalanobis_squared, mahalanobis
+)
+import Nautilus.Signal (
+  fft_magnitude_stub, ifft_magnitude_stub, stft_magnitude_stub,
+  lowpass_stub, highpass_stub, bandpass_stub, fftfreq
+)
+export (
+  smoke_special, smoke_distributions, smoke_linalg,
+  smoke_roots, smoke_ode, smoke_stats,
+  smoke_integrate, smoke_testing, smoke_distance, smoke_signal
+)
 
 def smoke_poly(x: f32) -> f32 = {
   x2 = mul(x, x)
@@ -114,3 +132,35 @@ def smoke_stats[n](v: tensor[n, f32], w: tensor[n, f32]) -> f32 = {
   s2 = add(add(add(ku, md), cv), cr)
   add(s1, s2)
 }
+
+def smoke_integrate() -> f32 = {
+  t = trapezoidal(smoke_poly, cast(0.0, f32), cast(1.0, f32), cast(100, int64))
+  s = simpsons(smoke_poly, cast(0.0, f32), cast(1.0, f32), cast(100, int64))
+  g = gauss_legendre_5(smoke_poly, cast(0.0, f32), cast(1.0, f32), cast(5, int64))
+  add(add(t, s), g)
+}
+
+def smoke_testing() -> f32 = {
+  z = z_statistic(cast(102.0, f32), cast(100.0, f32), cast(15.0, f32), cast(25.0, f32))
+  p1 = z_p_value_two_sided(z)
+  p2 = z_p_value_upper(cast(1.96, f32))
+  p3 = z_p_value_lower(cast(-1.96, f32))
+  ci = normal_ci_half_width(cast(0.95, f32), cast(15.0, f32), cast(25.0, f32))
+  cp = chi_squared_p_value(cast(11.07, f32), cast(5.0, f32))
+  add(add(add(add(add(z, p1), p2), p3), ci), cp)
+}
+
+def smoke_distance[n](v: tensor[n, f32], w: tensor[n, f32], cov_inv: tensor[n, n, f32]) -> f32 = {
+  se = squared_euclidean(copy(v), copy(w))
+  eu = euclidean(copy(v), copy(w))
+  mn = manhattan(copy(v), copy(w))
+  cb = chebyshev(copy(v), copy(w))
+  cs = cosine_similarity(copy(v), copy(w))
+  cd = cosine_distance(copy(v), copy(w))
+  ma = mahalanobis(v, w, cov_inv)
+  s1 = add(add(add(se, eu), mn), cb)
+  s2 = add(add(cs, cd), ma)
+  add(s1, s2)
+}
+
+def smoke_signal[n](x: tensor[n, f32]) -> tensor[n, f32] = fft_magnitude_stub(x)

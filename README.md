@@ -59,7 +59,13 @@ CI runs all five steps. It authenticates to the sibling private
 | `Nautilus.Roots` | `bisection`, `newton`, `brent` over `f: f32 -> f32` | scipy-parity, runtime-tested |
 | `Nautilus.ODE` | `euler_step` / `euler_solve`, `rk4_step` / `rk4_solve` over `f: f32 -> f32 -> f32` | runtime-tested vs analytic decay (RK4 ~4e-15 error at n=1000) |
 | `Nautilus.Stats` | `mean_vec`, `variance_vec`, `std_vec`, `skewness_vec`, `kurtosis_vec`, `median_vec`, `covariance_scalar`, `correlation_scalar` | type-checked; runtime verification deferred with LinAlg |
+| `Nautilus.Integrate` | `trapezoidal`, `simpsons`, `gauss_legendre_5` over `f: f32 -> f32` | 9 analytic-integral assertions runtime-tested |
+| `Nautilus.Testing` | `z_statistic`, `z_p_value_*`, `normal_ci_half_width`, `chi_squared_p_value` | runtime-tested against scipy |
+| `Nautilus.Distance` | `squared_euclidean`, `euclidean`, `manhattan`, `chebyshev`, `cosine_similarity`, `cosine_distance`, `mahalanobis`, `mahalanobis_squared` | type-checked; runtime verification deferred with LinAlg |
+| `Nautilus.Signal` | Typed API stubs — `fft_magnitude_stub`, `ifft_magnitude_stub`, `stft_magnitude_stub`, `lowpass_stub`, `highpass_stub`, `bandpass_stub`, `fftfreq` | spec-stub; real implementations blocked on complex numbers (Phase 5f) |
 | `Nautilus.Optim` | — | deferred to P1.5 (needs general-n solve — candidate: `cg_solve` via LinAlg) |
+| `Nautilus.SDE` | — | deferred to P2.5 (needs scalar normal draw from rank-1 uniform_like template) |
+| `Nautilus.Interpolation` | — | deferred to P2.5 (needs sort/gather runtime) |
 
 See `spec/phase3j.md` for the authoritative scope and acceptance criteria.
 

@@ -202,6 +202,13 @@ def p1_dpoly2(x: f32) -> f32 = {
 def p1_cos_minus_x(x: f32) -> f32 = sub(sin(add(x, cast(1.5707963267948966, f32))), x)
 def p1_dcos_minus_x(x: f32) -> f32 = sub(neg(sin(x)), cast(1.0, f32))
 def p1_decay(y: f32, t: f32) -> f32 = neg(y)
+
+def p2_x_squared(x: f32) -> f32 = mul(x, x)
+def p2_exp_neg(x: f32) -> f32 = {
+  nx = neg(x)
+  exp(nx)
+}
+def p2_sin_shifted(x: f32) -> f32 = sin(x)
 """
 
 P1_DRIVER_C = r"""
@@ -209,15 +216,27 @@ P1_DRIVER_C = r"""
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <math.h>
 double bisection(double (*f)(double), double, double, double, int64_t);
 double newton(double (*f)(double), double (*df)(double), double, double, int64_t);
 double brent(double (*f)(double), double, double, double, int64_t);
 double euler_solve(double (*f)(double, double), double, double, double, int64_t);
 double rk4_solve(double (*f)(double, double), double, double, double, int64_t);
+double trapezoidal(double (*f)(double), double, double, int64_t);
+double simpsons(double (*f)(double), double, double, int64_t);
+double gauss_legendre_5(double (*f)(double), double, double, int64_t);
+double z_statistic(double, double, double, double);
+double z_p_value_two_sided(double);
+double z_p_value_upper(double);
+double z_p_value_lower(double);
+double normal_ci_half_width(double, double, double);
+double chi_squared_p_value(double, double);
+
 double p1_poly1(double), p1_dpoly1(double);
 double p1_poly2(double), p1_dpoly2(double);
 double p1_cos_minus_x(double), p1_dcos_minus_x(double);
 double p1_decay(double, double);
+double p2_x_squared(double), p2_exp_neg(double), p2_sin_shifted(double);
 
 int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "usage: p1_driver CASE [...]\n"); return 1; }
@@ -230,6 +249,26 @@ int main(int argc, char** argv) {
     if (!strcmp(c, "cosmx_newton"))  { printf("%.15g\n", newton(p1_cos_minus_x, p1_dcos_minus_x, 0.5, 1e-12, 50)); return 0; }
     if (!strcmp(c, "decay_rk4"))     { int64_t n = atoll(argv[2]); printf("%.15g\n", rk4_solve(p1_decay, 1.0, 0.0, 1.0, n)); return 0; }
     if (!strcmp(c, "decay_euler"))   { int64_t n = atoll(argv[2]); printf("%.15g\n", euler_solve(p1_decay, 1.0, 0.0, 1.0, n)); return 0; }
+
+    // Integrate
+    if (!strcmp(c, "trap_x2"))       { printf("%.15g\n", trapezoidal(p2_x_squared, 0.0, 1.0, 100)); return 0; }
+    if (!strcmp(c, "trap_expneg"))   { printf("%.15g\n", trapezoidal(p2_exp_neg,   0.0, 1.0, 100)); return 0; }
+    if (!strcmp(c, "trap_sin"))      { printf("%.15g\n", trapezoidal(p2_sin_shifted, 0.0, 3.141592653589793, 200)); return 0; }
+    if (!strcmp(c, "simp_x2"))       { printf("%.15g\n", simpsons(p2_x_squared, 0.0, 1.0, 100)); return 0; }
+    if (!strcmp(c, "simp_expneg"))   { printf("%.15g\n", simpsons(p2_exp_neg,   0.0, 1.0, 100)); return 0; }
+    if (!strcmp(c, "simp_sin"))      { printf("%.15g\n", simpsons(p2_sin_shifted, 0.0, 3.141592653589793, 200)); return 0; }
+    if (!strcmp(c, "gl5_x2"))        { printf("%.15g\n", gauss_legendre_5(p2_x_squared, 0.0, 1.0, 5)); return 0; }
+    if (!strcmp(c, "gl5_expneg"))    { printf("%.15g\n", gauss_legendre_5(p2_exp_neg,   0.0, 1.0, 5)); return 0; }
+    if (!strcmp(c, "gl5_sin"))       { printf("%.15g\n", gauss_legendre_5(p2_sin_shifted, 0.0, 3.141592653589793, 5)); return 0; }
+
+    // Testing (scalar)
+    if (!strcmp(c, "z_stat"))        { printf("%.15g\n", z_statistic(atof(argv[2]), atof(argv[3]), atof(argv[4]), atof(argv[5]))); return 0; }
+    if (!strcmp(c, "z_p_two"))       { printf("%.15g\n", z_p_value_two_sided(atof(argv[2]))); return 0; }
+    if (!strcmp(c, "z_p_upper"))     { printf("%.15g\n", z_p_value_upper(atof(argv[2]))); return 0; }
+    if (!strcmp(c, "z_p_lower"))     { printf("%.15g\n", z_p_value_lower(atof(argv[2]))); return 0; }
+    if (!strcmp(c, "ci_half"))       { printf("%.15g\n", normal_ci_half_width(atof(argv[2]), atof(argv[3]), atof(argv[4]))); return 0; }
+    if (!strcmp(c, "chi2_p"))        { printf("%.15g\n", chi_squared_p_value(atof(argv[2]), atof(argv[3]))); return 0; }
+
     fprintf(stderr, "unknown case: %s\n", c);
     return 2;
 }
@@ -239,7 +278,7 @@ int main(int argc, char** argv) {
 def build_p1_binary() -> Path:
     bare = "\n".join(
         strip_module((SRC / f).read_text())
-        for f in ("special.ch", "roots.ch", "ode.ch")
+        for f in ("special.ch", "distributions.ch", "roots.ch", "ode.ch", "integrate.ch", "testing.ch")
     ) + P1_TEST_HELPERS_CH + "\ndef main() -> f32 = p1_poly1(cast(1.0, f32))\n"
     workdir = Path(tempfile.mkdtemp(prefix="nautilus-p1-"))
     bare_ch = workdir / "p1_bare.ch"
@@ -248,10 +287,12 @@ def build_p1_binary() -> Path:
     c_file = workdir / "out" / "p1_bare.c"
     drv_c = workdir / "p1_driver.c"
     drv_c.write_text(P1_DRIVER_C)
+    rt_c = workdir / "p1_runtime_stubs.c"
+    rt_c.write_text(RUNTIME_STUBS)
     binary = workdir / "p1_test_bin"
     cc = subprocess.run(
         ["gcc", "-O2", "-o", str(binary),
-         str(c_file), str(drv_c),
+         str(c_file), str(drv_c), str(rt_c),
          "-I", str(workdir / "out"), "-lm"],
         capture_output=True, text=True,
     )
@@ -408,6 +449,39 @@ def main() -> int:
     for case in g["euler_cases"]:
         p1_run(case["label"], "decay_euler", (case["n_steps"],), decay_true,
                 case["expected_abs_err"], 0.0)
+
+    print("== Integrate ==")
+    g = golden("integrate/scalar.json")
+    for case in g["cases"]:
+        short = case["label"]
+        prefix_map = {"x_squared_0_1": "x2", "exp_neg_0_1": "expneg", "sin_shifted_pi": "sin"}
+        short_tag = prefix_map[short]
+        for method in ("trap", "simp", "gl5"):
+            p1_run(f"{method}_{short}", f"{method}_{short_tag}", (),
+                    case["expected"], g["abs"], g["rel"])
+
+    print("== Testing ==")
+    g = golden("testing/scalar.json")
+    for case in g["cases"]:
+        label = case["label"]
+        if label == "z_stat_basic":
+            p1_run(label, "z_stat",
+                    (case["sample_mean"], case["pop_mean"], case["pop_std"], case["sample_n"]),
+                    case["expected_z"], g["abs"], g["rel"])
+        elif label.startswith("z_p_two_sided"):
+            p1_run(label, "z_p_two", (case["z"],), case["expected_p"], g["abs"], g["rel"])
+        elif label == "z_p_upper_196":
+            p1_run(label, "z_p_upper", (case["z"],), case["expected_p"], g["abs"], g["rel"])
+        elif label == "z_p_lower_neg196":
+            p1_run(label, "z_p_lower", (case["z"],), case["expected_p"], g["abs"], g["rel"])
+        elif label.startswith("normal_ci"):
+            p1_run(label, "ci_half",
+                    (case["confidence"], case["pop_std"], case["sample_n"]),
+                    case["expected_half_width"], g["abs"], g["rel"])
+        elif label.startswith("chi2_p"):
+            p1_run(label, "chi2_p",
+                    (case["statistic"], case["df"]),
+                    case["expected_p"], g["abs"], g["rel"])
 
     print(f"\n{total - fails} / {total} numerical assertions passed")
     return 1 if fails else 0

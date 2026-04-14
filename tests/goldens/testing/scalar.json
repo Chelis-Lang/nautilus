@@ -1,0 +1,60 @@
+{
+  "cases": [
+    {
+      "label": "z_stat_basic",
+      "sample_mean": 102.0,
+      "pop_mean": 100.0,
+      "pop_std": 15.0,
+      "sample_n": 25.0,
+      "expected_z": 0.6666666666666666
+    },
+    {
+      "label": "z_p_two_sided_small",
+      "z": 0.6666666666666666,
+      "expected_p": 0.5049850750938458
+    },
+    {
+      "label": "z_p_two_sided_large",
+      "z": 1.96,
+      "expected_p": 0.04999579029644097
+    },
+    {
+      "label": "z_p_upper_196",
+      "z": 1.96,
+      "expected_p": 0.024997895148220484
+    },
+    {
+      "label": "z_p_lower_neg196",
+      "z": -1.96,
+      "expected_p": 0.024997895148220435
+    },
+    {
+      "label": "normal_ci_95",
+      "confidence": 0.95,
+      "pop_std": 15.0,
+      "sample_n": 25.0,
+      "expected_half_width": 5.879891953620162
+    },
+    {
+      "label": "normal_ci_99",
+      "confidence": 0.99,
+      "pop_std": 10.0,
+      "sample_n": 100.0,
+      "expected_half_width": 2.5758293035489004
+    },
+    {
+      "label": "chi2_p_df5_stat11",
+      "statistic": 11.07,
+      "df": 5.0,
+      "expected_p": 0.05000961862240538
+    },
+    {
+      "label": "chi2_p_df10_stat18",
+      "statistic": 18.31,
+      "df": 10.0,
+      "expected_p": 0.04995416634369676
+    }
+  ],
+  "abs": 1e-06,
+  "rel": 1e-06
+}
