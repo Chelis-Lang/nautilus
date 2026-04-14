@@ -22,10 +22,12 @@ to this file so Claude-style and Codex-style entry points do not drift.
   Nautilus, Coral, and Shoals in the same change set — do not bump
   unilaterally.
 - Do not vendor or build the Chelis compiler from source inside this
-  repo. Consume the released tarball from the public
-  [`Chelis-Lang/chelis-toolchain`](https://github.com/Chelis-Lang/chelis-toolchain)
-  mirror, which hosts release artifacts for CI pull with the default
-  `GITHUB_TOKEN`. Chelis source stays private in `Chelis-Lang/chelis`.
+  repo. Consume the released tarball from the private
+  [`Chelis-Lang/chelis`](https://github.com/Chelis-Lang/chelis) releases.
+  CI authenticates to the sibling private repo via the repo secret
+  `CHELIS_RELEASE_TOKEN`, which must hold a PAT with `contents: read`
+  on `Chelis-Lang/chelis`. Rotate it by running
+  `gh secret set CHELIS_RELEASE_TOKEN --repo Chelis-Lang/nautilus`.
 
 ## Phase Status
 

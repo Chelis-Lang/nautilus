@@ -16,11 +16,11 @@ Pinned to `chelis v0.1.3`:
 compiler = "=0.1.3"
 ```
 
-The released compiler binary lives in the sibling public repo
-[`Chelis-Lang/chelis-toolchain`](https://github.com/Chelis-Lang/chelis-toolchain)
-(a mirror that hosts only the release tarballs so downstream shell CI can
-download them with the default `GITHUB_TOKEN`). The Chelis source repo
-stays private.
+The released compiler binary is published as a private release on
+[`Chelis-Lang/chelis`](https://github.com/Chelis-Lang/chelis). CI
+downloads it with a personal access token stored in the repo secret
+`CHELIS_RELEASE_TOKEN`, which must have `contents: read` on the Chelis
+source repo. See `.github/workflows/ci.yml`.
 
 ## Building
 
@@ -29,7 +29,7 @@ placeholder module:
 
 ```sh
 gh release download v0.1.3 \
-  --repo Chelis-Lang/chelis-toolchain \
+  --repo Chelis-Lang/chelis \
   --pattern 'chelis-v0.1.3-linux-x86_64.tar.gz'
 tar xzf chelis-v0.1.3-linux-x86_64.tar.gz
 ./chelis-v0.1.3-linux-x86_64/chelis check src/core.ch
@@ -40,4 +40,5 @@ tar xzf chelis-v0.1.3-linux-x86_64.tar.gz
 Nautilus, Coral, and Shoals share the same scaffolding. Use
 `uv run stamp-shell --src nautilus --dst coral --old nautilus --new coral
 --description "…" --phase 3k` from the Chelis monorepo's `py/` project to
-stamp a new shell repo with the tokens swapped.
+stamp a new shell repo with the tokens swapped. Remember to also
+`gh secret set CHELIS_RELEASE_TOKEN` on each new shell repo.
