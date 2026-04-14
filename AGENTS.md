@@ -47,6 +47,15 @@ the `red-team` alias wired to `redteam-exec` are copied from the
 monorepo and should stay behaviorally aligned with it. If a skill
 diverges upstream, update this repo in the same change set.
 
+## Upstream Chelis Bugs
+
+Four `chelis v0.1.3` bugs discovered during Nautilus P0-P3 red-team
+rounds are documented in [`UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) with
+minimal repros, expected-vs-actual behavior, and suggested fix sketches.
+These are load-bearing on several `spec/phase3j.md` acceptance items
+(shape enforcement, LinAlg runtime verification, unknown-name safety)
+and should be tracked upstream for eventual fix-and-release.
+
 ## Scaffolding Drift Rule
 
 All Chelis shell repos share the same scaffolding shape by design. Any

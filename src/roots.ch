@@ -86,65 +86,76 @@ def brent_rec(
   f: f32 -> f32,
   a: f32,
   b: f32,
+  c: f32,
+  d: f32,
   fa: f32,
   fb: f32,
+  fc: f32,
+  was_bisect: bool,
   tol: f32,
-  iters: int64,
-  total_iters: int64
+  iters: int64
 ) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
-  two_i = cast(2, int64)
+  zero_f = cast(0.0, f32)
+  half = cast(0.5, f32)
   if lte(iters, zero_i) then r_nan_f32()
   else {
-    width = sub(b, a)
+    afa = r_abs_f32(fa)
+    afb = r_abs_f32(fb)
+    swap = lt(afa, afb)
+    a1 = if swap then b else a
+    b1 = if swap then a else b
+    fa1 = if swap then fb else fa
+    fb1 = if swap then fa else fb
+    c1 = if swap then a else c
+    fc1 = if swap then fa else fc
+    width = sub(b1, a1)
     awidth = r_abs_f32(width)
-    if lt(awidth, tol) then mul(cast(0.5, f32), add(a, b))
+    afb1 = r_abs_f32(fb1)
+    if lt(afb1, tol) then b1
+    else if lt(awidth, tol) then b1
     else {
-      afb = r_abs_f32(fb)
-      if lt(afb, tol) then b
-      else {
-        done_iters = sub(total_iters, iters)
-        parity = mod(done_iters, two_i)
-        bisect_this_iter = eq(parity, zero_i)
-        if bisect_this_iter then {
-          mid = mul(cast(0.5, f32), add(a, b))
-          fmid = f(mid)
-          same_sign = gt(mul(fa, fmid), cast(0.0, f32))
-          if same_sign then brent_rec(f, mid, b, fmid, fb, tol, sub(iters, one_i), total_iters)
-          else brent_rec(f, a, mid, fa, fmid, tol, sub(iters, one_i), total_iters)
-        } else {
-          denom = sub(fb, fa)
-          adenom = r_abs_f32(denom)
-          too_flat = lt(adenom, cast(1.0e-30, f32))
-          if too_flat then {
-            mid = mul(cast(0.5, f32), add(a, b))
-            fmid = f(mid)
-            same_sign = gt(mul(fa, fmid), cast(0.0, f32))
-            if same_sign then brent_rec(f, mid, b, fmid, fb, tol, sub(iters, one_i), total_iters)
-            else brent_rec(f, a, mid, fa, fmid, tol, sub(iters, one_i), total_iters)
-          } else {
-            slope = div(denom, width)
-            step = div(fb, slope)
-            cand = sub(b, step)
-            qa = add(a, mul(cast(0.25, f32), width))
-            qb = sub(b, mul(cast(0.25, f32), width))
-            inside = and(gt(cand, qa), lt(cand, qb))
-            if inside then {
-              fcand = f(cand)
-              same_sign = gt(mul(fa, fcand), cast(0.0, f32))
-              if same_sign then brent_rec(f, cand, b, fcand, fb, tol, sub(iters, one_i), total_iters)
-              else brent_rec(f, a, cand, fa, fcand, tol, sub(iters, one_i), total_iters)
-            } else {
-              mid = mul(cast(0.5, f32), add(a, b))
-              fmid = f(mid)
-              same_sign = gt(mul(fa, fmid), cast(0.0, f32))
-              if same_sign then brent_rec(f, mid, b, fmid, fb, tol, sub(iters, one_i), total_iters)
-              else brent_rec(f, a, mid, fa, fmid, tol, sub(iters, one_i), total_iters)
-            }
-          }
-        }
-      }
+      use_iqi = and(not(eq(fa1, fc1)), not(eq(fb1, fc1)))
+      d_ab = sub(fa1, fb1)
+      d_ac = sub(fa1, fc1)
+      d_bc = sub(fb1, fc1)
+      nd_ab = neg(d_ab)
+      nd_ac = neg(d_ac)
+      nd_bc = neg(d_bc)
+      iqi_t1 = div(mul(a1, mul(fb1, fc1)), mul(d_ab, d_ac))
+      iqi_t2 = div(mul(b1, mul(fa1, fc1)), mul(nd_ab, d_bc))
+      iqi_t3 = div(mul(c1, mul(fa1, fb1)), mul(nd_ac, nd_bc))
+      s_iqi = add(add(iqi_t1, iqi_t2), iqi_t3)
+      sec_denom = sub(fb1, fa1)
+      sec_step = div(mul(fb1, sub(b1, a1)), sec_denom)
+      s_sec = sub(b1, sec_step)
+      s_try = if use_iqi then s_iqi else s_sec
+      three_a = mul(cast(3.0, f32), a1)
+      m = mul(cast(0.25, f32), add(three_a, b1))
+      cond_range = gt(mul(sub(s_try, m), sub(s_try, b1)), zero_f)
+      diff_bc = r_abs_f32(sub(b1, c1))
+      diff_cd = r_abs_f32(sub(c1, d))
+      diff_sb = r_abs_f32(sub(s_try, b1))
+      half_bc = mul(half, diff_bc)
+      half_cd = mul(half, diff_cd)
+      cond_step_bisect = and(was_bisect, gte(diff_sb, half_bc))
+      cond_step_interp = and(not(was_bisect), gte(diff_sb, half_cd))
+      cond_small_bc = and(was_bisect, lt(diff_bc, tol))
+      cond_small_cd = and(not(was_bisect), lt(diff_cd, tol))
+      force_bisect = or(or(or(or(cond_range, cond_step_bisect), cond_step_interp), cond_small_bc), cond_small_cd)
+      s = if force_bisect then mul(half, add(a1, b1)) else s_try
+      this_was_bisect = force_bisect
+      fs = f(s)
+      d_new = c1
+      c_new = b1
+      fc_new = fb1
+      same_sign = gt(mul(fa1, fs), zero_f)
+      a_new = if same_sign then s else a1
+      fa_new = if same_sign then fs else fa1
+      b_new = if same_sign then b1 else s
+      fb_new = if same_sign then fb1 else fs
+      brent_rec(f, a_new, b_new, c_new, d_new, fa_new, fb_new, fc_new, this_was_bisect, tol, sub(iters, one_i))
     }
   }
 }
@@ -160,7 +171,7 @@ def brent(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 = 
     else {
       prod = mul(flo, fhi)
       if gt(prod, cast(0.0, f32)) then r_nan_f32()
-      else brent_rec(f, lo, hi, flo, fhi, tol, max_iters, max_iters)
+      else brent_rec(f, lo, hi, lo, lo, flo, fhi, flo, true, tol, max_iters)
     }
   }
 }

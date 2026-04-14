@@ -47,6 +47,11 @@ TOL = {
     "distance/vector":           {"abs": 1.0e-6, "rel": 1.0e-6},
     "optim/scalar":              {"abs": 1.0e-5, "rel": 1.0e-5},
     "interpolation/scalar":      {"abs": 1.0e-7, "rel": 1.0e-7},
+    "sde/scalar":                {"abs": 1.0e-6, "rel": 1.0e-6},
+    # Romberg-5 and GL10 saturate at f32's ~1e-7 unit roundoff — the
+    # scipy goldens are f64, so bound at 1e-7 to honor the double vs
+    # float precision gap the Chelis f32 surface carries.
+    "integrate/adaptive":        {"abs": 5.0e-7, "rel": 5.0e-7},
 }
 
 
@@ -462,6 +467,95 @@ def goldens_interpolation() -> dict[str, dict]:
     return g
 
 
+def goldens_sde() -> dict[str, dict]:
+    # SDE dY = f*dt + g*dW, f(y,t)=-y (drift → exponential decay toward 0),
+    # g(y,t) = sigma constant. Zero-noise reduces to ODE: exact y(t) = y0 * exp(-t).
+    # Non-zero noise: seed a fixed vector and compute the exact Euler-Maruyama
+    # trajectory in Python alongside the Chelis impl.
+    import numpy as np
+    g = {}
+    y0 = 1.0
+    t0, t1 = 0.0, 1.0
+
+    # Case 1: zero noise (reduces to Euler on y' = -y)
+    n1 = 100
+    dt1 = (t1 - t0) / n1
+    y = y0
+    for _ in range(n1):
+        y = y + (-y) * dt1 + 1.0 * math.sqrt(dt1) * 0.0
+    zero_noise_em = y
+    # Exact analytic: exp(-1) ≈ 0.3679
+    zero_noise_exact = math.exp(-t1)
+
+    # Case 2: deterministic +1 noise at every step (reference EM trajectory)
+    n2 = 10
+    dt2 = (t1 - t0) / n2
+    sqrt_dt2 = math.sqrt(dt2)
+    y = y0
+    sigma = 0.1
+    for _ in range(n2):
+        y = y + (-y) * dt2 + sigma * sqrt_dt2 * 1.0
+    plus_noise_em = y
+
+    # Case 3: alternating +1/-1 noise — partial cancellation
+    y = y0
+    for k in range(n2):
+        z = 1.0 if k % 2 == 0 else -1.0
+        y = y + (-y) * dt2 + sigma * sqrt_dt2 * z
+    alt_noise_em = y
+
+    # Case 4: Milstein on GBM-style: dY = mu*Y dt + sigma*Y dW, analytic soln = y0*exp((mu-sigma²/2)t + sigma*W_t)
+    n4 = 10
+    dt4 = (t1 - t0) / n4
+    sqrt_dt4 = math.sqrt(dt4)
+    mu = 0.1
+    sigma_gbm = 0.2
+    y = y0
+    for _ in range(n4):
+        # Milstein: y + mu*y*dt + sigma*y*dW + 0.5*sigma*(sigma)*(dW²-dt) = y + mu*y*dt + sigma*y*dW + 0.5*sigma²*(dW²-dt)
+        # with dW = sqrt_dt*1.0
+        dW = sqrt_dt4
+        y = y + mu*y*dt4 + sigma_gbm*y*dW + 0.5*sigma_gbm*sigma_gbm*(dW*dW - dt4)
+    milstein_plus_noise = y
+
+    cases = [
+        {"label": "em_zero_noise",
+         "y0": y0, "t0": t0, "t1": t1, "n_steps": n1, "sigma": 1.0,
+         "noise_mode": "zero", "expected": zero_noise_em,
+         "analytic": zero_noise_exact},
+        {"label": "em_plus_noise",
+         "y0": y0, "t0": t0, "t1": t1, "n_steps": n2, "sigma": sigma,
+         "noise_mode": "plus", "expected": plus_noise_em},
+        {"label": "em_alt_noise",
+         "y0": y0, "t0": t0, "t1": t1, "n_steps": n2, "sigma": sigma,
+         "noise_mode": "alt", "expected": alt_noise_em},
+        {"label": "milstein_gbm",
+         "y0": y0, "t0": t0, "t1": t1, "n_steps": n4,
+         "mu": mu, "sigma": sigma_gbm,
+         "noise_mode": "plus", "expected": milstein_plus_noise},
+    ]
+    g["sde/scalar.json"] = {"cases": cases, **TOL["sde/scalar"]}
+    return g
+
+
+def goldens_integrate_adaptive() -> dict[str, dict]:
+    g = {}
+    # Analytic integrals with high-accuracy methods. Tolerance 1e-9 because
+    # Romberg-5 and GL10 should match to ~10-12 digits on smooth integrands.
+    cases = [
+        {"label": "x_squared_01",
+         "a": 0.0, "b": 1.0, "expected": 1.0 / 3.0},
+        {"label": "exp_neg_01",
+         "a": 0.0, "b": 1.0, "expected": 1.0 - math.exp(-1.0)},
+        {"label": "sin_0_pi",
+         "a": 0.0, "b": math.pi, "expected": 2.0},
+        {"label": "one_over_1_x2_01",
+         "a": 0.0, "b": 1.0, "expected": math.pi / 4.0},
+    ]
+    g["integrate/adaptive.json"] = {"cases": cases, **TOL["integrate/adaptive"]}
+    return g
+
+
 def check_close(have: float, want: float, abs_tol: float, rel_tol: float) -> bool:
     if math.isnan(have) or math.isnan(want):
         return False
@@ -480,7 +574,9 @@ def check_goldens() -> int:
                      ("testing", goldens_testing),
                      ("distance", goldens_distance),
                      ("optim", goldens_optim),
-                     ("interpolation", goldens_interpolation)):
+                     ("interpolation", goldens_interpolation),
+                     ("sde", goldens_sde),
+                     ("integrate_adaptive", goldens_integrate_adaptive)):
         for rel, fresh in gen().items():
             path = GOLDENS / rel
             if not path.exists():
@@ -545,6 +641,8 @@ def main() -> int:
     all_goldens.update(goldens_distance())
     all_goldens.update(goldens_optim())
     all_goldens.update(goldens_interpolation())
+    all_goldens.update(goldens_sde())
+    all_goldens.update(goldens_integrate_adaptive())
     for rel, data in all_goldens.items():
         write_json(GOLDENS / rel, data)
         print(f"wrote {rel}")

@@ -15,7 +15,8 @@ import Nautilus.LinAlg (
   l2_norm_vec, inner_product, frobenius_sq, frobenius_norm,
   scale_vec, matvec, vecmat,
   det_2x2, det_3x3,
-  la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve
+  la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve,
+  inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2
 )
 import Nautilus.Roots (bisection, newton, brent)
 import Nautilus.ODE (euler_step, euler_solve, rk4_step, rk4_solve)
@@ -40,11 +41,17 @@ import Nautilus.Signal (
 )
 import Nautilus.Optim (golden_section_search, brent_minimize, gradient_descent_1d, newton_minimize_1d)
 import Nautilus.Interpolation (linear_interp_uniform, linear_interp_sorted, cubic_hermite)
+import Nautilus.SDE (euler_maruyama_fixed, milstein_fixed)
+import Nautilus.Integrate (
+  trapezoidal, simpsons, gauss_legendre_5,
+  adaptive_simpson, romberg_5, gauss_legendre_10
+)
 export (
   smoke_special, smoke_distributions, smoke_linalg,
   smoke_roots, smoke_ode, smoke_stats,
   smoke_integrate, smoke_testing, smoke_distance, smoke_signal,
-  smoke_optim, smoke_interpolation, smoke_cg_solve
+  smoke_optim, smoke_interpolation, smoke_cg_solve,
+  smoke_sde, smoke_linalg_inv, smoke_integrate_adaptive
 )
 
 def smoke_poly(x: f32) -> f32 = {
@@ -198,4 +205,46 @@ def smoke_cg_solve[n](
 ) -> f32 = {
   x = cg_solve(a_mat, b, x0, cast(1.0e-10, f32), cast(100, int64))
   l2_norm_vec(x)
+}
+
+def smoke_sde_drift(y: f32, t: f32) -> f32 = neg(y)
+def smoke_sde_diff(y: f32, t: f32) -> f32 = cast(0.1, f32)
+def smoke_sde_dg(y: f32, t: f32) -> f32 = cast(0.0, f32)
+
+def smoke_sde[n](noise: tensor[n, f32]) -> f32 = {
+  em = euler_maruyama_fixed(smoke_sde_drift, smoke_sde_diff,
+    cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), copy(noise))
+  ml = milstein_fixed(smoke_sde_drift, smoke_sde_diff, smoke_sde_dg,
+    cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), noise)
+  add(em, ml)
+}
+
+def smoke_linalg_inv(
+  a2: tensor[2, 2, f32],
+  a3: tensor[3, 3, f32],
+  b2: tensor[2, f32],
+  b3: tensor[3, f32]
+) -> f32 = {
+  inv2 = inv_2x2(copy(a2))
+  inv3 = inv_3x3(copy(a3))
+  sol2 = solve_2x2(copy(a2), b2)
+  sol3 = solve_3x3(copy(a3), b3)
+  eigs = eig_2x2_real(copy(a2))
+  ch2 = cholesky_2x2(a2)
+  d_inv2 = det_2x2(inv2)
+  d_inv3 = det_3x3(inv3)
+  d_ch2  = det_2x2(ch2)
+  n_sol2 = l2_norm_vec(sol2)
+  n_sol3 = l2_norm_vec(sol3)
+  eig_sum = add(eigs.0, eigs.1)
+  add(add(add(add(add(d_inv2, d_inv3), d_ch2), n_sol2), n_sol3), eig_sum)
+}
+
+def smoke_integrate_adaptive_fn(x: f32) -> f32 = mul(x, x)
+
+def smoke_integrate_adaptive() -> f32 = {
+  a  = adaptive_simpson(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32), cast(1.0e-10, f32), cast(20, int64))
+  r  = romberg_5(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32))
+  g  = gauss_legendre_10(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32))
+  add(add(a, r), g)
 }
