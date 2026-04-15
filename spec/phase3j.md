@@ -84,25 +84,22 @@ RISC primitives already carry adjoints.
 - **AD through LinAlg:** finite-difference check that `grad` through composed tensor
   ops agrees with numerical differences on `det_2x2`, `det_3x3`, `inner_product`,
   `frobenius_sq`, and `cg_solve` (P0.5)
-- **Known v0.1.3 shape-checker gap:** `chelis check` does not enforce literal tensor
-  dimensions (`tensor[2, 2, f32]`) or element types on call sites — wrong-rank,
-  wrong-dim, and wrong-dtype calls into `det_2x2`/`det_3x3`/`matvec`/`gram`/etc. type-
-  check cleanly. The "negative tests: wrong input shapes" acceptance bullet is
-  therefore deferred to runtime (which is not shipped in v0.1.3) and to a future
-  compiler release that tightens dim-literal unification. Tracked as an upstream
-  Chelis issue, not a Nautilus bug.
-- **Known v0.1.3 unknown-name-silent-compile bug:** the type checker and C backend
-  silently accept unresolved function names in expression position, compiling
-  expressions like `sub(x, cos(x))` to a no-op that returns `x` (because `cos` is
-  not a Chelis builtin and silently resolves to an identity lower). Any user
-  `f: f32 -> f32` supplied to `Nautilus.Roots.{bisection,newton,brent}`,
-  `Nautilus.ODE.{euler_*,rk4_*}`, `Nautilus.Integrate.{trapezoidal,simpsons,gauss_legendre_5}`,
-  or `Nautilus.Optim.{golden_section_search,brent_minimize,gradient_descent_1d,newton_minimize_1d}`
-  that references a non-builtin scalar function (`cos`, `tan`, `atan`, `cosh`, ...) will
-  silently produce wrong answers. Workaround: express cosine via the `sin` builtin as
-  `sin(add(x, π/2))`. The shipped numerical harness (`tests/run_numeric_tests.py`) uses
-  that workaround for its `cos_minus_x` test case. Tracked as an upstream Chelis issue,
-  not a Nautilus bug.
+- **Known shape-checker gap (still present in v0.1.4):** `chelis check` does not
+  enforce literal tensor dimensions (`tensor[2, 2, f32]`) or element types on call
+  sites — wrong-rank, wrong-dim, and wrong-dtype calls into `det_2x2` / `det_3x3` /
+  `matvec` / `gram` / etc. type-check cleanly. The "negative tests: wrong input
+  shapes" acceptance bullet is therefore deferred to runtime and to a future
+  compiler release that tightens dim-literal unification. Tracked upstream as
+  `UPSTREAM_BUGS.md` Bug 2; re-verified against v0.1.4 and confirmed still open.
+- **Unknown-name silent-compile bug: FIXED in v0.1.4.** v0.1.3's type checker and
+  C backend silently accepted unresolved function names in expression position,
+  compiling `sub(x, cos(x))` to a no-op that returned `x`. v0.1.4 now emits
+  `UnboundVariable: cos` from `chelis check` and halts the build, so any user
+  `f: f32 -> f32` supplied to Roots / ODE / Integrate / Optim that references a
+  non-builtin scalar function is rejected at check time instead of silently
+  producing wrong answers. A legacy workaround (`sin(add(x, π/2))` as a
+  cos-equivalent) is preserved in `tests/run_numeric_tests.py::cos_minus_x` for
+  regression coverage — it no longer has to be a workaround, just a test case.
 - **`Nautilus.Optim.newton_minimize_1d` strong-convexity assumption:** Newton's method
   for minimization can converge toward a stationary point that is a saddle or maximum,
   not a minimum. To detect this, the implementation requires that `ddf(x_final) > 1e-2`
