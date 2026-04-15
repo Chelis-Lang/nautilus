@@ -52,6 +52,9 @@ TOL = {
     # scipy goldens are f64, so bound at 1e-7 to honor the double vs
     # float precision gap the Chelis f32 surface carries.
     "integrate/adaptive":        {"abs": 5.0e-7, "rel": 5.0e-7},
+    "integrate/hermite_laguerre":{"abs": 1.0e-5, "rel": 1.0e-5},
+    "distributions/discrete":    {"abs": 1.0e-6, "rel": 1.0e-6},
+    "distributions/continuous_p4": {"abs": 1.0e-6, "rel": 1.0e-6},
 }
 
 
@@ -538,6 +541,90 @@ def goldens_sde() -> dict[str, dict]:
     return g
 
 
+def goldens_integrate_hermite_laguerre() -> dict[str, dict]:
+    # Gauss-Hermite: ∫_{-∞}^∞ e^{-x²} f(x) dx.  GH10 is exact for
+    # polynomials up to degree 2*10-1 = 19. Analytic oracles:
+    #   f(x) = 1        → ∫ e^{-x²} dx = √π
+    #   f(x) = x²       → ∫ x² e^{-x²} dx = √π / 2
+    #   f(x) = x⁴       → ∫ x⁴ e^{-x²} dx = 3√π / 4
+    # Gauss-Laguerre: ∫_0^∞ e^{-x} f(x) dx. GL10 exact up to degree 19.
+    #   f(x) = 1        → 1
+    #   f(x) = x        → 1  (∫_0^∞ x e^{-x} dx = Γ(2) = 1)
+    #   f(x) = x²       → 2  (Γ(3))
+    #   f(x) = x³       → 6  (Γ(4))
+    g = {}
+    sqrt_pi = math.sqrt(math.pi)
+    cases = [
+        {"label": "gh_one",   "kind": "gh", "expected": sqrt_pi},
+        {"label": "gh_x2",    "kind": "gh", "expected": sqrt_pi / 2.0},
+        {"label": "gh_x4",    "kind": "gh", "expected": 3.0 * sqrt_pi / 4.0},
+        {"label": "gl_one",   "kind": "gl", "expected": 1.0},
+        {"label": "gl_x",     "kind": "gl", "expected": 1.0},
+        {"label": "gl_x2",    "kind": "gl", "expected": 2.0},
+        {"label": "gl_x3",    "kind": "gl", "expected": 6.0},
+    ]
+    g["integrate/hermite_laguerre.json"] = {"cases": cases, **TOL["integrate/hermite_laguerre"]}
+    return g
+
+
+def goldens_distributions_discrete() -> dict[str, dict]:
+    from scipy.stats import poisson, binom
+    g = {}
+    poisson_cases = [
+        (0, 3.0), (1, 3.0), (2, 3.0), (3, 3.0), (5, 3.0), (10, 3.0),
+        (0, 0.5), (1, 0.5), (2, 0.5),
+        (5, 10.0), (10, 10.0), (20, 10.0),
+    ]
+    binom_cases = [
+        (0,  10, 0.5), (5,  10, 0.5), (10, 10, 0.5),
+        (0,  20, 0.3), (6,  20, 0.3), (20, 20, 0.3),
+        (3,   8, 0.75), (5,  8, 0.75),
+    ]
+    g["distributions/discrete.json"] = {
+        "poisson_cases": [{"k": k, "lambda": lm,
+                            "pmf": float(poisson.pmf(k, mu=lm)),
+                            "cdf": float(poisson.cdf(k, mu=lm))}
+                          for (k, lm) in poisson_cases],
+        "binomial_cases": [{"k": k, "n": n, "p": p,
+                             "pmf": float(binom.pmf(k, n=n, p=p)),
+                             "cdf": float(binom.cdf(k, n=n, p=p))}
+                            for (k, n, p) in binom_cases],
+        **TOL["distributions/discrete"],
+    }
+    return g
+
+
+def goldens_distributions_continuous_p4() -> dict[str, dict]:
+    from scipy.stats import beta as sp_beta, f as sp_f, weibull_min
+    g = {}
+    beta_cases = [(0.5, 2.0, 3.0), (0.1, 2.0, 3.0), (0.9, 2.0, 3.0),
+                   (0.5, 0.5, 0.5), (0.5, 5.0, 1.0)]
+    f_cases = [(1.0, 5.0, 10.0), (2.0, 5.0, 10.0), (4.0, 5.0, 10.0),
+                (1.0, 2.0, 2.0), (3.0, 10.0, 20.0)]
+    weibull_cases = [(0.5, 2.0, 1.0), (1.0, 2.0, 1.0), (1.5, 2.0, 1.0),
+                      (2.0, 1.5, 3.0), (5.0, 1.5, 3.0)]
+    weibull_q = [0.1, 0.25, 0.5, 0.75, 0.9]
+    g["distributions/continuous_p4.json"] = {
+        "beta_cases": [{"x": x, "a": a, "b": b,
+                         "pdf": float(sp_beta.pdf(x, a, b)),
+                         "cdf": float(sp_beta.cdf(x, a, b))}
+                       for (x, a, b) in beta_cases],
+        "f_cases": [{"x": x, "d1": d1, "d2": d2,
+                      "pdf": float(sp_f.pdf(x, d1, d2)),
+                      "cdf": float(sp_f.cdf(x, d1, d2))}
+                    for (x, d1, d2) in f_cases],
+        "weibull_cases": [{"x": x, "shape": k, "scale": lm,
+                            "pdf": float(weibull_min.pdf(x, c=k, scale=lm)),
+                            "cdf": float(weibull_min.cdf(x, c=k, scale=lm))}
+                          for (x, k, lm) in weibull_cases],
+        "weibull_inv_cdf": [{"q": q, "shape": 2.0, "scale": 1.5,
+                               "expected": float(weibull_min.ppf(q, c=2.0, scale=1.5))}
+                             for q in weibull_q],
+        **TOL["distributions/continuous_p4"],
+    }
+    return g
+
+
 def goldens_integrate_adaptive() -> dict[str, dict]:
     g = {}
     # Analytic integrals with high-accuracy methods. Tolerance 1e-9 because
@@ -576,7 +663,10 @@ def check_goldens() -> int:
                      ("optim", goldens_optim),
                      ("interpolation", goldens_interpolation),
                      ("sde", goldens_sde),
-                     ("integrate_adaptive", goldens_integrate_adaptive)):
+                     ("integrate_adaptive", goldens_integrate_adaptive),
+                     ("integrate_hl", goldens_integrate_hermite_laguerre),
+                     ("distributions_discrete", goldens_distributions_discrete),
+                     ("distributions_continuous_p4", goldens_distributions_continuous_p4)):
         for rel, fresh in gen().items():
             path = GOLDENS / rel
             if not path.exists():
@@ -589,7 +679,9 @@ def check_goldens() -> int:
             for k, v in fresh.items():
                 if k in ("abs", "rel", "params", "inputs", "inputs_x", "inputs_q",
                           "matrices", "A_3x4", "B_4x2", "v", "w",
-                          "cases", "rk4_cases", "euler_cases"):
+                          "cases", "rk4_cases", "euler_cases",
+                          "poisson_cases", "binomial_cases",
+                          "beta_cases", "f_cases", "weibull_cases", "weibull_inv_cdf"):
                     if existing.get(k) != v:
                         print(f"DRIFT {rel}:{k} (inputs changed)")
                         drift += 1
@@ -643,6 +735,9 @@ def main() -> int:
     all_goldens.update(goldens_interpolation())
     all_goldens.update(goldens_sde())
     all_goldens.update(goldens_integrate_adaptive())
+    all_goldens.update(goldens_integrate_hermite_laguerre())
+    all_goldens.update(goldens_distributions_discrete())
+    all_goldens.update(goldens_distributions_continuous_p4())
     for rel, data in all_goldens.items():
         write_json(GOLDENS / rel, data)
         print(f"wrote {rel}")

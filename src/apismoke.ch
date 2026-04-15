@@ -7,7 +7,12 @@ import Nautilus.Distributions (
   lognormal_pdf, lognormal_cdf, lognormal_inv_cdf,
   gamma_pdf, gamma_cdf, gamma_inv_cdf,
   chi_squared_pdf, chi_squared_cdf, chi_squared_inv_cdf,
-  student_t_pdf
+  student_t_pdf,
+  poisson_pmf, poisson_cdf,
+  binomial_pmf, binomial_cdf,
+  beta_pdf, beta_cdf,
+  f_pdf, f_cdf,
+  weibull_pdf, weibull_cdf, weibull_inv_cdf
 )
 import Nautilus.LinAlg (
   transpose, matmul_wrap, gram, aat,
@@ -23,7 +28,9 @@ import Nautilus.ODE (euler_step, euler_solve, rk4_step, rk4_solve)
 import Nautilus.Stats (
   mean_vec, variance_vec, std_vec,
   skewness_vec, kurtosis_vec, median_vec,
-  covariance_scalar, correlation_scalar
+  covariance_scalar, correlation_scalar,
+  min_vec, max_vec, range_vec,
+  quantile_vec, percentile_vec, trimmed_mean_vec
 )
 import Nautilus.Integrate (trapezoidal, simpsons, gauss_legendre_5)
 import Nautilus.Testing (
@@ -44,14 +51,18 @@ import Nautilus.Interpolation (linear_interp_uniform, linear_interp_sorted, cubi
 import Nautilus.SDE (euler_maruyama_fixed, milstein_fixed)
 import Nautilus.Integrate (
   trapezoidal, simpsons, gauss_legendre_5,
-  adaptive_simpson, romberg_5, gauss_legendre_10
+  adaptive_simpson, romberg_5, gauss_legendre_10,
+  gauss_hermite_10, gauss_laguerre_10
 )
+import Nautilus.CurveFit (lm_scalar_1param)
 export (
   smoke_special, smoke_distributions, smoke_linalg,
   smoke_roots, smoke_ode, smoke_stats,
   smoke_integrate, smoke_testing, smoke_distance, smoke_signal,
   smoke_optim, smoke_interpolation, smoke_cg_solve,
-  smoke_sde, smoke_linalg_inv, smoke_integrate_adaptive
+  smoke_sde, smoke_linalg_inv, smoke_integrate_adaptive,
+  smoke_integrate_hl, smoke_curvefit, smoke_distributions_p4,
+  smoke_stats_p4
 )
 
 def smoke_poly(x: f32) -> f32 = {
@@ -247,4 +258,47 @@ def smoke_integrate_adaptive() -> f32 = {
   r  = romberg_5(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32))
   g  = gauss_legendre_10(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32))
   add(add(a, r), g)
+}
+
+def smoke_hl_one(x: f32) -> f32 = cast(1.0, f32)
+
+def smoke_integrate_hl() -> f32 = {
+  gh = gauss_hermite_10(smoke_hl_one)
+  gl = gauss_laguerre_10(smoke_hl_one)
+  add(gh, gl)
+}
+
+def smoke_cf_model(x: f32, theta: f32) -> f32 = mul(theta, x)
+def smoke_cf_dmodel(x: f32, theta: f32) -> f32 = x
+
+def smoke_curvefit[n](xs: tensor[n, f32], ys: tensor[n, f32]) -> f32 =
+  lm_scalar_1param(smoke_cf_model, smoke_cf_dmodel, xs, ys,
+    cast(0.5, f32), cast(0.001, f32), cast(1.0e-8, f32), cast(50, int64))
+
+def smoke_distributions_p4() -> f32 = {
+  pp = poisson_pmf(cast(3.0, f32), cast(3.0, f32))
+  pc = poisson_cdf(cast(3.0, f32), cast(3.0, f32))
+  bp = binomial_pmf(cast(5.0, f32), cast(10.0, f32), cast(0.5, f32))
+  bc = binomial_cdf(cast(5.0, f32), cast(10.0, f32), cast(0.5, f32))
+  bep = beta_pdf(cast(0.5, f32), cast(2.0, f32), cast(3.0, f32))
+  bec = beta_cdf(cast(0.5, f32), cast(2.0, f32), cast(3.0, f32))
+  fp = f_pdf(cast(1.0, f32), cast(5.0, f32), cast(10.0, f32))
+  fc = f_cdf(cast(1.0, f32), cast(5.0, f32), cast(10.0, f32))
+  wp = weibull_pdf(cast(1.0, f32), cast(2.0, f32), cast(1.0, f32))
+  wc = weibull_cdf(cast(1.0, f32), cast(2.0, f32), cast(1.0, f32))
+  wi = weibull_inv_cdf(cast(0.5, f32), cast(2.0, f32), cast(1.0, f32))
+  s1 = add(add(add(pp, pc), bp), bc)
+  s2 = add(add(add(bep, bec), fp), fc)
+  s3 = add(add(wp, wc), wi)
+  add(add(s1, s2), s3)
+}
+
+def smoke_stats_p4[n](v: tensor[n, f32]) -> f32 = {
+  mn = min_vec(copy(v))
+  mx = max_vec(copy(v))
+  rg = range_vec(copy(v))
+  q  = quantile_vec(copy(v), cast(0.5, f32))
+  p  = percentile_vec(copy(v), cast(75.0, f32))
+  tm = trimmed_mean_vec(v, cast(0.1, f32))
+  add(add(add(add(add(mn, mx), rg), q), p), tm)
 }

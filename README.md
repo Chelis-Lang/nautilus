@@ -54,12 +54,13 @@ CI runs all five steps. It authenticates to the sibling private
 | Module | Functions | Status |
 |---|---|---|
 | `Nautilus.Special` | `erf`, `erfinv`, `log_gamma`, `digamma`, `beta`, `lbeta` | scipy-parity, runtime-tested |
-| `Nautilus.Distributions` | Normal, LogNormal, Uniform, Exponential, Gamma, Chi-squared, Student-t — `pdf` / `cdf` / `inv_cdf` / `sample` | scipy-parity, runtime-tested |
+| `Nautilus.Distributions` | Normal, LogNormal, Uniform, Exponential, Gamma, Chi-squared, Student-t, Poisson, Binomial, Beta, F, Weibull — `pdf` / `cdf` / `inv_cdf` / `sample` where applicable | scipy-parity, runtime-tested |
 | `Nautilus.LinAlg` | `transpose`, `matmul_wrap`, `gram`, `aat`, `diag`, `trace_mat`, `trace_scalar`, `l2_norm_vec`, `inner_product`, `frobenius_sq`, `frobenius_norm`, `scale_vec`, `matvec`, `vecmat`, `det_2x2`, `det_3x3`, `la_vec_add`, `la_vec_sub`, `la_vec_saxpy`, `cg_solve`, `inv_2x2`, `inv_3x3`, `solve_2x2`, `solve_3x3`, `eig_2x2_real`, `cholesky_2x2` | type-checked + reef-built; runtime numerical verification deferred until upstream ships `libchelis_runtime.a` |
 | `Nautilus.Roots` | `bisection`, `newton`, `brent` over `f: f32 -> f32` | scipy-parity, runtime-tested |
 | `Nautilus.ODE` | `euler_step` / `euler_solve`, `rk4_step` / `rk4_solve` over `f: f32 -> f32 -> f32` | runtime-tested vs analytic decay (RK4 ~4e-15 error at n=1000) |
-| `Nautilus.Stats` | `mean_vec`, `variance_vec`, `std_vec`, `skewness_vec`, `kurtosis_vec`, `median_vec`, `covariance_scalar`, `correlation_scalar` | type-checked; runtime verification deferred with LinAlg |
-| `Nautilus.Integrate` | `trapezoidal`, `simpsons`, `gauss_legendre_5`, `adaptive_simpson`, `romberg_5`, `gauss_legendre_10` over `f: f32 -> f32` | 9 + 12 analytic-integral assertions runtime-tested |
+| `Nautilus.Stats` | `mean_vec`, `variance_vec`, `std_vec`, `skewness_vec`, `kurtosis_vec`, `median_vec`, `covariance_scalar`, `correlation_scalar`, `min_vec`, `max_vec`, `range_vec`, `quantile_vec`, `percentile_vec`, `trimmed_mean_vec` | type-checked; runtime verification deferred with LinAlg |
+| `Nautilus.Integrate` | `trapezoidal`, `simpsons`, `gauss_legendre_5`, `adaptive_simpson`, `romberg_5`, `gauss_legendre_10`, `gauss_hermite_10`, `gauss_laguerre_10` over `f: f32 -> f32` | 28 analytic-integral assertions runtime-tested |
+| `Nautilus.CurveFit` | `lm_scalar_1param` — single-parameter damped Gauss-Newton curve fitting with caller-supplied model + derivative and a caller-supplied dataset | type-checked + reef-built |
 | `Nautilus.Testing` | `z_statistic`, `z_p_value_*`, `normal_ci_half_width`, `chi_squared_p_value`, `t_statistic_one_sample`, `t_statistic_two_sample_pooled`, `welch_t_statistic`, `welch_t_df`, `t_p_value_two_sided`, `t_p_value_upper`, `t_p_value_lower` | runtime-tested against scipy |
 | `Nautilus.Distributions` (P2.5 add) | `student_t_cdf`, `betai` / `betacf` (regularized incomplete beta via Lentz continued fraction) | runtime-tested against scipy |
 | `Nautilus.Distance` | `squared_euclidean`, `euclidean`, `manhattan`, `chebyshev`, `cosine_similarity`, `cosine_distance`, `mahalanobis`, `mahalanobis_squared` | type-checked; runtime verification deferred with LinAlg |
