@@ -1,22 +1,40 @@
 # Upstream Chelis bugs found during Nautilus development
 
-This file collects chelis v0.1.3 issues discovered during red-team rounds
-across Nautilus Phases P0–P3. Each entry includes a minimal reproduction
-and the workaround currently in use downstream. Treat this as a paper
-trail for eventual upstream bug reports — the downstream repo (Nautilus)
-ships against the pinned `chelis v0.1.3` binary and cannot land fixes
-itself, but the bugs gate several acceptance criteria in
-`spec/phase3j.md` that would otherwise be fully satisfied.
+This file collects upstream chelis issues discovered during red-team
+rounds across Nautilus Phases P0–P3. Each entry includes a minimal
+reproduction, the workaround currently in use downstream, and a
+**v0.1.4 status** line recording what changed in the v0.1.4 release.
 
-All repros below were run against `chelis v0.1.3-linux-x86_64` as
-downloaded from `Chelis-Lang/chelis` releases.
+Summary as of v0.1.4:
+
+| # | Title | v0.1.3 | v0.1.4 |
+|---|---|---|---|
+| 1 | Unknown-name silent compile | open | **FIXED** |
+| 2 | Shape-checker gap for literal-dim tensor params | open | open (re-verified) |
+| 3 | Tensor-on-tensor `add`/`mul` lowering | open | open (new symptom; see below) |
+| 4 | Nested `exp(neg(mul(x,x)))` int-temp | open | **FIXED** |
+
+Original repros below were run against `chelis v0.1.3-linux-x86_64`.
+Re-verifications against `chelis v0.1.4-linux-x86_64` are noted inline.
 
 ---
 
-## 1. Unknown-name silent compile (CRITICAL)
+## 1. Unknown-name silent compile (CRITICAL) — **FIXED in v0.1.4**
 
 **Severity:** critical (silent wrong answers on user-provided function
 arguments).
+
+**v0.1.4 status: FIXED.** Re-running the minimal repro against
+`chelis v0.1.4-linux-x86_64` now produces a structured error:
+```
+"unresolved_names": ["cos"],
+"errors": [{"kind":"UnboundVariable","message":"unbound variable: cos","severity":0.6}]
+```
+and fitness score drops to 0.78, failing the CI gate. The
+Nautilus-side workaround (`sin(add(x, π/2))` in
+`tests/run_numeric_tests.py::cos_minus_x`) is preserved as a passing
+identity test since `cos` is still not a Chelis scalar builtin — the
+bug fix is "unknown names now error loudly," not "cos is provided."
 
 **Symptom.** Any unresolved function name in expression position is
 accepted by the type checker and lowered by the C backend as the identity
@@ -76,11 +94,22 @@ returns success.
 
 ---
 
-## 2. Shape-checker gap for literal-dim tensor parameters (CRITICAL)
+## 2. Shape-checker gap for literal-dim tensor parameters (CRITICAL) — **still open in v0.1.4**
 
 **Severity:** critical for negative-test parity claims; medium in
 practice (users don't routinely pass wrong-shape inputs, but the spec
 promises shape enforcement).
+
+**v0.1.4 status: NOT FIXED.** Re-running the `bad_consumer[m, n]`
+repro against v0.1.4:
+```
+{"score": 1, "unresolved_names": [], "errors": []}
+```
+`det_2x2(a: tensor[2, 2, f32])` still accepts `tensor[m, n, f32]`
+with no error. The suggested fix (`d-lit` parameters requiring exact
+match in tensor unification) has not landed. Remains the blocker on
+the "negative tests: wrong input shapes" acceptance bullet in
+`spec/phase3j.md`.
 
 **Symptom.** `chelis check` does not enforce tensor dimension equality
 for literal-size parameters. A function declared `def f(a: tensor[2, 2,
@@ -131,11 +160,65 @@ add a CLI flag (`chelis check --strict-dims`) to opt in.
 
 ---
 
-## 3. C backend emits raw pointer arithmetic for tensor-on-tensor `add`/`mul` (HIGH)
+## 3. C backend emits raw pointer arithmetic for tensor-on-tensor `add`/`mul` (HIGH) — **still open, new symptom in v0.1.4**
 
 **Severity:** high — any Nautilus function that combines two rank-2
 tensors via `add` or `mul` fails to link as a standalone C binary even
 when the math is correct.
+
+**v0.1.4 status: NOT FIXED — different symptom, same blocker.** The
+v0.1.4 C backend now emits a `chelis_runtime.h` header and expects to
+link against `libchelis_runtime.a`, but:
+
+1. **`libchelis_runtime.a` is not in the v0.1.4 release tarball.**
+   Only the `chelis` binary, `README.md`, and `LICENSE` ship. Every
+   `chelis build` invocation — even for a scalar-only program — now
+   fails at the link step with
+   `error: cannot find libchelis_runtime.a; set CHELIS_RUNTIME_DIR
+   or install chelis so libchelis_runtime.a is available relative to
+   the chelis executable`. Nautilus's existing tests still pass
+   because `tests/run_numeric_tests.py` compiles the emitted C
+   manually with gcc and its own stub set, bypassing the built-in
+   link step.
+2. **`chelis_runtime.h` exposes no tensor binary-op dispatcher.**
+   Grepping for `chelis_tensor_add` / `chelis_elementwise_*` /
+   `chelis_binop_*` in the header (260 lines total) returns nothing.
+   The only tensor entry points are `chelis_alloc`,
+   `chelis_alloc_view`, `chelis_free`, `chelis_fill_f32`,
+   `chelis_scalar_tensor_from_{i64,f64}`, `chelis_tensor_to_f64`,
+   `chelis_tensor_rank/shape/numel`, and `chelis_contiguous`. There
+   is nowhere for the C backend to route a tensor-on-tensor `add`
+   even if it wanted to.
+3. **The emitted C for a tensor-on-tensor `add` is now broken in a
+   new way.** A minimal program
+   ```chelis
+   def combine(a: tensor[4, f32], b: tensor[4, f32]) -> tensor[4, f32] = add(a, b)
+   def main(x: tensor[4, f32], y: tensor[4, f32]) -> tensor[4, f32] = combine(x, y)
+   ```
+   compiles to an entry point with `n_in == 1` (not 2) and a body
+   that just returns `chelis_contiguous(inputs[0])` — no `add`
+   call, no second operand, no elementwise loop. One of the two
+   parameters has been silently dropped somewhere in main-signature
+   lowering. The function name `combine` also appears as the
+   diagnostic label for `inputs[0]`, suggesting parameter-name /
+   function-name confusion in the C backend's main-signature
+   synthesis.
+
+**Downstream impact (unchanged).** All tensor-on-tensor ops in
+`Nautilus.LinAlg` (`cg_solve`, `frobenius_sq`, `frobenius_norm`,
+`la_vec_add`, `la_vec_sub`, `la_vec_saxpy`, `inv_2x2`, `inv_3x3`,
+`solve_*`, `cholesky_2x2`) remain runtime-unverified. Nautilus
+type-checks them via `src/apismoke.ch` at package build time. The
+~100 deferred scipy-parity assertions from `tests/goldens/linalg/*.json`
+stay deferred.
+
+**Suggested upstream path.** Either (a) ship `libchelis_runtime.a`
+with `chelis_tensor_add` / `_sub` / `_mul` / `_div` entry points in
+the release tarball, or (b) have the C backend emit an inline
+`for (i < numel) out[i] = a[i] + b[i]` loop for rank-1 f32 tensors
+(the trivial case that unblocks `la_vec_*` and `cg_solve`). Path (b)
+is ~30 lines of backend code and unblocks ~50 of the deferred
+assertions on its own.
 
 **Symptom.** The chelis v0.1.3 C backend lowers `add(t1, t2)` and
 `mul(t1, t2)` where `t1` and `t2` are tensor-typed operands as raw C
@@ -191,11 +274,28 @@ standard path used by `matmul` / `einsum` / `reduction ops`.
 
 ---
 
-## 4. C backend treats `int __arg = exp(...)` nested-call return as int (MEDIUM, worked around)
+## 4. C backend treats `int __arg = exp(...)` nested-call return as int (MEDIUM, worked around) — **FIXED in v0.1.4**
 
 **Severity:** medium — triggered a silent numerical error in
 `Nautilus.Special.erf` during P0, worked around via let-binding
 extraction.
+
+**v0.1.4 status: FIXED.** The minimal repro
+`def bad(x: f32) -> f32 = exp(neg(mul(x, x)))` now emits
+```c
+double __arg0_0;
+double __arg0_1;
+double __arg0_2;
+__arg0_2 = x;
+double __arg1_3 = x;
+__arg0_1 = __arg0_2 * __arg1_3;
+__arg0_0 = -(__arg0_1);
+__result = exp(__arg0_0);
+```
+— all intermediate temporaries are `double`, not `int`. The downstream
+let-binding workaround pattern in `src/special.ch` is preserved as-is
+(it's stable code with no comment marker distinguishing it from
+stylistic choice) — no source edits required to benefit from the fix.
 
 **Symptom.** When a unary math builtin (`exp`, `log`, `sin`, `sqrt`,
 `neg`) is applied to a nested function-call expression in the Chelis
@@ -249,23 +349,37 @@ care.
 
 ## Status and tracking
 
-Bugs 1, 2, and 4 are load-bearing on Nautilus's spec compliance:
+**v0.1.4 unlocked:** Bugs 1 and 4 shipped upstream fixes. Nautilus
+consumed them by bumping the pin from v0.1.3 to v0.1.4 and
+re-verifying `chelis check` + `chelis reef build` +
+`tests/run_numeric_tests.py` (526/526) — no source-code changes to
+`src/*.ch` were required, because the workarounds (`sin(add(x, π/2))`
+cos identity and let-binding extraction before `exp`) are either
+still needed for a different reason or are stylistically indistinct
+from normal code. Paper trail preserved via this file + the
+`spec/phase3j.md` Known Limitations section.
 
-- **Bug 1** blocks the "user functions can freely call `cos`, `tan`,
-  etc." use case that scipy-parity consumers would expect.
-- **Bug 2** blocks the "negative tests: wrong input shapes" acceptance
-  bullet in `spec/phase3j.md` §Test Plan.
-- **Bug 4** is worked around but forces verbose let-binding style in
-  every scalar-math-heavy module.
+**v0.1.4 still blocking:** Bugs 2 and 3 remain open and continue to
+gate the same acceptance criteria:
 
-Bug 3 is the most severe for shipping a usable LinAlg surface — it
-means the `tests/run_numeric_tests.py` harness cannot cover LinAlg /
-SDE / Stats / Distance / Interpolation tensor-path runtime verification
-no matter how clever the runtime stub set gets. All five modules are
-type-checked at package build time but have zero runtime numerical
-assertions. Fixing Bug 3 would unblock ~100+ additional scipy-parity
-assertions.
+- **Bug 2** blocks the "negative tests: wrong input shapes"
+  acceptance bullet in `spec/phase3j.md` §Test Plan.
+- **Bug 3** is the most severe for shipping a usable LinAlg surface.
+  The v0.1.4 symptom is actually worse than v0.1.3: `chelis build`
+  now unconditionally requires `libchelis_runtime.a` (which does not
+  ship in the release tarball) even for scalar-only programs, and
+  the emitted C for tensor-on-tensor `add` exhibits a new
+  parameter-confusion symptom (see §3 above). `tests/run_numeric_tests.py`
+  continues to work because it compiles emitted C manually with its
+  own stub set, bypassing `chelis build`'s built-in link step.
+  Tensor-path runtime verification for LinAlg / SDE / Stats /
+  Distance / Interpolation remains deferred; ~100+ scipy-parity
+  assertions are still gated on fixing this.
 
-When upstream Chelis lands a release with any of these fixed, Nautilus
-can re-enable the runtime verification paths and tighten the spec's
-known-limitations section accordingly.
+When upstream Chelis lands a release with either of these fixed,
+Nautilus can re-enable runtime verification paths and tighten the
+spec's known-limitations section accordingly. A minimal win would be
+shipping `libchelis_runtime.a` with rank-1 f32 elementwise `add` /
+`sub` / `mul` / `div` entry points — that alone unblocks `la_vec_*`,
+`cg_solve`, `frobenius_*`, and the `Nautilus.Distance` module, worth
+roughly half of the deferred assertions by count.
