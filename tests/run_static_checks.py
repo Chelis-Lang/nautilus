@@ -12,7 +12,8 @@ Belt-and-suspenders gate that complements `chelis check`:
    actual export() clause of the corresponding src/<module>.ch.
 
 3. `tests/goldens/linalg/*.json` are not currently consumed by any test
-   harness in this repo (LinAlg runtime is not shipped in v0.1.3). Print a
+   harness in this repo (LinAlg tensor-path runtime tests pending Bug 3
+   re-verification against v0.1.4's libchelis_runtime.a). Print a
    warning and the deferral pointer so it doesn't quietly become "fixture
    cosplay" — surfaced honestly.
 

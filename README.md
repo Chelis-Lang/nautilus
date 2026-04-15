@@ -10,10 +10,10 @@ runtime additions required.
 
 ## Toolchain
 
-Pinned to `chelis v0.1.3` in `reef.toml`:
+Pinned to `chelis v0.1.4` in `reef.toml`:
 
 ```toml
-compiler = "=0.1.3"
+compiler = "=0.1.4"
 ```
 
 ## Build
@@ -21,11 +21,11 @@ compiler = "=0.1.3"
 Download and extract the pinned tarball, then check, build, and test:
 
 ```sh
-gh release download v0.1.3 \
+gh release download v0.1.4 \
   --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.1.3-linux-x86_64.tar.gz'
-tar xzf chelis-v0.1.3-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.1.3-linux-x86_64:$PATH"
+  --pattern 'chelis-v0.1.4-linux-x86_64.tar.gz'
+tar xzf chelis-v0.1.4-linux-x86_64.tar.gz
+export PATH="$PWD/chelis-v0.1.4-linux-x86_64:$PATH"
 
 # 1. Type-check every module in the package.
 for f in src/*.ch; do chelis check "$f"; done

@@ -19,8 +19,9 @@ libchelis_runtime.a — the bare scalar functions don't need either.
 The harness covers Nautilus.Special and Nautilus.Distributions scalar
 functions only. Nautilus.LinAlg ops that take tensor inputs are covered by
 the API-smoke type check (src/apismoke.ch + chelis check), since their
-runtime exercise requires the full chelis runtime which is not shipped in
-the v0.1.3 release tarball.
+runtime exercise requires the full chelis runtime. As of v0.1.4 the
+runtime ships as `libchelis_runtime.a` — enabling tensor-path runtime
+tests is tracked separately (see UPSTREAM_BUGS.md Bug 3 status).
 """
 from __future__ import annotations
 
