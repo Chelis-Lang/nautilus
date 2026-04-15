@@ -1,36 +1,59 @@
 #!/usr/bin/env python3
-"""Benchmark Nautilus scalar kernels vs scipy and numpy equivalents.
+"""Nautilus benchmark harness — in-process via ctypes.
 
-Times the Nautilus bare-build binary (reused from tests/run_numeric_tests.py)
-against scipy/numpy on identical inputs. Reports wall-clock time per batch and
-the ratio Nautilus/reference. Useful as a performance-regression tripwire and
-to surface kernels where the pure-Chelis recursive-helper pattern is paying a
-meaningful cost vs vectorized numpy or scipy.
+Three tiers:
 
-Two comparison tracks:
-  - scipy benchmarks call out to scipy.special / scipy.stats functions that
-    already exist there. Reference is single-value evaluation.
-  - numpy benchmarks call out to numpy math primitives (np.exp, np.log,
-    np.sqrt, np.sin, np.sort, np.mean, np.var, np.median, np.linalg.inv)
-    on either scalar or small-array inputs. This surfaces the cost floor
-    Nautilus's scalar surface pays vs vectorized numpy at batch=1.
+  **Tier 1 — Scalar correctness.**
+    Validate against scipy to the tolerance documented in the module
+    goldens. Not a race — just a correctness gate. Delegates to the
+    existing `tests/run_numeric_tests.py` which runs 526 scipy-parity
+    assertions against a subprocess-driven binary. Skipped unless
+    `--tier 1` is passed.
+
+  **Tier 2 — Vectorized kernels at size sweeps.**
+    This is where Nautilus actually has to compete. For each scalar
+    kernel (erf, log_gamma, normal_cdf, etc.), we expose a C batch
+    wrapper `b_<kernel>(const double* xs, double* out, size_t n)`
+    inside the .so, call it in-process via ctypes, and compare against
+    scipy's vectorized ufunc. Sizes: 1, 10, 100, 1k, 10k, 100k, 1M.
+    Report per-element nanoseconds — the invariant that matters once
+    setup overhead is amortized. The crossover between small-n
+    (Nautilus wins on zero dispatch tax) and large-n (scipy wins on
+    SIMD + vectorized libm) is the story.
+
+  **Tier 3 — Compound expressions.**
+    Fused Nautilus loop (one pass, no intermediate allocation) vs the
+    same expression in numpy (multiple ufunc passes + intermediates).
+    E.g. `normal_cdf(x) * exp(-x²)`. This is where a compiled array
+    language with expression-level fusion should pull ahead of
+    element-at-a-time-into-allocator numpy patterns — not at small n
+    (where allocator hit is amortized) but at medium n where the
+    intermediate doesn't fit in L2.
+
+  **Tier 4 — GPU dispatch.**
+    Deferred until HIP codegen + runtime ships upstream. Placeholder.
 
 Usage:
-    python scripts/bench_vs_scipy.py                     # run all
-    python scripts/bench_vs_scipy.py --batch N           # trials per measurement
-    python scripts/bench_vs_scipy.py --skip-scipy        # numpy + chelis only
-    python scripts/bench_vs_scipy.py --skip-numpy        # scipy + chelis only
-    python scripts/bench_vs_scipy.py --chelis-only       # just time chelis
-    python scripts/bench_vs_scipy.py --refs-only         # just time numpy/scipy
+    python scripts/bench_vs_scipy.py                # tier 2 + 3 default
+    python scripts/bench_vs_scipy.py --tier 1       # correctness only
+    python scripts/bench_vs_scipy.py --tier 2       # size sweep only
+    python scripts/bench_vs_scipy.py --tier 3       # compound only
+    python scripts/bench_vs_scipy.py --sizes 100,10000,1000000
+    python scripts/bench_vs_scipy.py --trials 100   # trials per size
 
-The harness does NOT compare output values — `tests/run_numeric_tests.py`
-already handles parity verification. This script only cares about timing.
+All tier-2/3 measurements are in-process via `ctypes.CDLL` — subprocess
+spawn overhead is NOT measured. Tier 1 delegates to a subprocess gate
+because the existing correctness harness is already subprocess-based
+and changing that would unnecessarily couple the two tools.
 """
 from __future__ import annotations
 
 import argparse
+import ctypes
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -47,183 +70,339 @@ def import_harness():
     return module
 
 
-def bench_nautilus(binary: Path, case: str, args: tuple, n_trials: int) -> float:
-    cmd = [str(binary), case, *(str(a) for a in args)]
-    start = time.perf_counter()
-    for _ in range(n_trials):
-        subprocess.run(cmd, capture_output=True, text=True, check=True)
-    return time.perf_counter() - start
+# --- C wrapper source emitted inside the .so ---------------------------------
+#
+# Batch wrappers that call the scalar Nautilus functions in a straight-line
+# loop. These are what ctypes dispatches to. Keep them as simple as possible —
+# the loop body is Nautilus's scalar compute, and that's what we want to
+# measure.
+
+BATCH_WRAPPER_C = r"""
+#include <stddef.h>
+#include <math.h>
+
+double erf(double);
+double erfinv(double);
+double log_gamma(double);
+double digamma(double);
+double normal_pdf(double, double, double);
+double normal_cdf(double, double, double);
+double normal_inv_cdf(double, double, double);
+double gamma_pdf(double, double, double);
+double gamma_cdf(double, double, double);
+double student_t_cdf(double, double);
+double beta_cdf(double, double, double);
+double weibull_cdf(double, double, double);
+double poisson_cdf(double, double);
+
+#define EXPORT __attribute__((visibility("default")))
+
+EXPORT void b_erf(const double* xs, double* out, size_t n) {
+    for (size_t i = 0; i < n; i++) out[i] = erf(xs[i]);
+}
+EXPORT void b_erfinv(const double* xs, double* out, size_t n) {
+    for (size_t i = 0; i < n; i++) out[i] = erfinv(xs[i]);
+}
+EXPORT void b_log_gamma(const double* xs, double* out, size_t n) {
+    for (size_t i = 0; i < n; i++) out[i] = log_gamma(xs[i]);
+}
+EXPORT void b_digamma(const double* xs, double* out, size_t n) {
+    for (size_t i = 0; i < n; i++) out[i] = digamma(xs[i]);
+}
+EXPORT void b_normal_cdf(const double* xs, double* out, size_t n) {
+    for (size_t i = 0; i < n; i++) out[i] = normal_cdf(xs[i], 0.0, 1.0);
+}
+EXPORT void b_normal_inv_cdf(const double* qs, double* out, size_t n) {
+    for (size_t i = 0; i < n; i++) out[i] = normal_inv_cdf(qs[i], 0.0, 1.0);
+}
+EXPORT void b_gamma_cdf_shape_2_scale_1(const double* xs, double* out, size_t n) {
+    for (size_t i = 0; i < n; i++) out[i] = gamma_cdf(xs[i], 2.0, 1.0);
+}
+EXPORT void b_student_t_cdf_df_5(const double* xs, double* out, size_t n) {
+    for (size_t i = 0; i < n; i++) out[i] = student_t_cdf(xs[i], 5.0);
+}
+
+/* ---- Tier 3: compound / fused expressions ----
+ *
+ * One pass, no intermediate allocation. Contrast with numpy which allocates
+ * an intermediate array at each operator. Nautilus-style fusion can stay in
+ * cache for medium n.
+ */
+
+/* normal_pdf-ish via erf + exp in one pass */
+EXPORT void b_compound_ncdf_times_exp_nxsq(const double* xs, double* out, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        double x = xs[i];
+        out[i] = normal_cdf(x, 0.0, 1.0) * exp(-x * x);
+    }
+}
+
+/* Z-score to two-sided p-value via erf: standard transform a user would
+ * otherwise write as 2*(1-norm.cdf(abs(z))) in numpy with 3 allocations. */
+EXPORT void b_compound_two_sided_pval(const double* zs, double* out, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        double z = zs[i];
+        double az = z < 0.0 ? -z : z;
+        out[i] = 2.0 * (1.0 - normal_cdf(az, 0.0, 1.0));
+    }
+}
+
+/* Gamma log-density — three log_gamma calls fused into a single loop,
+ * whereas numpy equivalent allocates three intermediate arrays. */
+EXPORT void b_compound_log_gamma_chain(const double* xs, double* out, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        double x = xs[i];
+        out[i] = log_gamma(x) - log_gamma(x + 1.0) + log_gamma(2.0 * x);
+    }
+}
+"""
 
 
-def bench_scipy(fn, args: tuple, n_trials: int) -> float:
-    start = time.perf_counter()
-    for _ in range(n_trials):
-        fn(*args)
-    return time.perf_counter() - start
+def build_shared_lib() -> Path:
+    """Build libnautilus_bench.so containing the Nautilus scalar surface plus
+    the C batch wrappers above. Reuses tests/run_numeric_tests.py for the
+    Chelis source assembly + runtime stubs so the two harnesses stay in sync.
+    """
+    harness = import_harness()
+    workdir = Path(tempfile.mkdtemp(prefix="nautilus-bench-"))
+    bare_ch = workdir / "bench_bare.ch"
+    bare_src = "\n".join(
+        harness.strip_module((harness.SRC / f).read_text())
+        for f in ("special.ch", "distributions.ch")
+    ) + "\ndef main() -> f32 = erf(cast(0.5, f32))\n"
+    bare_ch.write_text(bare_src)
+    harness.chelis_build(bare_ch, workdir / "out")
+    c_file = workdir / "out" / "bench_bare.c"
+
+    wrapper_c = workdir / "batch_wrapper.c"
+    wrapper_c.write_text(BATCH_WRAPPER_C)
+
+    stubs_c = workdir / "runtime_stubs.c"
+    stubs_c.write_text(harness.RUNTIME_STUBS)
+
+    so = workdir / "libnautilus_bench.so"
+    cc = subprocess.run(
+        ["gcc", "-O3", "-march=native", "-shared", "-fPIC",
+         "-o", str(so),
+         str(c_file), str(wrapper_c), str(stubs_c),
+         "-I", str(workdir / "out"), "-lm"],
+        capture_output=True, text=True,
+    )
+    if cc.returncode != 0:
+        raise SystemExit(f"shared-lib build failed: {cc.stderr}")
+    return so
 
 
-def bench_numpy(fn, args: tuple, n_trials: int) -> float:
-    return bench_scipy(fn, args, n_trials)  # same mechanism; different label
+# --- ctypes wiring ------------------------------------------------------------
+
+def load_nautilus(so_path: Path) -> ctypes.CDLL:
+    import numpy as np  # noqa: F401 (needed for downstream consumers)
+    lib = ctypes.CDLL(str(so_path))
+    c_double_p = ctypes.POINTER(ctypes.c_double)
+    size_t = ctypes.c_size_t
+    batch_sig = [c_double_p, c_double_p, size_t]
+    for name in (
+        "b_erf", "b_erfinv", "b_log_gamma", "b_digamma",
+        "b_normal_cdf", "b_normal_inv_cdf",
+        "b_gamma_cdf_shape_2_scale_1",
+        "b_student_t_cdf_df_5",
+        "b_compound_ncdf_times_exp_nxsq",
+        "b_compound_two_sided_pval",
+        "b_compound_log_gamma_chain",
+    ):
+        fn = getattr(lib, name)
+        fn.argtypes = batch_sig
+        fn.restype = None
+    return lib
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--batch", type=int, default=50)
-    ap.add_argument("--chelis-only", action="store_true")
-    ap.add_argument("--refs-only", action="store_true")
-    ap.add_argument("--skip-scipy", action="store_true")
-    ap.add_argument("--skip-numpy", action="store_true")
-    args = ap.parse_args()
-
+def nautilus_batch(lib, name: str):
+    """Return a Python wrapper (xs: ndarray) -> ndarray that calls the named
+    batch export in-process.
+    """
     import numpy as np
-    from scipy import special as sp_special
-    from scipy import stats as sp_stats
+    fn = getattr(lib, name)
+    c_double_p = ctypes.POINTER(ctypes.c_double)
 
-    if args.refs_only:
-        nautilus_bin = None
-    else:
-        harness = import_harness()
-        print("# building Nautilus native binary (special + distributions) ...", flush=True)
-        nautilus_bin = harness.build_native_binary()
-        print(f"# binary: {nautilus_bin}")
+    def call(xs):
+        out = np.empty_like(xs)
+        fn(xs.ctypes.data_as(c_double_p),
+           out.ctypes.data_as(c_double_p),
+           len(xs))
+        return out
 
-    # Each benchmark: (label, nautilus_case, nautilus_args, scipy_fn, scipy_args,
-    #                   numpy_fn, numpy_args).
-    # scipy_fn or numpy_fn can be None if no direct equivalent.
-    benchmarks = [
-        # scipy.special — numpy doesn't have erf/erfinv/gammaln/digamma directly
-        # (numpy only has numpy.math mirrors removed in 1.25+). scipy is the
-        # right reference.
-        ("erf(0.5)",
-         "erf", (0.5,),
-         lambda x: sp_special.erf(x), (0.5,),
-         None, None),
-        ("erfinv(0.5)",
-         "erfinv", (0.5,),
-         lambda x: sp_special.erfinv(x), (0.5,),
-         None, None),
-        ("log_gamma(3.5)",
-         "log_gamma", (3.5,),
-         lambda x: sp_special.gammaln(x), (3.5,),
-         None, None),
-        ("digamma(3.5)",
-         "digamma", (3.5,),
-         lambda x: sp_special.digamma(x), (3.5,),
-         None, None),
-        # Elementary math — numpy covers these natively and is the right ref.
-        ("exp(neg(x*x))  @ x=0.5",
-         # Nautilus doesn't expose raw exp via a single-arg scalar case in
-         # the harness; skip Nautilus column here, time the numpy path alone.
-         None, None,
-         None, None,
-         lambda x: np.exp(-x * x), (0.5,)),
-        ("sqrt(2.0)",
-         None, None,
-         None, None,
-         lambda x: np.sqrt(x), (2.0,)),
-        ("sin(1.5)",
-         None, None,
-         None, None,
-         lambda x: np.sin(x), (1.5,)),
-        ("log(3.7)",
-         None, None,
-         None, None,
-         lambda x: np.log(x), (3.7,)),
-        # Distributions — both scipy and numpy cover normal_cdf / inv_cdf via
-        # scipy. numpy has no direct norm.cdf but does offer a reference batch
-        # primitive through np.random.Generator — skip numpy column here.
-        ("normal_cdf(1.96)",
-         "normal_cdf", (1.96, 0.0, 1.0),
-         lambda x, m, s: sp_stats.norm.cdf(x, loc=m, scale=s), (1.96, 0.0, 1.0),
-         None, None),
-        ("normal_inv_cdf(0.975)",
-         "normal_inv_cdf", (0.975, 0.0, 1.0),
-         lambda q, m, s: sp_stats.norm.ppf(q, loc=m, scale=s), (0.975, 0.0, 1.0),
-         None, None),
-        ("gamma_cdf(2,2,1)",
-         "gamma_cdf", (2.0, 2.0, 1.0),
-         lambda x, a, s: sp_stats.gamma.cdf(x, a=a, scale=s), (2.0, 2.0, 1.0),
-         None, None),
-        ("student_t_cdf(1.96,30)",
-         "student_t_cdf", (1.96, 30.0),
-         lambda t, df: sp_stats.t.cdf(t, df=df), (1.96, 30.0),
-         None, None),
-        ("beta_cdf(0.5,2,3)",
-         "beta_cdf", (0.5, 2.0, 3.0),
-         lambda x, a, b: sp_stats.beta.cdf(x, a, b), (0.5, 2.0, 3.0),
-         None, None),
-        ("weibull_cdf(1.0,2,1)",
-         "weibull_cdf", (1.0, 2.0, 1.0),
-         lambda x, c, s: sp_stats.weibull_min.cdf(x, c=c, scale=s), (1.0, 2.0, 1.0),
-         None, None),
-        ("poisson_cdf(3,3)",
-         "poisson_cdf", (3.0, 3.0),
-         lambda k, lm: sp_stats.poisson.cdf(k, mu=lm), (3, 3.0),
-         None, None),
-        # Stats — numpy has the natural reference for mean/var/median/sort.
-        # Nautilus side doesn't expose these through the bare-build harness
-        # (tensor inputs), so we time numpy-only here.
-        ("numpy.mean(10-elem array)",
-         None, None,
-         None, None,
-         lambda a: np.mean(a), (np.arange(10.0),)),
-        ("numpy.var(10-elem array)",
-         None, None,
-         None, None,
-         lambda a: np.var(a), (np.arange(10.0),)),
-        ("numpy.median(11-elem array)",
-         None, None,
-         None, None,
-         lambda a: np.median(a), (np.arange(11.0),)),
-        ("numpy.sort(20-elem array)",
-         None, None,
-         None, None,
-         lambda a: np.sort(a), (np.arange(20.0)[::-1],)),
-    ]
+    return call
 
-    header = (f"{'benchmark':<32} {'nautilus (s)':>14} "
-              f"{'scipy (s)':>14} {'numpy (s)':>14} {'naut/best':>12}")
+
+# --- timing -------------------------------------------------------------------
+
+def time_batch(fn, xs, trials: int) -> float:
+    """Return mean seconds per trial across `trials` runs, excluding warmup."""
+    # Warmup — avoid capturing JIT/first-call overhead in tight timings.
+    fn(xs)
+    start = time.perf_counter()
+    for _ in range(trials):
+        fn(xs)
+    return (time.perf_counter() - start) / trials
+
+
+# --- tier 1 -------------------------------------------------------------------
+
+def tier1(args) -> int:
+    print("=== Tier 1: scalar correctness (delegating to run_numeric_tests.py) ===")
+    r = subprocess.run(
+        [sys.executable, str(HARNESS)],
+        capture_output=True, text=True,
+    )
+    print(r.stdout[-500:] if len(r.stdout) > 500 else r.stdout)
+    if r.returncode != 0:
+        print("FAIL:", r.stderr)
+        return 1
+    return 0
+
+
+# --- tier 2 -------------------------------------------------------------------
+
+TIER2_KERNELS = [
+    # (label, nautilus batch name, scipy/numpy callable, input-domain generator)
+    ("erf",              "b_erf",
+     lambda xs, sp: sp.special.erf(xs),
+     lambda rng, n: rng.uniform(-3.0, 3.0, n)),
+    ("erfinv",           "b_erfinv",
+     lambda xs, sp: sp.special.erfinv(xs),
+     lambda rng, n: rng.uniform(-0.99, 0.99, n)),
+    ("log_gamma",        "b_log_gamma",
+     lambda xs, sp: sp.special.gammaln(xs),
+     lambda rng, n: rng.uniform(0.1, 20.0, n)),
+    ("digamma",          "b_digamma",
+     lambda xs, sp: sp.special.digamma(xs),
+     lambda rng, n: rng.uniform(0.1, 20.0, n)),
+    ("normal_cdf",       "b_normal_cdf",
+     lambda xs, sp: sp.stats.norm.cdf(xs),
+     lambda rng, n: rng.uniform(-4.0, 4.0, n)),
+    ("normal_inv_cdf",   "b_normal_inv_cdf",
+     lambda xs, sp: sp.stats.norm.ppf(xs),
+     lambda rng, n: rng.uniform(0.01, 0.99, n)),
+    ("gamma_cdf(2,1)",   "b_gamma_cdf_shape_2_scale_1",
+     lambda xs, sp: sp.stats.gamma.cdf(xs, a=2.0, scale=1.0),
+     lambda rng, n: rng.uniform(0.1, 10.0, n)),
+    ("student_t_cdf(df=5)", "b_student_t_cdf_df_5",
+     lambda xs, sp: sp.stats.t.cdf(xs, df=5.0),
+     lambda rng, n: rng.uniform(-4.0, 4.0, n)),
+]
+
+
+def tier2(args, lib) -> int:
+    import numpy as np
+    import scipy as sp
+    rng = np.random.default_rng(0xC0DE)
+    sizes = args.sizes
+
+    header = f"{'kernel':<22} {'n':>9} {'naut µs':>12} {'scipy µs':>12} " \
+             f"{'naut ns/el':>12} {'scipy ns/el':>12} {'winner':>10}"
+    print("=== Tier 2: vectorized size sweeps ===")
     print(header)
     print("-" * len(header))
 
-    for (label, ncase, nargs, sfn, sargs, nfn, ngargs) in benchmarks:
-        sc_time = None
-        np_time = None
-        nt_time = None
-
-        if sfn is not None and not args.skip_scipy and not args.chelis_only:
-            sc_time = bench_scipy(sfn, sargs, args.batch)
-        if nfn is not None and not args.skip_numpy and not args.chelis_only:
-            np_time = bench_numpy(nfn, ngargs, args.batch)
-        if nautilus_bin is not None and ncase is not None and not args.refs_only:
-            nt_time = bench_nautilus(nautilus_bin, ncase, nargs, args.batch)
-
-        best_ref = None
-        for t in (sc_time, np_time):
-            if t is not None and (best_ref is None or t < best_ref):
-                best_ref = t
-        ratio = "-"
-        if nt_time is not None and best_ref is not None and best_ref > 0:
-            ratio = f"{nt_time / best_ref:.2f}"
-
-        cells = [
-            label,
-            f"{nt_time:.6f}" if nt_time is not None else "-",
-            f"{sc_time:.6f}" if sc_time is not None else "-",
-            f"{np_time:.6f}" if np_time is not None else "-",
-            ratio,
-        ]
-        print(f"{cells[0]:<32} {cells[1]:>14} {cells[2]:>14} {cells[3]:>14} {cells[4]:>12}")
-
-    print()
-    print("# Nautilus timing is dominated by subprocess spawn per trial")
-    print("# (no in-process FFI path until libchelis_runtime.a ships). The")
-    print("# subprocess-vs-in-process comparison intentionally surfaces the")
-    print("# cost floor a consumer would see calling Nautilus from outside")
-    print("# the compiled binary.")
-    print("# naut/best compares Nautilus timing against the fastest of the")
-    print("# available references (scipy or numpy).")
+    for label, batch_name, scipy_fn, make_xs in TIER2_KERNELS:
+        naut = nautilus_batch(lib, batch_name)
+        for n in sizes:
+            xs = make_xs(rng, n).astype(np.float64)
+            nt = time_batch(naut, xs, args.trials)
+            st = time_batch(lambda a: scipy_fn(a, sp), xs, args.trials)
+            naut_us = nt * 1e6
+            scipy_us = st * 1e6
+            naut_ns_per = nt * 1e9 / n
+            scipy_ns_per = st * 1e9 / n
+            winner = "Nautilus" if nt < st else "scipy"
+            print(f"{label:<22} {n:>9d} {naut_us:>12.2f} {scipy_us:>12.2f} "
+                  f"{naut_ns_per:>12.1f} {scipy_ns_per:>12.1f} {winner:>10}")
+        print()
     return 0
+
+
+# --- tier 3 -------------------------------------------------------------------
+
+def tier3(args, lib) -> int:
+    import numpy as np
+    import scipy as sp
+    rng = np.random.default_rng(0xFADE)
+    sizes = args.sizes
+
+    header = f"{'expression':<32} {'n':>9} {'naut µs':>12} {'numpy µs':>12} " \
+             f"{'ratio':>8} {'naut ns/el':>12} {'numpy ns/el':>12}"
+    print("=== Tier 3: fused vs numpy-sequential compound expressions ===")
+    print(header)
+    print("-" * len(header))
+
+    def compound_ncdf_times_exp_nxsq_numpy(xs):
+        return sp.stats.norm.cdf(xs) * np.exp(-xs * xs)
+
+    def compound_two_sided_pval_numpy(zs):
+        return 2.0 * (1.0 - sp.stats.norm.cdf(np.abs(zs)))
+
+    def compound_log_gamma_chain_numpy(xs):
+        return sp.special.gammaln(xs) - sp.special.gammaln(xs + 1.0) + sp.special.gammaln(2.0 * xs)
+
+    compounds = [
+        ("normal_cdf(x)*exp(-x²)",
+         "b_compound_ncdf_times_exp_nxsq",
+         compound_ncdf_times_exp_nxsq_numpy,
+         lambda n: rng.uniform(-3.0, 3.0, n).astype(np.float64)),
+        ("2*(1 - normal_cdf(|z|))",
+         "b_compound_two_sided_pval",
+         compound_two_sided_pval_numpy,
+         lambda n: rng.uniform(-4.0, 4.0, n).astype(np.float64)),
+        ("lgamma(x)-lgamma(x+1)+lgamma(2x)",
+         "b_compound_log_gamma_chain",
+         compound_log_gamma_chain_numpy,
+         lambda n: rng.uniform(0.1, 20.0, n).astype(np.float64)),
+    ]
+
+    for label, batch_name, numpy_fn, make_xs in compounds:
+        naut = nautilus_batch(lib, batch_name)
+        for n in sizes:
+            xs = make_xs(n)
+            nt = time_batch(naut, xs, args.trials)
+            npt = time_batch(numpy_fn, xs, args.trials)
+            naut_us = nt * 1e6
+            numpy_us = npt * 1e6
+            ratio = nt / npt if npt > 0 else float("inf")
+            naut_ns_per = nt * 1e9 / n
+            numpy_ns_per = npt * 1e9 / n
+            print(f"{label:<32} {n:>9d} {naut_us:>12.2f} {numpy_us:>12.2f} "
+                  f"{ratio:>8.2f} {naut_ns_per:>12.1f} {numpy_ns_per:>12.1f}")
+        print()
+    return 0
+
+
+# --- main ---------------------------------------------------------------------
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--tier", type=int, choices=[1, 2, 3], default=None,
+                    help="Run only one tier (default: 2 + 3)")
+    ap.add_argument("--sizes", default="1,10,100,1000,10000,100000,1000000",
+                    help="Comma-separated sizes for tier 2/3")
+    ap.add_argument("--trials", type=int, default=30,
+                    help="Trials per timing measurement (default: 30)")
+    args = ap.parse_args()
+    args.sizes = [int(s) for s in args.sizes.split(",")]
+
+    if args.tier == 1:
+        return tier1(args)
+
+    print("# building libnautilus_bench.so ...", flush=True)
+    so = build_shared_lib()
+    print(f"# shared lib: {so}")
+    lib = load_nautilus(so)
+
+    rc = 0
+    if args.tier is None or args.tier == 2:
+        rc |= tier2(args, lib)
+    if args.tier is None or args.tier == 3:
+        rc |= tier3(args, lib)
+    return rc
 
 
 if __name__ == "__main__":
