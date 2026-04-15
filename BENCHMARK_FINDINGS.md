@@ -6,21 +6,40 @@ sizes 10 → 100k, f64 throughout. Hardware: single box, single thread.
 
 ## Headline numbers
 
+- **Compiler codegen + link-time optimization is the biggest single
+  lever.** Adding `-flto -fuse-linker-plugin -fvisibility=hidden
+  -Wl,-Bsymbolic` to the bench .so build alone improves `erf` by
+  **3.8×** (13.66 → 3.58 ns/el) and the `normal_cdf(x)*exp(-x²)`
+  compound by **2.6×** (24.59 → 9.40 ns/el) — without touching a line
+  of Chelis source. This is a larger improvement than any algorithmic
+  change in the phase, and it is the dominant story for the paper.
 - **Fused compound expressions beat numpy ufunc chains at every size
   tested.** `normal_cdf(x)*exp(-x²)` runs at 6.7 ns/el at n=100k vs
-  numpy 20.4 ns/el — **3.0×**. `norm_pdf from primitives` runs at 2.2
-  ns/el vs numpy 7.9 ns/el — **3.6×**.
+  numpy 20.4 ns/el — **3.0×** (≈ **150M evals/s/core**). `norm_pdf
+  from primitives` runs at 2.2 ns/el vs numpy 7.9 ns/el — **3.6×**
+  (≈ **450M evals/s/core**).
 - **Every scalar kernel is Nautilus-wins** at its best size after the
-  P5 fixes. `erfinv` is **6.5× faster** than scipy at n=100k; `erf`
-  **3.2×**; `normal_inv_cdf` **6.8×**; `normal_cdf` **4.2×**.
+  P5 fixes. `erfinv` is **6.5× faster** than scipy at n=100k
+  (≈ **450M/s**); `erf` **3.2×** (≈ **285M/s**); `normal_inv_cdf`
+  **6.8×** (≈ **370M/s**); `normal_cdf` **4.2×** (≈ **220M/s**).
 - **`gamma_cdf` and `student_t_cdf` flipped from 40-100× slower to
   2.3× faster at large n** after replacing the hardcoded 200-iteration
-  series / CF loops with cephes-style convergence checks.
-- **Solver kernels win by orders of magnitude** in per-call cost:
-  `rk4_solve` 0.43 µs/call vs scipy `solve_ivp` 1734 µs/call
-  (**4000×**); `brent` 0.12 µs/call vs scipy `brentq` 5.6 µs/call
-  (**45×**). Scipy's solver interfaces pay a huge Python-object /
-  dispatch tax that Nautilus's flat C loop avoids entirely.
+  series / CF loops with cephes-style convergence checks **using a
+  relative-with-floor termination criterion** (see Track 2 below) —
+  the floor is what makes the fix correct in the parameter regime
+  where the speedup matters most. **526 / 526 scipy-parity
+  assertions preserved** through the change.
+- **Solver kernels (`rk4_solve`, `brent`) measure Python-vs-compiled
+  dispatch cost, not numerical-method cost.** Per-call timings: `rk4`
+  0.43 µs vs scipy `solve_ivp` 1734 µs (**4000×**); `brent` 0.12 µs
+  vs scipy `brentq` 5.6 µs (**45×**). **Caveat:** scipy `solve_ivp`
+  is an adaptive RK45 with Python-level argument validation, event
+  handling, dense output, and step control — none of which Nautilus's
+  fixed-step compiled RK4 does. The fair "RK4 vs RK4" comparison
+  against a hand-written C loop called via ctypes would be much
+  closer to parity. The 4000× number is the real cost a Python user
+  pays today, but it is **not** a claim about the numerical method
+  itself.
 
 ## What Nautilus wins (and why)
 
@@ -88,13 +107,41 @@ flip to wins. See Upstream asks below.
   regardless of actual convergence. Scipy (via cephes) terminates in
   10-30 iterations for typical inputs — that 10-20× iteration-count
   gap was the entire source of the 40-100× `gamma_cdf` /
-  `student_t_cdf` slowdown. Fix: add a relative-with-floor convergence
-  check `|term| < eps * max(|acc|, 1.0)` to `gammainc_series` (cephes
-  convention — the naive `|term| < eps * |acc|` form fails exactly in
-  the large-`a` small-`x` regime where `acc ≈ 0` at the start of the
-  series), and a `|delta - 1| < eps` check on the continued-fraction
-  recurrences. 526/526 scipy-parity assertions preserved. Result:
-  **25-27× speedup** on gamma_cdf / student_t_cdf.
+  `student_t_cdf` slowdown.
+
+  **The non-obvious correctness fix — relative-with-floor termination.**
+  The naive textbook check `|term| < eps * |acc|` is *wrong* in the
+  exact regime where the speedup matters most. For
+  `gammainc_series(a, x)` with `a` large and `x` small (the slowest CF
+  regime), the partial sum `acc` starts very near zero, so `eps * |acc|`
+  is also near zero and the check never fires — the loop still runs the
+  full 200 iterations and the speedup evaporates. Cephes handles this
+  with a *floored* relative tolerance:
+
+  ```
+  abs_term = |term_next|
+  scale    = max(|acc_next|, 1.0)        // floor pins the threshold
+  converged = abs_term < eps * scale
+  ```
+
+  The floor falls back to absolute tolerance until the accumulator
+  grows past unity, then switches to relative. This is the difference
+  between "we made it faster" and "we made it faster without breaking
+  edge cases." For the continued-fraction helpers (`gammaq_cf_rec`,
+  `betacf_rec`) no floor is needed: those measure convergence on the
+  correction ratio `|delta - 1|`, which is always order-unity during
+  CF convergence by construction.
+
+  **Correctness gate.** **526 / 526 scipy-parity assertions preserved**
+  through the change, and a follow-up adversarial red-team round
+  ran 142 additional probes at **10× tighter than golden tolerance**
+  across extreme parameter regimes (`gammap(100, 1)`, `betai(0.5, 0.5,
+  0.001)`, `student_t_cdf(df=1)` Cauchy tails, etc.) — zero
+  regressions.
+
+  **Result:** **25-27× speedup** on gamma_cdf / student_t_cdf, both
+  flipping from 40-100× *slower* than scipy to **2.3× faster** at
+  large n.
 
 - **Track 3 — New bench kernels.** Added `b_rk4_decay`,
   `b_brent_cubic`, `b_compound_norm_pdf_from_primitives`. Expanded
