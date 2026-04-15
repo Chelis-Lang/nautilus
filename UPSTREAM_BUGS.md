@@ -11,7 +11,10 @@ Summary as of v0.1.4:
 |---|---|---|---|
 | 1 | Unknown-name silent compile | open | **FIXED** |
 | 2 | Shape-checker gap for literal-dim tensor params | open | open (re-verified) |
-| 3 | Tensor-on-tensor `add`/`mul` lowering | open | open (new symptom; see below) |
+| 3 | Tensor-on-tensor `add`/`mul` lowering | open | open (still blocked; see 3a/3b/3c) |
+| 3a | — emitted C was raw pointer arithmetic (original v0.1.3 symptom) | open | likely superseded by runtime path |
+| 3b | — `chelis build` requires `libchelis_runtime.a` not shipped in tarball | n/a | **NEW in v0.1.4** |
+| 3c | — main-entry C emission drops parameters / confuses function names | n/a | **NEW in v0.1.4** |
 | 4 | Nested `exp(neg(mul(x,x)))` int-temp | open | **FIXED** |
 
 Original repros below were run against `chelis v0.1.3-linux-x86_64`.
@@ -160,65 +163,186 @@ add a CLI flag (`chelis check --strict-dims`) to opt in.
 
 ---
 
-## 3. C backend emits raw pointer arithmetic for tensor-on-tensor `add`/`mul` (HIGH) — **still open, new symptom in v0.1.4**
+## 3a. C backend emits raw pointer arithmetic for tensor-on-tensor `add`/`mul` (HIGH) — original v0.1.3 symptom
 
 **Severity:** high — any Nautilus function that combines two rank-2
 tensors via `add` or `mul` fails to link as a standalone C binary even
 when the math is correct.
 
-**v0.1.4 status: NOT FIXED — different symptom, same blocker.** The
-v0.1.4 C backend now emits a `chelis_runtime.h` header and expects to
-link against `libchelis_runtime.a`, but:
+**v0.1.4 status: likely superseded.** The pointer-arithmetic
+emission path observed in v0.1.3 appears to have been rewritten in
+v0.1.4 — `chelis build` now unconditionally routes through the
+runtime path (see Bug 3b) rather than emitting inline `tensor* +
+tensor*`. We could not directly re-verify the original symptom
+against v0.1.4 because the runtime-link step fails before C
+inspection is possible, and the few emission paths we did inspect
+(via partial builds) exhibit the distinct Bug 3c symptom instead.
+Treat 3a as "probably fixed or replaced by 3b/3c" rather than
+independently confirmed.
 
-1. **`libchelis_runtime.a` is not in the v0.1.4 release tarball.**
-   Only the `chelis` binary, `README.md`, and `LICENSE` ship. Every
-   `chelis build` invocation — even for a scalar-only program — now
-   fails at the link step with
-   `error: cannot find libchelis_runtime.a; set CHELIS_RUNTIME_DIR
-   or install chelis so libchelis_runtime.a is available relative to
-   the chelis executable`. Nautilus's existing tests still pass
-   because `tests/run_numeric_tests.py` compiles the emitted C
-   manually with gcc and its own stub set, bypassing the built-in
-   link step.
-2. **`chelis_runtime.h` exposes no tensor binary-op dispatcher.**
-   Grepping for `chelis_tensor_add` / `chelis_elementwise_*` /
-   `chelis_binop_*` in the header (260 lines total) returns nothing.
-   The only tensor entry points are `chelis_alloc`,
-   `chelis_alloc_view`, `chelis_free`, `chelis_fill_f32`,
-   `chelis_scalar_tensor_from_{i64,f64}`, `chelis_tensor_to_f64`,
-   `chelis_tensor_rank/shape/numel`, and `chelis_contiguous`. There
-   is nowhere for the C backend to route a tensor-on-tensor `add`
-   even if it wanted to.
-3. **The emitted C for a tensor-on-tensor `add` is now broken in a
-   new way.** A minimal program
-   ```chelis
-   def combine(a: tensor[4, f32], b: tensor[4, f32]) -> tensor[4, f32] = add(a, b)
-   def main(x: tensor[4, f32], y: tensor[4, f32]) -> tensor[4, f32] = combine(x, y)
-   ```
-   compiles to an entry point with `n_in == 1` (not 2) and a body
-   that just returns `chelis_contiguous(inputs[0])` — no `add`
-   call, no second operand, no elementwise loop. One of the two
-   parameters has been silently dropped somewhere in main-signature
-   lowering. The function name `combine` also appears as the
-   diagnostic label for `inputs[0]`, suggesting parameter-name /
-   function-name confusion in the C backend's main-signature
-   synthesis.
+---
 
-**Downstream impact (unchanged).** All tensor-on-tensor ops in
-`Nautilus.LinAlg` (`cg_solve`, `frobenius_sq`, `frobenius_norm`,
-`la_vec_add`, `la_vec_sub`, `la_vec_saxpy`, `inv_2x2`, `inv_3x3`,
-`solve_*`, `cholesky_2x2`) remain runtime-unverified. Nautilus
-type-checks them via `src/apismoke.ch` at package build time. The
-~100 deferred scipy-parity assertions from `tests/goldens/linalg/*.json`
-stay deferred.
+## 3b. `chelis build` unconditionally requires `libchelis_runtime.a` not shipped in the release tarball (CRITICAL) — **NEW in v0.1.4**
 
-**Suggested upstream path.** Either (a) ship `libchelis_runtime.a`
-with `chelis_tensor_add` / `_sub` / `_mul` / `_div` entry points in
-the release tarball, or (b) have the C backend emit an inline
-`for (i < numel) out[i] = a[i] + b[i]` loop for rank-1 f32 tensors
-(the trivial case that unblocks `la_vec_*` and `cg_solve`). Path (b)
-is ~30 lines of backend code and unblocks ~50 of the deferred
-assertions on its own.
+**Severity:** critical — every `chelis build` invocation, including
+scalar-only programs, fails at the link step out of the box after
+downloading the v0.1.4 release tarball.
+
+**Symptom.** The v0.1.4 `chelis` binary emits `chelis_runtime.h` and
+C source on every build and then attempts to link against a runtime
+archive that the release tarball does not contain:
+
+```shell
+$ tar tzf chelis-v0.1.4-linux-x86_64.tar.gz
+chelis-v0.1.4-linux-x86_64/
+chelis-v0.1.4-linux-x86_64/README.md
+chelis-v0.1.4-linux-x86_64/LICENSE
+chelis-v0.1.4-linux-x86_64/chelis
+
+$ cat > /tmp/scalar.ch <<'EOF'
+def main() -> f32 = cast(1.5, f32)
+EOF
+$ chelis build /tmp/scalar.ch -o /tmp/out
+error: cannot find libchelis_runtime.a; set CHELIS_RUNTIME_DIR or
+install chelis so libchelis_runtime.a is available relative to the
+chelis executable
+$ ls /tmp/out
+chelis_runtime.h  scalar.c  scalar.h
+```
+
+The C emission succeeds (files are on disk), but the automatic
+link step fails because there is no `.a` to link against and no
+`CHELIS_RUNTIME_DIR` default.
+
+**Expected behavior.** Either (a) the release tarball ships
+`libchelis_runtime.a` alongside the binary, or (b) `chelis build`
+supports a `--no-link` / `--emit-c-only` mode so callers that
+compile the emitted C with their own toolchain (as Nautilus does)
+can bypass the link step cleanly.
+
+**Where it lives in chelis.** Release-packaging infrastructure
+(CI tarball assembly) plus possibly `crates/chelis-cli` build
+command orchestration.
+
+**Downstream impact.** Nautilus's `tests/run_numeric_tests.py`
+passes 526/526 only because it compiles emitted C manually with
+gcc against its own `RUNTIME_STUBS` set, bypassing the
+chelis-builtin link step. Any user who downloads v0.1.4, reads
+the README, and runs `chelis build hello.ch` will hit the link
+failure on their first program. First-run experience is broken.
+
+**Suggested fix.** Ship `libchelis_runtime.a` in the release
+tarball. The symbol surface is already defined by
+`chelis_runtime.h` (260 lines, ~60 entry points as of v0.1.4) and
+the Rust runtime crate already exists at `crates/chelis-runtime/`
+in the monorepo — this is a CI packaging task, not a code change.
+
+---
+
+## 3c. C-backend main-entry emission drops parameters / confuses function names (HIGH) — **NEW in v0.1.4**
+
+**Severity:** high — when a program's entry-point signature
+includes more than one tensor parameter, the emitted C silently
+drops all but the first and mislabels it using the name of an
+inlined helper function.
+
+**Symptom.** Minimal repro:
+
+```chelis
+def combine(a: tensor[4, f32], b: tensor[4, f32]) -> tensor[4, f32] =
+  add(a, b)
+
+def main(x: tensor[4, f32], y: tensor[4, f32]) -> tensor[4, f32] =
+  combine(x, y)
+```
+
+Emitted C entry point (`chelis v0.1.4-linux-x86_64`):
+
+```c
+void bug3f(chelis_tensor **inputs, int n_in,
+           chelis_tensor **outputs, int n_out) {
+    if (n_in != 1) {                                   // BUG: expected 2
+        fprintf(stderr, "bug3f: expected %d inputs, got %d\n", 1, n_in);
+        abort();
+    }
+    /* ... */
+    if (inputs[0] == NULL) {
+        fprintf(stderr, "bug3f: input `combine` at slot 0 is NULL\n");
+        //                                     ^^^^^^^
+        //   BUG: "combine" is the name of the HELPER function, not a parameter
+        abort();
+    }
+    if (inputs[0]->ndim != 1) { /* ... */ }
+    chelis_tensor *t0 = inputs[0];
+    outputs[0] = chelis_contiguous(t0);   // BUG: no add, no second operand
+    if (outputs[0] != t0) chelis_free(t0);
+}
+```
+
+Three things are wrong:
+
+1. `n_in == 1` instead of 2 — one of the two `main` parameters has
+   been silently dropped.
+2. The diagnostic label for `inputs[0]` is `"combine"` — the name of
+   the helper function `main` calls, not either of `main`'s two
+   actual parameter names (`x` or `y`). This suggests the emitter
+   is walking the AST of `combine`'s body for parameter names instead
+   of `main`'s signature, then stopping after the first match.
+3. The body is `chelis_contiguous(inputs[0])` — there is no `add`
+   call, no second operand, no elementwise loop. The actual
+   computation is gone.
+
+**Expected behavior.** The entry-point wrapper should have
+`n_in == 2`, slot-0 labeled `"x"`, slot-1 labeled `"y"`, and a body
+that routes both inputs through `combine` (or inlines `add(x, y)`
+explicitly with both operands).
+
+**Where it lives in chelis.** C backend, main-signature synthesis
+path that generates the `chelis_tensor **inputs` wrapper around the
+user's `main` function. Probably `crates/chelis-backend-c/src/emit.rs`
+(or wherever main-entry wrapping is emitted), in whatever loop walks
+the entry-point parameter list. A plausible root cause is that the
+loop stops at the first parameter, and the "combine" label comes
+from reusing a helper-function-name variable that should have been
+reset per-parameter.
+
+**Downstream impact.** Bug 3b prevents us from running Bug 3c
+through a full link + execution, so we cannot confirm the
+end-to-end runtime effect. But the emitted C is structurally wrong
+enough that no caller with a multi-tensor-input entry point will
+get correct results from `chelis build` in v0.1.4. The original
+Bug 3 blocker on `Nautilus.LinAlg` runtime verification is
+therefore still in place, just via a different failure mode.
+
+**Suggested fix.** Audit the main-entry wrapper emitter for two
+bugs: (a) the per-parameter loop that builds the `inputs[]`
+validation block is terminating early, and (b) the diagnostic-label
+string is being pulled from the wrong scope (the inlined helper
+function rather than the entry-point parameter list). Both are
+localized to the main-wrapping codegen and should not require
+touching the type checker or IR.
+
+---
+
+## 3 (rollup). Downstream impact and unblocking path
+
+All tensor-on-tensor ops in `Nautilus.LinAlg` (`cg_solve`,
+`frobenius_sq`, `frobenius_norm`, `la_vec_add`, `la_vec_sub`,
+`la_vec_saxpy`, `inv_2x2`, `inv_3x3`, `solve_*`, `cholesky_2x2`)
+remain runtime-unverified. Nautilus type-checks them via
+`src/apismoke.ch` at package build time. The ~100 deferred
+scipy-parity assertions from `tests/goldens/linalg/*.json` stay
+deferred until **both** Bug 3b (ship `libchelis_runtime.a`) and
+Bug 3c (fix main-entry parameter emission) land upstream.
+
+A minimal unblocking path would be: ship the runtime archive (3b),
+fix main-entry emission (3c), and expose rank-1 f32 elementwise
+`add`/`sub`/`mul`/`div` entry points in `libchelis_runtime.a`.
+That alone lights up `la_vec_*`, `cg_solve`, `frobenius_*`, and
+`Nautilus.Distance` — roughly half of the deferred assertions by
+count. Nautilus does not plan to invest further downstream effort
+trying to work around this; the fix has to come from the compiler
+and runtime.
 
 **Symptom.** The chelis v0.1.3 C backend lowers `add(t1, t2)` and
 `mul(t1, t2)` where `t1` and `t2` are tensor-typed operands as raw C
