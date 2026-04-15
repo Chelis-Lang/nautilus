@@ -100,6 +100,17 @@ SIGNATURES = [
     ("chi_squared_inv_cdf", ("double", "double"), "double"),
     ("student_t_pdf",       ("double", "double"), "double"),
     ("student_t_cdf",       ("double", "double"), "double"),
+    ("poisson_pmf",         ("double", "double"), "double"),
+    ("poisson_cdf",         ("double", "double"), "double"),
+    ("binomial_pmf",        ("double", "double", "double"), "double"),
+    ("binomial_cdf",        ("double", "double", "double"), "double"),
+    ("beta_pdf",            ("double", "double", "double"), "double"),
+    ("beta_cdf",            ("double", "double", "double"), "double"),
+    ("f_pdf",               ("double", "double", "double"), "double"),
+    ("f_cdf",               ("double", "double", "double"), "double"),
+    ("weibull_pdf",         ("double", "double", "double"), "double"),
+    ("weibull_cdf",         ("double", "double", "double"), "double"),
+    ("weibull_inv_cdf",     ("double", "double", "double"), "double"),
 ]
 
 
@@ -281,6 +292,15 @@ def int_inv_1_x2(x: f32) -> f32 = {
   x2 = mul(x, x)
   div(cast(1.0, f32), add(cast(1.0, f32), x2))
 }
+
+def p4_one(x: f32) -> f32 = cast(1.0, f32)
+def p4_x(x: f32) -> f32 = x
+def p4_x2(x: f32) -> f32 = mul(x, x)
+def p4_x3(x: f32) -> f32 = mul(mul(x, x), x)
+def p4_x4(x: f32) -> f32 = {
+  x2 = mul(x, x)
+  mul(x2, x2)
+}
 """
 
 P1_DRIVER_C = r"""
@@ -318,6 +338,10 @@ double cubic_hermite(double, double, double, double, double, double, double);
 double adaptive_simpson(double (*f)(double), double, double, double, int64_t);
 double romberg_5(double (*f)(double), double, double);
 double gauss_legendre_10(double (*f)(double), double, double);
+double gauss_hermite_10(double (*f)(double));
+double gauss_laguerre_10(double (*f)(double));
+
+double p4_one(double), p4_x(double), p4_x2(double), p4_x3(double), p4_x4(double);
 
 double opt_parab(double), opt_dparab(double), opt_ddparab(double);
 double opt_quartic(double), opt_dquartic(double), opt_ddquartic(double);
@@ -408,6 +432,17 @@ int main(int argc, char** argv) {
     if (!strcmp(c, "gl10_expneg"))   { printf("%.15g\n", gauss_legendre_10(int_exp_neg, 0.0, 1.0)); return 0; }
     if (!strcmp(c, "gl10_sin"))      { printf("%.15g\n", gauss_legendre_10(int_sin_x, 0.0, 3.141592653589793)); return 0; }
     if (!strcmp(c, "gl10_inv"))      { printf("%.15g\n", gauss_legendre_10(int_inv_1_x2, 0.0, 1.0)); return 0; }
+
+    // Gauss-Hermite
+    if (!strcmp(c, "gh_one"))  { printf("%.15g\n", gauss_hermite_10(p4_one)); return 0; }
+    if (!strcmp(c, "gh_x2"))   { printf("%.15g\n", gauss_hermite_10(p4_x2)); return 0; }
+    if (!strcmp(c, "gh_x4"))   { printf("%.15g\n", gauss_hermite_10(p4_x4)); return 0; }
+
+    // Gauss-Laguerre
+    if (!strcmp(c, "gl_one"))  { printf("%.15g\n", gauss_laguerre_10(p4_one)); return 0; }
+    if (!strcmp(c, "gl_x"))    { printf("%.15g\n", gauss_laguerre_10(p4_x));   return 0; }
+    if (!strcmp(c, "gl_x2"))   { printf("%.15g\n", gauss_laguerre_10(p4_x2));  return 0; }
+    if (!strcmp(c, "gl_x3"))   { printf("%.15g\n", gauss_laguerre_10(p4_x3));  return 0; }
 
     fprintf(stderr, "unknown case: %s\n", c);
     return 2;
@@ -553,6 +588,39 @@ def main() -> int:
     for q, y in zip(g["inputs_q"], g["inv_cdf"]):
         run(f"chi_squared_inv_cdf({q})", "chi_squared_inv_cdf", (q, p["df"]), y, g["abs"], g["rel"])
 
+    print("== Distributions: Poisson / Binomial / Beta / F / Weibull ==")
+    g = golden("distributions/discrete.json")
+    for case in g["poisson_cases"]:
+        run(f"poisson_pmf(k={case['k']},lam={case['lambda']})", "poisson_pmf",
+             (case["k"], case["lambda"]), case["pmf"], g["abs"], g["rel"])
+        run(f"poisson_cdf(k={case['k']},lam={case['lambda']})", "poisson_cdf",
+             (case["k"], case["lambda"]), case["cdf"], g["abs"], g["rel"])
+    for case in g["binomial_cases"]:
+        run(f"binom_pmf(k={case['k']},n={case['n']},p={case['p']})", "binomial_pmf",
+             (case["k"], case["n"], case["p"]), case["pmf"], g["abs"], g["rel"])
+        run(f"binom_cdf(k={case['k']},n={case['n']},p={case['p']})", "binomial_cdf",
+             (case["k"], case["n"], case["p"]), case["cdf"], g["abs"], g["rel"])
+    g = golden("distributions/continuous_p4.json")
+    for case in g["beta_cases"]:
+        run(f"beta_pdf", "beta_pdf", (case["x"], case["a"], case["b"]),
+             case["pdf"], g["abs"], g["rel"])
+        run(f"beta_cdf", "beta_cdf", (case["x"], case["a"], case["b"]),
+             case["cdf"], g["abs"], g["rel"])
+    for case in g["f_cases"]:
+        run(f"f_pdf", "f_pdf", (case["x"], case["d1"], case["d2"]),
+             case["pdf"], g["abs"], g["rel"])
+        run(f"f_cdf", "f_cdf", (case["x"], case["d1"], case["d2"]),
+             case["cdf"], g["abs"], g["rel"])
+    for case in g["weibull_cases"]:
+        run(f"weibull_pdf", "weibull_pdf", (case["x"], case["shape"], case["scale"]),
+             case["pdf"], g["abs"], g["rel"])
+        run(f"weibull_cdf", "weibull_cdf", (case["x"], case["shape"], case["scale"]),
+             case["cdf"], g["abs"], g["rel"])
+    for case in g["weibull_inv_cdf"]:
+        run(f"weibull_inv_cdf", "weibull_inv_cdf",
+             (case["q"], case["shape"], case["scale"]),
+             case["expected"], g["abs"], g["rel"])
+
     print("== Distributions: Student-t ==")
     g = golden("distributions/student_t.json")
     p = g["params"]
@@ -678,6 +746,11 @@ def main() -> int:
     # that the NULL-returning stubs can't honor. Type-level coverage via
     # `src/apismoke.ch:smoke_sde` is the honest gate; goldens stay in
     # tree for documentation + future runtime-enabled harness wiring.
+
+    print("== Integrate: Hermite + Laguerre ==")
+    g = golden("integrate/hermite_laguerre.json")
+    for case in g["cases"]:
+        p1_run(case["label"], case["label"], (), case["expected"], g["abs"], g["rel"])
 
     print("== Integrate: adaptive + romberg + gauss_legendre_10 ==")
     g = golden("integrate/adaptive.json")

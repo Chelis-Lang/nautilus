@@ -42,6 +42,7 @@ MODULES = {
     "Nautilus.Optim":         SRC / "optim.ch",
     "Nautilus.Interpolation": SRC / "interpolation.ch",
     "Nautilus.SDE":           SRC / "sde.ch",
+    "Nautilus.CurveFit":      SRC / "curvefit.ch",
 }
 
 

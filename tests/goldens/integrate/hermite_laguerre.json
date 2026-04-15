@@ -1,0 +1,41 @@
+{
+  "cases": [
+    {
+      "label": "gh_one",
+      "kind": "gh",
+      "expected": 1.7724538509055159
+    },
+    {
+      "label": "gh_x2",
+      "kind": "gh",
+      "expected": 0.8862269254527579
+    },
+    {
+      "label": "gh_x4",
+      "kind": "gh",
+      "expected": 1.329340388179137
+    },
+    {
+      "label": "gl_one",
+      "kind": "gl",
+      "expected": 1.0
+    },
+    {
+      "label": "gl_x",
+      "kind": "gl",
+      "expected": 1.0
+    },
+    {
+      "label": "gl_x2",
+      "kind": "gl",
+      "expected": 2.0
+    },
+    {
+      "label": "gl_x3",
+      "kind": "gl",
+      "expected": 6.0
+    }
+  ],
+  "abs": 1e-05,
+  "rel": 1e-05
+}

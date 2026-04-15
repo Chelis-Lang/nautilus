@@ -1,7 +1,8 @@
 module Nautilus.Integrate
 export (
   trapezoidal, simpsons, gauss_legendre_5,
-  adaptive_simpson, romberg_5, gauss_legendre_10
+  adaptive_simpson, romberg_5, gauss_legendre_10,
+  gauss_hermite_10, gauss_laguerre_10
 )
 
 def trap_rec(
@@ -120,7 +121,9 @@ def adaptive_simpson_rec(
     add(sum_lr, correction)
   }
   else {
-    half_tol = mul(half_f, tol)
+    tol_floor = cast(1.0e-7, f32)
+    raw_half_tol = mul(half_f, tol)
+    half_tol = if lt(raw_half_tol, tol_floor) then tol_floor else raw_half_tol
     depth_next = sub(depth, one_i)
     left  = adaptive_simpson_rec(f, a, m, fa, fm, flm, left_s,  half_tol, depth_next)
     right = adaptive_simpson_rec(f, m, b, fm, fb, frm, right_s, half_tol, depth_next)
@@ -129,13 +132,15 @@ def adaptive_simpson_rec(
 }
 
 def adaptive_simpson(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: int64) -> f32 = {
+  depth_cap = cast(30, int64)
+  capped_depth = if gt(max_depth, depth_cap) then depth_cap else max_depth
   fa = f(a)
   fb = f(b)
   m = mul(cast(0.5, f32), add(a, b))
   fm = f(m)
   h = sub(b, a)
   whole = int_simpson_small(h, fa, fm, fb)
-  adaptive_simpson_rec(f, a, b, fa, fb, fm, whole, tol, max_depth)
+  adaptive_simpson_rec(f, a, b, fa, fb, fm, whole, tol, capped_depth)
 }
 
 def romberg_5(f: f32 -> f32, a: f32, b: f32) -> f32 = {
@@ -203,6 +208,80 @@ def gauss_legendre_10(f: f32 -> f32, a: f32, b: f32) -> f32 = {
   sum_c = add(s9, s10)
   total = add(add(sum_a, sum_b), sum_c)
   mul(half_range, total)
+}
+
+def gauss_hermite_10(f: f32 -> f32) -> f32 = {
+  x1  = cast(-3.4361591188377376, f32)
+  x2  = cast(-2.5327316742327897, f32)
+  x3  = cast(-1.7566836492998817, f32)
+  x4  = cast(-1.0366108297895138, f32)
+  x5  = cast(-0.3429013272237046, f32)
+  x6  = cast( 0.3429013272237046, f32)
+  x7  = cast( 1.0366108297895138, f32)
+  x8  = cast( 1.7566836492998817, f32)
+  x9  = cast( 2.5327316742327897, f32)
+  x10 = cast( 3.4361591188377376, f32)
+  w1  = cast(7.6404328552326090e-6, f32)
+  w2  = cast(1.3436457467812327e-3, f32)
+  w3  = cast(3.3874394455481063e-2, f32)
+  w4  = cast(2.4013861108231468e-1, f32)
+  w5  = cast(6.1086263373532580e-1, f32)
+  w6  = cast(6.1086263373532580e-1, f32)
+  w7  = cast(2.4013861108231468e-1, f32)
+  w8  = cast(3.3874394455481063e-2, f32)
+  w9  = cast(1.3436457467812327e-3, f32)
+  w10 = cast(7.6404328552326090e-6, f32)
+  s1  = mul(w1,  f(x1))
+  s2  = mul(w2,  f(x2))
+  s3  = mul(w3,  f(x3))
+  s4  = mul(w4,  f(x4))
+  s5  = mul(w5,  f(x5))
+  s6  = mul(w6,  f(x6))
+  s7  = mul(w7,  f(x7))
+  s8  = mul(w8,  f(x8))
+  s9  = mul(w9,  f(x9))
+  s10 = mul(w10, f(x10))
+  sum_a = add(add(s1, s2), add(s3, s4))
+  sum_b = add(add(s5, s6), add(s7, s8))
+  sum_c = add(s9, s10)
+  add(add(sum_a, sum_b), sum_c)
+}
+
+def gauss_laguerre_10(f: f32 -> f32) -> f32 = {
+  x1  = cast(0.13779347054049244, f32)
+  x2  = cast(0.72945454950317055, f32)
+  x3  = cast(1.80834290174031605, f32)
+  x4  = cast(3.40143369785489951, f32)
+  x5  = cast(5.55249614006380364, f32)
+  x6  = cast(8.33015274676449671, f32)
+  x7  = cast(11.8437858379000656, f32)
+  x8  = cast(16.2792578313781021, f32)
+  x9  = cast(21.9965858119807619, f32)
+  x10 = cast(29.9206970122738917, f32)
+  w1  = cast(3.08441115765020141e-1, f32)
+  w2  = cast(4.01119929155273552e-1, f32)
+  w3  = cast(2.18068287611809422e-1, f32)
+  w4  = cast(6.20874560986777473e-2, f32)
+  w5  = cast(9.50151697518110055e-3, f32)
+  w6  = cast(7.53008388587538775e-4, f32)
+  w7  = cast(2.82592334959956577e-5, f32)
+  w8  = cast(4.24931398496268637e-7, f32)
+  w9  = cast(1.83956482397963078e-9, f32)
+  w10 = cast(9.91182721960900856e-13, f32)
+  s1  = mul(w1,  f(x1))
+  s2  = mul(w2,  f(x2))
+  s3  = mul(w3,  f(x3))
+  s4  = mul(w4,  f(x4))
+  s5  = mul(w5,  f(x5))
+  s6  = mul(w6,  f(x6))
+  s7  = mul(w7,  f(x7))
+  s8  = mul(w8,  f(x8))
+  s9  = mul(w9,  f(x9))
+  s10 = mul(w10, f(x10))
+  sum_a = add(add(s1, s2), add(s3, s4))
+  sum_b = add(add(s5, s6), add(s7, s8))
+  sum_c = add(s9, s10)
+  add(add(sum_a, sum_b), sum_c)
 }
 
 def gauss_legendre_5(f: f32 -> f32, a: f32, b: f32, n_points: int64) -> f32 = {

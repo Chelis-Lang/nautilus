@@ -9,7 +9,12 @@ export (
   gamma_cdf, chi_squared_cdf,
   gamma_inv_cdf, chi_squared_inv_cdf,
   chi_squared_sample, student_t_sample, gamma_sample,
-  student_t_cdf
+  student_t_cdf,
+  poisson_pmf, poisson_cdf,
+  binomial_pmf, binomial_cdf,
+  beta_pdf, beta_cdf,
+  f_pdf, f_cdf,
+  weibull_pdf, weibull_cdf, weibull_inv_cdf
 )
 
 def zero_f() -> f32 = cast(0.0, f32)
@@ -324,6 +329,198 @@ def betai(a: f32, b: f32, x: f32) -> f32 = {
       val = mul(front, div(cf, b))
       sub(one_f(), val)
     }
+  }
+}
+
+def is_integer_f32(x: f32) -> bool = {
+  xi = cast(cast(x, int64), f32)
+  eq(x, xi)
+}
+
+def poisson_pmf(k: f32, lambda: f32) -> f32 = {
+  if lt(lambda, zero_f()) then nan_d()
+  else if lt(k, zero_f()) then zero_f()
+  else if not(is_integer_f32(k)) then zero_f()
+  else if eq(lambda, zero_f()) then {
+    if eq(k, zero_f()) then one_f() else zero_f()
+  }
+  else {
+    lk = log(lambda)
+    k_lk = mul(k, lk)
+    lg_k1 = log_gamma(add(k, one_f()))
+    log_pmf = sub(sub(k_lk, lambda), lg_k1)
+    exp(log_pmf)
+  }
+}
+
+def poisson_cdf(k: f32, lambda: f32) -> f32 = {
+  if lt(lambda, zero_f()) then nan_d()
+  else if lt(k, zero_f()) then zero_f()
+  else if eq(lambda, zero_f()) then one_f()
+  else {
+    k_plus_one = add(k, one_f())
+    gc = gamma_cdf(lambda, k_plus_one, one_f())
+    sub(one_f(), gc)
+  }
+}
+
+def binomial_pmf(k: f32, n: f32, p: f32) -> f32 = {
+  if or(lt(k, zero_f()), gt(k, n)) then zero_f()
+  else if not(is_integer_f32(k)) then zero_f()
+  else if not(is_integer_f32(n)) then nan_d()
+  else if or(lt(p, zero_f()), gt(p, one_f())) then nan_d()
+  else if eq(p, zero_f()) then {
+    if eq(k, zero_f()) then one_f() else zero_f()
+  }
+  else if eq(p, one_f()) then {
+    if eq(k, n) then one_f() else zero_f()
+  }
+  else {
+    lg_n1 = log_gamma(add(n, one_f()))
+    lg_k1 = log_gamma(add(k, one_f()))
+    lg_nmk1 = log_gamma(add(sub(n, k), one_f()))
+    log_choose = sub(sub(lg_n1, lg_k1), lg_nmk1)
+    lp = log(p)
+    l1mp = log(sub(one_f(), p))
+    k_lp = mul(k, lp)
+    nmk_l1mp = mul(sub(n, k), l1mp)
+    log_pmf = add(add(log_choose, k_lp), nmk_l1mp)
+    exp(log_pmf)
+  }
+}
+
+def binomial_cdf(k: f32, n: f32, p: f32) -> f32 = {
+  if or(lt(p, zero_f()), gt(p, one_f())) then nan_d()
+  else if lt(k, zero_f()) then zero_f()
+  else if gte(k, n) then one_f()
+  else {
+    a = sub(n, k)
+    b = add(k, one_f())
+    betai(a, b, sub(one_f(), p))
+  }
+}
+
+def beta_pdf(x: f32, a: f32, b: f32) -> f32 = {
+  if or(lte(a, zero_f()), lte(b, zero_f())) then nan_d()
+  else if or(lt(x, zero_f()), gt(x, one_f())) then zero_f()
+  else if eq(x, zero_f()) then {
+    if gt(a, one_f()) then zero_f()
+    else if eq(a, one_f()) then b
+    else pos_inf_d()
+  }
+  else if eq(x, one_f()) then {
+    if gt(b, one_f()) then zero_f()
+    else if eq(b, one_f()) then a
+    else pos_inf_d()
+  }
+  else {
+    lx = log(x)
+    l1mx = log(sub(one_f(), x))
+    lg_a = log_gamma(a)
+    lg_b = log_gamma(b)
+    lg_ab = log_gamma(add(a, b))
+    a_m1 = sub(a, one_f())
+    b_m1 = sub(b, one_f())
+    log_pdf = add(add(sub(lg_ab, add(lg_a, lg_b)), mul(a_m1, lx)), mul(b_m1, l1mx))
+    exp(log_pdf)
+  }
+}
+
+def nan_guard_b_const(b: f32) -> f32 = b
+
+def beta_cdf(x: f32, a: f32, b: f32) -> f32 = {
+  if or(lte(a, zero_f()), lte(b, zero_f())) then nan_d()
+  else betai(a, b, x)
+}
+
+def f_pdf(x: f32, d1: f32, d2: f32) -> f32 = {
+  if lte(x, zero_f()) then zero_f()
+  else if or(lte(d1, zero_f()), lte(d2, zero_f())) then nan_d()
+  else {
+    half = half_f()
+    half_d1 = mul(half, d1)
+    half_d2 = mul(half, d2)
+    half_sum = add(half_d1, half_d2)
+    d1x = mul(d1, x)
+    denom = add(d1x, d2)
+    lnum = mul(half_d1, log(d1x))
+    lden = mul(half_d2, log(d2))
+    lbot = mul(half_sum, log(denom))
+    lg_num = log_gamma(half_sum)
+    lg_den = add(log_gamma(half_d1), log_gamma(half_d2))
+    lbeta_half = sub(lg_num, lg_den)
+    inv_x = div(one_f(), x)
+    log_inv_x = log(x)
+    log_pdf = sub(add(lbeta_half, add(add(lnum, lden), neg(log(x)))), lbot)
+    ignore_unused = log_inv_x
+    exp(log_pdf)
+  }
+}
+
+def f_cdf(x: f32, d1: f32, d2: f32) -> f32 = {
+  if lte(x, zero_f()) then zero_f()
+  else if or(lte(d1, zero_f()), lte(d2, zero_f())) then nan_d()
+  else {
+    half = half_f()
+    half_d1 = mul(half, d1)
+    half_d2 = mul(half, d2)
+    d1x = mul(d1, x)
+    denom = add(d1x, d2)
+    u = div(d1x, denom)
+    betai(half_d1, half_d2, u)
+  }
+}
+
+def weibull_pdf(x: f32, shape: f32, scale: f32) -> f32 = {
+  if lt(x, zero_f()) then zero_f()
+  else if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d()
+  else if eq(x, zero_f()) then {
+    if gt(shape, one_f()) then zero_f()
+    else if eq(shape, one_f()) then div(one_f(), scale)
+    else pos_inf_d()
+  }
+  else {
+    k = shape
+    lam = scale
+    xl = div(x, lam)
+    lxl = log(xl)
+    km1 = sub(k, one_f())
+    k_over_lam = div(k, lam)
+    lkl = log(k_over_lam)
+    xlk = exp(mul(k, lxl))
+    nxlk = neg(xlk)
+    log_pdf = add(lkl, add(mul(km1, lxl), nxlk))
+    exp(log_pdf)
+  }
+}
+
+def weibull_cdf(x: f32, shape: f32, scale: f32) -> f32 = {
+  if lt(x, zero_f()) then zero_f()
+  else if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d()
+  else {
+    xl = div(x, scale)
+    lxl = log(xl)
+    xlk = exp(mul(shape, lxl))
+    nxlk = neg(xlk)
+    e = exp(nxlk)
+    sub(one_f(), e)
+  }
+}
+
+def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 = {
+  if or(lt(q, zero_f()), gt(q, one_f())) then nan_d()
+  else if eq(q, zero_f()) then zero_f()
+  else if eq(q, one_f()) then pos_inf_d()
+  else if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d()
+  else {
+    omq = sub(one_f(), q)
+    l = log(omq)
+    nl = neg(l)
+    lnl = log(nl)
+    inv_k = div(one_f(), shape)
+    exp_arg = mul(inv_k, lnl)
+    factor = exp(exp_arg)
+    mul(scale, factor)
   }
 }
 

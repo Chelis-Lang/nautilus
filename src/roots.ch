@@ -171,7 +171,7 @@ def brent(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 = 
     else {
       prod = mul(flo, fhi)
       if gt(prod, cast(0.0, f32)) then r_nan_f32()
-      else brent_rec(f, lo, hi, lo, lo, flo, fhi, flo, true, tol, max_iters)
+      else brent_rec(f, lo, hi, hi, lo, flo, fhi, fhi, true, tol, max_iters)
     }
   }
 }
