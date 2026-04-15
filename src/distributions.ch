@@ -218,7 +218,14 @@ def gammainc_series(a: f32, x: f32, term: f32, acc: f32, ap: f32, iters: int64) 
     ap_next = add(ap, one_f())
     term_next = mul(term, div(x, ap_next))
     acc_next = add(acc, term_next)
-    gammainc_series(a, x, term_next, acc_next, ap_next, sub(iters, one_i))
+    abs_term = abs_f32_inner(term_next)
+    abs_acc = abs_f32_inner(acc_next)
+    floor = cast(1.0, f32)
+    scale = if gt(abs_acc, floor) then abs_acc else floor
+    tol = cast(1.0e-7, f32)
+    converged = lt(abs_term, mul(tol, scale))
+    if converged then acc_next
+    else gammainc_series(a, x, term_next, acc_next, ap_next, sub(iters, one_i))
   }
 }
 
@@ -252,7 +259,11 @@ def gammaq_cf_rec(a: f32, x: f32, b: f32, c: f32, d: f32, h: f32, i: int64) -> f
     d_inv = div(one_f(), d_guard)
     delta = mul(c_guard, d_inv)
     h_next = mul(h, delta)
-    gammaq_cf_rec(a, x, b_next, c_guard, d_inv, h_next, sub(i, one_i))
+    cf_tol = cast(1.0e-7, f32)
+    delta_err = abs_f32_inner(sub(delta, one_f()))
+    converged = lt(delta_err, cf_tol)
+    if converged then h_next
+    else gammaq_cf_rec(a, x, b_next, c_guard, d_inv, h_next, sub(i, one_i))
   }
 }
 
@@ -291,7 +302,11 @@ def betacf_rec(
     d2_inv = div(one_f(), d2)
     delta = mul(d2_inv, c2)
     h2 = mul(h1, delta)
-    betacf_rec(a, b, x, c2, d2_inv, h2, add(m, one_i), max_m)
+    bcf_tol = cast(1.0e-7, f32)
+    delta_err = abs_f32_inner(sub(delta, one_f()))
+    converged = lt(delta_err, bcf_tol)
+    if converged then h2
+    else betacf_rec(a, b, x, c2, d2_inv, h2, add(m, one_i), max_m)
   }
 }
 
