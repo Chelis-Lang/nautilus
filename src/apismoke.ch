@@ -1,5 +1,8 @@
 module Nautilus.Apismoke
-import Nautilus.Special (erf, erfinv, log_gamma, digamma, beta, lbeta)
+import Nautilus.Special (erf, erfinv, log_gamma, digamma, beta, lbeta,
+  trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1,
+  bessel_j0, bessel_j1, bessel_y0, bessel_y1,
+  airy_ai, airy_bi, ellipk, ellipe)
 import Nautilus.Distributions (
   normal_pdf, normal_cdf, normal_inv_cdf,
   uniform_pdf, uniform_cdf, uniform_inv_cdf,
@@ -79,7 +82,24 @@ def smoke_special() -> f32 = {
   dg = digamma(cast(3.0, f32))
   b  = beta(cast(2.0, f32), cast(3.0, f32))
   lb = lbeta(cast(2.0, f32), cast(3.0, f32))
-  add(add(add(add(add(e, ei), lg), dg), b), lb)
+  tg = trigamma(cast(2.0, f32))
+  bi0 = bessel_i0(cast(1.0, f32))
+  bi1 = bessel_i1(cast(1.0, f32))
+  bk0 = bessel_k0(cast(1.0, f32))
+  bk1 = bessel_k1(cast(1.0, f32))
+  bj0 = bessel_j0(cast(1.0, f32))
+  bj1 = bessel_j1(cast(1.0, f32))
+  by0 = bessel_y0(cast(1.0, f32))
+  by1 = bessel_y1(cast(1.0, f32))
+  aai = airy_ai(cast(1.0, f32))
+  abi = airy_bi(cast(1.0, f32))
+  ek = ellipk(cast(0.5, f32))
+  ee = ellipe(cast(0.5, f32))
+  s0 = add(add(add(add(add(e, ei), lg), dg), b), lb)
+  s1 = add(add(add(add(tg, bi0), bi1), bk0), bk1)
+  s2 = add(add(add(add(bj0, bj1), by0), by1), aai)
+  s3 = add(add(abi, ek), ee)
+  add(add(add(s0, s1), s2), s3)
 }
 
 def smoke_distributions() -> f32 = {

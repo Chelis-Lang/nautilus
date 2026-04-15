@@ -26,6 +26,19 @@ TOL = {
     "special/log_gamma":   {"abs": 1.0e-9, "rel": 1.0e-9},
     "special/digamma":     {"abs": 1.0e-7, "rel": 1.0e-7},
     "special/beta":        {"abs": 1.0e-9, "rel": 1.0e-9},
+    "special/trigamma":    {"abs": 1.0e-6, "rel": 1.0e-6},
+    "special/bessel_i0":   {"abs": 1.0e-5, "rel": 1.0e-5},
+    "special/bessel_i1":   {"abs": 1.0e-5, "rel": 1.0e-5},
+    "special/bessel_k0":   {"abs": 1.0e-5, "rel": 1.0e-5},
+    "special/bessel_k1":   {"abs": 1.0e-5, "rel": 1.0e-5},
+    "special/bessel_j0":   {"abs": 1.0e-5, "rel": 1.0e-5},
+    "special/bessel_j1":   {"abs": 1.0e-5, "rel": 1.0e-5},
+    "special/bessel_y0":   {"abs": 1.0e-5, "rel": 1.0e-5},
+    "special/bessel_y1":   {"abs": 5.0e-5, "rel": 5.0e-5},
+    "special/airy_ai":     {"abs": 1.0e-5, "rel": 1.0e-5},
+    "special/airy_bi":     {"abs": 1.0e-5, "rel": 1.0e-5},
+    "special/ellipk":      {"abs": 1.0e-5, "rel": 1.0e-5},
+    "special/ellipe":      {"abs": 1.0e-5, "rel": 1.0e-5},
     "distributions/normal":      {"abs": 2.0e-7, "rel": 2.0e-7},
     "distributions/uniform":     {"abs": 1.0e-9, "rel": 1.0e-9},
     "distributions/exponential": {"abs": 1.0e-7, "rel": 1.0e-7},
@@ -93,6 +106,81 @@ def goldens_special() -> dict[str, dict]:
         "inputs": [list(p) for p in beta_pairs],
         "outputs": [float(sp_special.beta(a, b)) for (a, b) in beta_pairs],
         **TOL["special/beta"],
+    }
+
+    xs_trigamma = [0.5, 1.0, 1.5, 2.0, 3.0, 5.0, 8.0, 15.0]
+    goldens["special/trigamma.json"] = {
+        "inputs": xs_trigamma,
+        "outputs": [float(sp_special.polygamma(1, x)) for x in xs_trigamma],
+        **TOL["special/trigamma"],
+    }
+
+    xs_ik = [0.1, 0.5, 1.0, 2.0, 3.5, 4.0, 5.0, 8.0, 15.0]
+    goldens["special/bessel_i0.json"] = {
+        "inputs": xs_ik,
+        "outputs": [float(sp_special.i0(x)) for x in xs_ik],
+        **TOL["special/bessel_i0"],
+    }
+    goldens["special/bessel_i1.json"] = {
+        "inputs": xs_ik,
+        "outputs": [float(sp_special.i1(x)) for x in xs_ik],
+        **TOL["special/bessel_i1"],
+    }
+    goldens["special/bessel_k0.json"] = {
+        "inputs": xs_ik,
+        "outputs": [float(sp_special.k0(x)) for x in xs_ik],
+        **TOL["special/bessel_k0"],
+    }
+    goldens["special/bessel_k1.json"] = {
+        "inputs": xs_ik,
+        "outputs": [float(sp_special.k1(x)) for x in xs_ik],
+        **TOL["special/bessel_k1"],
+    }
+
+    xs_jy = [0.1, 1.0, 3.0, 5.0, 7.0, 8.5, 12.0, 20.0]
+    goldens["special/bessel_j0.json"] = {
+        "inputs": xs_jy,
+        "outputs": [float(sp_special.j0(x)) for x in xs_jy],
+        **TOL["special/bessel_j0"],
+    }
+    goldens["special/bessel_j1.json"] = {
+        "inputs": xs_jy,
+        "outputs": [float(sp_special.j1(x)) for x in xs_jy],
+        **TOL["special/bessel_j1"],
+    }
+    goldens["special/bessel_y0.json"] = {
+        "inputs": xs_jy,
+        "outputs": [float(sp_special.y0(x)) for x in xs_jy],
+        **TOL["special/bessel_y0"],
+    }
+    goldens["special/bessel_y1.json"] = {
+        "inputs": xs_jy,
+        "outputs": [float(sp_special.y1(x)) for x in xs_jy],
+        **TOL["special/bessel_y1"],
+    }
+
+    xs_airy = [-3.0, -1.5, -0.5, 0.0, 0.5, 1.5, 3.0, 5.0]
+    goldens["special/airy_ai.json"] = {
+        "inputs": xs_airy,
+        "outputs": [float(sp_special.airy(x)[0]) for x in xs_airy],
+        **TOL["special/airy_ai"],
+    }
+    goldens["special/airy_bi.json"] = {
+        "inputs": xs_airy,
+        "outputs": [float(sp_special.airy(x)[2]) for x in xs_airy],
+        **TOL["special/airy_bi"],
+    }
+
+    ms = [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99]
+    goldens["special/ellipk.json"] = {
+        "inputs": ms,
+        "outputs": [float(sp_special.ellipk(m)) for m in ms],
+        **TOL["special/ellipk"],
+    }
+    goldens["special/ellipe.json"] = {
+        "inputs": ms,
+        "outputs": [float(sp_special.ellipe(m)) for m in ms],
+        **TOL["special/ellipe"],
     }
     return goldens
 

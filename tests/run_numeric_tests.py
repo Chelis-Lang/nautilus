@@ -80,6 +80,19 @@ SIGNATURES = [
     ("digamma",    ("double",), "double"),
     ("beta",       ("double", "double"), "double"),
     ("lbeta",      ("double", "double"), "double"),
+    ("trigamma",   ("double",), "double"),
+    ("bessel_i0",  ("double",), "double"),
+    ("bessel_i1",  ("double",), "double"),
+    ("bessel_k0",  ("double",), "double"),
+    ("bessel_k1",  ("double",), "double"),
+    ("bessel_j0",  ("double",), "double"),
+    ("bessel_j1",  ("double",), "double"),
+    ("bessel_y0",  ("double",), "double"),
+    ("bessel_y1",  ("double",), "double"),
+    ("airy_ai",    ("double",), "double"),
+    ("airy_bi",    ("double",), "double"),
+    ("ellipk",     ("double",), "double"),
+    ("ellipe",     ("double",), "double"),
     # distributions
     ("normal_pdf",        ("double", "double", "double"), "double"),
     ("normal_cdf",        ("double", "double", "double"), "double"),
@@ -528,6 +541,12 @@ def main() -> int:
     g = golden("special/beta.json")
     for (a, b), y in zip(g["inputs"], g["outputs"]):
         run(f"beta({a},{b})", "beta", (a, b), y, g["abs"], g["rel"])
+    for fn in ("trigamma", "bessel_i0", "bessel_i1", "bessel_k0", "bessel_k1",
+               "bessel_j0", "bessel_j1", "bessel_y0", "bessel_y1",
+               "airy_ai", "airy_bi", "ellipk", "ellipe"):
+        g = golden(f"special/{fn}.json")
+        for x, y in zip(g["inputs"], g["outputs"]):
+            run(f"{fn}({x})", fn, (x,), y, g["abs"], g["rel"])
 
     print("== Distributions: Normal ==")
     g = golden("distributions/normal.json")
