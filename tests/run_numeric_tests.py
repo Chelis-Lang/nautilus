@@ -518,6 +518,18 @@ chelis_tensor* cg_solve(chelis_tensor* a, chelis_tensor* b, chelis_tensor* x0,
 /* eig_2x2_real: 2x2 matrix -> chelis_tuple* of two f32 eigenvalues */
 chelis_tuple* eig_2x2_real(chelis_tensor* a);
 
+/* distance: mahalanobis */
+double mahalanobis_squared(chelis_tensor* a, chelis_tensor* b, chelis_tensor* cov_inv);
+double mahalanobis(chelis_tensor* a, chelis_tensor* b, chelis_tensor* cov_inv);
+
+/* interpolation */
+double linear_interp_uniform(chelis_tensor* ys, double x_min, double x_max, double x_query);
+double linear_interp_sorted(chelis_tensor* xs, chelis_tensor* ys, double x_query);
+
+/* curvefit test wrappers */
+double test_lm_linear(chelis_tensor* xs, chelis_tensor* ys, double theta0);
+double test_lm_exp(chelis_tensor* xs, chelis_tensor* ys, double theta0);
+
 /* SDE: scalar + tensor -> scalar (test wrappers defined in harness source) */
 double test_em_decay_s1(double y0, double t0, double t1, chelis_tensor* noise);
 double test_em_decay_s01(double y0, double t0, double t1, chelis_tensor* noise);
@@ -980,6 +992,58 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    /* mahalanobis_squared: N, then N + N + N*N elements -> scalar */
+    if (!strcmp(fn, "mahalanobis_squared")) {
+        int n = (int)a[0];
+        chelis_tensor* va = make_vec(n, a+1);
+        chelis_tensor* vb = make_vec(n, a+1+n);
+        chelis_tensor* ci = make_mat(n, n, a+1+2*n);
+        print_scalar(mahalanobis_squared(va, vb, ci));
+        return 0;
+    }
+    if (!strcmp(fn, "mahalanobis")) {
+        int n = (int)a[0];
+        chelis_tensor* va = make_vec(n, a+1);
+        chelis_tensor* vb = make_vec(n, a+1+n);
+        chelis_tensor* ci = make_mat(n, n, a+1+2*n);
+        print_scalar(mahalanobis(va, vb, ci));
+        return 0;
+    }
+    /* linear_interp_uniform: N, x_min, x_max, x_query, then N ys -> scalar */
+    if (!strcmp(fn, "linear_interp_uniform")) {
+        int n = (int)a[0];
+        double x_min = a[1], x_max = a[2], x_query = a[3];
+        chelis_tensor* ys = make_vec(n, a+4);
+        print_scalar(linear_interp_uniform(ys, x_min, x_max, x_query));
+        return 0;
+    }
+    /* linear_interp_sorted: N, x_query, then N xs + N ys -> scalar */
+    if (!strcmp(fn, "linear_interp_sorted")) {
+        int n = (int)a[0];
+        double x_query = a[1];
+        chelis_tensor* xs = make_vec(n, a+2);
+        chelis_tensor* ys = make_vec(n, a+2+n);
+        print_scalar(linear_interp_sorted(xs, ys, x_query));
+        return 0;
+    }
+    /* test_lm_linear: N, theta0, then N xs + N ys -> scalar (fitted theta) */
+    if (!strcmp(fn, "test_lm_linear")) {
+        int n = (int)a[0];
+        double theta0 = a[1];
+        chelis_tensor* xs = make_vec(n, a+2);
+        chelis_tensor* ys = make_vec(n, a+2+n);
+        print_scalar(test_lm_linear(xs, ys, theta0));
+        return 0;
+    }
+    if (!strcmp(fn, "test_lm_exp")) {
+        int n = (int)a[0];
+        double theta0 = a[1];
+        chelis_tensor* xs = make_vec(n, a+2);
+        chelis_tensor* ys = make_vec(n, a+2+n);
+        print_scalar(test_lm_exp(xs, ys, theta0));
+        return 0;
+    }
+
     fprintf(stderr, "unknown function: %s\n", fn);
     return 2;
 }
@@ -1021,6 +1085,25 @@ def test_em_decay_s01[n](y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f3
 
 def test_milstein_gbm[n](y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32 =
   milstein_fixed(sde_test_drift_gbm, sde_test_diff_gbm, sde_test_ddiff_gbm, y0, t0, t1, noise)
+
+def cf_test_model(x: f32, theta: f32) -> f32 = mul(theta, x)
+def cf_test_dmodel(x: f32, theta: f32) -> f32 = x
+
+def test_lm_linear[n](xs: tensor[n, f32], ys: tensor[n, f32], theta0: f32) -> f32 =
+  lm_scalar_1param(cf_test_model, cf_test_dmodel, xs, ys, theta0, cast(0.01, f32), cast(1.0e-8, f32), cast(100, int64))
+
+def cf_test_exp_model(x: f32, theta: f32) -> f32 = {
+  nt = neg(mul(theta, x))
+  exp(nt)
+}
+def cf_test_exp_dmodel(x: f32, theta: f32) -> f32 = {
+  nt = neg(mul(theta, x))
+  e = exp(nt)
+  mul(neg(x), e)
+}
+
+def test_lm_exp[n](xs: tensor[n, f32], ys: tensor[n, f32], theta0: f32) -> f32 =
+  lm_scalar_1param(cf_test_exp_model, cf_test_exp_dmodel, xs, ys, theta0, cast(0.01, f32), cast(1.0e-6, f32), cast(200, int64))
 """
 
 
@@ -1028,7 +1111,7 @@ def build_linalg_binary() -> Path:
     """Build a binary for tensor-path linalg + stats + distance + SDE functions."""
     bare = "\n".join(
         strip_module((SRC / f).read_text())
-        for f in ("special.ch", "distributions.ch", "linalg.ch", "stats.ch", "distance.ch", "sde.ch")
+        for f in ("special.ch", "distributions.ch", "linalg.ch", "stats.ch", "distance.ch", "sde.ch", "interpolation.ch", "curvefit.ch")
     ) + SDE_TEST_HELPERS_CH + "\ndef main() -> f32 = cast(0.0, f32)\n"
     bare = _dedup_defs(bare)
     workdir = Path(tempfile.mkdtemp(prefix="nautilus-la-"))
@@ -1658,6 +1741,61 @@ def main() -> int:
     # Actually: t/2=2, disc = 4-3 = 1, sqrt=1, so lam1=3, lam2=1
     la_run_vec("eig_2x2_real([[1,0],[0,3]])", "eig_2x2_real",
                [1.0, 0.0, 0.0, 3.0], [3.0, 1.0], 1e-5, 1e-5)
+
+    # --- Mahalanobis distance ---
+    print("== Distance: mahalanobis ==")
+    # a=[1,0], b=[0,1], cov_inv=I_2x2 → mahalanobis_squared = |a-b|^2 = 2, mahalanobis = sqrt(2)
+    import math as _math
+    cov_inv_id = [1.0, 0.0, 0.0, 1.0]
+    la_run_scalar("mahalanobis_sq(id)", "mahalanobis_squared",
+                  [2, 1.0, 0.0, 0.0, 1.0] + cov_inv_id, 2.0, 1e-5, 1e-5)
+    la_run_scalar("mahalanobis(id)", "mahalanobis",
+                  [2, 1.0, 0.0, 0.0, 1.0] + cov_inv_id, _math.sqrt(2.0), 1e-5, 1e-5)
+    # Non-identity: cov_inv = [[2, 0], [0, 0.5]], a=[3,1], b=[1,1]
+    # diff=[2,0], d^T cov_inv d = 2*4 + 0.5*0 = 8
+    la_run_scalar("mahalanobis_sq(diag)", "mahalanobis_squared",
+                  [2, 3.0, 1.0, 1.0, 1.0, 2.0, 0.0, 0.0, 0.5], 8.0, 1e-5, 1e-5)
+    la_run_scalar("mahalanobis(diag)", "mahalanobis",
+                  [2, 3.0, 1.0, 1.0, 1.0, 2.0, 0.0, 0.0, 0.5], _math.sqrt(8.0), 1e-5, 1e-5)
+
+    # --- Interpolation ---
+    print("== Interpolation: linear_interp ==")
+    # uniform grid: ys=[0, 1, 4, 9] on x in [0, 3] (values are x^2 at 0,1,2,3)
+    # query x=1.5 → between ys[1]=1 and ys[2]=4, frac=0.5 → 2.5
+    la_run_scalar("linear_interp_uniform(1.5)", "linear_interp_uniform",
+                  [4, 0.0, 3.0, 1.5, 0.0, 1.0, 4.0, 9.0], 2.5, 1e-5, 1e-5)
+    # query x=0.0 (left edge) → 0.0
+    la_run_scalar("linear_interp_uniform(0.0)", "linear_interp_uniform",
+                  [4, 0.0, 3.0, 0.0, 0.0, 1.0, 4.0, 9.0], 0.0, 1e-5, 1e-5)
+    # query x=3.0 (right edge) → 9.0
+    la_run_scalar("linear_interp_uniform(3.0)", "linear_interp_uniform",
+                  [4, 0.0, 3.0, 3.0, 0.0, 1.0, 4.0, 9.0], 9.0, 1e-5, 1e-5)
+    # query x=2.25 → between ys[2]=4 and ys[3]=9, frac=0.25 → 4 + 0.25*5 = 5.25
+    la_run_scalar("linear_interp_uniform(2.25)", "linear_interp_uniform",
+                  [4, 0.0, 3.0, 2.25, 0.0, 1.0, 4.0, 9.0], 5.25, 1e-5, 1e-5)
+
+    # sorted grid: xs=[1, 2, 4, 8], ys=[10, 20, 40, 80] (linear y=10*x)
+    # query x=3 → between (2,20) and (4,40), frac=(3-2)/(4-2)=0.5 → 30
+    la_run_scalar("linear_interp_sorted(3)", "linear_interp_sorted",
+                  [4, 3.0, 1.0, 2.0, 4.0, 8.0, 10.0, 20.0, 40.0, 80.0], 30.0, 1e-5, 1e-5)
+    # query x=1 (left edge) → 10
+    la_run_scalar("linear_interp_sorted(1)", "linear_interp_sorted",
+                  [4, 1.0, 1.0, 2.0, 4.0, 8.0, 10.0, 20.0, 40.0, 80.0], 10.0, 1e-5, 1e-5)
+    # query x=6 → between (4,40) and (8,80), frac=(6-4)/(8-4)=0.5 → 60
+    la_run_scalar("linear_interp_sorted(6)", "linear_interp_sorted",
+                  [4, 6.0, 1.0, 2.0, 4.0, 8.0, 10.0, 20.0, 40.0, 80.0], 60.0, 1e-5, 1e-5)
+
+    # --- CurveFit ---
+    print("== CurveFit: lm_scalar_1param ==")
+    # Fit y = theta * x. Data: xs=[1,2,3,4], ys=[2,4,6,8]. True theta = 2.0.
+    la_run_scalar("lm_linear(theta=2)", "test_lm_linear",
+                  [4, 0.5, 1.0, 2.0, 3.0, 4.0, 2.0, 4.0, 6.0, 8.0], 2.0, 1e-4, 1e-4)
+    # Fit y = exp(-theta*x). Data: xs=[0,1,2,3], ys=[1.0, e^-0.5, e^-1, e^-1.5].
+    # True theta = 0.5.
+    import math as _m
+    exp_ys = [1.0, _m.exp(-0.5), _m.exp(-1.0), _m.exp(-1.5)]
+    la_run_scalar("lm_exp(theta=0.5)", "test_lm_exp",
+                  [4, 1.0, 0.0, 1.0, 2.0, 3.0] + exp_ys, 0.5, 1e-3, 1e-3)
 
     print(f"\n{total - fails} / {total} numerical assertions passed")
     return 1 if fails else 0
