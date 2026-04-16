@@ -515,11 +515,21 @@ double min_vec(chelis_tensor* v);
 double max_vec(chelis_tensor* v);
 double range_vec(chelis_tensor* v);
 
+/* stats: two-tensor-input, scalar output */
+double covariance_scalar(chelis_tensor* a, chelis_tensor* b, int64_t ddof);
+double correlation_scalar(chelis_tensor* a, chelis_tensor* b);
+
+/* stats: tensor + scalar -> scalar */
+double quantile_vec(chelis_tensor* v, double q);
+double percentile_vec(chelis_tensor* v, double p);
+double trimmed_mean_vec(chelis_tensor* v, double proportion);
+
 /* distance: two-tensor-input, scalar output */
 double squared_euclidean(chelis_tensor* a, chelis_tensor* b);
 double euclidean(chelis_tensor* a, chelis_tensor* b);
 double manhattan(chelis_tensor* a, chelis_tensor* b);
 double chebyshev(chelis_tensor* a, chelis_tensor* b);
+double cosine_similarity(chelis_tensor* a, chelis_tensor* b);
 double cosine_distance(chelis_tensor* a, chelis_tensor* b);
 
 static chelis_tensor* make_vec(int n, double* vals) {
@@ -776,6 +786,54 @@ int main(int argc, char** argv) {
         chelis_tensor* va = make_vec(n, a+1);
         chelis_tensor* vb = make_vec(n, a+1+n);
         print_scalar(cosine_distance(va, vb));
+        return 0;
+    }
+    if (!strcmp(fn, "cosine_similarity")) {
+        int n = (int)a[0];
+        chelis_tensor* va = make_vec(n, a+1);
+        chelis_tensor* vb = make_vec(n, a+1+n);
+        print_scalar(cosine_similarity(va, vb));
+        return 0;
+    }
+    /* quantile_vec: N, q, then N elements -> scalar */
+    if (!strcmp(fn, "quantile_vec")) {
+        int n = (int)a[0];
+        double q = a[1];
+        chelis_tensor* v = make_vec(n, a+2);
+        print_scalar(quantile_vec(v, q));
+        return 0;
+    }
+    /* percentile_vec: N, p, then N elements -> scalar */
+    if (!strcmp(fn, "percentile_vec")) {
+        int n = (int)a[0];
+        double p = a[1];
+        chelis_tensor* v = make_vec(n, a+2);
+        print_scalar(percentile_vec(v, p));
+        return 0;
+    }
+    /* trimmed_mean_vec: N, proportion, then N elements -> scalar */
+    if (!strcmp(fn, "trimmed_mean_vec")) {
+        int n = (int)a[0];
+        double prop = a[1];
+        chelis_tensor* v = make_vec(n, a+2);
+        print_scalar(trimmed_mean_vec(v, prop));
+        return 0;
+    }
+    /* covariance_scalar: N, ddof, then 2*N elements -> scalar */
+    if (!strcmp(fn, "covariance_scalar")) {
+        int n = (int)a[0];
+        int64_t ddof = (int64_t)a[1];
+        chelis_tensor* va = make_vec(n, a+2);
+        chelis_tensor* vb = make_vec(n, a+2+n);
+        print_scalar(covariance_scalar(va, vb, ddof));
+        return 0;
+    }
+    /* correlation_scalar: N, then 2*N elements -> scalar */
+    if (!strcmp(fn, "correlation_scalar")) {
+        int n = (int)a[0];
+        chelis_tensor* va = make_vec(n, a+1);
+        chelis_tensor* vb = make_vec(n, a+1+n);
+        print_scalar(correlation_scalar(va, vb));
         return 0;
     }
 
@@ -1305,6 +1363,19 @@ def main() -> int:
     la_run_scalar("skewness_vec", "skewness_vec", [n] + v, g["skew"], atol_s, rtol_s)
     la_run_scalar("kurtosis_vec", "kurtosis_vec", [n] + v, g["kurtosis"], atol_s, rtol_s)
     la_run_scalar("median_vec", "median_vec", [n] + v, g["median"], atol_s, rtol_s)
+    la_run_scalar("min_vec", "min_vec", [n] + v, g["min"], atol_s, rtol_s)
+    la_run_scalar("max_vec", "max_vec", [n] + v, g["max"], atol_s, rtol_s)
+    la_run_scalar("range_vec", "range_vec", [n] + v, g["range"], atol_s, rtol_s)
+    la_run_scalar("quantile_vec(0.25)", "quantile_vec", [n, 0.25] + v, g["quantile_25"], atol_s, rtol_s)
+    la_run_scalar("quantile_vec(0.50)", "quantile_vec", [n, 0.50] + v, g["quantile_50"], atol_s, rtol_s)
+    la_run_scalar("quantile_vec(0.75)", "quantile_vec", [n, 0.75] + v, g["quantile_75"], atol_s, rtol_s)
+    la_run_scalar("percentile_vec(10)", "percentile_vec", [n, 10.0] + v, g["percentile_10"], atol_s, rtol_s)
+    la_run_scalar("percentile_vec(90)", "percentile_vec", [n, 90.0] + v, g["percentile_90"], atol_s, rtol_s)
+    la_run_scalar("trimmed_mean_vec(0.1)", "trimmed_mean_vec", [n, 0.1] + v, g["trimmed_mean_10"], atol_s, rtol_s)
+    w = g["w"]
+    la_run_scalar("covariance_scalar(ddof=0)", "covariance_scalar", [n, 0] + v + w, g["cov_ddof0"], atol_s, rtol_s)
+    la_run_scalar("covariance_scalar(ddof=1)", "covariance_scalar", [n, 1] + v + w, g["cov_ddof1"], atol_s, rtol_s)
+    la_run_scalar("correlation_scalar", "correlation_scalar", [n] + v + w, g["correlation"], atol_s, rtol_s)
 
     # --- Distance tensor-path tests ---
     print("== Distance ==")
@@ -1317,6 +1388,7 @@ def main() -> int:
     la_run_scalar("euclidean", "euclidean", [nd] + a_vec + b_vec, g["euclidean"], atol_d, rtol_d)
     la_run_scalar("manhattan", "manhattan", [nd] + a_vec + b_vec, g["manhattan"], atol_d, rtol_d)
     la_run_scalar("chebyshev", "chebyshev", [nd] + a_vec + b_vec, g["chebyshev"], atol_d, rtol_d)
+    la_run_scalar("cosine_similarity", "cosine_similarity", [nd] + a_vec + b_vec, g["cosine_similarity"], atol_d, rtol_d)
     la_run_scalar("cosine_distance", "cosine_distance", [nd] + a_vec + b_vec, g["cosine_distance"], atol_d, rtol_d)
 
     print(f"\n{total - fails} / {total} numerical assertions passed")
