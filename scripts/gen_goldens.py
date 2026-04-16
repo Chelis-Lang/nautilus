@@ -770,7 +770,25 @@ def check_goldens() -> int:
                           "cases", "rk4_cases", "euler_cases",
                           "poisson_cases", "binomial_cases",
                           "beta_cases", "f_cases", "weibull_cases", "weibull_inv_cdf"):
-                    if existing.get(k) != v:
+                    ev = existing.get(k)
+                    if ev is None or type(ev) != type(v):
+                        print(f"DRIFT {rel}:{k} (structure changed)")
+                        drift += 1
+                    elif isinstance(v, list) and len(v) == len(ev):
+                        for fi, ei in zip(v, ev):
+                            if isinstance(fi, dict) and isinstance(ei, dict):
+                                for dk in fi:
+                                    fv, efv = fi.get(dk), ei.get(dk)
+                                    if isinstance(fv, float) and isinstance(efv, float):
+                                        if not check_close(fv, efv, tol_abs, tol_rel):
+                                            print(f"DRIFT {rel}:{k}.{dk} have={efv} fresh={fv}")
+                                            drift += 1
+                                            break
+                                    elif fv != efv:
+                                        print(f"DRIFT {rel}:{k}.{dk} (key changed)")
+                                        drift += 1
+                                        break
+                    elif ev != v:
                         print(f"DRIFT {rel}:{k} (inputs changed)")
                         drift += 1
                     continue

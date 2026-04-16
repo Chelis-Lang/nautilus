@@ -49,7 +49,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install scipy + numpy
-        run: pip install --no-cache-dir 'numpy>=1.26' 'scipy>=1.11'
+        run: pip install --no-cache-dir 'numpy>=1.26' 'scipy>=1.14'
 
       - name: Static API cross-checks
         run: python tests/run_static_checks.py
