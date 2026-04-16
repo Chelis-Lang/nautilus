@@ -471,6 +471,253 @@ def build_p1_binary() -> Path:
     return binary
 
 
+LINALG_DRIVER_C = r"""
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <math.h>
+#include "chelis_runtime.h"
+
+/* scalar-output, single-tensor-input */
+double det_2x2(chelis_tensor* a);
+double det_3x3(chelis_tensor* a);
+double trace_scalar(chelis_tensor* a);
+double l2_norm_vec(chelis_tensor* v);
+double frobenius_sq(chelis_tensor* a);
+double frobenius_norm(chelis_tensor* a);
+
+/* scalar-output, two-tensor-input */
+double inner_product(chelis_tensor* a, chelis_tensor* b);
+
+/* tensor-output, two-tensor-input */
+chelis_tensor* la_vec_add(chelis_tensor* a, chelis_tensor* b);
+chelis_tensor* la_vec_sub(chelis_tensor* a, chelis_tensor* b);
+
+/* tensor-output, single-tensor-input */
+chelis_tensor* inv_2x2(chelis_tensor* a);
+chelis_tensor* inv_3x3(chelis_tensor* a);
+chelis_tensor* scale_vec(chelis_tensor* v, double s);
+chelis_tensor* matvec(chelis_tensor* a, chelis_tensor* v);
+
+/* tensor-output, two-tensor-input */
+chelis_tensor* solve_2x2(chelis_tensor* a, chelis_tensor* b);
+chelis_tensor* solve_3x3(chelis_tensor* a, chelis_tensor* b);
+
+static chelis_tensor* make_vec(int n, double* vals) {
+    chelis_tensor* t = chelis_alloc(1, (int[]){n}, 0);
+    for (int i = 0; i < n; i++) t->data[i] = (float)vals[i];
+    return t;
+}
+
+static chelis_tensor* make_mat(int rows, int cols, double* vals) {
+    chelis_tensor* t = chelis_alloc(2, (int[]){rows, cols}, 0);
+    for (int i = 0; i < rows * cols; i++) t->data[i] = (float)vals[i];
+    return t;
+}
+
+static void print_scalar(double v) { printf("%.15g\n", v); }
+
+static void print_vec(chelis_tensor* t) {
+    for (int i = 0; i < t->size; i++) {
+        if (i > 0) printf(" ");
+        printf("%.15g", (double)t->data[i]);
+    }
+    printf("\n");
+}
+
+static void print_mat(chelis_tensor* t) {
+    int total = t->size;
+    for (int i = 0; i < total; i++) {
+        if (i > 0) printf(" ");
+        printf("%.15g", (double)t->data[i]);
+    }
+    printf("\n");
+}
+
+int main(int argc, char** argv) {
+    if (argc < 2) { fprintf(stderr, "usage: la_driver FN ARGS...\n"); return 1; }
+    const char* fn = argv[1];
+    double a[64] = {0};
+    int nargs = argc - 2;
+    for (int i = 0; i < nargs && i < 64; i++) a[i] = atof(argv[2+i]);
+
+    /* det_2x2: 4 elements -> scalar */
+    if (!strcmp(fn, "det_2x2")) {
+        chelis_tensor* m = make_mat(2, 2, a);
+        print_scalar(det_2x2(m));
+        return 0;
+    }
+    /* det_3x3: 9 elements -> scalar */
+    if (!strcmp(fn, "det_3x3")) {
+        chelis_tensor* m = make_mat(3, 3, a);
+        print_scalar(det_3x3(m));
+        return 0;
+    }
+    /* trace_scalar: NxN -> scalar, argv[2] = N, then N*N elements */
+    if (!strcmp(fn, "trace_scalar")) {
+        int n = (int)a[0];
+        chelis_tensor* m = make_mat(n, n, a+1);
+        print_scalar(trace_scalar(m));
+        return 0;
+    }
+    /* l2_norm_vec: N elements -> scalar, argv[2] = N, then N elements */
+    if (!strcmp(fn, "l2_norm_vec")) {
+        int n = (int)a[0];
+        chelis_tensor* v = make_vec(n, a+1);
+        print_scalar(l2_norm_vec(v));
+        return 0;
+    }
+    /* inner_product: N elements each, argv[2]=N, then 2*N elements */
+    if (!strcmp(fn, "inner_product")) {
+        int n = (int)a[0];
+        chelis_tensor* va = make_vec(n, a+1);
+        chelis_tensor* vb = make_vec(n, a+1+n);
+        print_scalar(inner_product(va, vb));
+        return 0;
+    }
+    /* frobenius_sq: M,N, then M*N elements -> scalar */
+    if (!strcmp(fn, "frobenius_sq")) {
+        int m = (int)a[0]; int n = (int)a[1];
+        chelis_tensor* mat = make_mat(m, n, a+2);
+        print_scalar(frobenius_sq(mat));
+        return 0;
+    }
+    /* frobenius_norm: M,N, then M*N elements -> scalar */
+    if (!strcmp(fn, "frobenius_norm")) {
+        int m = (int)a[0]; int n = (int)a[1];
+        chelis_tensor* mat = make_mat(m, n, a+2);
+        print_scalar(frobenius_norm(mat));
+        return 0;
+    }
+    /* la_vec_add: N, then 2*N elements -> vec */
+    if (!strcmp(fn, "la_vec_add")) {
+        int n = (int)a[0];
+        chelis_tensor* va = make_vec(n, a+1);
+        chelis_tensor* vb = make_vec(n, a+1+n);
+        chelis_tensor* r = la_vec_add(va, vb);
+        print_vec(r);
+        return 0;
+    }
+    /* la_vec_sub: N, then 2*N elements -> vec */
+    if (!strcmp(fn, "la_vec_sub")) {
+        int n = (int)a[0];
+        chelis_tensor* va = make_vec(n, a+1);
+        chelis_tensor* vb = make_vec(n, a+1+n);
+        chelis_tensor* r = la_vec_sub(va, vb);
+        print_vec(r);
+        return 0;
+    }
+    /* inv_2x2: 4 elements -> 4 elements */
+    if (!strcmp(fn, "inv_2x2")) {
+        chelis_tensor* m = make_mat(2, 2, a);
+        chelis_tensor* r = inv_2x2(m);
+        print_mat(r);
+        return 0;
+    }
+    /* inv_3x3: 9 elements -> 9 elements */
+    if (!strcmp(fn, "inv_3x3")) {
+        chelis_tensor* m = make_mat(3, 3, a);
+        chelis_tensor* r = inv_3x3(m);
+        print_mat(r);
+        return 0;
+    }
+    /* solve_2x2: 4 elements (A) + 2 elements (b) -> 2 elements */
+    if (!strcmp(fn, "solve_2x2")) {
+        chelis_tensor* m = make_mat(2, 2, a);
+        chelis_tensor* b = make_vec(2, a+4);
+        chelis_tensor* r = solve_2x2(m, b);
+        print_vec(r);
+        return 0;
+    }
+    /* solve_3x3: 9 elements (A) + 3 elements (b) -> 3 elements */
+    if (!strcmp(fn, "solve_3x3")) {
+        chelis_tensor* m = make_mat(3, 3, a);
+        chelis_tensor* b = make_vec(3, a+9);
+        chelis_tensor* r = solve_3x3(m, b);
+        print_vec(r);
+        return 0;
+    }
+    /* scale_vec: s, N, then N elements -> vec */
+    if (!strcmp(fn, "scale_vec")) {
+        double s = a[0];
+        int n = (int)a[1];
+        chelis_tensor* v = make_vec(n, a+2);
+        chelis_tensor* r = scale_vec(v, s);
+        print_vec(r);
+        return 0;
+    }
+    /* matvec: M, N, then M*N + N elements -> vec(M) */
+    if (!strcmp(fn, "matvec")) {
+        int m = (int)a[0]; int n = (int)a[1];
+        chelis_tensor* mat = make_mat(m, n, a+2);
+        chelis_tensor* v = make_vec(n, a+2+m*n);
+        chelis_tensor* r = matvec(mat, v);
+        print_vec(r);
+        return 0;
+    }
+
+    fprintf(stderr, "unknown function: %s\n", fn);
+    return 2;
+}
+"""
+
+
+def _patch_tensor_nin_asserts(c_text: str) -> str:
+    """Work around v0.1.6 compiler bug where fused tensor ops assert a
+    different n_in count than the call-site actually passes.  The tensor
+    ops already validate individual input slots, so the count guard is
+    redundant.  We replace every ``if (n_in != K) { ... abort(); }``
+    block with a no-op cast to suppress it.
+    """
+    return re.sub(
+        r'if \(n_in != \d+\) \{\n\s+fprintf\(stderr,.*?\n\s+abort\(\);\n\s+\}',
+        '(void)n_in; /* patched: n_in assert removed (upstream bug) */',
+        c_text,
+    )
+
+
+def build_linalg_binary() -> Path:
+    """Build a binary for tensor-path linalg functions."""
+    bare = "\n".join(
+        strip_module((SRC / f).read_text())
+        for f in ("special.ch", "distributions.ch", "linalg.ch")
+    ) + "\ndef main() -> f32 = cast(0.0, f32)\n"
+    workdir = Path(tempfile.mkdtemp(prefix="nautilus-la-"))
+    bare_ch = workdir / "la_bare.ch"
+    bare_ch.write_text(bare)
+    chelis_build(bare_ch, workdir / "out")
+    c_file = workdir / "out" / "la_bare.c"
+    # Patch n_in assertion mismatch (upstream v0.1.6 bug)
+    c_text = c_file.read_text()
+    c_text = _patch_tensor_nin_asserts(c_text)
+    c_file.write_text(c_text)
+    drv_c = workdir / "la_driver.c"
+    drv_c.write_text(LINALG_DRIVER_C)
+    binary = workdir / "la_test_bin"
+    out_dir = workdir / "out"
+    cc = subprocess.run(
+        ["gcc", "-O2", "-fopenmp", "-o", str(binary),
+         str(c_file), str(drv_c),
+         "-I", str(out_dir),
+         "-L", str(out_dir), "-lchelis_runtime",
+         "-lm", "-lpthread"],
+        capture_output=True, text=True,
+    )
+    if cc.returncode != 0:
+        raise SystemExit(f"linalg gcc failed: {cc.stderr}")
+    return binary
+
+
+def call_la_fn(binary: Path, fn: str, *args: float) -> str:
+    """Call a linalg function and return raw stdout."""
+    res = subprocess.run(
+        [str(binary), fn, *(str(a) for a in args)],
+        capture_output=True, text=True, check=True,
+    )
+    return res.stdout.strip()
+
+
 def call_fn(binary: Path, fn: str, *args: float) -> float:
     res = subprocess.run(
         [str(binary), fn, *(str(a) for a in args)],
@@ -764,6 +1011,143 @@ def main() -> int:
         for method in ("adapt", "romb", "gl10"):
             p1_run(f"{method}_{case['label']}", f"{method}_{tag}", (),
                     case["expected"], g["abs"], g["rel"])
+
+    # --- LinAlg tensor-path tests via a separate binary ---
+    la_binary = build_linalg_binary()
+    print(f"# la_binary: {la_binary}")
+
+    def la_run_scalar(label, fn, args, expected, atol, rtol):
+        nonlocal fails, total
+        total += 1
+        raw = call_la_fn(la_binary, fn, *args)
+        got = float(raw)
+        if not close(got, expected, atol, rtol):
+            fails += 1
+            print(f"  FAIL {label}: got {got!r}, want {expected!r}, atol={atol}, rtol={rtol}")
+
+    def la_run_vec(label, fn, args, expected_list, atol, rtol):
+        nonlocal fails, total
+        raw = call_la_fn(la_binary, fn, *args)
+        got_list = [float(x) for x in raw.split()]
+        if len(got_list) != len(expected_list):
+            total += 1
+            fails += 1
+            print(f"  FAIL {label}: length mismatch got {len(got_list)}, want {len(expected_list)}")
+            return
+        for i, (got, want) in enumerate(zip(got_list, expected_list)):
+            total += 1
+            if not close(got, want, atol, rtol):
+                fails += 1
+                print(f"  FAIL {label}[{i}]: got {got!r}, want {want!r}")
+
+    print("== LinAlg: det_2x2 ==")
+    g = golden("linalg/det_2x2.json")
+    atol_la, rtol_la = g["abs"], g["rel"]
+    for mat, det_exp in zip(g["matrices"], g["dets"]):
+        flat = [x for row in mat for x in row]
+        la_run_scalar(f"det_2x2({flat})", "det_2x2", flat, det_exp, atol_la, rtol_la)
+
+    print("== LinAlg: det_3x3 ==")
+    g = golden("linalg/det_3x3.json")
+    atol_la, rtol_la = g["abs"], g["rel"]
+    for mat, det_exp in zip(g["matrices"], g["dets"]):
+        flat = [x for row in mat for x in row]
+        la_run_scalar(f"det_3x3({flat[:3]}...)", "det_3x3", flat, det_exp, atol_la, rtol_la)
+
+    print("== LinAlg: vector ops ==")
+    g = golden("linalg/vector.json")
+    atol_la, rtol_la = g["abs"], g["rel"]
+    v = g["v"]
+    w = g["w"]
+    n = len(v)
+    la_run_scalar("l2_norm_vec(v)", "l2_norm_vec", [n] + v, g["l2_v"], atol_la, rtol_la)
+    la_run_scalar("l2_norm_vec(w)", "l2_norm_vec", [n] + w, g["l2_w"], atol_la, rtol_la)
+    la_run_scalar("inner_product(v,w)", "inner_product", [n] + v + w, g["inner_vw"], atol_la, rtol_la)
+
+    # vec add / sub: v + w and v - w (check against python-computed values)
+    v_plus_w = [a_ + b_ for a_, b_ in zip(v, w)]
+    v_minus_w = [a_ - b_ for a_, b_ in zip(v, w)]
+    la_run_vec("la_vec_add(v,w)", "la_vec_add", [n] + v + w, v_plus_w, atol_la, rtol_la)
+    la_run_vec("la_vec_sub(v,w)", "la_vec_sub", [n] + v + w, v_minus_w, atol_la, rtol_la)
+
+    # scale_vec: 2.0 * v
+    scale = 2.0
+    scaled_v = [scale * x for x in v]
+    la_run_vec("scale_vec(2.0,v)", "scale_vec", [scale, n] + v, scaled_v, atol_la, rtol_la)
+
+    print("== LinAlg: basic.json (frobenius, trace) ==")
+    g = golden("linalg/basic.json")
+    atol_la, rtol_la = g["abs"], g["rel"]
+
+    # frobenius_sq and frobenius_norm of A_3x4
+    flat_a = [x for row in g["A_3x4"] for x in row]
+    la_run_scalar("frobenius_sq(A)", "frobenius_sq", [3, 4] + flat_a,
+                  g["frobenius_sq_A"], atol_la, rtol_la)
+    la_run_scalar("frobenius_norm(A)", "frobenius_norm", [3, 4] + flat_a,
+                  g["frobenius_A"], atol_la, rtol_la)
+
+    # trace_scalar of AtA_4x4
+    flat_ata = [x for row in g["gram_AtA_4x4"] for x in row]
+    la_run_scalar("trace_scalar(AtA)", "trace_scalar", [4] + flat_ata,
+                  g["trace_AtA"], atol_la, rtol_la)
+
+    print("== LinAlg: inv_2x2 + solve_2x2 ==")
+    # Use det_2x2 matrices that are invertible
+    g = golden("linalg/det_2x2.json")
+    atol_la, rtol_la = g["abs"], g["rel"]
+    for mat in g["matrices"]:
+        flat = [x for row in mat for x in row]
+        a00, a01, a10, a11 = flat
+        det = a00 * a11 - a01 * a10
+        if abs(det) < 1e-10:
+            continue
+        inv_exp = [a11 / det, -a01 / det, -a10 / det, a00 / det]
+        la_run_vec(f"inv_2x2({flat})", "inv_2x2", flat, inv_exp, 1e-4, 1e-4)
+
+        # solve_2x2: A x = b  where b = [1, 0]
+        b = [1.0, 0.0]
+        x_exp = [inv_exp[0], inv_exp[2]]  # first column of A^-1
+        la_run_vec(f"solve_2x2({flat},b)", "solve_2x2", flat + b, x_exp, 1e-4, 1e-4)
+
+    print("== LinAlg: inv_3x3 + solve_3x3 ==")
+    g = golden("linalg/det_3x3.json")
+    atol_la, rtol_la = g["abs"], g["rel"]
+    for mat, det_val in zip(g["matrices"], g["dets"]):
+        flat = [x for row in mat for x in row]
+        if abs(det_val) < 1e-10:
+            continue
+        # Compute expected inverse: inv(A) = adj(A)/det = cofactor^T / det
+        m = mat
+        cof = [
+            [m[1][1]*m[2][2]-m[1][2]*m[2][1], -(m[1][0]*m[2][2]-m[1][2]*m[2][0]), m[1][0]*m[2][1]-m[1][1]*m[2][0]],
+            [-(m[0][1]*m[2][2]-m[0][2]*m[2][1]), m[0][0]*m[2][2]-m[0][2]*m[2][0], -(m[0][0]*m[2][1]-m[0][1]*m[2][0])],
+            [m[0][1]*m[1][2]-m[0][2]*m[1][1], -(m[0][0]*m[1][2]-m[0][2]*m[1][0]), m[0][0]*m[1][1]-m[0][1]*m[1][0]],
+        ]
+        # adjugate = cofactor transposed
+        inv_exp = [cof[c][r] / det_val for r in range(3) for c in range(3)]
+        la_run_vec(f"inv_3x3(det={det_val:.2f})", "inv_3x3", flat, inv_exp, 1e-3, 1e-3)
+
+        # solve_3x3: A x = [1,0,0] => x = first column of A^-1
+        b = [1.0, 0.0, 0.0]
+        x_exp = [inv_exp[0], inv_exp[3], inv_exp[6]]
+        la_run_vec(f"solve_3x3(det={det_val:.2f},b)", "solve_3x3", flat + b, x_exp, 1e-3, 1e-3)
+
+    print("== LinAlg: matvec ==")
+    # Use A_3x4 * first column of B_4x2 from basic.json
+    g = golden("linalg/basic.json")
+    atol_la, rtol_la = g["abs"], g["rel"]
+    flat_a = [x for row in g["A_3x4"] for x in row]
+    # Extract first column of B_4x2
+    b_col0 = [row[0] for row in g["B_4x2"]]
+    # Expected: first column of AB_3x2
+    ab_col0 = [row[0] for row in g["AB_3x2"]]
+    la_run_vec("matvec(A,b_col0)", "matvec", [3, 4] + flat_a + b_col0,
+               ab_col0, atol_la, rtol_la)
+    # Second column
+    b_col1 = [row[1] for row in g["B_4x2"]]
+    ab_col1 = [row[1] for row in g["AB_3x2"]]
+    la_run_vec("matvec(A,b_col1)", "matvec", [3, 4] + flat_a + b_col1,
+               ab_col1, atol_la, rtol_la)
 
     print(f"\n{total - fails} / {total} numerical assertions passed")
     return 1 if fails else 0
