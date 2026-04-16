@@ -84,25 +84,28 @@ RISC primitives already carry adjoints.
 - **AD through LinAlg:** finite-difference check that `grad` through composed tensor
   ops agrees with numerical differences on `det_2x2`, `det_3x3`, `inner_product`,
   `frobenius_sq`, and `cg_solve` (P0.5)
-- **Known shape-checker gap (still present in v0.1.5):** `chelis check` does not
-  enforce literal tensor dimensions (`tensor[2, 2, f32]`) or element types on call
-  sites — wrong-rank, wrong-dim, and wrong-dtype calls into `det_2x2` / `det_3x3` /
-  `matvec` / `gram` / etc. type-check cleanly. The "negative tests: wrong input
-  shapes" acceptance bullet is therefore deferred to runtime and to a future
-  compiler release that tightens dim-literal unification. Tracked upstream as
-  `UPSTREAM_BUGS.md` Bug 2; re-verified against v0.1.5 and confirmed still open.
-- **LinAlg / Distance / SDE tensor-path runtime verification: still blocked in v0.1.5.**
-  v0.1.5 ships `lib/libchelis_runtime.a` in the release tarball, which fixed the
-  v0.1.4-specific link failure (UPSTREAM_BUGS.md Bug 3b). However, the C backend's
-  main-entry wrapper emission still drops parameters and mislabels inputs for
-  multi-tensor-input entry points (UPSTREAM_BUGS.md Bug 3c). A minimal repro
-  `def main(x, y: tensor[4, f32]) -> ... = combine(x, y)` emits an entry point
-  with `n_in == 1`, slot 0 labeled by the inlined helper's name, and a body that
-  discards the second operand. This continues to block ~100+ scipy-parity
-  assertions on `cg_solve`, `frobenius_*`, `la_vec_*`, `inv_2x2`, `inv_3x3`,
-  `solve_*`, `cholesky_2x2`, and all tensor-path tests for `Nautilus.Distance`,
-  `Nautilus.SDE`, `Nautilus.Stats`, and `Nautilus.Interpolation`.
-- **Unknown-name silent-compile bug: FIXED in v0.1.4 (still fixed in v0.1.5).** v0.1.3's type checker and
+- **Literal-dim shape-checker gap: FIXED in v0.1.6.** v0.1.3–v0.1.5
+  accepted calls like `det_2x2(a: tensor[3, 3, f32])` with score 1.0
+  and zero errors. v0.1.6 emits `DimensionMismatch: Lit(2) vs Lit(3)`
+  at `chelis check` time (score drops to ~0.86). The "negative tests:
+  wrong input shapes" acceptance bullet is now satisfied at compile
+  time, not deferred. Tracked upstream as `UPSTREAM_BUGS.md` Bug 2,
+  re-verified against v0.1.6.
+- **LinAlg / Distance / SDE tensor-path runtime verification: UNBLOCKED in v0.1.6.**
+  v0.1.5 shipped `lib/libchelis_runtime.a` in the release tarball
+  (fixing the link failure from v0.1.4 — `UPSTREAM_BUGS.md` Bug 3b).
+  v0.1.6 fixed the main-entry wrapper emission symptom
+  (`UPSTREAM_BUGS.md` Bug 3c) — a minimal
+  `def main(x, y: tensor[4, f32]) -> ... = combine(x, y)` now emits
+  an entry point with `n_in == 2`, correctly-labeled slots, and a
+  full OpenMP elementwise-add loop. Tensor-on-tensor `add`/`sub`/`mul`
+  lowering also works (Bug 3a superseded). ~100+ scipy-parity
+  assertions on `cg_solve`, `frobenius_*`, `la_vec_*`, `inv_2x2`,
+  `inv_3x3`, `solve_*`, `cholesky_2x2`, and the `Nautilus.Distance` /
+  `Nautilus.SDE` / `Nautilus.Stats` / `Nautilus.Interpolation`
+  tensor-path tests are no longer upstream-blocked. Wiring them into
+  `tests/run_numeric_tests.py` is the next Nautilus-side milestone.
+- **Unknown-name silent-compile bug: FIXED in v0.1.4 (still fixed in v0.1.6).** v0.1.3's type checker and
   C backend silently accepted unresolved function names in expression position,
   compiling `sub(x, cos(x))` to a no-op that returned `x`. v0.1.4 now emits
   `UnboundVariable: cos` from `chelis check` and halts the build, so any user

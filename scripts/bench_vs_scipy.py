@@ -97,7 +97,7 @@ double weibull_cdf(double, double, double);
 double poisson_cdf(double, double);
 
 /* Nautilus.ODE + Nautilus.Roots — take function pointers. Signatures
- * from the chelis v0.1.5 C backend (tests/run_numeric_tests.py
+ * from the chelis v0.1.6 C backend (tests/run_numeric_tests.py
  * documents these):
  *   double rk4_solve(double (*f)(double, double),
  *                    double y0, double t0, double t1, int64_t n_steps);
@@ -239,17 +239,18 @@ def build_shared_lib(extra_flags: list[str] | None = None) -> Path:
     wrapper_c.write_text(BATCH_WRAPPER_C)
 
     so = workdir / "libnautilus_bench.so"
-    # v0.1.5 ships lib/libchelis_runtime.a in the tarball, so we link against
-    # the real runtime archive instead of the hand-vendored RUNTIME_STUBS
-    # block that P5 and earlier used. The P5 Track 1 LTO + visibility
-    # workaround (-flto -fvisibility=hidden -Wl,-Bsymbolic) stays, though:
-    # v0.1.5's C backend still emits cross-TU scalar helpers (e.g.
-    # `normal_cdf`, `exp`) as extern, so the default `-shared -fPIC` still
-    # forces calls through the PLT and blocks gcc's cross-TU inlining.
-    # Measured delta on v0.1.5 from dropping these flags: 6.7 -> 18.9 ns/el
-    # (3× regression) on `normal_cdf(x)*exp(-x²)` at n=100k — same symptom
-    # as v0.1.4. Until upstream emits helpers as `static inline` for
-    # single-`.so` bundles, these flags are load-bearing.
+    # v0.1.5 shipped lib/libchelis_runtime.a in the tarball, so we link
+    # against the real runtime archive instead of the hand-vendored
+    # RUNTIME_STUBS block that P5 and earlier used. The P5 Track 1 LTO +
+    # visibility workaround (-flto -fvisibility=hidden -Wl,-Bsymbolic)
+    # stays, though: v0.1.6's C backend still emits cross-TU scalar
+    # helpers (e.g. `normal_cdf`, `exp`) as extern, so the default
+    # `-shared -fPIC` still forces calls through the PLT and blocks
+    # gcc's cross-TU inlining. Measured deltas from dropping the flags:
+    #   v0.1.5: 6.7 -> 18.9 ns/el (3×) on normal_cdf(x)*exp(-x²) at n=100k
+    #   v0.1.6: 9.4 -> 20.9 ns/el (2.2×) same kernel, re-verified
+    # Until upstream emits helpers as `static inline` for single-`.so`
+    # bundles, these flags are load-bearing.
     out_dir = workdir / "out"
     cmd = ["gcc", "-O3", "-march=native", "-shared", "-fPIC",
            "-flto", "-fuse-linker-plugin",

@@ -5,16 +5,16 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-Summary as of v0.1.5:
+Summary as of **v0.1.6** — ALL SIX TRACKED BUGS FIXED:
 
-| # | Title | v0.1.3 | v0.1.4 | v0.1.5 |
-|---|---|---|---|---|
-| 1 | Unknown-name silent compile | open | **FIXED** | fixed |
-| 2 | Shape-checker gap for literal-dim tensor params | open | open | **still open** (re-verified) |
-| 3a | — emitted C was raw pointer arithmetic (original v0.1.3 symptom) | open | likely superseded | superseded |
-| 3b | — `chelis build` requires `libchelis_runtime.a` not shipped in tarball | n/a | **NEW in v0.1.4** | **FIXED** |
-| 3c | — main-entry C emission drops parameters / confuses function names | n/a | **NEW in v0.1.4** | **still open** (re-verified, same symptom) |
-| 4 | Nested `exp(neg(mul(x,x)))` int-temp | open | **FIXED** | fixed |
+| # | Title | v0.1.3 | v0.1.4 | v0.1.5 | v0.1.6 |
+|---|---|---|---|---|---|
+| 1 | Unknown-name silent compile | open | **FIXED** | fixed | fixed |
+| 2 | Shape-checker gap for literal-dim tensor params | open | open | open | **FIXED** |
+| 3a | — emitted C was raw pointer arithmetic (original v0.1.3 symptom) | open | likely superseded | superseded | **FIXED** (proper elementwise loop emitted) |
+| 3b | — `chelis build` requires `libchelis_runtime.a` not shipped in tarball | n/a | **NEW in v0.1.4** | **FIXED** | fixed |
+| 3c | — main-entry C emission drops parameters / confuses function names | n/a | **NEW in v0.1.4** | open | **FIXED** |
+| 4 | Nested `exp(neg(mul(x,x)))` int-temp | open | **FIXED** | fixed | fixed |
 
 **What v0.1.5 unblocked downstream:**
 - `tests/run_numeric_tests.py` dropped the hand-vendored `RUNTIME_STUBS`
@@ -141,6 +141,22 @@ the "negative tests: wrong input shapes" acceptance bullet in
 `chelis v0.1.5-linux-x86_64` returns identical output (score 1,
 zero errors, empty unresolved_names). Still the blocker on the
 negative-test acceptance bullet.
+
+**v0.1.6 status: FIXED.** Re-running the repros against
+`chelis v0.1.6-linux-x86_64`:
+
+- `bad_consumer[m, n](a) = det_2x2(a)` — score drops to 0.88, emits
+  two `DimensionMismatch: polymorphic dim variable forced to
+  concrete Lit(2) by function body — declared dim parameters must
+  remain polymorphic` errors.
+- `def main(a: tensor[3, 3, f32]) -> f32 = det_2x2(a)` — score
+  drops to 0.86, emits `DimensionMismatch: dimension mismatch:
+  Lit(2) vs Lit(3)`.
+
+Both wrong-shape and polymorphism-violation angles are now caught
+at `chelis check` time. The "negative tests: wrong input shapes"
+acceptance bullet in `spec/phase3j.md` §Test Plan is now satisfied
+at compile time rather than deferred to runtime.
 
 **Symptom.** `chelis check` does not enforce tensor dimension equality
 for literal-size parameters. A function declared `def f(a: tensor[2, 2,
@@ -572,13 +588,22 @@ indirection. Measured regression from dropping the flags on v0.1.5:
 6.7 → 18.9 ns/el (3×) on `normal_cdf(x)*exp(-x²)` at n=100k. Flags
 restored with an updated comment.
 
-**v0.1.5 still blocking:** Bug 2 and Bug 3c remain open and continue
-to gate the same acceptance criteria — shape-enforcement negative
-tests (Bug 2) and all tensor-path LinAlg / Distance / SDE / Stats /
-Interpolation runtime numerical verification (Bug 3c). Until the
-main-entry wrapper emission is fixed, no multi-tensor-input entry
-point can be runtime-exercised, regardless of whether
-`libchelis_runtime.a` is available.
+**v0.1.6 — ALL BUGS FIXED.** Bug 2 (shape-checker) and Bug 3c
+(main-entry emission) both shipped upstream fixes. Re-verified:
+
+- Bug 2: `det_2x2(a: tensor[3, 3, f32])` now emits
+  `DimensionMismatch: Lit(2) vs Lit(3)` with score < 1.0.
+- Bug 3c: `def main(x, y: tensor[4, f32]) = combine(x, y)` now
+  emits an entry point with `n_in == 2`, correctly-labeled slots `a`
+  and `b`, rank/dim validation for each input, and a full OpenMP
+  parallel-for elementwise-add loop:
+  `t2->data[i] = t0->data[idx_a] + t1->data[idx_b]`.
+
+**Impact:** All six tracked upstream bugs are resolved. The ~100+
+deferred scipy-parity assertions for LinAlg / Distance / SDE /
+Stats / Interpolation tensor-path runtime verification are no
+longer upstream-blocked. Wiring them into
+`tests/run_numeric_tests.py` is the next Nautilus-side milestone.
 
 When upstream Chelis lands a release with either of these fixed,
 Nautilus can re-enable runtime verification paths and tighten the

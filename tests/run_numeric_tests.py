@@ -19,11 +19,13 @@ libchelis_runtime.a — the bare scalar functions don't need either.
 The harness covers Nautilus.Special and Nautilus.Distributions scalar
 functions only. Nautilus.LinAlg ops that take tensor inputs are covered by
 the API-smoke type check (src/apismoke.ch + chelis check), since their
-runtime exercise requires the full chelis runtime. As of v0.1.5 the
-runtime ships as `lib/libchelis_runtime.a` in the release tarball,
-but enabling tensor-path runtime tests remains blocked on Bug 3c
-(main-entry C emission still drops parameters for multi-tensor-input
-entry points — see UPSTREAM_BUGS.md).
+runtime exercise requires the full chelis runtime. As of v0.1.6 the
+runtime ships as `lib/libchelis_runtime.a` in the release tarball and
+the main-entry C emission correctly handles multi-tensor-input
+entry points — tensor-path runtime tests are now unblocked (see
+UPSTREAM_BUGS.md Bug 3c resolution). Wiring the LinAlg / Distance /
+SDE / Stats tensor-path tests into this harness is the next
+Nautilus-side milestone.
 """
 from __future__ import annotations
 
@@ -157,7 +159,7 @@ int main(int argc, char** argv) {{
 """
 
 
-# v0.1.5 ships lib/libchelis_runtime.a and include/chelis_runtime.h in
+# v0.1.5+ ships lib/libchelis_runtime.a and include/chelis_runtime.h in
 # the release tarball, and `chelis build` now copies both into its output
 # directory alongside the generated .c / .h files. The previous
 # RUNTIME_STUBS block (hand-written NULL-returning stubs for every
