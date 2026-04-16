@@ -8,3 +8,8 @@ reef.lock
 *.swo
 __pycache__/
 *.py[cod]
+
+# Build artifacts that may leak from chelis build or bench runs
+*.o
+*.so
+*.a

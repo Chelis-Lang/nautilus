@@ -23,7 +23,7 @@ runtime exercise requires the full chelis runtime. As of v0.1.7 the
 runtime ships as `lib/libchelis_runtime.a` in the release tarball and
 the main-entry C emission correctly handles multi-tensor-input
 entry points — tensor-path runtime tests are now unblocked (see
-UPSTREAM_BUGS.md Bug 3c resolution). Wiring the LinAlg / Distance /
+docs/UPSTREAM_BUGS.md Bug 3c resolution). Wiring the LinAlg / Distance /
 SDE / Stats tensor-path tests into this harness is the next
 Nautilus-side milestone.
 """
