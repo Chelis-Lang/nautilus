@@ -504,6 +504,24 @@ chelis_tensor* matvec(chelis_tensor* a, chelis_tensor* v);
 chelis_tensor* solve_2x2(chelis_tensor* a, chelis_tensor* b);
 chelis_tensor* solve_3x3(chelis_tensor* a, chelis_tensor* b);
 
+/* stats: single-tensor-input, scalar output */
+double mean_vec(chelis_tensor* v);
+double variance_vec(chelis_tensor* v, int64_t ddof);
+double std_vec(chelis_tensor* v, int64_t ddof);
+double skewness_vec(chelis_tensor* v);
+double kurtosis_vec(chelis_tensor* v);
+double median_vec(chelis_tensor* v);
+double min_vec(chelis_tensor* v);
+double max_vec(chelis_tensor* v);
+double range_vec(chelis_tensor* v);
+
+/* distance: two-tensor-input, scalar output */
+double squared_euclidean(chelis_tensor* a, chelis_tensor* b);
+double euclidean(chelis_tensor* a, chelis_tensor* b);
+double manhattan(chelis_tensor* a, chelis_tensor* b);
+double chebyshev(chelis_tensor* a, chelis_tensor* b);
+double cosine_distance(chelis_tensor* a, chelis_tensor* b);
+
 static chelis_tensor* make_vec(int n, double* vals) {
     chelis_tensor* t = chelis_alloc(1, (int[]){n}, 0);
     for (int i = 0; i < n; i++) t->data[i] = (float)vals[i];
@@ -657,6 +675,110 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    /* stats: N, then N elements -> scalar */
+    if (!strcmp(fn, "mean_vec")) {
+        int n = (int)a[0];
+        chelis_tensor* v = make_vec(n, a+1);
+        print_scalar(mean_vec(v));
+        return 0;
+    }
+    if (!strcmp(fn, "variance_vec_ddof0")) {
+        int n = (int)a[0];
+        chelis_tensor* v = make_vec(n, a+1);
+        print_scalar(variance_vec(v, 0));
+        return 0;
+    }
+    if (!strcmp(fn, "variance_vec_ddof1")) {
+        int n = (int)a[0];
+        chelis_tensor* v = make_vec(n, a+1);
+        print_scalar(variance_vec(v, 1));
+        return 0;
+    }
+    if (!strcmp(fn, "std_vec_ddof0")) {
+        int n = (int)a[0];
+        chelis_tensor* v = make_vec(n, a+1);
+        print_scalar(std_vec(v, 0));
+        return 0;
+    }
+    if (!strcmp(fn, "std_vec_ddof1")) {
+        int n = (int)a[0];
+        chelis_tensor* v = make_vec(n, a+1);
+        print_scalar(std_vec(v, 1));
+        return 0;
+    }
+    if (!strcmp(fn, "skewness_vec")) {
+        int n = (int)a[0];
+        chelis_tensor* v = make_vec(n, a+1);
+        print_scalar(skewness_vec(v));
+        return 0;
+    }
+    if (!strcmp(fn, "kurtosis_vec")) {
+        int n = (int)a[0];
+        chelis_tensor* v = make_vec(n, a+1);
+        print_scalar(kurtosis_vec(v));
+        return 0;
+    }
+    if (!strcmp(fn, "median_vec")) {
+        int n = (int)a[0];
+        chelis_tensor* v = make_vec(n, a+1);
+        print_scalar(median_vec(v));
+        return 0;
+    }
+    if (!strcmp(fn, "min_vec")) {
+        int n = (int)a[0];
+        chelis_tensor* v = make_vec(n, a+1);
+        print_scalar(min_vec(v));
+        return 0;
+    }
+    if (!strcmp(fn, "max_vec")) {
+        int n = (int)a[0];
+        chelis_tensor* v = make_vec(n, a+1);
+        print_scalar(max_vec(v));
+        return 0;
+    }
+    if (!strcmp(fn, "range_vec")) {
+        int n = (int)a[0];
+        chelis_tensor* v = make_vec(n, a+1);
+        print_scalar(range_vec(v));
+        return 0;
+    }
+    /* distance: N, then 2*N elements -> scalar */
+    if (!strcmp(fn, "squared_euclidean")) {
+        int n = (int)a[0];
+        chelis_tensor* va = make_vec(n, a+1);
+        chelis_tensor* vb = make_vec(n, a+1+n);
+        print_scalar(squared_euclidean(va, vb));
+        return 0;
+    }
+    if (!strcmp(fn, "euclidean")) {
+        int n = (int)a[0];
+        chelis_tensor* va = make_vec(n, a+1);
+        chelis_tensor* vb = make_vec(n, a+1+n);
+        print_scalar(euclidean(va, vb));
+        return 0;
+    }
+    if (!strcmp(fn, "manhattan")) {
+        int n = (int)a[0];
+        chelis_tensor* va = make_vec(n, a+1);
+        chelis_tensor* vb = make_vec(n, a+1+n);
+        print_scalar(manhattan(va, vb));
+        return 0;
+    }
+    if (!strcmp(fn, "chebyshev")) {
+        int n = (int)a[0];
+        chelis_tensor* va = make_vec(n, a+1);
+        chelis_tensor* vb = make_vec(n, a+1+n);
+        print_scalar(chebyshev(va, vb));
+        return 0;
+    }
+    if (!strcmp(fn, "cosine_distance")) {
+        int n = (int)a[0];
+        chelis_tensor* va = make_vec(n, a+1);
+        chelis_tensor* vb = make_vec(n, a+1+n);
+        print_scalar(cosine_distance(va, vb));
+        return 0;
+    }
+
     fprintf(stderr, "unknown function: %s\n", fn);
     return 2;
 }
@@ -677,12 +799,32 @@ def _patch_tensor_nin_asserts(c_text: str) -> str:
     )
 
 
+_DUPE_HELPERS = {"zero_f", "one_f", "two_f", "abs_f32", "pos_inf"}
+
+
+def _dedup_defs(bare: str) -> str:
+    """Strip duplicate helper definitions from concatenated bare Chelis
+    source. Only removes the SECOND occurrence of helpers known to be
+    defined in multiple modules (special/distributions vs stats)."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for line in bare.split("\n"):
+        m = re.match(r"^def\s+(\w+)\b", line)
+        if m and m.group(1) in _DUPE_HELPERS:
+            if m.group(1) in seen:
+                continue
+            seen.add(m.group(1))
+        out.append(line)
+    return "\n".join(out)
+
+
 def build_linalg_binary() -> Path:
-    """Build a binary for tensor-path linalg functions."""
+    """Build a binary for tensor-path linalg + stats + distance functions."""
     bare = "\n".join(
         strip_module((SRC / f).read_text())
-        for f in ("special.ch", "distributions.ch", "linalg.ch")
+        for f in ("special.ch", "distributions.ch", "linalg.ch", "stats.ch", "distance.ch")
     ) + "\ndef main() -> f32 = cast(0.0, f32)\n"
+    bare = _dedup_defs(bare)
     workdir = Path(tempfile.mkdtemp(prefix="nautilus-la-"))
     bare_ch = workdir / "la_bare.ch"
     bare_ch.write_text(bare)
@@ -1148,6 +1290,34 @@ def main() -> int:
     ab_col1 = [row[1] for row in g["AB_3x2"]]
     la_run_vec("matvec(A,b_col1)", "matvec", [3, 4] + flat_a + b_col1,
                ab_col1, atol_la, rtol_la)
+
+    # --- Stats tensor-path tests ---
+    print("== Stats ==")
+    g = golden("stats/vector.json")
+    atol_s, rtol_s = g["abs"], g["rel"]
+    v = g["v"]
+    n = len(v)
+    la_run_scalar("mean_vec", "mean_vec", [n] + v, g["mean"], atol_s, rtol_s)
+    la_run_scalar("variance_vec(ddof=0)", "variance_vec_ddof0", [n] + v, g["var_ddof0"], atol_s, rtol_s)
+    la_run_scalar("variance_vec(ddof=1)", "variance_vec_ddof1", [n] + v, g["var_ddof1"], atol_s, rtol_s)
+    la_run_scalar("std_vec(ddof=0)", "std_vec_ddof0", [n] + v, g["std_ddof0"], atol_s, rtol_s)
+    la_run_scalar("std_vec(ddof=1)", "std_vec_ddof1", [n] + v, g["std_ddof1"], atol_s, rtol_s)
+    la_run_scalar("skewness_vec", "skewness_vec", [n] + v, g["skew"], atol_s, rtol_s)
+    la_run_scalar("kurtosis_vec", "kurtosis_vec", [n] + v, g["kurtosis"], atol_s, rtol_s)
+    la_run_scalar("median_vec", "median_vec", [n] + v, g["median"], atol_s, rtol_s)
+
+    # --- Distance tensor-path tests ---
+    print("== Distance ==")
+    g = golden("distance/vector.json")
+    atol_d, rtol_d = g["abs"], g["rel"]
+    a_vec = g["a"]
+    b_vec = g["b"]
+    nd = len(a_vec)
+    la_run_scalar("squared_euclidean", "squared_euclidean", [nd] + a_vec + b_vec, g["squared_euclidean"], atol_d, rtol_d)
+    la_run_scalar("euclidean", "euclidean", [nd] + a_vec + b_vec, g["euclidean"], atol_d, rtol_d)
+    la_run_scalar("manhattan", "manhattan", [nd] + a_vec + b_vec, g["manhattan"], atol_d, rtol_d)
+    la_run_scalar("chebyshev", "chebyshev", [nd] + a_vec + b_vec, g["chebyshev"], atol_d, rtol_d)
+    la_run_scalar("cosine_distance", "cosine_distance", [nd] + a_vec + b_vec, g["cosine_distance"], atol_d, rtol_d)
 
     print(f"\n{total - fails} / {total} numerical assertions passed")
     return 1 if fails else 0
