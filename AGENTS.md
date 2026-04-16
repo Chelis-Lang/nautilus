@@ -17,8 +17,8 @@ to this file so Claude-style and Codex-style entry points do not drift.
 
 ## Toolchain Pin
 
-- `chelis v0.1.6` is the single supported compiler binary. `reef.toml`
-  pins `compiler = "=0.1.6"`. Version bumps must land in every Chelis
+- `chelis v0.1.7` is the single supported compiler binary. `reef.toml`
+  pins `compiler = "=0.1.7"`. Version bumps must land in every Chelis
   shell repo in the same change set — do not bump unilaterally.
 - Do not vendor or build the Chelis compiler from source inside this
   repo. Consume the released tarball from the private
@@ -51,8 +51,8 @@ diverges upstream, update this repo in the same change set.
 
 Upstream bugs tracked in [`UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) —
 originally found against v0.1.3, with per-bug status notes for each
-subsequent release. As of **v0.1.6: ALL SIX TRACKED BUGS FIXED**.
-v0.1.6 closed the last two open issues — Bug 2 (literal-dim
+subsequent release. As of **v0.1.7: ALL SIX TRACKED BUGS FIXED**.
+v0.1.7 closed the last two open issues — Bug 2 (literal-dim
 shape-checker gap) now emits `DimensionMismatch` at `chelis check`
 time, and Bug 3c (main-entry wrapper emission) now produces
 correct multi-tensor-input entry points with a proper OpenMP

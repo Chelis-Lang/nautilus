@@ -19,7 +19,7 @@ libchelis_runtime.a — the bare scalar functions don't need either.
 The harness covers Nautilus.Special and Nautilus.Distributions scalar
 functions only. Nautilus.LinAlg ops that take tensor inputs are covered by
 the API-smoke type check (src/apismoke.ch + chelis check), since their
-runtime exercise requires the full chelis runtime. As of v0.1.6 the
+runtime exercise requires the full chelis runtime. As of v0.1.7 the
 runtime ships as `lib/libchelis_runtime.a` in the release tarball and
 the main-entry C emission correctly handles multi-tensor-input
 entry points — tensor-path runtime tests are now unblocked (see
@@ -497,6 +497,16 @@ chelis_tensor* la_vec_sub(chelis_tensor* a, chelis_tensor* b);
 /* tensor-output, single-tensor-input */
 chelis_tensor* inv_2x2(chelis_tensor* a);
 chelis_tensor* inv_3x3(chelis_tensor* a);
+chelis_tensor* gram(chelis_tensor* a);
+chelis_tensor* aat(chelis_tensor* a);
+chelis_tensor* transpose(chelis_tensor* a);
+chelis_tensor* diag(chelis_tensor* a);
+chelis_tensor* trace_mat(chelis_tensor* a);
+chelis_tensor* cholesky_2x2(chelis_tensor* a);
+
+/* tensor-output, two-tensor-input (matrix) */
+chelis_tensor* matmul_wrap(chelis_tensor* a, chelis_tensor* b);
+chelis_tensor* vecmat(chelis_tensor* v, chelis_tensor* a);
 chelis_tensor* scale_vec(chelis_tensor* v, double s);
 chelis_tensor* matvec(chelis_tensor* a, chelis_tensor* v);
 chelis_tensor* la_vec_saxpy(double alpha, chelis_tensor* x, chelis_tensor* y);
@@ -875,24 +885,76 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    /* gram: M, N, then M*N elements -> mat(N,N) */
+    if (!strcmp(fn, "gram")) {
+        int m = (int)a[0]; int n = (int)a[1];
+        chelis_tensor* mat = make_mat(m, n, a+2);
+        chelis_tensor* r = gram(mat);
+        print_mat(r);
+        return 0;
+    }
+    /* aat: M, N, then M*N elements -> mat(M,M) */
+    if (!strcmp(fn, "aat")) {
+        int m = (int)a[0]; int n = (int)a[1];
+        chelis_tensor* mat = make_mat(m, n, a+2);
+        chelis_tensor* r = aat(mat);
+        print_mat(r);
+        return 0;
+    }
+    /* transpose: M, N, then M*N elements -> mat(N,M) */
+    if (!strcmp(fn, "transpose")) {
+        int m = (int)a[0]; int n = (int)a[1];
+        chelis_tensor* mat = make_mat(m, n, a+2);
+        chelis_tensor* r = transpose(mat);
+        print_mat(r);
+        return 0;
+    }
+    /* matmul_wrap: M, K, N, then M*K + K*N elements -> mat(M,N) */
+    if (!strcmp(fn, "matmul_wrap")) {
+        int m = (int)a[0]; int k = (int)a[1]; int n = (int)a[2];
+        chelis_tensor* ma = make_mat(m, k, a+3);
+        chelis_tensor* mb = make_mat(k, n, a+3+m*k);
+        chelis_tensor* r = matmul_wrap(ma, mb);
+        print_mat(r);
+        return 0;
+    }
+    /* diag: N, then N*N elements -> vec(N) */
+    if (!strcmp(fn, "diag")) {
+        int n = (int)a[0];
+        chelis_tensor* mat = make_mat(n, n, a+1);
+        chelis_tensor* r = diag(mat);
+        print_vec(r);
+        return 0;
+    }
+    /* trace_mat: N, then N*N elements -> scalar (0-dim tensor) */
+    if (!strcmp(fn, "trace_mat")) {
+        int n = (int)a[0];
+        chelis_tensor* mat = make_mat(n, n, a+1);
+        chelis_tensor* r = trace_mat(mat);
+        printf("%.15g\n", (double)r->data[0]);
+        return 0;
+    }
+    /* vecmat: M, N, then M + M*N elements -> vec(N) */
+    if (!strcmp(fn, "vecmat")) {
+        int m = (int)a[0]; int n = (int)a[1];
+        chelis_tensor* v = make_vec(m, a+2);
+        chelis_tensor* mat = make_mat(m, n, a+2+m);
+        chelis_tensor* r = vecmat(v, mat);
+        print_vec(r);
+        return 0;
+    }
+    /* cholesky_2x2: 4 elements -> mat(2,2) */
+    if (!strcmp(fn, "cholesky_2x2")) {
+        chelis_tensor* mat = make_mat(2, 2, a);
+        chelis_tensor* r = cholesky_2x2(mat);
+        print_mat(r);
+        return 0;
+    }
+
     fprintf(stderr, "unknown function: %s\n", fn);
     return 2;
 }
 """
-
-
-def _patch_tensor_nin_asserts(c_text: str) -> str:
-    """Work around v0.1.6 compiler bug where fused tensor ops assert a
-    different n_in count than the call-site actually passes.  The tensor
-    ops already validate individual input slots, so the count guard is
-    redundant.  We replace every ``if (n_in != K) { ... abort(); }``
-    block with a no-op cast to suppress it.
-    """
-    return re.sub(
-        r'if \(n_in != \d+\) \{\n\s+fprintf\(stderr,.*?\n\s+abort\(\);\n\s+\}',
-        '(void)n_in; /* patched: n_in assert removed (upstream bug) */',
-        c_text,
-    )
 
 
 _DUPE_HELPERS = {"zero_f", "one_f", "two_f", "abs_f32", "pos_inf"}
@@ -945,10 +1007,6 @@ def build_linalg_binary() -> Path:
     bare_ch.write_text(bare)
     chelis_build(bare_ch, workdir / "out")
     c_file = workdir / "out" / "la_bare.c"
-    # Patch n_in assertion mismatch (upstream v0.1.6 bug)
-    c_text = c_file.read_text()
-    c_text = _patch_tensor_nin_asserts(c_text)
-    c_file.write_text(c_text)
     drv_c = workdir / "la_driver.c"
     drv_c.write_text(LINALG_DRIVER_C)
     binary = workdir / "la_test_bin"
@@ -1458,6 +1516,55 @@ def main() -> int:
     alpha = 2.5
     saxpy_exp = [x + alpha * y for x, y in zip(v, w)]
     la_run_vec("la_vec_saxpy(2.5,v,w)", "la_vec_saxpy", [alpha, n] + v + w, saxpy_exp, atol_la, rtol_la)
+
+    # --- LinAlg: gram, aat, transpose, matmul_wrap, diag, trace_mat, vecmat, cholesky_2x2 ---
+    print("== LinAlg: gram ==")
+    g = golden("linalg/basic.json")
+    atol_la, rtol_la = g["abs"], g["rel"]
+    flat_a = [x for row in g["A_3x4"] for x in row]
+    flat_gram = [x for row in g["gram_AtA_4x4"] for x in row]
+    la_run_vec("gram(A_3x4)", "gram", [3, 4] + flat_a, flat_gram, atol_la, rtol_la)
+
+    print("== LinAlg: aat ==")
+    flat_aat = [x for row in g["aat_3x3"] for x in row]
+    la_run_vec("aat(A_3x4)", "aat", [3, 4] + flat_a, flat_aat, atol_la, rtol_la)
+
+    print("== LinAlg: transpose ==")
+    flat_at = [x for row in g["A_T_4x3"] for x in row]
+    la_run_vec("transpose(A_3x4)", "transpose", [3, 4] + flat_a, flat_at, atol_la, rtol_la)
+
+    print("== LinAlg: matmul_wrap ==")
+    flat_b = [x for row in g["B_4x2"] for x in row]
+    flat_ab = [x for row in g["AB_3x2"] for x in row]
+    la_run_vec("matmul_wrap(A_3x4,B_4x2)", "matmul_wrap",
+               [3, 4, 2] + flat_a + flat_b, flat_ab, atol_la, rtol_la)
+
+    print("== LinAlg: diag ==")
+    flat_ata = [x for row in g["gram_AtA_4x4"] for x in row]
+    la_run_vec("diag(AtA_4x4)", "diag", [4] + flat_ata, g["diag_AtA"], atol_la, rtol_la)
+
+    print("== LinAlg: trace_mat ==")
+    la_run_scalar("trace_mat(AtA_4x4)", "trace_mat", [4] + flat_ata,
+                  g["trace_AtA"], atol_la, rtol_la)
+
+    print("== LinAlg: vecmat ==")
+    # vecmat[m,n](v: tensor[m,f32], a: tensor[m,n,f32]) -> tensor[n,f32]
+    # v = first column of A_3x4 (3 elements), multiply v^T by A_3x4 (3x4) -> 4 elements
+    A = g["A_3x4"]
+    v_col0 = [A[i][0] for i in range(3)]
+    vecmat_expected = [
+        sum(v_col0[i] * A[i][j] for i in range(3))
+        for j in range(4)
+    ]
+    la_run_vec("vecmat(col0,A_3x4)", "vecmat", [3, 4] + v_col0 + flat_a,
+               vecmat_expected, atol_la, rtol_la)
+
+    print("== LinAlg: cholesky_2x2 ==")
+    import math as _math
+    chol_input = [4.0, 2.0, 2.0, 3.0]
+    chol_expected = [2.0, 0.0, 1.0, _math.sqrt(2.0)]
+    la_run_vec("cholesky_2x2([[4,2],[2,3]])", "cholesky_2x2",
+               chol_input, chol_expected, 1e-5, 1e-5)
 
     # --- SDE tensor-path tests ---
     print("== SDE ==")

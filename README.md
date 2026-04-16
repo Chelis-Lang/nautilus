@@ -10,10 +10,10 @@ runtime additions required.
 
 ## Toolchain
 
-Pinned to `chelis v0.1.6` in `reef.toml`:
+Pinned to `chelis v0.1.7` in `reef.toml`:
 
 ```toml
-compiler = "=0.1.6"
+compiler = "=0.1.7"
 ```
 
 ## Build
@@ -21,11 +21,11 @@ compiler = "=0.1.6"
 Download and extract the pinned tarball, then check, build, and test:
 
 ```sh
-gh release download v0.1.6 \
+gh release download v0.1.7 \
   --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.1.6-linux-x86_64.tar.gz'
-tar xzf chelis-v0.1.6-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.1.6-linux-x86_64/bin:$PATH"
+  --pattern 'chelis-v0.1.7-linux-x86_64.tar.gz'
+tar xzf chelis-v0.1.7-linux-x86_64.tar.gz
+export PATH="$PWD/chelis-v0.1.7-linux-x86_64/bin:$PATH"
 
 # 1. Type-check every module in the package.
 for f in src/*.ch; do chelis check "$f"; done
@@ -55,7 +55,7 @@ CI runs all five steps. It authenticates to the sibling private
 |---|---|---|
 | `Nautilus.Special` | `erf`, `erfinv`, `log_gamma`, `digamma`, `beta`, `lbeta` | scipy-parity, runtime-tested |
 | `Nautilus.Distributions` | Normal, LogNormal, Uniform, Exponential, Gamma, Chi-squared, Student-t, Poisson, Binomial, Beta, F, Weibull — `pdf` / `cdf` / `inv_cdf` / `sample` where applicable | scipy-parity, runtime-tested |
-| `Nautilus.LinAlg` | `transpose`, `matmul_wrap`, `gram`, `aat`, `diag`, `trace_mat`, `trace_scalar`, `l2_norm_vec`, `inner_product`, `frobenius_sq`, `frobenius_norm`, `scale_vec`, `matvec`, `vecmat`, `det_2x2`, `det_3x3`, `la_vec_add`, `la_vec_sub`, `la_vec_saxpy`, `cg_solve`, `inv_2x2`, `inv_3x3`, `solve_2x2`, `solve_3x3`, `eig_2x2_real`, `cholesky_2x2` | type-checked + reef-built; v0.1.6 unblocked tensor-path runtime verification (UPSTREAM_BUGS.md Bug 3c fixed) — LinAlg runtime harness wiring is the next milestone |
+| `Nautilus.LinAlg` | `transpose`, `matmul_wrap`, `gram`, `aat`, `diag`, `trace_mat`, `trace_scalar`, `l2_norm_vec`, `inner_product`, `frobenius_sq`, `frobenius_norm`, `scale_vec`, `matvec`, `vecmat`, `det_2x2`, `det_3x3`, `la_vec_add`, `la_vec_sub`, `la_vec_saxpy`, `cg_solve`, `inv_2x2`, `inv_3x3`, `solve_2x2`, `solve_3x3`, `eig_2x2_real`, `cholesky_2x2` | type-checked + reef-built; v0.1.7 unblocked tensor-path runtime verification (UPSTREAM_BUGS.md Bug 3c fixed) — LinAlg runtime harness wiring is the next milestone |
 | `Nautilus.Roots` | `bisection`, `newton`, `brent` over `f: f32 -> f32` | scipy-parity, runtime-tested |
 | `Nautilus.ODE` | `euler_step` / `euler_solve`, `rk4_step` / `rk4_solve` over `f: f32 -> f32 -> f32` | runtime-tested vs analytic decay (RK4 ~4e-15 error at n=1000) |
 | `Nautilus.Stats` | `mean_vec`, `variance_vec`, `std_vec`, `skewness_vec`, `kurtosis_vec`, `median_vec`, `covariance_scalar`, `correlation_scalar`, `min_vec`, `max_vec`, `range_vec`, `quantile_vec`, `percentile_vec`, `trimmed_mean_vec` | type-checked; runtime verification deferred with LinAlg |

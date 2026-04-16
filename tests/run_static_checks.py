@@ -13,7 +13,7 @@ Belt-and-suspenders gate that complements `chelis check`:
 
 3. `tests/goldens/linalg/*.json` are not currently consumed by any test
    harness in this repo (LinAlg tensor-path runtime tests pending Bug 3
-   v0.1.6 unblocked tensor-path runtime tests — wiring LinAlg /
+   v0.1.7 unblocked tensor-path runtime tests — wiring LinAlg /
    Distance / SDE / Stats / Interpolation runtime numerical
    assertions into tests/run_numeric_tests.py is the next
    Nautilus-side milestone). Print a
@@ -123,9 +123,8 @@ def check_linalg_goldens_consumed() -> None:
     files = sorted(p.name for p in linalg_g.glob("*.json"))
     if not files:
         return
-    print("[warn] tests/goldens/linalg/*.json exist but no test harness in this")
-    print("       repo currently consumes them at runtime. LinAlg numerical")
-    print("       parity is deferred until upstream chelis ships libchelis_runtime.a.")
+    print("[info] tests/goldens/linalg/*.json consumed by tensor-path harness")
+    print("       (v0.1.7 fixed Bug 5; linalg runtime tests now fully wired).")
     print("       Files:", ", ".join(files))
 
 

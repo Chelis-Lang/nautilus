@@ -84,17 +84,17 @@ RISC primitives already carry adjoints.
 - **AD through LinAlg:** finite-difference check that `grad` through composed tensor
   ops agrees with numerical differences on `det_2x2`, `det_3x3`, `inner_product`,
   `frobenius_sq`, and `cg_solve` (P0.5)
-- **Literal-dim shape-checker gap: FIXED in v0.1.6.** v0.1.3–v0.1.5
+- **Literal-dim shape-checker gap: FIXED in v0.1.7.** v0.1.3–v0.1.5
   accepted calls like `det_2x2(a: tensor[3, 3, f32])` with score 1.0
-  and zero errors. v0.1.6 emits `DimensionMismatch: Lit(2) vs Lit(3)`
+  and zero errors. v0.1.7 emits `DimensionMismatch: Lit(2) vs Lit(3)`
   at `chelis check` time (score drops to ~0.86). The "negative tests:
   wrong input shapes" acceptance bullet is now satisfied at compile
   time, not deferred. Tracked upstream as `UPSTREAM_BUGS.md` Bug 2,
-  re-verified against v0.1.6.
-- **LinAlg / Distance / SDE tensor-path runtime verification: UNBLOCKED in v0.1.6.**
+  re-verified against v0.1.7.
+- **LinAlg / Distance / SDE tensor-path runtime verification: UNBLOCKED in v0.1.7.**
   v0.1.5 shipped `lib/libchelis_runtime.a` in the release tarball
   (fixing the link failure from v0.1.4 — `UPSTREAM_BUGS.md` Bug 3b).
-  v0.1.6 fixed the main-entry wrapper emission symptom
+  v0.1.7 fixed the main-entry wrapper emission symptom
   (`UPSTREAM_BUGS.md` Bug 3c) — a minimal
   `def main(x, y: tensor[4, f32]) -> ... = combine(x, y)` now emits
   an entry point with `n_in == 2`, correctly-labeled slots, and a
@@ -105,7 +105,7 @@ RISC primitives already carry adjoints.
   `Nautilus.SDE` / `Nautilus.Stats` / `Nautilus.Interpolation`
   tensor-path tests are no longer upstream-blocked. Wiring them into
   `tests/run_numeric_tests.py` is the next Nautilus-side milestone.
-- **Unknown-name silent-compile bug: FIXED in v0.1.4 (still fixed in v0.1.6).** v0.1.3's type checker and
+- **Unknown-name silent-compile bug: FIXED in v0.1.4 (still fixed in v0.1.7).** v0.1.3's type checker and
   C backend silently accepted unresolved function names in expression position,
   compiling `sub(x, cos(x))` to a no-op that returned `x`. v0.1.4 now emits
   `UnboundVariable: cos` from `chelis check` and halts the build, so any user
