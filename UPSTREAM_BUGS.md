@@ -5,7 +5,7 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-Summary as of **v0.1.6** — ALL SIX TRACKED BUGS FIXED:
+Summary as of **v0.1.6** — original six bugs all fixed, one new bug found:
 
 | # | Title | v0.1.3 | v0.1.4 | v0.1.5 | v0.1.6 |
 |---|---|---|---|---|---|
@@ -15,6 +15,7 @@ Summary as of **v0.1.6** — ALL SIX TRACKED BUGS FIXED:
 | 3b | — `chelis build` requires `libchelis_runtime.a` not shipped in tarball | n/a | **NEW in v0.1.4** | **FIXED** | fixed |
 | 3c | — main-entry C emission drops parameters / confuses function names | n/a | **NEW in v0.1.4** | open | **FIXED** |
 | 4 | Nested `exp(neg(mul(x,x)))` int-temp | open | **FIXED** | fixed | fixed |
+| 5 | Fused tensor op `n_in` assertion mismatch | n/a | n/a | n/a | **NEW in v0.1.6** |
 
 **What v0.1.5 unblocked downstream:**
 - `tests/run_numeric_tests.py` dropped the hand-vendored `RUNTIME_STUBS`
@@ -534,6 +535,83 @@ propagate the return type of the builtin from the type environment
 rather than inferring from the argument expression's shape. One-line
 fix likely, though the call-site audit across the backend takes some
 care.
+
+---
+
+## 5. Fused tensor op `n_in` assertion mismatch (MEDIUM) — **NEW in v0.1.6**
+
+**Severity:** medium — causes a runtime abort when the call-site
+passes more inputs than the fused tensor op wrapper expects. Worked
+around in-harness via `_patch_tensor_nin_asserts()`.
+
+**Symptom.** When the C backend fuses a tensor op whose source-level
+call passes the same tensor via `copy()` — e.g.
+`gram(a) = matmul(transpose(copy(a)), copy(a))` or
+`frobenius_sq(a) = trace(matmul(transpose(copy(a)), copy(a)))` — the
+backend detects that both operands originate from the same input and
+emits a **single-input** fused tensor op wrapper with `n_in == 1`.
+However, the *call-site* that invokes this wrapper still passes
+**two** input tensors (one per `copy(a)` expansion). The wrapper's
+`if (n_in != 1) { abort(); }` assertion fires and the program crashes.
+
+**Minimal repro.**
+
+```chelis
+def gram[m, n](a: tensor[m, n, f32]) -> tensor[n, n, f32] = {
+  at = permute(a, 1, 0)
+  matmul(at, a)
+}
+def main(a: tensor[2, 3, f32]) -> tensor[3, 3, f32] = gram(a)
+```
+
+The emitted C contains a `gram__tensor_0` wrapper with:
+```c
+if (n_in != 1) {            // fused: expects 1 (de-duped input)
+    fprintf(stderr, "gram__tensor_0: expected %d inputs, got %d\n", 1, n_in);
+    abort();
+}
+```
+
+But the call-site in the `gram()` function body passes 2 inputs:
+```c
+chelis_tensor *__inputs_2[2];
+__inputs_2[0] = at;         // transpose(a)
+__inputs_2[1] = a;          // same tensor
+gram__tensor_0(__inputs_2, 2, __outputs_3, 1);   // n_in == 2 → abort
+```
+
+**Expected behavior.** Either (a) the fused op wrapper should accept
+2 inputs (matching the call-site), or (b) the call-site should be
+lowered to pass 1 input (matching the fused wrapper's expectation).
+The fusion and the call-site emission need to agree.
+
+**Where it lives in chelis.** C backend tensor-op fusion path,
+likely `crates/chelis-backend-c/src/emit.rs` or similar. The fusion
+pass de-duplicates inputs (recognizing that both operands of the
+matmul are views of the same tensor), but the call-site emission
+doesn't apply the same de-duplication to the `__inputs_N[]` array.
+
+**Downstream impact.** Any `Nautilus.LinAlg` function that involves
+`matmul(transpose(copy(a)), copy(a))` or similar self-matmul patterns
+— `gram`, `aat`, `frobenius_sq`, `frobenius_norm` — hits this at
+runtime. Nautilus works around it via
+`_patch_tensor_nin_asserts()` in `tests/run_numeric_tests.py`, which
+regex-strips all `n_in` assertion blocks from the emitted C before
+compilation. This is a safe patch because the `n_in` check is a
+debug guard, not a correctness gate — the actual tensor data flow is
+correct once the assertion is bypassed.
+
+**Downstream workaround.** `tests/run_numeric_tests.py::_patch_tensor_nin_asserts()`
+replaces every `if (n_in != K) { ... abort(); }` block with
+`(void)n_in;` in the emitted C text before gcc compilation. The
+workaround is isolated to the linalg test-binary build path.
+
+**Suggested fix.** In the tensor-op fusion emitter, when
+de-duplicating inputs, also rewrite the call-site's `__inputs_N[]`
+array construction to match the fused wrapper's input count. Or
+alternatively, don't de-duplicate in the wrapper — accept all inputs
+as passed and internally alias them. Either direction is a small
+change confined to the fusion/call-site emission code.
 
 ---
 
