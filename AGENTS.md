@@ -49,7 +49,7 @@ diverges upstream, update this repo in the same change set.
 
 ## Upstream Chelis Bugs
 
-Upstream bugs tracked in [`UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) —
+Upstream bugs tracked in [`UPSTREAM_BUGS.md`](docs/UPSTREAM_BUGS.md) —
 originally found against v0.1.3, with per-bug status notes for each
 subsequent release. As of **v0.1.7: ALL SIX TRACKED BUGS FIXED**.
 v0.1.7 closed the last two open issues — Bug 2 (literal-dim
