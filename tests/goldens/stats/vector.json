@@ -8,6 +8,15 @@
     5.0,
     6.0
   ],
+  "w": [
+    6.0,
+    5.0,
+    4.0,
+    3.0,
+    2.0,
+    1.0,
+    0.0
+  ],
   "mean": 3.0,
   "var_ddof0": 4.0,
   "var_ddof1": 4.666666666666667,
@@ -16,6 +25,18 @@
   "skew": 0.0,
   "kurtosis": -1.25,
   "median": 3.0,
+  "min": 0.0,
+  "max": 6.0,
+  "range": 6.0,
+  "quantile_25": 1.5,
+  "quantile_50": 3.0,
+  "quantile_75": 4.5,
+  "percentile_10": 0.6000000000000001,
+  "percentile_90": 5.4,
+  "trimmed_mean_10": 3.0,
+  "cov_ddof0": -4.0,
+  "cov_ddof1": -4.666666666666666,
+  "correlation": -1.0,
   "abs": 1e-06,
   "rel": 1e-06
 }
