@@ -530,10 +530,17 @@ double linear_interp_sorted(chelis_tensor* xs, chelis_tensor* ys, double x_query
 double test_lm_linear(chelis_tensor* xs, chelis_tensor* ys, double theta0);
 double test_lm_exp(chelis_tensor* xs, chelis_tensor* ys, double theta0);
 
+/* distribution sample test wrappers */
+chelis_tensor* test_uniform_sample(chelis_tensor* t);
+chelis_tensor* test_normal_sample(chelis_tensor* t);
+chelis_tensor* test_exponential_sample(chelis_tensor* t);
+chelis_tensor* test_lognormal_sample(chelis_tensor* t);
+
 /* SDE: scalar + tensor -> scalar (test wrappers defined in harness source) */
 double test_em_decay_s1(double y0, double t0, double t1, chelis_tensor* noise);
 double test_em_decay_s01(double y0, double t0, double t1, chelis_tensor* noise);
 double test_milstein_gbm(double y0, double t0, double t1, chelis_tensor* noise);
+double test_em_gbm_realistic(double y0, double t0, double t1, chelis_tensor* noise);
 
 /* tensor-output, two-tensor-input */
 chelis_tensor* solve_2x2(chelis_tensor* a, chelis_tensor* b);
@@ -903,6 +910,13 @@ int main(int argc, char** argv) {
         print_scalar(test_milstein_gbm(y0, t0, t1, noise));
         return 0;
     }
+    if (!strcmp(fn, "test_em_gbm_realistic")) {
+        double y0 = a[0], t0 = a[1], t1 = a[2];
+        int n = (int)a[3];
+        chelis_tensor* noise = make_vec(n, a+4);
+        print_scalar(test_em_gbm_realistic(y0, t0, t1, noise));
+        return 0;
+    }
 
     /* gram: M, N, then M*N elements -> mat(N,N) */
     if (!strcmp(fn, "gram")) {
@@ -1044,32 +1058,67 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    /* sample wrappers: N -> vec(N) (template is zeros) */
+    if (!strcmp(fn, "test_uniform_sample")) {
+        int n = (int)a[0];
+        chelis_tensor* t = make_vec(n, a+1);
+        chelis_tensor* r = test_uniform_sample(t);
+        print_vec(r);
+        return 0;
+    }
+    if (!strcmp(fn, "test_normal_sample")) {
+        int n = (int)a[0];
+        chelis_tensor* t = make_vec(n, a+1);
+        chelis_tensor* r = test_normal_sample(t);
+        print_vec(r);
+        return 0;
+    }
+    if (!strcmp(fn, "test_exponential_sample")) {
+        int n = (int)a[0];
+        chelis_tensor* t = make_vec(n, a+1);
+        chelis_tensor* r = test_exponential_sample(t);
+        print_vec(r);
+        return 0;
+    }
+    if (!strcmp(fn, "test_lognormal_sample")) {
+        int n = (int)a[0];
+        chelis_tensor* t = make_vec(n, a+1);
+        chelis_tensor* r = test_lognormal_sample(t);
+        print_vec(r);
+        return 0;
+    }
+
     fprintf(stderr, "unknown function: %s\n", fn);
     return 2;
 }
 """
 
 
-_DUPE_HELPERS = {"zero_f", "one_f", "two_f", "abs_f32", "pos_inf"}
-
-
 def _dedup_defs(bare: str) -> str:
-    """Strip duplicate helper definitions from concatenated bare Chelis
-    source. Only removes the SECOND occurrence of helpers known to be
-    defined in multiple modules (special/distributions vs stats)."""
-    seen: set[str] = set()
+    """Auto-detect and strip duplicate top-level `def` definitions from
+    concatenated bare Chelis source. Keeps the first occurrence, drops
+    subsequent ones, and warns on stderr so collisions are visible."""
+    seen: dict[str, int] = {}
     out: list[str] = []
-    for line in bare.split("\n"):
+    deduped: list[str] = []
+    for lineno, line in enumerate(bare.split("\n"), 1):
         m = re.match(r"^def\s+(\w+)\b", line)
-        if m and m.group(1) in _DUPE_HELPERS:
-            if m.group(1) in seen:
+        if m:
+            name = m.group(1)
+            if name in seen:
+                deduped.append(f"  {name} (first at line {seen[name]}, dup at line {lineno})")
                 continue
-            seen.add(m.group(1))
+            seen[name] = lineno
         out.append(line)
+    if deduped:
+        print(f"[dedup] stripped {len(deduped)} duplicate def(s) from concatenated source:",
+              file=sys.stderr)
+        for d in deduped:
+            print(d, file=sys.stderr)
     return "\n".join(out)
 
 
-SDE_TEST_HELPERS_CH = r"""
+TEST_HELPERS_CH = r"""
 def sde_test_drift_decay(y: f32, t: f32) -> f32 = neg(y)
 def sde_test_diff_one(y: f32, t: f32) -> f32 = cast(1.0, f32)
 def sde_test_diff_01(y: f32, t: f32) -> f32 = cast(0.1, f32)
@@ -1085,6 +1134,21 @@ def test_em_decay_s01[n](y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f3
 
 def test_milstein_gbm[n](y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32 =
   milstein_fixed(sde_test_drift_gbm, sde_test_diff_gbm, sde_test_ddiff_gbm, y0, t0, t1, noise)
+
+def sde_test_drift_gbm_005(y: f32, t: f32) -> f32 = mul(cast(0.05, f32), y)
+def sde_test_diff_gbm_02(y: f32, t: f32) -> f32 = mul(cast(0.2, f32), y)
+
+def test_em_gbm_realistic[n](y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32 =
+  euler_maruyama_fixed(sde_test_drift_gbm_005, sde_test_diff_gbm_02, y0, t0, t1, noise)
+
+def test_uniform_sample[n](t: tensor[n, f32]) -> tensor[n, f32] =
+  uniform_sample(t, cast(2.0, f32), cast(5.0, f32))
+def test_normal_sample[n](t: tensor[n, f32]) -> tensor[n, f32] =
+  normal_sample(t, cast(0.0, f32), cast(1.0, f32))
+def test_exponential_sample[n](t: tensor[n, f32]) -> tensor[n, f32] =
+  exponential_sample(t, cast(2.0, f32))
+def test_lognormal_sample[n](t: tensor[n, f32]) -> tensor[n, f32] =
+  lognormal_sample(t, cast(0.0, f32), cast(0.5, f32))
 
 def cf_test_model(x: f32, theta: f32) -> f32 = mul(theta, x)
 def cf_test_dmodel(x: f32, theta: f32) -> f32 = x
@@ -1112,7 +1176,7 @@ def build_linalg_binary() -> Path:
     bare = "\n".join(
         strip_module((SRC / f).read_text())
         for f in ("special.ch", "distributions.ch", "linalg.ch", "stats.ch", "distance.ch", "sde.ch", "interpolation.ch", "curvefit.ch")
-    ) + SDE_TEST_HELPERS_CH + "\ndef main() -> f32 = cast(0.0, f32)\n"
+    ) + TEST_HELPERS_CH + "\ndef main() -> f32 = cast(0.0, f32)\n"
     bare = _dedup_defs(bare)
     workdir = Path(tempfile.mkdtemp(prefix="nautilus-la-"))
     bare_ch = workdir / "la_bare.ch"
@@ -1796,6 +1860,62 @@ def main() -> int:
     exp_ys = [1.0, _m.exp(-0.5), _m.exp(-1.0), _m.exp(-1.5)]
     la_run_scalar("lm_exp(theta=0.5)", "test_lm_exp",
                   [4, 1.0, 0.0, 1.0, 2.0, 3.0] + exp_ys, 0.5, 1e-3, 1e-3)
+
+    # --- Track 2: cg_solve on ill-conditioned systems ---
+    print("== LinAlg: cg_solve (ill-conditioned) ==")
+    # cond ~200: A=[[1,0.99],[0.99,1]], b=[1,1] → x≈[0.5025, 0.5025]
+    la_run_vec("cg_solve(cond~200)", "cg_solve",
+               [2, 1e-5, 500, 1.0, 0.99, 0.99, 1.0, 1.0, 1.0, 0.0, 0.0],
+               [0.50251256281407, 0.50251256281407], 1e-3, 1e-3)
+    # cond ~2000: A=[[1,0.999],[0.999,1]], b=[1,1] → x≈[0.5003, 0.5003]
+    la_run_vec("cg_solve(cond~2000)", "cg_solve",
+               [2, 1e-5, 500, 1.0, 0.999, 0.999, 1.0, 1.0, 1.0, 0.0, 0.0],
+               [0.500250125062538, 0.500250125062538], 1e-2, 1e-2)
+
+    # --- Track 3: mahalanobis with dense covariance inverse ---
+    print("== Distance: mahalanobis (dense cov_inv) ==")
+    # cov_inv=[[2,-1],[-1,2]], a=[3,1], b=[1,2], diff=[2,-1]
+    # diff^T cov_inv diff = [2,-1]@[5,-4] = 14
+    la_run_scalar("mahalanobis_sq(dense)", "mahalanobis_squared",
+                  [2, 3.0, 1.0, 1.0, 2.0, 2.0, -1.0, -1.0, 2.0], 14.0, 1e-4, 1e-4)
+    la_run_scalar("mahalanobis(dense)", "mahalanobis",
+                  [2, 3.0, 1.0, 1.0, 2.0, 2.0, -1.0, -1.0, 2.0], 3.74165738677394, 1e-4, 1e-4)
+
+    # --- Track 4: SDE with realistic noise ---
+    print("== SDE: realistic noise ==")
+    noise_realistic = [_m.sin(i * 1.7 + 0.3) for i in range(20)]
+    # Expected: euler_maruyama on GBM dy=0.05*y*dt + 0.2*y*dW, y0=1, t=[0,1], 20 steps
+    la_run_scalar("em_gbm_realistic", "test_em_gbm_realistic",
+                  [1.0, 0.0, 1.0, 20] + noise_realistic,
+                  1.08178023531837, 1e-4, 1e-4)
+
+    # --- Track 5: LM with noisy data ---
+    print("== CurveFit: noisy fit ==")
+    noisy_xs = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+    noisy_ys = [1.05, 1.92, 3.12, 3.97, 5.07, 5.89, 7.04, 7.94, 9.09, 9.98]
+    la_run_scalar("lm_linear(noisy)", "test_lm_linear",
+                  [10, 0.5] + noisy_xs + noisy_ys, 2.0, 0.1, 0.05)
+
+    # --- Track 1: distribution sample variants ---
+    print("== Distributions: sample (deterministic seed) ==")
+    zeros8 = [0.0] * 8
+    # Expected values are deterministic (seed=0, chelis_uniform_sample_f32 hash)
+    la_run_vec("uniform_sample(8)", "test_uniform_sample", [8] + zeros8,
+               [2.0, 4.64993238449097, 3.29458403587341, 2.07930135726929,
+                4.91264581680298, 2.31904006004333, 2.98197722434998, 2.52160358428955],
+               1e-4, 1e-4)
+    la_run_vec("normal_sample(8)", "test_normal_sample", [8] + zeros8,
+               [5.67769241333008, 0.370152562856674, -1.17833054065704, 2.65849828720093,
+                0.239049032330513, 1.6617956161499, -0.697885394096375, 0.861041247844696],
+               1e-4, 1e-4)
+    la_run_vec("exponential_sample(8)", "test_exponential_sample", [8] + zeros8,
+               [8.05904769897461, 0.0620390810072422, 0.420211404561996, 1.8165545463562,
+                0.0147751718759537, 1.12052500247955, 0.558399617671967, 0.874729573726654],
+               1e-4, 1e-4)
+    la_run_vec("lognormal_sample(8)", "test_lognormal_sample", [8] + zeros8,
+               [17.0960292816162, 1.20331025123596, 0.554790198802948, 3.77820539474487,
+                1.12696087360382, 2.29537868499756, 0.705433547496796, 1.53805804252625],
+               1e-4, 1e-4)
 
     print(f"\n{total - fails} / {total} numerical assertions passed")
     return 1 if fails else 0
