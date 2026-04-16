@@ -13,9 +13,10 @@ Belt-and-suspenders gate that complements `chelis check`:
 
 3. `tests/goldens/linalg/*.json` are not currently consumed by any test
    harness in this repo (LinAlg tensor-path runtime tests pending Bug 3
-   blocked by UPSTREAM_BUGS.md Bug 3c — v0.1.5 ships the runtime
-   archive but the C backend's main-entry wrapper still drops
-   parameters for multi-tensor-input entry points). Print a
+   v0.1.6 unblocked tensor-path runtime tests — wiring LinAlg /
+   Distance / SDE / Stats / Interpolation runtime numerical
+   assertions into tests/run_numeric_tests.py is the next
+   Nautilus-side milestone). Print a
    warning and the deferral pointer so it doesn't quietly become "fixture
    cosplay" — surfaced honestly.
 
