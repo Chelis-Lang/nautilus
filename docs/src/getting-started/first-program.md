@@ -8,7 +8,9 @@ compute a Black-Scholes option price.
 Create a file called `src/my_first.ch` in your project:
 
 ```chelis
+module Nautilus.ExampleFirstProgram
 import Nautilus.Distributions (normal_cdf)
+export (main)
 
 def black_scholes_call(spot: f32, strike: f32, rate: f32, vol: f32, t_years: f32) -> f32 = {
   ln_ratio = log(div(spot, strike))

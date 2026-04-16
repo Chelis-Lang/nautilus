@@ -1,3 +1,77 @@
-# Limitations
+# Known Limitations
 
-This chapter is under construction.
+This page summarizes the functional limitations of Nautilus as documented
+in `NAUTILUS_STATUS.md` Section 6.1.
+
+## Precision
+
+**f32 precision throughout.** All Nautilus functions operate in f32,
+providing approximately 6-7 significant digits. scipy runs f64.
+Acceptable for f32 workloads; f64 promotion would need upstream Chelis
+type support. See the [Precision appendix](precision.md) for per-function
+details.
+
+## Missing builtins
+
+**No `cos`, `tan`, `atan`, `abs`, `floor`, `ceil` builtins** in the
+Chelis language. Users must express these from primitives:
+
+```chelis-fragment
+// cos(x) via sin
+cos_x = sin(add(x, cast(1.5707963267948966, f32)))
+
+// abs(x) via conditional
+abs_x = if lt(x, cast(0.0, f32)) then neg(x) else x
+```
+
+This is a Chelis language limitation, not a Nautilus limitation. Upstream
+could add these as builtins.
+
+## Linear algebra
+
+**No general-n eigenvalue/SVD/LU/QR.** Only 2x2 and 3x3 closed-form
+inverses, solves, eigenvalues, and Cholesky are available. `cg_solve`
+provides iterative SPD linear solve at general n. General-n
+decompositions are deferred to a future phase.
+
+## ODE integration
+
+**No adaptive ODE stepping.** `rk4_solve` is fixed-step only. Adaptive
+RK45 with error control is deferred. Users needing adaptive stepping
+must implement their own step-size control loop on top of `rk4_step`.
+
+## Optimization
+
+**`newton_minimize_1d` strong-convexity heuristic.** The Newton minimizer
+includes a curvature check that can false-positive on very flat minima
+(e.g., f(x) = x^4 near x = 0). Use `brent_minimize` or
+`golden_section_search` for flat-Hessian targets.
+
+## Signal processing
+
+**Signal module is stubs only.** All 7 functions (except `fftfreq`)
+return NaN sentinels. Blocked on upstream complex-number support
+(Phase 5f). See the [Signal chapter](../other/signal.md).
+
+## bessel_y1 precision
+
+**~1e-3 drift in (7.5, 8)** at the seam between rational-polynomial and
+asymptotic branches. This is an f32 coefficient precision limit. See
+the [Precision appendix](precision.md) for details.
+
+## Airy function coverage
+
+**`airy_ai` large negative x.** Power series only; no asymptotic branch
+for x < -5. The oscillatory regime works for moderate |x| but degrades
+at very large negative x.
+
+## Test harness architecture
+
+**Bare-build path only.** The test harness concatenates `.ch` sources,
+strips module directives, and builds a single C translation unit. It does
+not exercise the reef package import system at runtime -- only at
+`chelis reef build` / `chelis check` time.
+
+**LTO flags are bench-only.** The `-flto -fvisibility=hidden
+-Wl,-Bsymbolic` workaround for cross-TU inlining is applied only in
+the benchmark script, not in the test harness or any consumer build path.

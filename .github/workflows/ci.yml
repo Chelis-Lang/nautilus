@@ -62,6 +62,16 @@ jobs:
           CHELIS_BIN: chelis
         run: python tests/run_numeric_tests.py
 
+      - name: Validate SKILL.md examples
+        env:
+          CHELIS_BIN: chelis
+        run: python tests/run_skill_checks.py
+
+      - name: Validate mdBook examples
+        env:
+          CHELIS_BIN: chelis
+        run: python scripts/validate_book_examples.py
+
       - name: Sanity-check chelis import gate (mutation test)
         run: |
           # Prove the apismoke gate actually has teeth by mutating one
