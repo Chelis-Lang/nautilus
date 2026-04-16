@@ -511,6 +511,13 @@ chelis_tensor* scale_vec(chelis_tensor* v, double s);
 chelis_tensor* matvec(chelis_tensor* a, chelis_tensor* v);
 chelis_tensor* la_vec_saxpy(double alpha, chelis_tensor* x, chelis_tensor* y);
 
+/* cg_solve: matrix + vec + vec + tol + max_iters -> vec */
+chelis_tensor* cg_solve(chelis_tensor* a, chelis_tensor* b, chelis_tensor* x0,
+                        double tol, int64_t max_iters);
+
+/* eig_2x2_real: 2x2 matrix -> chelis_tuple* of two f32 eigenvalues */
+chelis_tuple* eig_2x2_real(chelis_tensor* a);
+
 /* SDE: scalar + tensor -> scalar (test wrappers defined in harness source) */
 double test_em_decay_s1(double y0, double t0, double t1, chelis_tensor* noise);
 double test_em_decay_s01(double y0, double t0, double t1, chelis_tensor* noise);
@@ -948,6 +955,28 @@ int main(int argc, char** argv) {
         chelis_tensor* mat = make_mat(2, 2, a);
         chelis_tensor* r = cholesky_2x2(mat);
         print_mat(r);
+        return 0;
+    }
+
+    /* cg_solve: N, tol, max_iters, N*N (A), N (b), N (x0) -> vec(N) */
+    if (!strcmp(fn, "cg_solve")) {
+        int n = (int)a[0];
+        double tol = a[1];
+        int64_t max_iters = (int64_t)a[2];
+        chelis_tensor* mat = make_mat(n, n, a+3);
+        chelis_tensor* b = make_vec(n, a+3+n*n);
+        chelis_tensor* x0 = make_vec(n, a+3+n*n+n);
+        chelis_tensor* r = cg_solve(mat, b, x0, tol, max_iters);
+        print_vec(r);
+        return 0;
+    }
+    /* eig_2x2_real: 4 elements -> two eigenvalues as "lam1 lam2" */
+    if (!strcmp(fn, "eig_2x2_real")) {
+        chelis_tensor* mat = make_mat(2, 2, a);
+        chelis_tuple* tup = eig_2x2_real(mat);
+        chelis_value v0 = chelis_tuple_get(tup, 0);
+        chelis_value v1 = chelis_tuple_get(tup, 1);
+        printf("%.15g %.15g\n", chelis_value_as_f64(v0), chelis_value_as_f64(v1));
         return 0;
     }
 
@@ -1592,6 +1621,43 @@ def main() -> int:
         elif label == "milstein_gbm":
             la_run_scalar(label, "test_milstein_gbm", [y0, t0, t1, ns] + noise,
                           expected, atol_sde, rtol_sde)
+
+    # --- cg_solve ---
+    print("== LinAlg: cg_solve ==")
+    # Use cholesky_2x2 test matrix [[4,2],[2,3]] — it's SPD.
+    # Ax = b → x = A^{-1} b
+    # A^{-1} = [[3,-2],[-2,4]] / 8 = [[0.375,-0.25],[-0.25,0.5]]
+    # b = [1, 2] → x = [0.375*1 + (-0.25)*2, -0.25*1 + 0.5*2] = [-0.125, 0.75]
+    cg_a = [4.0, 2.0, 2.0, 3.0]
+    cg_b = [1.0, 2.0]
+    cg_x0 = [0.0, 0.0]
+    cg_expected = [-0.125, 0.75]
+    la_run_vec("cg_solve(2x2)", "cg_solve",
+               [2, 1e-7, 100] + cg_a + cg_b + cg_x0,
+               cg_expected, 1e-4, 1e-4)
+    # 3x3 SPD: [[2,1,0],[1,3,1],[0,1,2]], b=[1,2,3]
+    # inv = [[5,-2,-1],[-2,4,-2],[-1,-2,5]] / 8
+    # x = inv @ [1,2,3] = [(5-4-3)/8, (-2+8-6)/8, (-1-4+15)/8] = [-0.25, 0.0, 1.25]
+    cg_a3 = [2.0, 1.0, 0.0, 1.0, 3.0, 1.0, 0.0, 1.0, 2.0]
+    cg_b3 = [1.0, 2.0, 3.0]
+    cg_x03 = [0.0, 0.0, 0.0]
+    cg_exp3 = [0.5, 0.0, 1.5]
+    la_run_vec("cg_solve(3x3)", "cg_solve",
+               [3, 1e-7, 100] + cg_a3 + cg_b3 + cg_x03,
+               cg_exp3, 1e-3, 1e-3)
+
+    # --- eig_2x2_real ---
+    print("== LinAlg: eig_2x2_real ==")
+    # [[2, 1], [1, 2]] → eigenvalues 3 and 1
+    la_run_vec("eig_2x2_real([[2,1],[1,2]])", "eig_2x2_real",
+               [2.0, 1.0, 1.0, 2.0], [3.0, 1.0], 1e-5, 1e-5)
+    # [[5, 4], [1, 2]] → eigenvalues 6 and 1 (trace=7, det=6, disc=25, sqrt=5)
+    la_run_vec("eig_2x2_real([[5,4],[1,2]])", "eig_2x2_real",
+               [5.0, 4.0, 1.0, 2.0], [6.0, 1.0], 1e-5, 1e-5)
+    # [[1, 0], [0, 3]] → eigenvalues 3 and -1? No: trace=4, det=3, disc=1, sqrt=1 → 2.5, 1.5
+    # Actually: t/2=2, disc = 4-3 = 1, sqrt=1, so lam1=3, lam2=1
+    la_run_vec("eig_2x2_real([[1,0],[0,3]])", "eig_2x2_real",
+               [1.0, 0.0, 0.0, 3.0], [3.0, 1.0], 1e-5, 1e-5)
 
     print(f"\n{total - fails} / {total} numerical assertions passed")
     return 1 if fails else 0
