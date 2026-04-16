@@ -17,8 +17,8 @@ to this file so Claude-style and Codex-style entry points do not drift.
 
 ## Toolchain Pin
 
-- `chelis v0.1.4` is the single supported compiler binary. `reef.toml`
-  pins `compiler = "=0.1.4"`. Version bumps must land in every Chelis
+- `chelis v0.1.5` is the single supported compiler binary. `reef.toml`
+  pins `compiler = "=0.1.5"`. Version bumps must land in every Chelis
   shell repo in the same change set — do not bump unilaterally.
 - Do not vendor or build the Chelis compiler from source inside this
   repo. Consume the released tarball from the private
@@ -49,12 +49,15 @@ diverges upstream, update this repo in the same change set.
 
 ## Upstream Chelis Bugs
 
-Four upstream bugs tracked in [`UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) —
+Upstream bugs tracked in [`UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) —
 originally found against v0.1.3, with per-bug status notes for each
-subsequent release. As of v0.1.4: **Bug 1 (unknown-name silent compile)
-FIXED**, **Bug 4 (nested exp int-temp) FIXED**, **Bug 2 (shape-checker
-gap) still present**, **Bug 3 (tensor-on-tensor add/mul) — needs
-re-verification now that `libchelis_runtime.a` is shipped**.
+subsequent release. As of **v0.1.5**: **Bugs 1, 3b, 4 FIXED** (v0.1.5
+tarball now ships `lib/libchelis_runtime.a` + `include/chelis_runtime.h`
+alongside `bin/chelis`, and `chelis build` no longer errors at the
+link step). **Bug 2 (shape-checker gap) and Bug 3c (main-entry
+parameter-confusion emission) still open** — the latter continues to
+block LinAlg / Distance / SDE / Stats tensor-path runtime verification
+(~100+ scipy-parity assertions still deferred).
 
 ## Scaffolding Drift Rule
 

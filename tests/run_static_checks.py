@@ -13,7 +13,9 @@ Belt-and-suspenders gate that complements `chelis check`:
 
 3. `tests/goldens/linalg/*.json` are not currently consumed by any test
    harness in this repo (LinAlg tensor-path runtime tests pending Bug 3
-   re-verification against v0.1.4's libchelis_runtime.a). Print a
+   blocked by UPSTREAM_BUGS.md Bug 3c — v0.1.5 ships the runtime
+   archive but the C backend's main-entry wrapper still drops
+   parameters for multi-tensor-input entry points). Print a
    warning and the deferral pointer so it doesn't quietly become "fixture
    cosplay" — surfaced honestly.
 
