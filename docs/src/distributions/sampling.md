@@ -35,8 +35,9 @@ z = sqrt(-2 * ln(u1)) * cos(2 * pi * u2)
 result = mean + std * z
 ```
 
-The implementation avoids `cos` (which is not a Chelis builtin) by
-computing cos(2*pi*u2) as sin(pi/2 - 2*pi*u2).
+The implementation computes cos(2*pi*u2) via the identity
+sin(pi/2 - 2*pi*u2). (As of v0.1.7, `cos` is a builtin, but the
+existing implementation predates that and works correctly.)
 
 ```chelis-fragment
 import Nautilus.Distributions (normal_sample)
