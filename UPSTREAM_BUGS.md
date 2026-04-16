@@ -3,22 +3,45 @@
 This file collects upstream chelis issues discovered during red-team
 rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
-**v0.1.4 status** line recording what changed in the v0.1.4 release.
+per-release **status** line recording what changed.
 
-Summary as of v0.1.4:
+Summary as of v0.1.5:
 
-| # | Title | v0.1.3 | v0.1.4 |
-|---|---|---|---|
-| 1 | Unknown-name silent compile | open | **FIXED** |
-| 2 | Shape-checker gap for literal-dim tensor params | open | open (re-verified) |
-| 3 | Tensor-on-tensor `add`/`mul` lowering | open | open (still blocked; see 3a/3b/3c) |
-| 3a | — emitted C was raw pointer arithmetic (original v0.1.3 symptom) | open | likely superseded by runtime path |
-| 3b | — `chelis build` requires `libchelis_runtime.a` not shipped in tarball | n/a | **NEW in v0.1.4** |
-| 3c | — main-entry C emission drops parameters / confuses function names | n/a | **NEW in v0.1.4** |
-| 4 | Nested `exp(neg(mul(x,x)))` int-temp | open | **FIXED** |
+| # | Title | v0.1.3 | v0.1.4 | v0.1.5 |
+|---|---|---|---|---|
+| 1 | Unknown-name silent compile | open | **FIXED** | fixed |
+| 2 | Shape-checker gap for literal-dim tensor params | open | open | **still open** (re-verified) |
+| 3a | — emitted C was raw pointer arithmetic (original v0.1.3 symptom) | open | likely superseded | superseded |
+| 3b | — `chelis build` requires `libchelis_runtime.a` not shipped in tarball | n/a | **NEW in v0.1.4** | **FIXED** |
+| 3c | — main-entry C emission drops parameters / confuses function names | n/a | **NEW in v0.1.4** | **still open** (re-verified, same symptom) |
+| 4 | Nested `exp(neg(mul(x,x)))` int-temp | open | **FIXED** | fixed |
+
+**What v0.1.5 unblocked downstream:**
+- `tests/run_numeric_tests.py` dropped the hand-vendored `RUNTIME_STUBS`
+  block and now links against the real `libchelis_runtime.a` that
+  v0.1.5 copies into the build output dir. 632 / 632 assertions
+  still pass.
+- `scripts/bench_vs_scipy.py::build_shared_lib` dropped the hand-vendored
+  `RUNTIME_STUBS` for the same reason. The P5 Track 1 LTO +
+  visibility workaround (`-flto -fuse-linker-plugin -fvisibility=hidden
+  -Wl,-Bsymbolic`) **remains load-bearing in v0.1.5** — v0.1.5's
+  C backend still emits cross-TU helpers as extern, so `-shared -fPIC`
+  still forces PLT indirection and blocks inlining. Measured regression
+  from dropping the flags: 6.7 → 18.9 ns/el (3×) on
+  `normal_cdf(x)*exp(-x²)` at n=100k. Flags restored with an updated
+  comment citing the v0.1.5 measurement.
+
+**What v0.1.5 did NOT unblock:**
+- LinAlg / Distance / SDE / Stats tensor-path runtime verification is
+  still gated on Bug 3c. A multi-tensor-input main entry point still
+  emits `n_in == 1`, slot 0 labeled by the helper function name, and
+  a body that drops the second operand. ~100+ scipy-parity assertions
+  in `tests/goldens/linalg/`, `tests/goldens/distance/`, and the
+  tensor-path `Nautilus.Stats`/`Nautilus.SDE`/`Nautilus.Interpolation`
+  paths remain deferred.
 
 Original repros below were run against `chelis v0.1.3-linux-x86_64`.
-Re-verifications against `chelis v0.1.4-linux-x86_64` are noted inline.
+Re-verifications against subsequent releases are noted inline.
 
 ---
 
@@ -113,6 +136,11 @@ with no error. The suggested fix (`d-lit` parameters requiring exact
 match in tensor unification) has not landed. Remains the blocker on
 the "negative tests: wrong input shapes" acceptance bullet in
 `spec/phase3j.md`.
+
+**v0.1.5 status: NOT FIXED.** Re-running the same repro against
+`chelis v0.1.5-linux-x86_64` returns identical output (score 1,
+zero errors, empty unresolved_names). Still the blocker on the
+negative-test acceptance bullet.
 
 **Symptom.** `chelis check` does not enforce tensor dimension equality
 for literal-size parameters. A function declared `def f(a: tensor[2, 2,
@@ -237,6 +265,17 @@ tarball. The symbol surface is already defined by
 the Rust runtime crate already exists at `crates/chelis-runtime/`
 in the monorepo — this is a CI packaging task, not a code change.
 
+**v0.1.5 status: FIXED.** The v0.1.5 release tarball now contains
+`bin/chelis`, `lib/libchelis_runtime.a`, and
+`include/chelis_runtime.h`, and `chelis build` copies both the
+archive and header into its output directory alongside the
+generated `.c` / `.h` files. `chelis build hello.ch` on a scalar
+program now runs to completion without a link error.
+Nautilus `tests/run_numeric_tests.py` and
+`scripts/bench_vs_scipy.py::build_shared_lib` both dropped their
+hand-vendored `RUNTIME_STUBS` blocks and now link against the real
+archive. 632 / 632 numerical assertions still pass.
+
 ---
 
 ## 3c. C-backend main-entry emission drops parameters / confuses function names (HIGH) — **NEW in v0.1.4**
@@ -321,6 +360,17 @@ string is being pulled from the wrong scope (the inlined helper
 function rather than the entry-point parameter list). Both are
 localized to the main-wrapping codegen and should not require
 touching the type checker or IR.
+
+**v0.1.5 status: NOT FIXED.** Re-running the same two-input
+`main(x, y: tensor[4, f32]) = combine(x, y)` minimal repro against
+`chelis v0.1.5-linux-x86_64` produces identical broken output:
+`n_in != 1` check (should be 2), slot 0 labeled `"combine"` (the
+helper function name, not `x` or `y`), body of
+`chelis_contiguous(inputs[0])` with no `add` call and no second
+operand. v0.1.5 fixed the runtime-packaging half of Bug 3 (now
+shipped as Bug 3b → FIXED) but the main-entry emission symptom is
+independent and unchanged. LinAlg / Distance / SDE / Stats
+tensor-path runtime verification remains blocked.
 
 ---
 
@@ -499,6 +549,36 @@ gate the same acceptance criteria:
   Tensor-path runtime verification for LinAlg / SDE / Stats /
   Distance / Interpolation remains deferred; ~100+ scipy-parity
   assertions are still gated on fixing this.
+
+**v0.1.5 unlocked:** Bug 3b shipped upstream — the release tarball
+now contains `bin/chelis`, `lib/libchelis_runtime.a`, and
+`include/chelis_runtime.h`, and `chelis build` copies the archive and
+header into its output directory. Nautilus consumed this by:
+
+- Dropping the hand-vendored `RUNTIME_STUBS` block from
+  `tests/run_numeric_tests.py` (~30 lines deleted) and linking
+  against the real archive via `-L $outdir -lchelis_runtime`.
+- Dropping the same stubs block from
+  `scripts/bench_vs_scipy.py::build_shared_lib` in favor of the
+  real runtime link.
+- Bumping `reef.toml`, CI, README, AGENTS.md, spec/phase3j.md, and
+  the test / bench module docstrings from `v0.1.4` to `v0.1.5`.
+
+526 + 106 = 632 / 632 numerical assertions still pass. The P5 Track 1
+LTO workaround in the bench script (`-flto -fvisibility=hidden
+-Wl,-Bsymbolic`) remains load-bearing: v0.1.5's C backend still emits
+cross-TU helpers as extern, so `-shared -fPIC` still forces PLT
+indirection. Measured regression from dropping the flags on v0.1.5:
+6.7 → 18.9 ns/el (3×) on `normal_cdf(x)*exp(-x²)` at n=100k. Flags
+restored with an updated comment.
+
+**v0.1.5 still blocking:** Bug 2 and Bug 3c remain open and continue
+to gate the same acceptance criteria — shape-enforcement negative
+tests (Bug 2) and all tensor-path LinAlg / Distance / SDE / Stats /
+Interpolation runtime numerical verification (Bug 3c). Until the
+main-entry wrapper emission is fixed, no multi-tensor-input entry
+point can be runtime-exercised, regardless of whether
+`libchelis_runtime.a` is available.
 
 When upstream Chelis lands a release with either of these fixed,
 Nautilus can re-enable runtime verification paths and tighten the

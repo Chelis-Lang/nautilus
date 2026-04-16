@@ -19,9 +19,11 @@ libchelis_runtime.a — the bare scalar functions don't need either.
 The harness covers Nautilus.Special and Nautilus.Distributions scalar
 functions only. Nautilus.LinAlg ops that take tensor inputs are covered by
 the API-smoke type check (src/apismoke.ch + chelis check), since their
-runtime exercise requires the full chelis runtime. As of v0.1.4 the
-runtime ships as `libchelis_runtime.a` — enabling tensor-path runtime
-tests is tracked separately (see UPSTREAM_BUGS.md Bug 3 status).
+runtime exercise requires the full chelis runtime. As of v0.1.5 the
+runtime ships as `lib/libchelis_runtime.a` in the release tarball,
+but enabling tensor-path runtime tests remains blocked on Bug 3c
+(main-entry C emission still drops parameters for multi-tensor-input
+entry points — see UPSTREAM_BUGS.md).
 """
 from __future__ import annotations
 
@@ -155,37 +157,12 @@ int main(int argc, char** argv) {{
 """
 
 
-RUNTIME_STUBS = """\
-#include <stdint.h>
-#include <stdlib.h>
-typedef struct chelis_tensor chelis_tensor;
-typedef struct chelis_list chelis_list;
-typedef struct chelis_tuple chelis_tuple;
-typedef struct chelis_value_s { int dummy; } chelis_value;
-int64_t chelis_list_len(const chelis_list* x) { return 0; }
-chelis_value chelis_list_index(const chelis_list* x, int64_t i) { chelis_value v={0}; return v; }
-chelis_tuple* chelis_value_as_tuple(chelis_value v) { return NULL; }
-chelis_value chelis_tuple_get(const chelis_tuple* t, int64_t i) { chelis_value v={0}; return v; }
-double chelis_value_as_f64(chelis_value v) { return 0.0; }
-chelis_value chelis_value_from_f64(double x) { chelis_value v={0}; return v; }
-chelis_list* chelis_list_append(chelis_list* l, chelis_value v) { return l; }
-chelis_list* chelis_list_empty(void) { return NULL; }
-chelis_list* chelis_list_zip(const chelis_list* a, const chelis_list* b) { return NULL; }
-chelis_list* chelis_list_from_tensor(const chelis_tensor* t) { return NULL; }
-chelis_tensor* chelis_tensor_from_value_list(const chelis_list* l) { return NULL; }
-chelis_tensor* chelis_alloc(int ndim, int* shape, int dtype) { return NULL; }
-chelis_tensor* chelis_uniform_like_f32(chelis_tensor* t, float lo, float hi) { return NULL; }
-void chelis_contiguous(chelis_tensor* t) {}
-void chelis_free(chelis_tensor* t) {}
-int64_t chelis_tensor_numel(const chelis_tensor* t) { return 0; }
-chelis_list* chelis_list_enumerate(const chelis_list* l) { return NULL; }
-chelis_tuple* chelis_tuple_from_values(const chelis_value* vs, int64_t n) { return NULL; }
-int64_t chelis_value_as_int64(chelis_value v) { return 0; }
-int chelis_value_as_bool(chelis_value v) { return 0; }
-chelis_value chelis_value_from_bool(int b) { chelis_value v={0}; return v; }
-chelis_value chelis_value_from_int64(int64_t n) { chelis_value v={0}; return v; }
-chelis_list* chelis_range_i64(int64_t start, int64_t end) { return NULL; }
-"""
+# v0.1.5 ships lib/libchelis_runtime.a and include/chelis_runtime.h in
+# the release tarball, and `chelis build` now copies both into its output
+# directory alongside the generated .c / .h files. The previous
+# RUNTIME_STUBS block (hand-written NULL-returning stubs for every
+# chelis_* symbol the emitted C happened to reference) is no longer
+# required — we link against the real archive instead.
 
 
 def build_native_binary() -> Path:
@@ -204,13 +181,14 @@ def build_native_binary() -> Path:
     c_file = workdir / "out" / "nautilus_bare.c"
     drv_c = workdir / "driver.c"
     drv_c.write_text(driver_c())
-    rt_c = workdir / "runtime_stubs.c"
-    rt_c.write_text(RUNTIME_STUBS)
     binary = workdir / "nautilus_test_bin"
+    out_dir = workdir / "out"
     cc = subprocess.run(
-        ["gcc", "-O2", "-o", str(binary),
-         str(c_file), str(drv_c), str(rt_c),
-         "-I", str(workdir / "out"), "-lm"],
+        ["gcc", "-O2", "-fopenmp", "-o", str(binary),
+         str(c_file), str(drv_c),
+         "-I", str(out_dir),
+         "-L", str(out_dir), "-lchelis_runtime",
+         "-lm", "-lpthread"],
         capture_output=True, text=True,
     )
     if cc.returncode != 0:
@@ -476,13 +454,14 @@ def build_p1_binary() -> Path:
     c_file = workdir / "out" / "p1_bare.c"
     drv_c = workdir / "p1_driver.c"
     drv_c.write_text(P1_DRIVER_C)
-    rt_c = workdir / "p1_runtime_stubs.c"
-    rt_c.write_text(RUNTIME_STUBS)
     binary = workdir / "p1_test_bin"
+    out_dir = workdir / "out"
     cc = subprocess.run(
-        ["gcc", "-O2", "-o", str(binary),
-         str(c_file), str(drv_c), str(rt_c),
-         "-I", str(workdir / "out"), "-lm"],
+        ["gcc", "-O2", "-fopenmp", "-o", str(binary),
+         str(c_file), str(drv_c),
+         "-I", str(out_dir),
+         "-L", str(out_dir), "-lchelis_runtime",
+         "-lm", "-lpthread"],
         capture_output=True, text=True,
     )
     if cc.returncode != 0:

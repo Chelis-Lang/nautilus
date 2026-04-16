@@ -97,7 +97,7 @@ double weibull_cdf(double, double, double);
 double poisson_cdf(double, double);
 
 /* Nautilus.ODE + Nautilus.Roots — take function pointers. Signatures
- * from the chelis v0.1.4 C backend (tests/run_numeric_tests.py
+ * from the chelis v0.1.5 C backend (tests/run_numeric_tests.py
  * documents these):
  *   double rk4_solve(double (*f)(double, double),
  *                    double y0, double t0, double t1, int64_t n_steps);
@@ -238,28 +238,27 @@ def build_shared_lib(extra_flags: list[str] | None = None) -> Path:
     wrapper_c = workdir / "batch_wrapper.c"
     wrapper_c.write_text(BATCH_WRAPPER_C)
 
-    stubs_c = workdir / "runtime_stubs.c"
-    stubs_c.write_text(harness.RUNTIME_STUBS)
-
     so = workdir / "libnautilus_bench.so"
-    # P5 Track 1 finding: the default `-shared -fPIC` + default visibility
-    # forces every cross-TU call (e.g. `b_compound_*` -> `normal_cdf`) through
-    # the PLT, which blocks LTO inlining even with `-flto` set. The fix is:
-    #   -flto -fuse-linker-plugin     — enable cross-TU optimization
-    #   -fvisibility=hidden           — make interior helpers local
-    #   -Wl,-Bsymbolic                — bind shared-object refs at link time
-    # Combined with the existing `EXPORT = visibility("default")` attribute
-    # on every `b_*` wrapper, this keeps ctypes `dlsym` working while letting
-    # gcc inline the chelis-emitted helpers into the batch loops.
-    # Measured delta: 2.6× on the compound normal_cdf(x)*exp(-x²) at n=100k,
-    # 3.8× on `b_erf` — the previously "single-threaded" 13.66 ns/elem erf
-    # drops to 3.58 ns/elem with no source changes.
+    # v0.1.5 ships lib/libchelis_runtime.a in the tarball, so we link against
+    # the real runtime archive instead of the hand-vendored RUNTIME_STUBS
+    # block that P5 and earlier used. The P5 Track 1 LTO + visibility
+    # workaround (-flto -fvisibility=hidden -Wl,-Bsymbolic) stays, though:
+    # v0.1.5's C backend still emits cross-TU scalar helpers (e.g.
+    # `normal_cdf`, `exp`) as extern, so the default `-shared -fPIC` still
+    # forces calls through the PLT and blocks gcc's cross-TU inlining.
+    # Measured delta on v0.1.5 from dropping these flags: 6.7 -> 18.9 ns/el
+    # (3× regression) on `normal_cdf(x)*exp(-x²)` at n=100k — same symptom
+    # as v0.1.4. Until upstream emits helpers as `static inline` for
+    # single-`.so` bundles, these flags are load-bearing.
+    out_dir = workdir / "out"
     cmd = ["gcc", "-O3", "-march=native", "-shared", "-fPIC",
            "-flto", "-fuse-linker-plugin",
            "-fvisibility=hidden", "-Wl,-Bsymbolic",
            "-o", str(so),
-           str(c_file), str(wrapper_c), str(stubs_c),
-           "-I", str(workdir / "out"), "-lm"]
+           str(c_file), str(wrapper_c),
+           "-I", str(out_dir),
+           "-L", str(out_dir), "-lchelis_runtime",
+           "-lm", "-lpthread"]
     if extra_flags:
         cmd.extend(extra_flags)
     cc = subprocess.run(cmd, capture_output=True, text=True)
