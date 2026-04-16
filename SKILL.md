@@ -4,7 +4,7 @@
 
 Nautilus is the numerical computing shell for Chelis. It replaces
 numpy.linalg + numpy.random distributions + scipy.* (special, stats,
-optimize, integrate, interpolate, spatial). 153 exports, 881
+optimize, integrate, interpolate, spatial). 150 exports, 881
 scipy-parity assertions, pure Chelis throughout. AD works through
 all functions automatically.
 
@@ -969,8 +969,9 @@ Typed API stubs. All return NaN except `fftfreq`. Blocked on upstream complex-nu
 
 - All Nautilus functions operate in f32. Do not pass f64 tensors.
 
-- `cos(x)` is NOT a Chelis builtin. Write `sin(add(x, cast(1.5707963267948966, f32)))`.
-  Same for `tan`, `abs`, `floor`, `ceil`. Use `if lt(x, cast(0.0, f32)) then neg(x) else x` for abs.
+- As of chelis v0.1.7, `cos`, `tan`, `abs`, `floor`, and `ceil` are builtins.
+  Use them directly: `cos(x)`, `abs(x)`, `floor(x)`. Earlier versions required
+  workarounds like `sin(add(x, pi/2))` for cos, but these are no longer needed.
 
 - Distribution `sample` functions carry `! { Random }` effect. You must handle it
   or propagate it in your function's effect signature.
@@ -1019,7 +1020,7 @@ Typed API stubs. All return NaN except `fftfreq`. Blocked on upstream complex-nu
 | `ellipk` | `(m: f32) -> f32` | AGM recurrence, ~1e-8, m in [0,1), +inf at m=1, NaN outside |
 | `ellipe` | `(m: f32) -> f32` | AGM recurrence, ~1e-8, m in [0,1], NaN for m>1 |
 
-### Nautilus.Distributions (37 exports)
+### Nautilus.Distributions (38 exports)
 
 | Function | Signature | Notes |
 |---|---|---|
@@ -1062,7 +1063,7 @@ Typed API stubs. All return NaN except `fftfreq`. Blocked on upstream complex-nu
 | `weibull_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | Closed-form |
 | `weibull_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | Closed-form |
 
-### Nautilus.LinAlg (24 exports)
+### Nautilus.LinAlg (26 exports)
 
 | Function | Signature | Notes |
 |---|---|---|

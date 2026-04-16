@@ -10,7 +10,7 @@ known trouble spots.
 | Family | Typical relative error | Notes |
 |---|---|---|
 | `erf` | ~1e-7 | Horner rational approximation |
-| `erfinv` | ~1e-8 | Winitzki initial + Newton correction |
+| `erfinv` | ~1e-8 | Acklam rational approximation via `norminv` |
 | `log_gamma` | ~1e-9 | Lanczos (g=7) with reflection |
 | `digamma` | ~1e-7 | Recurrence + asymptotic (x >= 6) |
 | `trigamma` | ~1e-6 | Recurrence + asymptotic (x >= 6) |

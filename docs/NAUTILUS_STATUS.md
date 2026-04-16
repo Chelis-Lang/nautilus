@@ -44,7 +44,7 @@ version module + 6 executable examples + 1 API smoke-check module.
 | `Nautilus.Signal` | 7 stubs | 55 | Phase 5f complex numbers (blocked) | 0/7 (stubs only) |
 | `Nautilus.Core` | 1 | 3 | none | n/a |
 
-**Totals: 153 non-stub exports, 881 runtime scipy-parity assertions,
+**Totals: 150 non-stub exports, 881 runtime scipy-parity assertions,
 all passing.**
 
 ### 2.1 Distributions detail
