@@ -499,6 +499,12 @@ chelis_tensor* inv_2x2(chelis_tensor* a);
 chelis_tensor* inv_3x3(chelis_tensor* a);
 chelis_tensor* scale_vec(chelis_tensor* v, double s);
 chelis_tensor* matvec(chelis_tensor* a, chelis_tensor* v);
+chelis_tensor* la_vec_saxpy(double alpha, chelis_tensor* x, chelis_tensor* y);
+
+/* SDE: scalar + tensor -> scalar (test wrappers defined in harness source) */
+double test_em_decay_s1(double y0, double t0, double t1, chelis_tensor* noise);
+double test_em_decay_s01(double y0, double t0, double t1, chelis_tensor* noise);
+double test_milstein_gbm(double y0, double t0, double t1, chelis_tensor* noise);
 
 /* tensor-output, two-tensor-input */
 chelis_tensor* solve_2x2(chelis_tensor* a, chelis_tensor* b);
@@ -566,9 +572,9 @@ static void print_mat(chelis_tensor* t) {
 int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "usage: la_driver FN ARGS...\n"); return 1; }
     const char* fn = argv[1];
-    double a[64] = {0};
+    double a[256] = {0};
     int nargs = argc - 2;
-    for (int i = 0; i < nargs && i < 64; i++) a[i] = atof(argv[2+i]);
+    for (int i = 0; i < nargs && i < 256; i++) a[i] = atof(argv[2+i]);
 
     /* det_2x2: 4 elements -> scalar */
     if (!strcmp(fn, "det_2x2")) {
@@ -836,6 +842,38 @@ int main(int argc, char** argv) {
         print_scalar(correlation_scalar(va, vb));
         return 0;
     }
+    /* la_vec_saxpy: alpha, N, then 2*N elements -> vec */
+    if (!strcmp(fn, "la_vec_saxpy")) {
+        double alpha = a[0];
+        int n = (int)a[1];
+        chelis_tensor* x = make_vec(n, a+2);
+        chelis_tensor* y = make_vec(n, a+2+n);
+        chelis_tensor* r = la_vec_saxpy(alpha, x, y);
+        print_vec(r);
+        return 0;
+    }
+    /* SDE test wrappers: y0, t0, t1, N, then N noise values -> scalar */
+    if (!strcmp(fn, "test_em_decay_s1")) {
+        double y0 = a[0], t0 = a[1], t1 = a[2];
+        int n = (int)a[3];
+        chelis_tensor* noise = make_vec(n, a+4);
+        print_scalar(test_em_decay_s1(y0, t0, t1, noise));
+        return 0;
+    }
+    if (!strcmp(fn, "test_em_decay_s01")) {
+        double y0 = a[0], t0 = a[1], t1 = a[2];
+        int n = (int)a[3];
+        chelis_tensor* noise = make_vec(n, a+4);
+        print_scalar(test_em_decay_s01(y0, t0, t1, noise));
+        return 0;
+    }
+    if (!strcmp(fn, "test_milstein_gbm")) {
+        double y0 = a[0], t0 = a[1], t1 = a[2];
+        int n = (int)a[3];
+        chelis_tensor* noise = make_vec(n, a+4);
+        print_scalar(test_milstein_gbm(y0, t0, t1, noise));
+        return 0;
+    }
 
     fprintf(stderr, "unknown function: %s\n", fn);
     return 2;
@@ -876,12 +914,31 @@ def _dedup_defs(bare: str) -> str:
     return "\n".join(out)
 
 
+SDE_TEST_HELPERS_CH = r"""
+def sde_test_drift_decay(y: f32, t: f32) -> f32 = neg(y)
+def sde_test_diff_one(y: f32, t: f32) -> f32 = cast(1.0, f32)
+def sde_test_diff_01(y: f32, t: f32) -> f32 = cast(0.1, f32)
+def sde_test_drift_gbm(y: f32, t: f32) -> f32 = mul(cast(0.1, f32), y)
+def sde_test_diff_gbm(y: f32, t: f32) -> f32 = mul(cast(0.2, f32), y)
+def sde_test_ddiff_gbm(y: f32, t: f32) -> f32 = cast(0.2, f32)
+
+def test_em_decay_s1[n](y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32 =
+  euler_maruyama_fixed(sde_test_drift_decay, sde_test_diff_one, y0, t0, t1, noise)
+
+def test_em_decay_s01[n](y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32 =
+  euler_maruyama_fixed(sde_test_drift_decay, sde_test_diff_01, y0, t0, t1, noise)
+
+def test_milstein_gbm[n](y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32 =
+  milstein_fixed(sde_test_drift_gbm, sde_test_diff_gbm, sde_test_ddiff_gbm, y0, t0, t1, noise)
+"""
+
+
 def build_linalg_binary() -> Path:
-    """Build a binary for tensor-path linalg + stats + distance functions."""
+    """Build a binary for tensor-path linalg + stats + distance + SDE functions."""
     bare = "\n".join(
         strip_module((SRC / f).read_text())
-        for f in ("special.ch", "distributions.ch", "linalg.ch", "stats.ch", "distance.ch")
-    ) + "\ndef main() -> f32 = cast(0.0, f32)\n"
+        for f in ("special.ch", "distributions.ch", "linalg.ch", "stats.ch", "distance.ch", "sde.ch")
+    ) + SDE_TEST_HELPERS_CH + "\ndef main() -> f32 = cast(0.0, f32)\n"
     bare = _dedup_defs(bare)
     workdir = Path(tempfile.mkdtemp(prefix="nautilus-la-"))
     bare_ch = workdir / "la_bare.ch"
@@ -1390,6 +1447,44 @@ def main() -> int:
     la_run_scalar("chebyshev", "chebyshev", [nd] + a_vec + b_vec, g["chebyshev"], atol_d, rtol_d)
     la_run_scalar("cosine_similarity", "cosine_similarity", [nd] + a_vec + b_vec, g["cosine_similarity"], atol_d, rtol_d)
     la_run_scalar("cosine_distance", "cosine_distance", [nd] + a_vec + b_vec, g["cosine_distance"], atol_d, rtol_d)
+
+    # --- la_vec_saxpy ---
+    print("== LinAlg: la_vec_saxpy ==")
+    g = golden("linalg/vector.json")
+    atol_la, rtol_la = g["abs"], g["rel"]
+    v = g["v"]
+    w = g["w"]
+    n = len(v)
+    alpha = 2.5
+    saxpy_exp = [x + alpha * y for x, y in zip(v, w)]
+    la_run_vec("la_vec_saxpy(2.5,v,w)", "la_vec_saxpy", [alpha, n] + v + w, saxpy_exp, atol_la, rtol_la)
+
+    # --- SDE tensor-path tests ---
+    print("== SDE ==")
+    g = golden("sde/scalar.json")
+    atol_sde, rtol_sde = g["abs"], g["rel"]
+    for case in g["cases"]:
+        label = case["label"]
+        y0, t0, t1 = case["y0"], case["t0"], case["t1"]
+        ns = case["n_steps"]
+        mode = case["noise_mode"]
+        if mode == "zero":
+            noise = [0.0] * ns
+        elif mode == "plus":
+            noise = [1.0] * ns
+        elif mode == "alt":
+            noise = [1.0 if i % 2 == 0 else -1.0 for i in range(ns)]
+        else:
+            continue
+        expected = case["expected"]
+        if label.startswith("em_"):
+            sigma = case.get("sigma", 1.0)
+            fn_tag = "test_em_decay_s1" if sigma == 1.0 else "test_em_decay_s01"
+            la_run_scalar(label, fn_tag, [y0, t0, t1, ns] + noise,
+                          expected, atol_sde, rtol_sde)
+        elif label == "milstein_gbm":
+            la_run_scalar(label, "test_milstein_gbm", [y0, t0, t1, ns] + noise,
+                          expected, atol_sde, rtol_sde)
 
     print(f"\n{total - fails} / {total} numerical assertions passed")
     return 1 if fails else 0
