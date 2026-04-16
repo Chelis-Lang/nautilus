@@ -24,7 +24,7 @@ jobs:
             --dir /tmp/chelis-toolchain
           tar -xzf /tmp/chelis-toolchain/chelis-v0.1.7-linux-x86_64.tar.gz \
             -C /tmp/chelis-toolchain
-          echo "/tmp/chelis-toolchain/chelis-v0.1.7-linux-x86_64" >> "$GITHUB_PATH"
+          echo "/tmp/chelis-toolchain/chelis-v0.1.7-linux-x86_64/bin" >> "$GITHUB_PATH"
 
       - name: Verify toolchain version
         run: |
@@ -33,9 +33,9 @@ jobs:
 
       - name: chelis check (all modules)
         run: |
-          for f in src/core.ch src/special.ch src/distributions.ch src/linalg.ch src/apismoke.ch; do
+          for f in src/*.ch; do
             echo "=== $f ==="
-            out=$(chelis check "$f")
+            out=$(chelis check "$f" 2>&1)
             echo "$out"
             echo "$out" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); sys.exit(0 if d['score']==1 and not d['errors'] else 1)"
           done
