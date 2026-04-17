@@ -10,6 +10,7 @@ Exit non-zero if any block fails.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -24,6 +25,7 @@ from scripts.chelis_toolchain import resolve_chelis_bin
 
 
 CHELIS = resolve_chelis_bin()
+MIN_CHELIS_BLOCKS = int(os.environ.get("MIN_BOOK_CHELIS_BLOCKS", "4"))
 
 
 def extract_chelis_blocks(text: str) -> list[str]:
@@ -82,8 +84,11 @@ def main() -> int:
 
     if total == 0:
         print("No compile-checked code blocks found in mdBook.")
-    else:
-        print(f"{total - failures}/{total} mdBook examples passed.")
+        return 1
+    print(f"{total - failures}/{total} mdBook examples passed.")
+    if total < MIN_CHELIS_BLOCKS:
+        print(f"FAIL: only {total} full `chelis` example blocks found; need at least {MIN_CHELIS_BLOCKS}.")
+        return 1
     return 1 if failures else 0
 
 

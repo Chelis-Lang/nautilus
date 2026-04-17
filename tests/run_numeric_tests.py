@@ -13,19 +13,15 @@ Workflow per test:
   6. Parse the driver output and compare against goldens within per-function
      tolerance.
 
-This bypasses the broken `chelis eval --file` and the unavailable
-libchelis_runtime.a — the bare scalar functions don't need either.
+This bypasses the broken `chelis eval --file` path — the bare scalar
+functions still build through the normal chelis C backend and link
+against the shipped runtime archive.
 
-The harness covers Nautilus.Special and Nautilus.Distributions scalar
-functions only. Nautilus.LinAlg ops that take tensor inputs are covered by
-the API-smoke type check (src/apismoke.ch + chelis check), since their
-runtime exercise requires the full chelis runtime. As of v0.1.7 the
-runtime ships as `lib/libchelis_runtime.a` in the release tarball and
-the main-entry C emission correctly handles multi-tensor-input
-entry points — tensor-path runtime tests are now unblocked (see
-docs/UPSTREAM_BUGS.md Bug 3c resolution). Wiring the LinAlg / Distance /
-SDE / Stats tensor-path tests into this harness is the next
-Nautilus-side milestone.
+The scalar binary covers Nautilus.Special and Nautilus.Distributions.
+Separate binaries in this same harness cover the scalar solver modules
+and the tensor-path LinAlg / Stats / Distance / SDE / Interpolation /
+CurveFit surface. Clean HEAD on the pinned `chelis v0.1.7` toolchain
+passes 890 / 890 numerical assertions.
 """
 from __future__ import annotations
 
@@ -1570,6 +1566,21 @@ def main() -> int:
                 fails += 1
                 print(f"  FAIL {label}[{i}]: got {got!r}, want {want!r}")
 
+    def la_run_vec_all_nan(label, fn, args, expected_len):
+        nonlocal fails, total
+        raw = call_la_fn(la_binary, fn, *args)
+        got_list = [float(x) for x in raw.split()]
+        if len(got_list) != expected_len:
+            total += 1
+            fails += 1
+            print(f"  FAIL {label}: length mismatch got {len(got_list)}, want {expected_len}")
+            return
+        for i, got in enumerate(got_list):
+            total += 1
+            if not math.isnan(got):
+                fails += 1
+                print(f"  FAIL {label}[{i}]: got {got!r}, want NaN")
+
     print("== LinAlg: det_2x2 ==")
     g = golden("linalg/det_2x2.json")
     atol_la, rtol_la = g["abs"], g["rel"]
@@ -1780,6 +1791,17 @@ def main() -> int:
     chol_expected = [2.0, 0.0, 1.0, _math.sqrt(2.0)]
     la_run_vec("cholesky_2x2([[4,2],[2,3]])", "cholesky_2x2",
                chol_input, chol_expected, 1e-5, 1e-5)
+
+    print("== LinAlg: negative cases ==")
+    la_run_vec_all_nan("solve_2x2(singular)", "solve_2x2",
+                       [1.0, 2.0, 2.0, 4.0, 1.0, 0.0], 2)
+    la_run_vec_all_nan("solve_3x3(singular)", "solve_3x3",
+                       [1.0, 2.0, 3.0,
+                        2.0, 4.0, 6.0,
+                        0.0, 1.0, 1.0,
+                        1.0, 0.0, 0.0], 3)
+    la_run_vec_all_nan("cholesky_2x2(non_psd)", "cholesky_2x2",
+                       [1.0, 2.0, 2.0, 1.0], 4)
 
     # --- SDE tensor-path tests ---
     print("== SDE ==")

@@ -27,20 +27,16 @@ root, or NaN on failure.
 
 ## Example: find sqrt(2) via Brent's method
 
-```chelis-fragment
-import Nautilus.Roots (brent)
+```chelis
+module Nautilus.BookRootsExamples
+import Nautilus.Roots (brent, newton)
+export (find_sqrt2, find_cos_eq_x)
 
 def find_sqrt2() -> f32 = {
   f = fn (x: f32) -> sub(mul(x, x), cast(2.0, f32))
   brent(f, cast(1.0, f32), cast(2.0, f32),
         cast(1.0e-10, f32), cast(100, int64))
 }
-```
-
-## Example: Newton's method with analytic derivative
-
-```chelis-fragment
-import Nautilus.Roots (newton)
 
 def find_cos_eq_x() -> f32 = {
   f = fn (x: f32) -> sub(sin(add(x, cast(1.5707963267948966, f32))), x)
@@ -48,6 +44,8 @@ def find_cos_eq_x() -> f32 = {
   newton(f, df, cast(0.5, f32), cast(1.0e-10, f32), cast(50, int64))
 }
 ```
+
+## Example: Newton's method with analytic derivative
 
 ## Edge cases
 

@@ -45,8 +45,10 @@ length `n` and return `f32` scalars.
 
 ## Example
 
-```chelis-fragment
+```chelis
+module Nautilus.BookStatsSummary
 import Nautilus.Stats (mean_vec, variance_vec, median_vec)
+export (summary)
 
 def summary[n](data: tensor[n, f32]) -> (f32, f32, f32) = {
   mu = mean_vec(copy(data))

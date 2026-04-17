@@ -3,7 +3,7 @@
 ## Prerequisites
 
 Nautilus requires:
-- [Chelis v0.1.7](https://github.com/Chelis-Lang/chelis/releases/tag/v0.1.7) or later
+- [Chelis v0.1.7](https://github.com/Chelis-Lang/chelis/releases/tag/v0.1.7) exactly
 - GCC (for compiling generated C code)
 - Python 3.10+ with numpy and scipy (for running the test suite)
 
@@ -42,7 +42,10 @@ pip install numpy scipy
 python tests/run_numeric_tests.py
 ```
 
-You should see `886 / 886 numerical assertions passed`.
+You should see `890 / 890 numerical assertions passed`.
+
+If your `chelis` binary is not on `PATH`, set `CHELIS_BIN=/abs/path/to/chelis`
+when running the Python validation scripts.
 
 ## Using Nautilus in your project
 

@@ -29,9 +29,10 @@ every function in the library.
 ## Verification
 
 Nautilus is tested against scipy reference values. The test suite runs
-886 numerical assertions comparing Nautilus output to scipy/numpy at
+890 numerical assertions comparing Nautilus output to scipy/numpy at
 documented tolerances. Every non-stub exported function is
-runtime-verified.
+runtime-verified on clean `HEAD`; `Nautilus.Core.version` is package
+metadata rather than part of the numerical harness.
 
 ## Precision
 

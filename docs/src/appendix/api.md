@@ -3,8 +3,9 @@
 The full API surface for all Nautilus modules is maintained in
 [SKILL.md, Section 6](https://github.com/Chelis-Lang/nautilus/blob/main/SKILL.md#6-api-surface).
 
-That section contains signature tables for all 151 non-stub exports
-across 14 modules:
+That section contains signature tables for the active Nautilus surface:
+145 non-stub exports including 144 numerical/library entries plus
+`Nautilus.Core.version`, alongside 7 signal-processing stubs.
 
 - **Nautilus.Special** -- 19 special functions (erf, Bessel, Airy, elliptic integrals)
 - **Nautilus.Distributions** -- 38 exports across 12 distribution families
