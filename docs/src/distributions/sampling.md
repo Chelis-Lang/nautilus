@@ -36,8 +36,8 @@ result = mean + std * z
 ```
 
 The implementation computes cos(2*pi*u2) via the identity
-sin(pi/2 - 2*pi*u2). (As of v0.1.7, `cos` is a builtin, but the
-existing implementation predates that and works correctly.)
+sin(pi/2 - 2*pi*u2). That keeps the implementation within the scalar
+builtins available on the pinned toolchain.
 
 ```chelis-fragment
 import Nautilus.Distributions (normal_sample)

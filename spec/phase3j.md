@@ -103,8 +103,9 @@ RISC primitives already carry adjoints.
   assertions on `cg_solve`, `frobenius_*`, `la_vec_*`, `inv_2x2`,
   `inv_3x3`, `solve_*`, `cholesky_2x2`, and the `Nautilus.Distance` /
   `Nautilus.SDE` / `Nautilus.Stats` / `Nautilus.Interpolation`
-  tensor-path tests are no longer upstream-blocked. Wiring them into
-  `tests/run_numeric_tests.py` is the next Nautilus-side milestone.
+  tensor-path tests are no longer upstream-blocked. In this shell repo
+  they are wired into `tests/run_numeric_tests.py` and counted in the
+  `890 / 890` clean-HEAD pass on the pinned toolchain.
 - **Unknown-name silent-compile bug: FIXED in v0.1.4 (still fixed in v0.1.7).** v0.1.3's type checker and
   C backend silently accepted unresolved function names in expression position,
   compiling `sub(x, cos(x))` to a no-op that returned `x`. v0.1.4 now emits
@@ -132,11 +133,15 @@ RISC primitives already carry adjoints.
 
 ### Acceptance Oracle
 
-`cargo test -p chelis-cli phase3j_nautilus_oracle -- --exact` — builds `nautilus` from
-source, imports it in a consumer, runs a pipeline that (1) samples data from a
-distribution, (2) computes an SVD and verifies reconstruction, (3) fits an ODE,
-(4) computes a confidence interval, and (5) checks `grad` through a LinAlg op matches
-finite differences.
+**Repo-local release gate:** `chelis reef build && python tests/run_static_checks.py &&
+python scripts/gen_goldens.py --check && CHELIS_BIN=chelis python tests/run_numeric_tests.py &&
+CHELIS_BIN=chelis python tests/run_skill_checks.py &&
+CHELIS_BIN=chelis python scripts/validate_book_examples.py`
+
+This shell repo does not contain the upstream Cargo workspace, so the monorepo-side
+integration oracle is not directly runnable here. The upstream integration gate remains
+`cargo test -p chelis-cli phase3j_nautilus_oracle -- --exact` in the Chelis monorepo,
+where Nautilus is consumed as a downstream shell package rather than tested in isolation.
 
 ### Cross-Repo CI
 

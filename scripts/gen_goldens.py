@@ -794,12 +794,18 @@ def check_goldens() -> int:
                     continue
                 ev = existing.get(k)
                 if ev is None:
+                    print(f"DRIFT {rel}:{k} (missing key in checked-in fixture)")
+                    drift += 1
                     continue
                 if isinstance(v, list):
                     try:
                         flat_fresh = np.array(v, dtype=float).ravel().tolist()
                         flat_exist = np.array(ev, dtype=float).ravel().tolist()
                     except (TypeError, ValueError):
+                        continue
+                    if len(flat_fresh) != len(flat_exist):
+                        print(f"DRIFT {rel}:{k} (length changed)")
+                        drift += 1
                         continue
                     for a, b in zip(flat_fresh, flat_exist):
                         if not check_close(a, b, tol_abs, tol_rel):

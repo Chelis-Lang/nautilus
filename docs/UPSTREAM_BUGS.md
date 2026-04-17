@@ -8,7 +8,8 @@ per-release **status** line recording what changed.
 Summary as of **v0.1.13**:
 
 - Historical Bugs 1–5 below are fixed in the released compiler line through
-  `v0.1.7`.
+  `v0.1.7`, and the pinned Nautilus v0.1.0 surface is fully wired into the
+  current runtime harness on that toolchain.
 - Re-validation against `v0.1.9`, `v0.1.10`, `v0.1.11`, `v0.1.12`, and `v0.1.13` found two **new** post-v0.1.7 blockers for the
   remaining Nautilus next-up scope:
   - tensor-valued `grad` still fails on the native path even though the type
@@ -20,15 +21,15 @@ Summary as of **v0.1.13**:
 Original historical summary as of **v0.1.6** — original six bugs all fixed, one
 new bug found:
 
-| # | Title | v0.1.3 | v0.1.4 | v0.1.5 | v0.1.6 |
-|---|---|---|---|---|---|
-| 1 | Unknown-name silent compile | open | **FIXED** | fixed | fixed |
-| 2 | Shape-checker gap for literal-dim tensor params | open | open | open | **FIXED** |
-| 3a | — emitted C was raw pointer arithmetic (original v0.1.3 symptom) | open | likely superseded | superseded | **FIXED** (proper elementwise loop emitted) |
-| 3b | — `chelis build` requires `libchelis_runtime.a` not shipped in tarball | n/a | **NEW in v0.1.4** | **FIXED** | fixed |
-| 3c | — main-entry C emission drops parameters / confuses function names | n/a | **NEW in v0.1.4** | open | **FIXED** |
-| 4 | Nested `exp(neg(mul(x,x)))` int-temp | open | **FIXED** | fixed | fixed |
-| 5 | Fused tensor op `n_in` assertion mismatch | n/a | n/a | n/a | **NEW in v0.1.6** |
+| # | Title | v0.1.3 | v0.1.4 | v0.1.5 | v0.1.6 | v0.1.7 |
+|---|---|---|---|---|---|---|
+| 1 | Unknown-name silent compile | open | **FIXED** | fixed | fixed | fixed |
+| 2 | Shape-checker gap for literal-dim tensor params | open | open | open | **FIXED** | fixed |
+| 3a | — emitted C was raw pointer arithmetic (original v0.1.3 symptom) | open | likely superseded | superseded | **FIXED** (proper elementwise loop emitted) | fixed |
+| 3b | — `chelis build` requires `libchelis_runtime.a` not shipped in tarball | n/a | **NEW in v0.1.4** | **FIXED** | fixed | fixed |
+| 3c | — main-entry C emission drops parameters / confuses function names | n/a | **NEW in v0.1.4** | open | **FIXED** | fixed |
+| 4 | Nested `exp(neg(mul(x,x)))` int-temp | open | **FIXED** | fixed | fixed | fixed |
+| 5 | Fused tensor op `n_in` assertion mismatch | n/a | n/a | n/a | **NEW in v0.1.6** | **FIXED** |
 
 **What v0.1.5 unblocked downstream:**
 - `tests/run_numeric_tests.py` dropped the hand-vendored `RUNTIME_STUBS`
@@ -53,6 +54,10 @@ new bug found:
   in `tests/goldens/linalg/`, `tests/goldens/distance/`, and the
   tensor-path `Nautilus.Stats`/`Nautilus.SDE`/`Nautilus.Interpolation`
   paths remain deferred.
+
+This section is historical. Those tensor-path issues were later fixed
+upstream and are now exercised by Nautilus's current `890 / 890`
+runtime-harness pass on the pinned `v0.1.7` toolchain.
 
 Original repros below were run against `chelis v0.1.3-linux-x86_64`.
 Re-verifications against subsequent releases are noted inline.
@@ -679,7 +684,7 @@ indirection. Measured regression from dropping the flags on v0.1.5:
 6.7 → 18.9 ns/el (3×) on `normal_cdf(x)*exp(-x²)` at n=100k. Flags
 restored with an updated comment.
 
-**v0.1.6 — ALL BUGS FIXED.** Bug 2 (shape-checker) and Bug 3c
+**v0.1.7 — ALL BUGS FIXED.** Bug 2 (shape-checker) and Bug 3c
 (main-entry emission) both shipped upstream fixes. Re-verified:
 
 - Bug 2: `det_2x2(a: tensor[3, 3, f32])` now emits
@@ -690,11 +695,11 @@ restored with an updated comment.
   parallel-for elementwise-add loop:
   `t2->data[i] = t0->data[idx_a] + t1->data[idx_b]`.
 
-**Impact:** All six tracked upstream bugs are resolved. The ~100+
-deferred scipy-parity assertions for LinAlg / Distance / SDE /
-Stats / Interpolation tensor-path runtime verification are no
-longer upstream-blocked. Wiring them into
-`tests/run_numeric_tests.py` is the next Nautilus-side milestone.
+**Impact:** All seven tracked upstream bugs are resolved. The deferred
+scipy-parity assertions for LinAlg / Distance / SDE / Stats /
+Interpolation tensor-path runtime verification are no longer
+upstream-blocked and are wired into `tests/run_numeric_tests.py` in
+this repo.
 
 When upstream Chelis lands a release with either of these fixed,
 Nautilus can re-enable runtime verification paths and tighten the

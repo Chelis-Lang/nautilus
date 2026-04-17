@@ -29,7 +29,11 @@ import Nautilus.LinAlg (
 
 ## Example: matrix-vector product and norm
 
-```chelis-fragment
+```chelis
+module Nautilus.BookLinAlgResidual
+import Nautilus.LinAlg (matvec, la_vec_sub, l2_norm_vec)
+export (residual_norm)
+
 def residual_norm[n](a: tensor[n, n, f32], x: tensor[n, f32],
                      b: tensor[n, f32]) -> f32 = {
   ax = matvec(a, x)

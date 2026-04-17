@@ -43,8 +43,9 @@ includes a curvature check that can false-positive on very flat minima
 
 ## Signal processing
 
-**Signal module is stubs only.** All 7 functions (except `fftfreq`)
-return NaN sentinels. Blocked on upstream complex-number support
+**Signal module is mostly stubs.** The transform/filter helpers return
+NaN sentinels; `fftfreq` is a real-valued utility that ships today.
+The blocked pieces still depend on upstream complex-number support
 (Phase 5f). See the [Signal chapter](../other/signal.md).
 
 ## Airy function coverage
