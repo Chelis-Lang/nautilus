@@ -996,6 +996,30 @@ Typed API stubs. All return NaN except `fftfreq`. Blocked on upstream complex-nu
 
 ## 6. API Surface
 
+### API Stability Labels
+
+Every function below carries an implicit stability label per the cross-cutting design
+decision in `chelis/spec/design/chelis_canonical_reference.md`:
+
+- `stable` — signature will not change between releases. Safe for inclusion in the AI
+  training corpus.
+- `alpha` — signature may change. Excluded or down-weighted for training.
+
+Nautilus v0.1.0 default classification:
+
+- **stable**: all of `Nautilus.Special` (19 exports), all of `Nautilus.Distributions`
+  PDF/CDF/inv_CDF functions (all non-`_sample` entries in the table below), all of
+  `Nautilus.LinAlg` fixed-size solvers, `Nautilus.Stats` descriptive functions.
+- **alpha**: `Nautilus.CurveFit` (signatures may shift when broader parameter shapes
+  land), `Nautilus.SDE` (APIs may change when autonomous `Random` sampling and
+  `grad`-through-SDE land), any `_sample` function marked `! { Random }` (shape
+  conventions for batched sampling are not yet frozen), `Nautilus.Signal` (stubbed,
+  blocked on Phase 5f complex numbers).
+
+When a function's table row notes the `alpha` status explicitly (e.g., via a `(alpha)`
+suffix or an explicit `Stability` column once the tables are rewritten), that overrides
+the module-level default. Promotion to `stable` happens at the v0.2.0 release review.
+
 ### Nautilus.Special (19 exports)
 
 | Function | Signature | Notes |
