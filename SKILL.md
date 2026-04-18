@@ -998,244 +998,231 @@ Typed API stubs. All return NaN except `fftfreq`. Blocked on upstream complex-nu
 
 ### API Stability Labels
 
-Every function below carries an implicit stability label per the cross-cutting design
+Every exported API row below carries an explicit `Stability` label per the cross-cutting
 decision in `chelis/spec/design/chelis_canonical_reference.md`:
 
-- `stable` — signature will not change between releases. Safe for inclusion in the AI
-  training corpus.
-- `alpha` — signature may change. Excluded or down-weighted for training.
+- `stable` — signature is treated as API-frozen for downstream use and corpus ingestion.
+- `alpha` — signature or behavior caveats remain under active review; exclude or down-weight it.
 
-Nautilus v0.1.0 default classification:
-
-- **stable**: all of `Nautilus.Special` (19 exports), all of `Nautilus.Distributions`
-  PDF/CDF/inv_CDF functions (all non-`_sample` entries in the table below), all of
-  `Nautilus.LinAlg` fixed-size solvers, `Nautilus.Stats` descriptive functions.
-- **alpha**: `Nautilus.CurveFit` (signatures may shift when broader parameter shapes
-  land), `Nautilus.SDE` (APIs may change when autonomous `Random` sampling and
-  `grad`-through-SDE land), any `_sample` function marked `! { Random }` (shape
-  conventions for batched sampling are not yet frozen), `Nautilus.Signal` (stubbed,
-  blocked on Phase 5f complex numbers).
-
-When a function's table row notes the `alpha` status explicitly (e.g., via a `(alpha)`
-suffix or an explicit `Stability` column once the tables are rewritten), that overrides
-the module-level default. Promotion to `stable` happens at the v0.2.0 release review.
+The `Stability` column is the source of truth for row-level classification. Use
+`dist/stability.json` when a downstream consumer needs the machine-readable surface.
 
 ### Nautilus.Special (19 exports)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `erf` | `(x: f32) -> f32` | Horner rational approx, ~1e-7 relative, all reals |
-| `erfinv` | `(x: f32) -> f32` | Acklam inverse normal + rescale, ~1e-8, domain (-1, 1) |
-| `log_gamma` | `(x: f32) -> f32` | Lanczos (g=7) with reflection, ~1e-9, +inf at non-positive integers |
-| `digamma` | `(x: f32) -> f32` | Recurrence + asymptotic (x>=6), ~1e-7, NaN at non-positive integers |
-| `beta` | `(a: f32, b: f32) -> f32` | exp(lbeta(a,b)), a,b > 0 |
-| `lbeta` | `(a: f32, b: f32) -> f32` | Via log_gamma, a,b > 0, NaN otherwise |
-| `trigamma` | `(x: f32) -> f32` | Recurrence + asymptotic (x>=6), ~1e-6, x > 0 only |
-| `bessel_i0` | `(x: f32) -> f32` | Polynomial + asymptotic, crossover at 3.75, even function |
-| `bessel_i1` | `(x: f32) -> f32` | Polynomial + asymptotic, crossover at 3.75, odd function |
-| `bessel_k0` | `(x: f32) -> f32` | Polynomial/log + asymptotic, crossover at 2.0, x > 0, +inf at 0 |
-| `bessel_k1` | `(x: f32) -> f32` | Polynomial/log + asymptotic, crossover at 2.0, x > 0, +inf at 0 |
-| `bessel_j0` | `(x: f32) -> f32` | Rational polynomial + large-x trig, even function, ~1e-5 near zeros |
-| `bessel_j1` | `(x: f32) -> f32` | Rational polynomial + large-x trig, odd function, ~1e-5 near zeros |
-| `bessel_y0` | `(x: f32) -> f32` | Rational + log-singularity + large-x trig, x > 0, -inf at 0 |
-| `bessel_y1` | `(x: f32) -> f32` | Rational + log + large-x trig, x > 0, -inf at 0, ~1e-3 drift in (7.5, 8) |
-| `airy_ai` | `(x: f32) -> f32` | Power series (|x|<=5) + exponential asymptotic (x>5), oscillatory for large negative x |
-| `airy_bi` | `(x: f32) -> f32` | Power series (|x|<=5) + exponential asymptotic (x>5) |
-| `ellipk` | `(m: f32) -> f32` | AGM recurrence, ~1e-8, m in [0,1), +inf at m=1, NaN outside |
-| `ellipe` | `(m: f32) -> f32` | AGM recurrence, ~1e-8, m in [0,1], NaN for m>1 |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `erf` | `(x: f32) -> f32` | `stable` | Horner rational approx, ~1e-7 relative, all reals |
+| `erfinv` | `(x: f32) -> f32` | `stable` | Acklam inverse normal + rescale, ~1e-8, domain (-1, 1) |
+| `log_gamma` | `(x: f32) -> f32` | `stable` | Lanczos (g=7) with reflection, ~1e-9, +inf at non-positive integers |
+| `digamma` | `(x: f32) -> f32` | `stable` | Recurrence + asymptotic (x>=6), ~1e-7, NaN at non-positive integers |
+| `beta` | `(a: f32, b: f32) -> f32` | `stable` | exp(lbeta(a,b)), a,b > 0 |
+| `lbeta` | `(a: f32, b: f32) -> f32` | `stable` | Via log_gamma, a,b > 0, NaN otherwise |
+| `trigamma` | `(x: f32) -> f32` | `stable` | Recurrence + asymptotic (x>=6), ~1e-6, x > 0 only |
+| `bessel_i0` | `(x: f32) -> f32` | `stable` | Polynomial + asymptotic, crossover at 3.75, even function |
+| `bessel_i1` | `(x: f32) -> f32` | `stable` | Polynomial + asymptotic, crossover at 3.75, odd function |
+| `bessel_k0` | `(x: f32) -> f32` | `stable` | Polynomial/log + asymptotic, crossover at 2.0, x > 0, +inf at 0 |
+| `bessel_k1` | `(x: f32) -> f32` | `stable` | Polynomial/log + asymptotic, crossover at 2.0, x > 0, +inf at 0 |
+| `bessel_j0` | `(x: f32) -> f32` | `stable` | Rational polynomial + large-x trig, even function, ~1e-5 near zeros |
+| `bessel_j1` | `(x: f32) -> f32` | `stable` | Rational polynomial + large-x trig, odd function, ~1e-5 near zeros |
+| `bessel_y0` | `(x: f32) -> f32` | `stable` | Rational + log-singularity + large-x trig, x > 0, -inf at 0 |
+| `bessel_y1` | `(x: f32) -> f32` | `alpha` | Rational + log + large-x trig, x > 0, -inf at 0, ~1e-3 drift in (7.5, 8) |
+| `airy_ai` | `(x: f32) -> f32` | `alpha` | Power series (|x|<=5) + exponential asymptotic (x>5), oscillatory for large negative x |
+| `airy_bi` | `(x: f32) -> f32` | `stable` | Power series (|x|<=5) + exponential asymptotic (x>5) |
+| `ellipk` | `(m: f32) -> f32` | `stable` | AGM recurrence, ~1e-8, m in [0,1), +inf at m=1, NaN outside |
+| `ellipe` | `(m: f32) -> f32` | `stable` | AGM recurrence, ~1e-8, m in [0,1], NaN for m>1 |
 
 ### Nautilus.Distributions (38 exports)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `uniform_pdf` | `(x: f32, lo: f32, hi: f32) -> f32` | |
-| `uniform_cdf` | `(x: f32, lo: f32, hi: f32) -> f32` | |
-| `uniform_inv_cdf` | `(q: f32, lo: f32, hi: f32) -> f32` | |
-| `uniform_sample` | `[n](template: tensor[n, f32], lo: f32, hi: f32) -> tensor[n, f32] ! { Random }` | Effect: Random |
-| `exponential_pdf` | `(x: f32, rate: f32) -> f32` | rate param (not scale) |
-| `exponential_cdf` | `(x: f32, rate: f32) -> f32` | rate param |
-| `exponential_inv_cdf` | `(q: f32, rate: f32) -> f32` | rate param |
-| `exponential_sample` | `[n](template: tensor[n, f32], rate: f32) -> tensor[n, f32] ! { Random }` | Effect: Random; rate param |
-| `normal_pdf` | `(x: f32, mean: f32, std: f32) -> f32` | (mean, std) parameterization |
-| `normal_cdf` | `(x: f32, mean: f32, std: f32) -> f32` | Via erf |
-| `normal_inv_cdf` | `(q: f32, mean: f32, std: f32) -> f32` | Acklam rational approx via erfinv |
-| `normal_sample` | `[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random }` | Effect: Random; Box-Muller |
-| `lognormal_pdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | (mu, sigma) of underlying normal |
-| `lognormal_cdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | Via normal_cdf |
-| `lognormal_inv_cdf` | `(q: f32, mu: f32, sigma: f32) -> f32` | Via normal_inv_cdf + exp |
-| `lognormal_sample` | `[n](template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32] ! { Random }` | Effect: Random |
-| `gamma_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | (shape, scale) -- not (shape, rate) |
-| `gamma_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | Series (gammap) + continued fraction (gammaq) |
-| `gamma_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | Wilson-Hilferty init + Newton refinement |
-| `gamma_sample` | `[n](template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32] ! { Random }` | Effect: Random; Marsaglia-Tsang, shape >= 1 |
-| `chi_squared_pdf` | `(x: f32, df: f32) -> f32` | Via gamma_pdf(x, df/2, 2) |
-| `chi_squared_cdf` | `(x: f32, df: f32) -> f32` | Via gamma_cdf |
-| `chi_squared_inv_cdf` | `(q: f32, df: f32) -> f32` | Via gamma_inv_cdf |
-| `chi_squared_sample` | `[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! { Random }` | Effect: Random; via gamma_sample |
-| `student_t_pdf` | `(x: f32, df: f32) -> f32` | Via log_gamma |
-| `student_t_cdf` | `(t: f32, df: f32) -> f32` | Via regularized incomplete beta (betai) |
-| `student_t_sample` | `[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! { Random }` | Effect: Random; normal/chi-squared ratio |
-| `poisson_pmf` | `(k: f32, lambda: f32) -> f32` | k as f32 (integer-valued), discrete PMF |
-| `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | Via gamma_cdf complement |
-| `binomial_pmf` | `(k: f32, n: f32, p: f32) -> f32` | k, n as f32 (integer-valued), discrete PMF |
-| `binomial_cdf` | `(k: f32, n: f32, p: f32) -> f32` | Via regularized incomplete beta (betai) |
-| `beta_pdf` | `(x: f32, a: f32, b: f32) -> f32` | a, b > 0 |
-| `beta_cdf` | `(x: f32, a: f32, b: f32) -> f32` | Via regularized incomplete beta (betai) |
-| `f_pdf` | `(x: f32, d1: f32, d2: f32) -> f32` | d1, d2 degrees of freedom |
-| `f_cdf` | `(x: f32, d1: f32, d2: f32) -> f32` | Via regularized incomplete beta (betai) |
-| `weibull_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | (shape, scale) parameterization |
-| `weibull_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | Closed-form |
-| `weibull_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | Closed-form |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `uniform_pdf` | `(x: f32, lo: f32, hi: f32) -> f32` | `stable` |  |
+| `uniform_cdf` | `(x: f32, lo: f32, hi: f32) -> f32` | `stable` |  |
+| `uniform_inv_cdf` | `(q: f32, lo: f32, hi: f32) -> f32` | `stable` |  |
+| `uniform_sample` | `[n](template: tensor[n, f32], lo: f32, hi: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random |
+| `exponential_pdf` | `(x: f32, rate: f32) -> f32` | `stable` | rate param (not scale) |
+| `exponential_cdf` | `(x: f32, rate: f32) -> f32` | `stable` | rate param |
+| `exponential_inv_cdf` | `(q: f32, rate: f32) -> f32` | `stable` | rate param |
+| `exponential_sample` | `[n](template: tensor[n, f32], rate: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random; rate param |
+| `normal_pdf` | `(x: f32, mean: f32, std: f32) -> f32` | `stable` | (mean, std) parameterization |
+| `normal_cdf` | `(x: f32, mean: f32, std: f32) -> f32` | `stable` | Via erf |
+| `normal_inv_cdf` | `(q: f32, mean: f32, std: f32) -> f32` | `stable` | Acklam rational approx via erfinv |
+| `normal_sample` | `[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random; Box-Muller |
+| `lognormal_pdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | `stable` | (mu, sigma) of underlying normal |
+| `lognormal_cdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | `stable` | Via normal_cdf |
+| `lognormal_inv_cdf` | `(q: f32, mu: f32, sigma: f32) -> f32` | `stable` | Via normal_inv_cdf + exp |
+| `lognormal_sample` | `[n](template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random |
+| `gamma_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | (shape, scale) -- not (shape, rate) |
+| `gamma_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Series (gammap) + continued fraction (gammaq) |
+| `gamma_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Wilson-Hilferty init + Newton refinement |
+| `gamma_sample` | `[n](template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random; Marsaglia-Tsang, shape >= 1 |
+| `chi_squared_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_pdf(x, df/2, 2) |
+| `chi_squared_cdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_cdf |
+| `chi_squared_inv_cdf` | `(q: f32, df: f32) -> f32` | `stable` | Via gamma_inv_cdf |
+| `chi_squared_sample` | `[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random; via gamma_sample |
+| `student_t_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via log_gamma |
+| `student_t_cdf` | `(t: f32, df: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
+| `student_t_sample` | `[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random; normal/chi-squared ratio |
+| `poisson_pmf` | `(k: f32, lambda: f32) -> f32` | `stable` | k as f32 (integer-valued), discrete PMF |
+| `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | `stable` | Via gamma_cdf complement |
+| `binomial_pmf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | k, n as f32 (integer-valued), discrete PMF |
+| `binomial_cdf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
+| `beta_pdf` | `(x: f32, a: f32, b: f32) -> f32` | `stable` | a, b > 0 |
+| `beta_cdf` | `(x: f32, a: f32, b: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
+| `f_pdf` | `(x: f32, d1: f32, d2: f32) -> f32` | `stable` | d1, d2 degrees of freedom |
+| `f_cdf` | `(x: f32, d1: f32, d2: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
+| `weibull_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | (shape, scale) parameterization |
+| `weibull_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Closed-form |
+| `weibull_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Closed-form |
 
 ### Nautilus.LinAlg (26 exports)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `transpose` | `[m, n](a: tensor[m, n, f32]) -> tensor[n, m, f32]` | General-n, returns tensor |
-| `matmul_wrap` | `[m, k, n](a: tensor[m, k, f32], b: tensor[k, n, f32]) -> tensor[m, n, f32]` | General-n, wraps builtin matmul |
-| `gram` | `[m, n](a: tensor[m, n, f32]) -> tensor[n, n, f32]` | General-n, returns A^T A |
-| `aat` | `[m, n](a: tensor[m, n, f32]) -> tensor[m, m, f32]` | General-n, returns A A^T |
-| `diag` | `[n](a: tensor[n, n, f32]) -> tensor[n, f32]` | General-n, returns vector |
-| `trace_mat` | `[n](a: tensor[n, n, f32]) -> tensor[f32]` | General-n, returns scalar tensor |
-| `trace_scalar` | `[n](a: tensor[n, n, f32]) -> f32` | General-n, returns scalar |
-| `l2_norm_vec` | `[n](v: tensor[n, f32]) -> f32` | General-n, returns scalar |
-| `inner_product` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | General-n, returns scalar |
-| `frobenius_sq` | `[m, n](a: tensor[m, n, f32]) -> f32` | General-n, returns scalar |
-| `frobenius_norm` | `[m, n](a: tensor[m, n, f32]) -> f32` | General-n, returns scalar |
-| `scale_vec` | `[n](v: tensor[n, f32], s: f32) -> tensor[n, f32]` | General-n, returns tensor |
-| `matvec` | `[m, n](a: tensor[m, n, f32], v: tensor[n, f32]) -> tensor[m, f32]` | General-n via einsum, returns vector |
-| `vecmat` | `[m, n](v: tensor[m, f32], a: tensor[m, n, f32]) -> tensor[n, f32]` | General-n via einsum, returns vector |
-| `det_2x2` | `(a: tensor[2, 2, f32]) -> f32` | Fixed 2x2, returns scalar |
-| `det_3x3` | `(a: tensor[3, 3, f32]) -> f32` | Fixed 3x3, returns scalar |
-| `la_vec_add` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | General-n elementwise add |
-| `la_vec_sub` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | General-n elementwise sub |
-| `la_vec_saxpy` | `[n](alpha: f32, x: tensor[n, f32], y: tensor[n, f32]) -> tensor[n, f32]` | General-n, computes x + alpha*y |
-| `cg_solve` | `[n](a_mat: tensor[n, n, f32], b: tensor[n, f32], x0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32]` | General-n conjugate gradient for SPD systems |
-| `inv_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` | Fixed 2x2, Cayley-Hamilton, NaN on singular |
-| `inv_3x3` | `(a: tensor[3, 3, f32]) -> tensor[3, 3, f32]` | Fixed 3x3, Cayley-Hamilton, NaN on singular |
-| `solve_2x2` | `(a: tensor[2, 2, f32], b: tensor[2, f32]) -> tensor[2, f32]` | Fixed 2x2, via inv_2x2 + matvec |
-| `solve_3x3` | `(a: tensor[3, 3, f32], b: tensor[3, f32]) -> tensor[3, f32]` | Fixed 3x3, via inv_3x3 + matvec |
-| `eig_2x2_real` | `(a: tensor[2, 2, f32]) -> (f32, f32)` | Fixed 2x2, returns tuple of eigenvalues, NaN if complex |
-| `cholesky_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` | Fixed 2x2, lower-triangular, NaN if not SPD |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `transpose` | `[m, n](a: tensor[m, n, f32]) -> tensor[n, m, f32]` | `stable` | General-n, returns tensor |
+| `matmul_wrap` | `[m, k, n](a: tensor[m, k, f32], b: tensor[k, n, f32]) -> tensor[m, n, f32]` | `stable` | General-n, wraps builtin matmul |
+| `gram` | `[m, n](a: tensor[m, n, f32]) -> tensor[n, n, f32]` | `stable` | General-n, returns A^T A |
+| `aat` | `[m, n](a: tensor[m, n, f32]) -> tensor[m, m, f32]` | `stable` | General-n, returns A A^T |
+| `diag` | `[n](a: tensor[n, n, f32]) -> tensor[n, f32]` | `stable` | General-n, returns vector |
+| `trace_mat` | `[n](a: tensor[n, n, f32]) -> tensor[f32]` | `stable` | General-n, returns scalar tensor |
+| `trace_scalar` | `[n](a: tensor[n, n, f32]) -> f32` | `stable` | General-n, returns scalar |
+| `l2_norm_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` | General-n, returns scalar |
+| `inner_product` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | `stable` | General-n, returns scalar |
+| `frobenius_sq` | `[m, n](a: tensor[m, n, f32]) -> f32` | `stable` | General-n, returns scalar |
+| `frobenius_norm` | `[m, n](a: tensor[m, n, f32]) -> f32` | `stable` | General-n, returns scalar |
+| `scale_vec` | `[n](v: tensor[n, f32], s: f32) -> tensor[n, f32]` | `stable` | General-n, returns tensor |
+| `matvec` | `[m, n](a: tensor[m, n, f32], v: tensor[n, f32]) -> tensor[m, f32]` | `stable` | General-n via einsum, returns vector |
+| `vecmat` | `[m, n](v: tensor[m, f32], a: tensor[m, n, f32]) -> tensor[n, f32]` | `stable` | General-n via einsum, returns vector |
+| `det_2x2` | `(a: tensor[2, 2, f32]) -> f32` | `stable` | Fixed 2x2, returns scalar |
+| `det_3x3` | `(a: tensor[3, 3, f32]) -> f32` | `stable` | Fixed 3x3, returns scalar |
+| `la_vec_add` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `stable` | General-n elementwise add |
+| `la_vec_sub` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `stable` | General-n elementwise sub |
+| `la_vec_saxpy` | `[n](alpha: f32, x: tensor[n, f32], y: tensor[n, f32]) -> tensor[n, f32]` | `stable` | General-n, computes x + alpha*y |
+| `cg_solve` | `[n](a_mat: tensor[n, n, f32], b: tensor[n, f32], x0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32]` | `stable` | General-n conjugate gradient for SPD systems |
+| `inv_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` | Fixed 2x2, Cayley-Hamilton, NaN on singular |
+| `inv_3x3` | `(a: tensor[3, 3, f32]) -> tensor[3, 3, f32]` | `stable` | Fixed 3x3, Cayley-Hamilton, NaN on singular |
+| `solve_2x2` | `(a: tensor[2, 2, f32], b: tensor[2, f32]) -> tensor[2, f32]` | `stable` | Fixed 2x2, via inv_2x2 + matvec |
+| `solve_3x3` | `(a: tensor[3, 3, f32], b: tensor[3, f32]) -> tensor[3, f32]` | `stable` | Fixed 3x3, via inv_3x3 + matvec |
+| `eig_2x2_real` | `(a: tensor[2, 2, f32]) -> (f32, f32)` | `stable` | Fixed 2x2, returns tuple of eigenvalues, NaN if complex |
+| `cholesky_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` | Fixed 2x2, lower-triangular, NaN if not SPD |
 
 ### Nautilus.Stats (14 exports)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `mean_vec` | `[n](v: tensor[n, f32]) -> f32` | |
-| `variance_vec` | `[n](v: tensor[n, f32], ddof: int64) -> f32` | ddof=0 for population, ddof=1 for sample |
-| `std_vec` | `[n](v: tensor[n, f32], ddof: int64) -> f32` | sqrt(variance_vec) |
-| `skewness_vec` | `[n](v: tensor[n, f32]) -> f32` | Population skewness (not adjusted) |
-| `kurtosis_vec` | `[n](v: tensor[n, f32]) -> f32` | Excess kurtosis (subtracts 3) |
-| `median_vec` | `[n](v: tensor[n, f32]) -> f32` | Sorts internally |
-| `covariance_scalar` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: int64) -> f32` | Returns scalar covariance |
-| `correlation_scalar` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | Pearson r, uses ddof=0 |
-| `min_vec` | `[n](v: tensor[n, f32]) -> f32` | |
-| `max_vec` | `[n](v: tensor[n, f32]) -> f32` | |
-| `range_vec` | `[n](v: tensor[n, f32]) -> f32` | max - min |
-| `quantile_vec` | `[n](v: tensor[n, f32], q: f32) -> f32` | q in [0,1], linear interpolation, sorts internally |
-| `percentile_vec` | `[n](v: tensor[n, f32], p: f32) -> f32` | p in [0,100], delegates to quantile_vec |
-| `trimmed_mean_vec` | `[n](v: tensor[n, f32], proportion: f32) -> f32` | Trims proportion from each tail, NaN if proportion >= 0.5 |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `mean_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` |  |
+| `variance_vec` | `[n](v: tensor[n, f32], ddof: int64) -> f32` | `stable` | ddof=0 for population, ddof=1 for sample |
+| `std_vec` | `[n](v: tensor[n, f32], ddof: int64) -> f32` | `stable` | sqrt(variance_vec) |
+| `skewness_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` | Population skewness (not adjusted) |
+| `kurtosis_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` | Excess kurtosis (subtracts 3) |
+| `median_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` | Sorts internally |
+| `covariance_scalar` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: int64) -> f32` | `stable` | Returns scalar covariance |
+| `correlation_scalar` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | `stable` | Pearson r, uses ddof=0 |
+| `min_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` |  |
+| `max_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` |  |
+| `range_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` | max - min |
+| `quantile_vec` | `[n](v: tensor[n, f32], q: f32) -> f32` | `stable` | q in [0,1], linear interpolation, sorts internally |
+| `percentile_vec` | `[n](v: tensor[n, f32], p: f32) -> f32` | `stable` | p in [0,100], delegates to quantile_vec |
+| `trimmed_mean_vec` | `[n](v: tensor[n, f32], proportion: f32) -> f32` | `stable` | Trims proportion from each tail, NaN if proportion >= 0.5 |
 
 ### Nautilus.Distance (8 exports)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `squared_euclidean` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | |
-| `euclidean` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | sqrt(squared_euclidean) |
-| `manhattan` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | L1 norm of difference |
-| `chebyshev` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | L-inf norm of difference |
-| `cosine_similarity` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | dot / (norm_a * norm_b) |
-| `cosine_distance` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | 1 - cosine_similarity |
-| `mahalanobis_squared` | `[n](a: tensor[n, f32], b: tensor[n, f32], cov_inv: tensor[n, n, f32]) -> f32` | Caller supplies inverse covariance |
-| `mahalanobis` | `[n](a: tensor[n, f32], b: tensor[n, f32], cov_inv: tensor[n, n, f32]) -> f32` | sqrt(mahalanobis_squared) |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `squared_euclidean` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | `stable` |  |
+| `euclidean` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | `stable` | sqrt(squared_euclidean) |
+| `manhattan` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | `stable` | L1 norm of difference |
+| `chebyshev` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | `stable` | L-inf norm of difference |
+| `cosine_similarity` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | `stable` | dot / (norm_a * norm_b) |
+| `cosine_distance` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | `stable` | 1 - cosine_similarity |
+| `mahalanobis_squared` | `[n](a: tensor[n, f32], b: tensor[n, f32], cov_inv: tensor[n, n, f32]) -> f32` | `stable` | Caller supplies inverse covariance |
+| `mahalanobis` | `[n](a: tensor[n, f32], b: tensor[n, f32], cov_inv: tensor[n, n, f32]) -> f32` | `stable` | sqrt(mahalanobis_squared) |
 
 ### Nautilus.Roots (3 exports)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `bisection` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | Takes function-typed `f`; requires sign change in [lo,hi], NaN if none |
-| `newton` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32` | Takes function-typed `f` and `df`; NaN on zero derivative or non-convergence |
-| `brent` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | Takes function-typed `f`; Brent's method with IQI/secant/bisection fallback |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `bisection` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f`; requires sign change in [lo,hi], NaN if none |
+| `newton` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f` and `df`; NaN on zero derivative or non-convergence |
+| `brent` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f`; Brent's method with IQI/secant/bisection fallback |
 
 ### Nautilus.ODE (4 exports)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `euler_step` | `(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32` | Single Euler step; `f` takes (y, t) via curried args |
-| `euler_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32` | Fixed-step Euler; `f` takes (y, t), returns final y |
-| `rk4_step` | `(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32` | Single RK4 step; `f` takes (y, t) |
-| `rk4_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32` | Fixed-step RK4; `f` takes (y, t), returns final y |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `euler_step` | `(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32` | `stable` | Single Euler step; `f` takes (y, t) via curried args |
+| `euler_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32` | `stable` | Fixed-step Euler; `f` takes (y, t), returns final y |
+| `rk4_step` | `(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32` | `stable` | Single RK4 step; `f` takes (y, t) |
+| `rk4_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32` | `stable` | Fixed-step RK4; `f` takes (y, t), returns final y |
 
 ### Nautilus.Integrate (8 exports)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `trapezoidal` | `(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32` | Takes function-typed `f`; composite trapezoidal rule |
-| `simpsons` | `(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32` | Takes function-typed `f`; n_steps must be even, NaN otherwise |
-| `gauss_legendre_5` | `(f: f32 -> f32, a: f32, b: f32, n_points: int64) -> f32` | Takes function-typed `f`; 5-point Gauss-Legendre (n_points ignored) |
-| `adaptive_simpson` | `(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: int64) -> f32` | Takes function-typed `f`; recursive adaptive Simpson with Richardson correction |
-| `romberg_5` | `(f: f32 -> f32, a: f32, b: f32) -> f32` | Takes function-typed `f`; 5-level Romberg (16-panel trapezoidal base) |
-| `gauss_legendre_10` | `(f: f32 -> f32, a: f32, b: f32) -> f32` | Takes function-typed `f`; 10-point Gauss-Legendre |
-| `gauss_hermite_10` | `(f: f32 -> f32) -> f32` | Takes function-typed `f`; 10-point Gauss-Hermite, integrates f(x)*exp(-x^2) over (-inf,inf) |
-| `gauss_laguerre_10` | `(f: f32 -> f32) -> f32` | Takes function-typed `f`; 10-point Gauss-Laguerre, integrates f(x)*exp(-x) over [0,inf) |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `trapezoidal` | `(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32` | `stable` | Takes function-typed `f`; composite trapezoidal rule |
+| `simpsons` | `(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32` | `stable` | Takes function-typed `f`; n_steps must be even, NaN otherwise |
+| `gauss_legendre_5` | `(f: f32 -> f32, a: f32, b: f32, n_points: int64) -> f32` | `stable` | Takes function-typed `f`; 5-point Gauss-Legendre (n_points ignored) |
+| `adaptive_simpson` | `(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: int64) -> f32` | `stable` | Takes function-typed `f`; recursive adaptive Simpson with Richardson correction |
+| `romberg_5` | `(f: f32 -> f32, a: f32, b: f32) -> f32` | `stable` | Takes function-typed `f`; 5-level Romberg (16-panel trapezoidal base) |
+| `gauss_legendre_10` | `(f: f32 -> f32, a: f32, b: f32) -> f32` | `stable` | Takes function-typed `f`; 10-point Gauss-Legendre |
+| `gauss_hermite_10` | `(f: f32 -> f32) -> f32` | `stable` | Takes function-typed `f`; 10-point Gauss-Hermite, integrates f(x)*exp(-x^2) over (-inf,inf) |
+| `gauss_laguerre_10` | `(f: f32 -> f32) -> f32` | `stable` | Takes function-typed `f`; 10-point Gauss-Laguerre, integrates f(x)*exp(-x) over [0,inf) |
 
 ### Nautilus.Testing (13 exports)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `z_statistic` | `(sample_mean: f32, pop_mean: f32, pop_std: f32, sample_n: f32) -> f32` | |
-| `z_p_value_two_sided` | `(z: f32) -> f32` | Via normal_cdf |
-| `z_p_value_upper` | `(z: f32) -> f32` | Upper-tail p-value |
-| `z_p_value_lower` | `(z: f32) -> f32` | Lower-tail p-value |
-| `normal_ci_half_width` | `(confidence: f32, pop_std: f32, sample_n: f32) -> f32` | Returns margin of error |
-| `chi_squared_p_value` | `(statistic: f32, df: f32) -> f32` | Upper-tail via chi_squared_cdf |
-| `t_statistic_one_sample` | `(sample_mean: f32, sample_std: f32, sample_n: f32, pop_mean: f32) -> f32` | |
-| `t_statistic_two_sample_pooled` | `(mean1: f32, std1: f32, n1: f32, mean2: f32, std2: f32, n2: f32) -> f32` | Equal-variance pooled t |
-| `t_p_value_two_sided` | `(t: f32, df: f32) -> f32` | Via student_t_cdf |
-| `t_p_value_upper` | `(t: f32, df: f32) -> f32` | Upper-tail |
-| `t_p_value_lower` | `(t: f32, df: f32) -> f32` | Lower-tail |
-| `welch_t_statistic` | `(mean1: f32, std1: f32, n1: f32, mean2: f32, std2: f32, n2: f32) -> f32` | Unequal-variance Welch's t |
-| `welch_t_df` | `(std1: f32, n1: f32, std2: f32, n2: f32) -> f32` | Welch-Satterthwaite degrees of freedom |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `z_statistic` | `(sample_mean: f32, pop_mean: f32, pop_std: f32, sample_n: f32) -> f32` | `stable` |  |
+| `z_p_value_two_sided` | `(z: f32) -> f32` | `stable` | Via normal_cdf |
+| `z_p_value_upper` | `(z: f32) -> f32` | `stable` | Upper-tail p-value |
+| `z_p_value_lower` | `(z: f32) -> f32` | `stable` | Lower-tail p-value |
+| `normal_ci_half_width` | `(confidence: f32, pop_std: f32, sample_n: f32) -> f32` | `stable` | Returns margin of error |
+| `chi_squared_p_value` | `(statistic: f32, df: f32) -> f32` | `stable` | Upper-tail via chi_squared_cdf |
+| `t_statistic_one_sample` | `(sample_mean: f32, sample_std: f32, sample_n: f32, pop_mean: f32) -> f32` | `stable` |  |
+| `t_statistic_two_sample_pooled` | `(mean1: f32, std1: f32, n1: f32, mean2: f32, std2: f32, n2: f32) -> f32` | `stable` | Equal-variance pooled t |
+| `t_p_value_two_sided` | `(t: f32, df: f32) -> f32` | `stable` | Via student_t_cdf |
+| `t_p_value_upper` | `(t: f32, df: f32) -> f32` | `stable` | Upper-tail |
+| `t_p_value_lower` | `(t: f32, df: f32) -> f32` | `stable` | Lower-tail |
+| `welch_t_statistic` | `(mean1: f32, std1: f32, n1: f32, mean2: f32, std2: f32, n2: f32) -> f32` | `stable` | Unequal-variance Welch's t |
+| `welch_t_df` | `(std1: f32, n1: f32, std2: f32, n2: f32) -> f32` | `stable` | Welch-Satterthwaite degrees of freedom |
 
 ### Nautilus.Optim (4 exports)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `golden_section_search` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | Takes function-typed `f`; finds minimizer in [lo,hi] |
-| `brent_minimize` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | Takes function-typed `f`; Brent's minimization with parabolic interpolation |
-| `gradient_descent_1d` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, lr: f32, max_iters: int64) -> f32` | Takes function-typed `f` and `df`; fixed learning rate, NaN on divergence |
-| `newton_minimize_1d` | `(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32` | Takes function-typed `f`, `df`, `ddf`; requires positive curvature at minimum |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `golden_section_search` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f`; finds minimizer in [lo,hi] |
+| `brent_minimize` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f`; Brent's minimization with parabolic interpolation |
+| `gradient_descent_1d` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, lr: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f` and `df`; fixed learning rate, NaN on divergence |
+| `newton_minimize_1d` | `(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Takes function-typed `f`, `df`, `ddf`; requires positive curvature at minimum |
 
 ### Nautilus.Interpolation (3 exports)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `linear_interp_uniform` | `[n](ys: tensor[n, f32], x_min: f32, x_max: f32, x_query: f32) -> f32` | Uniformly-spaced knots, clamped extrapolation |
-| `linear_interp_sorted` | `[n](xs: tensor[n, f32], ys: tensor[n, f32], x_query: f32) -> f32` | Arbitrary sorted knots, flat extrapolation outside range |
-| `cubic_hermite` | `(x0: f32, x1: f32, y0: f32, y1: f32, m0: f32, m1: f32, x_query: f32) -> f32` | Single-interval cubic Hermite spline, caller supplies tangents m0/m1 |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `linear_interp_uniform` | `[n](ys: tensor[n, f32], x_min: f32, x_max: f32, x_query: f32) -> f32` | `stable` | Uniformly-spaced knots, clamped extrapolation |
+| `linear_interp_sorted` | `[n](xs: tensor[n, f32], ys: tensor[n, f32], x_query: f32) -> f32` | `stable` | Arbitrary sorted knots, flat extrapolation outside range |
+| `cubic_hermite` | `(x0: f32, x1: f32, y0: f32, y1: f32, m0: f32, m1: f32, x_query: f32) -> f32` | `stable` | Single-interval cubic Hermite spline, caller supplies tangents m0/m1 |
 
 ### Nautilus.SDE (2 exports)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `euler_maruyama_fixed` | `[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32` | Caller supplies pre-drawn N(0,1) noise tensor; `f` is drift, `g` is diffusion, both take (y, t) |
-| `milstein_fixed` | `[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, dg_dy: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32` | Caller supplies noise + diffusion derivative `dg_dy`; Milstein correction term included |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `euler_maruyama_fixed` | `[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32` | `alpha` | Caller supplies pre-drawn N(0,1) noise tensor; `f` is drift, `g` is diffusion, both take (y, t) |
+| `milstein_fixed` | `[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, dg_dy: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32` | `alpha` | Caller supplies noise + diffusion derivative `dg_dy`; Milstein correction term included |
 
 ### Nautilus.CurveFit (1 export)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `lm_scalar_1param` | `[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs: tensor[n, f32], ys: tensor[n, f32], theta0: f32, lambda0: f32, tol: f32, max_iters: int64) -> f32` | Levenberg-Marquardt for single-parameter models; `model(x, theta)` and `dmodel(x, theta)` are function-typed |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `lm_scalar_1param` | `[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs: tensor[n, f32], ys: tensor[n, f32], theta0: f32, lambda0: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Levenberg-Marquardt for single-parameter models; `model(x, theta)` and `dmodel(x, theta)` are function-typed |
 
 ### Nautilus.Signal (7 exports -- stubs)
 
-| Function | Signature | Notes |
-|---|---|---|
-| `fft_magnitude_stub` | `[n](x: tensor[n, f32]) -> tensor[n, f32]` | Stub: returns NaN tensor. Blocked on upstream complex-number support (Phase 5f) |
-| `ifft_magnitude_stub` | `[n](x: tensor[n, f32]) -> tensor[n, f32]` | Stub: returns NaN tensor |
-| `stft_magnitude_stub` | `[n](x: tensor[n, f32], window_size: int64, hop_size: int64) -> tensor[n, f32]` | Stub: returns NaN tensor |
-| `lowpass_stub` | `[n](x: tensor[n, f32], cutoff_hz: f32, sample_rate: f32) -> tensor[n, f32]` | Stub: returns NaN tensor |
-| `highpass_stub` | `[n](x: tensor[n, f32], cutoff_hz: f32, sample_rate: f32) -> tensor[n, f32]` | Stub: returns NaN tensor |
-| `bandpass_stub` | `[n](x: tensor[n, f32], low_hz: f32, high_hz: f32, sample_rate: f32) -> tensor[n, f32]` | Stub: returns NaN tensor |
-| `fftfreq` | `[n](x: tensor[n, f32], sample_rate: f32) -> tensor[n, f32]` | Functional: computes FFT frequency bins (no complex math needed) |
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `fft_magnitude_stub` | `[n](x: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor. Blocked on upstream complex-number support (Phase 5f) |
+| `ifft_magnitude_stub` | `[n](x: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
+| `stft_magnitude_stub` | `[n](x: tensor[n, f32], window_size: int64, hop_size: int64) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
+| `lowpass_stub` | `[n](x: tensor[n, f32], cutoff_hz: f32, sample_rate: f32) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
+| `highpass_stub` | `[n](x: tensor[n, f32], cutoff_hz: f32, sample_rate: f32) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
+| `bandpass_stub` | `[n](x: tensor[n, f32], low_hz: f32, high_hz: f32, sample_rate: f32) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
+| `fftfreq` | `[n](x: tensor[n, f32], sample_rate: f32) -> tensor[n, f32]` | `alpha` | Functional: computes FFT frequency bins (no complex math needed) |

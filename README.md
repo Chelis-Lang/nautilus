@@ -51,6 +51,7 @@ scipy/numpy reference values checked into `tests/goldens/`.
 python tests/run_numeric_tests.py      # 881 numerical assertions
 python scripts/gen_goldens.py --check  # verify goldens match scipy
 python tests/run_static_checks.py      # export consistency
+python scripts/extract_stability.py --check
 ```
 
 ## Benchmarks
@@ -67,6 +68,7 @@ at n=100k on a single core:
 ## Project docs
 
 - [spec/phase3j.md](spec/phase3j.md) for scope and acceptance criteria
+- [spec/next_up.md](spec/next_up.md) for the post-v0.1.0 roadmap
 - [docs/NAUTILUS_STATUS.md](docs/NAUTILUS_STATUS.md) for the full status report
 - [docs/UPSTREAM_BUGS.md](docs/UPSTREAM_BUGS.md) for upstream compiler bug history
 

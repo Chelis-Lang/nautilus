@@ -28,9 +28,9 @@ version module + 6 executable examples + 1 API smoke-check module.
 
 | Module | Exports | Lines | Dependencies | Runtime-tested |
 |---|---|---|---|---|
-| `Nautilus.Special` | 20 | 796 | scalar math only | 20/20 (132 assertions) |
-| `Nautilus.Distributions` | 37 | 685 | Special (erf, erfinv, log_gamma) | 31/37 (350 assertions) |
-| `Nautilus.LinAlg` | 28 | 320 | tensor primitives only | 26/28 (150 assertions) |
+| `Nautilus.Special` | 19 | 796 | scalar math only | 19/19 (132 assertions) |
+| `Nautilus.Distributions` | 38 | 685 | Special (erf, erfinv, log_gamma) | 35/38 (350 assertions) |
+| `Nautilus.LinAlg` | 26 | 320 | tensor primitives only | 26/26 (150 assertions) |
 | `Nautilus.Stats` | 14 | 216 | sort, numel, enumerate | 14/14 (18 assertions) |
 | `Nautilus.Distance` | 8 | 83 | LinAlg (l2_norm_vec, inner_product, matvec) | 8/8 (10 assertions) |
 | `Nautilus.Roots` | 3 | 177 | scalar math, user `f: f32 -> f32` | 3/3 (6 assertions) |
@@ -67,12 +67,12 @@ applicable:
 | F | yes | yes (betai) | no | no |
 | Weibull | yes | yes | yes (closed-form) | no |
 
-The 6 exports not runtime-tested are `sample` variants (`normal_sample`,
-`lognormal_sample`, `uniform_sample`, `exponential_sample`) — these
-require the Chelis `Random` effect and `uniform_like` tensor
-construction, which the test harness cannot exercise via the
-bare-build C driver path. They are type-checked at package build time
-via `src/apismoke.ch`.
+The 3 exports not runtime-tested are the heavier sampling variants
+`gamma_sample`, `chi_squared_sample`, and `student_t_sample`. The
+deterministic `uniform_sample`, `normal_sample`, `exponential_sample`,
+and `lognormal_sample` paths are runtime-verified in
+`tests/run_numeric_tests.py`; the remaining three stay type-checked at
+package build time via `src/apismoke.ch`.
 
 ### 2.2 Special functions detail (P6 expansion)
 
@@ -95,7 +95,7 @@ via `src/apismoke.ch`.
 
 ### 2.3 LinAlg detail
 
-All 28 exports are runtime-verified. Implementation is pure
+All 26 exports are runtime-verified. Implementation is pure
 tensor-op composition — no FFI, no eigenvalue decomposition beyond
 2x2. Sizes are fixed (2x2, 3x3) for inverse/solve/eigenvalue/Cholesky.
 
@@ -276,9 +276,9 @@ All five previously-documented gaps have been closed:
 reef.toml                          -- package manifest, pin chelis =0.1.7
 src/
   core.ch                          -- version() export
-  special.ch         (796 lines)   -- 20 special functions
-  distributions.ch   (685 lines)   -- 12 distribution families
-  linalg.ch          (320 lines)   -- 28 linear algebra ops
+  special.ch         (796 lines)   -- 19 special functions
+  distributions.ch   (685 lines)   -- 12 distribution families / 38 exports
+  linalg.ch          (320 lines)   -- 26 linear algebra ops
   stats.ch           (216 lines)   -- 14 descriptive statistics
   integrate.ch       (320 lines)   -- 8 quadrature methods
   optim.ch           (223 lines)   -- 4 scalar optimizers
@@ -293,16 +293,16 @@ src/
   apismoke.ch        (324 lines)   -- type-level import gate
   example*.ch        (6 files)     -- executable examples
 tests/
-  run_numeric_tests.py             -- 841-assertion harness
+  run_numeric_tests.py             -- 881-assertion harness
   run_static_checks.py             -- export consistency gate
   goldens/                         -- 25 scipy-generated JSON fixtures
 scripts/
   gen_goldens.py                   -- golden generator + drift check
   bench_vs_scipy.py                -- ctypes in-process benchmark
-BENCHMARK_FINDINGS.md              -- performance evaluation for paper
-UPSTREAM_BUGS.md                   -- 7 tracked upstream bugs (all resolved)
-NAUTILUS_STATUS.md                 -- this file
-spec/phase3j.md                   -- authoritative scope + acceptance
+docs/BENCHMARK_FINDINGS.md         -- performance evaluation for paper
+docs/UPSTREAM_BUGS.md              -- 7 tracked upstream bugs (all resolved)
+docs/NAUTILUS_STATUS.md            -- this file
+spec/phase3j.md                    -- authoritative scope + acceptance
 ```
 
 ---

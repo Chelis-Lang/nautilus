@@ -48,11 +48,21 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Eval startup benchmark
+        env:
+          CHELIS_BIN: chelis
+        run: |
+          python scripts/bench_eval_startup.py --trials 5
+          grep -q "## Recommended upstream changes" docs/EVAL_STARTUP_FINDINGS.md
+
       - name: Install scipy + numpy
         run: pip install --no-cache-dir 'numpy>=1.26' 'scipy>=1.14'
 
       - name: Static API cross-checks
         run: python tests/run_static_checks.py
+
+      - name: Extract stability surface
+        run: python scripts/extract_stability.py --check
 
       - name: Goldens drift check (scipy parity)
         run: python scripts/gen_goldens.py --check

@@ -1,5 +1,8 @@
 target/
 dist/
+!dist/
+dist/*
+!dist/stability.json
 reef.lock
 *.chb
 .DS_Store

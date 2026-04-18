@@ -20,6 +20,8 @@ def zero_f() -> f32 = cast(0.0, f32)
 def one_f() -> f32 = cast(1.0, f32)
 def two_f() -> f32 = cast(2.0, f32)
 def three_f() -> f32 = cast(3.0, f32)
+def pos_inf_f() -> f32 = div(cast(1.0, f32), cast(0.0, f32))
+def neg_inf_f() -> f32 = div(cast(-1.0, f32), cast(0.0, f32))
 def zero_i() -> int64 = cast(0, int64)
 def one_i() -> int64 = cast(1, int64)
 def two_i() -> int64 = cast(2, int64)
@@ -137,13 +139,13 @@ def correlation_scalar[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32 = {
 
 def min_vec[n](v: tensor[n, f32]) -> f32 = {
   lst = to_list(v)
-  big = cast(1.0e30, f32)
+  big = pos_inf_f()
   fold(fn (acc: f32, x: f32) -> if lt(x, acc) then x else acc, big, lst)
 }
 
 def max_vec[n](v: tensor[n, f32]) -> f32 = {
   lst = to_list(v)
-  small = cast(-1.0e30, f32)
+  small = neg_inf_f()
   fold(fn (acc: f32, x: f32) -> if gt(x, acc) then x else acc, small, lst)
 }
 

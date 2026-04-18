@@ -31,6 +31,9 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "src"
+sys.path.insert(0, str(REPO))
+
+from scripts.extract_stability import build_stability_map, check_output, validate_surface_map
 
 MODULES = {
     "Nautilus.Special":       SRC / "special.ch",
@@ -128,10 +131,21 @@ def check_linalg_goldens_consumed() -> None:
     print("       Files:", ", ".join(files))
 
 
+def check_stability_surface(fail: list[str]) -> None:
+    try:
+        surface = build_stability_map()
+    except ValueError as exc:
+        fail.append(str(exc))
+        return
+    fail.extend(validate_surface_map(surface))
+    fail.extend(check_output(surface))
+
+
 def main() -> int:
     fail: list[str] = []
     check_apismoke(fail)
     check_readme(fail)
+    check_stability_surface(fail)
     check_linalg_goldens_consumed()
     if fail:
         print("STATIC CHECK FAILURES:")
