@@ -42,7 +42,51 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "src"
 GOLDENS = REPO / "tests" / "goldens"
-CHELIS = os.environ.get("CHELIS_BIN", "/tmp/chelisbin")
+sys.path.insert(0, str(REPO))
+
+from scripts.chelis_toolchain import resolve_chelis_bin
+
+
+CHELIS = resolve_chelis_bin()
+
+
+def native_link_cmd(binary: Path, sources: list[Path], out_dir: Path) -> list[str]:
+    """Choose a host C compiler/link flag set that works on this platform."""
+    cc_env = os.environ.get("CC")
+    if cc_env:
+        prefix = [cc_env, "-O2"]
+    elif sys.platform == "darwin":
+        libomp = Path("/opt/homebrew/opt/libomp")
+        if libomp.exists():
+            prefix = [
+                "clang",
+                "-O2",
+                "-Xpreprocessor",
+                "-fopenmp",
+                f"-I{libomp / 'include'}",
+                f"-L{libomp / 'lib'}",
+            ]
+        else:
+            prefix = ["clang", "-O2"]
+    else:
+        prefix = ["gcc", "-O2", "-fopenmp"]
+
+    cmd = [
+        *prefix,
+        "-o",
+        str(binary),
+        *(str(source) for source in sources),
+        "-I",
+        str(out_dir),
+        "-L",
+        str(out_dir),
+        "-lchelis_runtime",
+        "-lm",
+        "-lpthread",
+    ]
+    if sys.platform == "darwin" and Path("/opt/homebrew/opt/libomp").exists() and "clang" in prefix[0]:
+        cmd.append("-lomp")
+    return cmd
 
 
 def strip_module(src: str) -> str:
@@ -186,11 +230,7 @@ def build_native_binary() -> Path:
     binary = workdir / "nautilus_test_bin"
     out_dir = workdir / "out"
     cc = subprocess.run(
-        ["gcc", "-O2", "-fopenmp", "-o", str(binary),
-         str(c_file), str(drv_c),
-         "-I", str(out_dir),
-         "-L", str(out_dir), "-lchelis_runtime",
-         "-lm", "-lpthread"],
+        native_link_cmd(binary, [c_file, drv_c], out_dir),
         capture_output=True, text=True,
     )
     if cc.returncode != 0:
@@ -459,11 +499,7 @@ def build_p1_binary() -> Path:
     binary = workdir / "p1_test_bin"
     out_dir = workdir / "out"
     cc = subprocess.run(
-        ["gcc", "-O2", "-fopenmp", "-o", str(binary),
-         str(c_file), str(drv_c),
-         "-I", str(out_dir),
-         "-L", str(out_dir), "-lchelis_runtime",
-         "-lm", "-lpthread"],
+        native_link_cmd(binary, [c_file, drv_c], out_dir),
         capture_output=True, text=True,
     )
     if cc.returncode != 0:
@@ -1188,11 +1224,7 @@ def build_linalg_binary() -> Path:
     binary = workdir / "la_test_bin"
     out_dir = workdir / "out"
     cc = subprocess.run(
-        ["gcc", "-O2", "-fopenmp", "-o", str(binary),
-         str(c_file), str(drv_c),
-         "-I", str(out_dir),
-         "-L", str(out_dir), "-lchelis_runtime",
-         "-lm", "-lpthread"],
+        native_link_cmd(binary, [c_file, drv_c], out_dir),
         capture_output=True, text=True,
     )
     if cc.returncode != 0:

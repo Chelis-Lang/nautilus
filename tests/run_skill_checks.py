@@ -11,7 +11,6 @@ Exit non-zero if any block fails to check at score 1.0.
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
 import sys
@@ -20,7 +19,12 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "src"
-CHELIS = os.environ.get("CHELIS_BIN", "chelis")
+sys.path.insert(0, str(REPO))
+
+from scripts.chelis_toolchain import resolve_chelis_bin
+
+
+CHELIS = resolve_chelis_bin()
 
 
 def extract_blocks(text: str, lang: str) -> list[str]:

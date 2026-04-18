@@ -7,8 +7,8 @@ That section contains signature tables for all 150 non-stub exports
 across 14 modules:
 
 - **Nautilus.Special** -- 19 special functions (erf, Bessel, Airy, elliptic integrals)
-- **Nautilus.Distributions** -- 37 exports across 12 distribution families
-- **Nautilus.LinAlg** -- 25 linear algebra operations (fixed-size and general-n)
+- **Nautilus.Distributions** -- 38 exports across 12 distribution families
+- **Nautilus.LinAlg** -- 26 linear algebra operations (fixed-size and general-n)
 - **Nautilus.Stats** -- 14 descriptive statistics
 - **Nautilus.Testing** -- 13 hypothesis-test helpers
 - **Nautilus.Integrate** -- 8 quadrature methods
@@ -22,8 +22,9 @@ across 14 modules:
 - **Nautilus.Signal** -- 7 stubs (blocked on complex numbers)
 
 Each table in SKILL.md includes the function name, full type signature,
-and implementation notes (domain restrictions, precision, effect
-annotations).
+row-level stability label, and implementation notes (domain
+restrictions, precision, effect annotations). The same row-level
+surface is emitted in machine-readable form at `dist/stability.json`.
 
 For usage patterns and worked examples, see the module-specific chapters
 in this book and the 15 patterns in SKILL.md Section 3.

@@ -35,28 +35,31 @@ below") plus the cross-cutting rationale.
 **Row-level rules (override the module default only when clearly
 different):**
 
-- `Nautilus.Special` — all 20 exports `stable` **except**
+- `Nautilus.Special` — all 19 exports `stable` **except**
   `bessel_y1` (documented ~1e-3 drift in (7.5, 8); mark `alpha` until
   a better approximation lands) and `airy_ai` for large negative `x`
   (oscillatory regime is power-series-only; mark `alpha`).
-- `Nautilus.Distributions` — all 37 exports `stable` **except** the
-  four `_sample` variants (`normal_sample`, `lognormal_sample`,
-  `uniform_sample`, `exponential_sample`) which stay `alpha` until
+- `Nautilus.Distributions` — all 38 exports `stable` **except** the
+  seven `_sample` variants (`uniform_sample`, `exponential_sample`,
+  `normal_sample`, `lognormal_sample`, `gamma_sample`,
+  `chi_squared_sample`, `student_t_sample`) which stay `alpha` until
   the `Random` effect's batched-sampling API is frozen.
-- `Nautilus.LinAlg` — all 28 exports `stable`. Fixed-size solvers are
+- `Nautilus.LinAlg` — all 26 exports `stable`. Fixed-size solvers are
   API-frozen; `cg_solve` is stable too (tolerance parameter is
   well-defined).
 - `Nautilus.Stats` — all 14 exports `stable`.
 - `Nautilus.Distance` — all 8 exports `stable`.
 - `Nautilus.Roots` — all 3 exports `stable`.
-- `Nautilus.ODE` — `rk4_solve` and `euler_solve` `stable`;
-  adaptive-step variants stay `alpha` (API not yet designed).
+- `Nautilus.ODE` — all four fixed-step exports (`euler_step`,
+  `euler_solve`, `rk4_step`, `rk4_solve`) are `stable`; adaptive-step
+  variants stay `alpha` (API not yet designed).
 - `Nautilus.Integrate` — all 8 exports `stable`.
 - `Nautilus.Testing` — all 13 exports `stable`.
-- `Nautilus.Optim` — `brent_minimize` and `golden_section_search`
-  `stable`; `newton_minimize_1d` `alpha` (documented heuristic
-  false-positive on flat minima); `lm_scalar_1param` moves to
-  `CurveFit` column — mark `alpha` until multi-parameter LM lands.
+- `Nautilus.Optim` — `golden_section_search`, `brent_minimize`, and
+  `gradient_descent_1d` are `stable`; `newton_minimize_1d` is `alpha`
+  (documented heuristic false-positive on flat minima);
+  `lm_scalar_1param` moves to the `CurveFit` column — mark `alpha`
+  until multi-parameter LM lands.
 - `Nautilus.Interpolation` — all 3 exports `stable`.
 - `Nautilus.SDE` — `euler_maruyama_fixed` and `milstein_fixed`
   `alpha` (APIs may shift when autonomous `Random` sampling lands).
