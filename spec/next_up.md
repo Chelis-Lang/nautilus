@@ -137,40 +137,6 @@ typechecker, specific module) the upstream team can target.
 
 ---
 
-## P1: Structured Fitness Probe of Nautilus Example Programs
-
-**Driven by:** `chelis/spec/design/chelis_project_plan.md` § Pre-Phase
-4 Investments — "structured fitness score with per-property
-components."
-
-**Problem.** Once chelis v0.1.8+ exposes per-property fitness
-components in the `chelis check` JSON, downstream packages become the
-first real consumer of that data. Nautilus has 6 executable example
-programs (`examplerootfind.ch`, `exampleintegration.ch`,
-`exampleodedemo.ch`, `exampleoptim.ch`, `exampledistributions.ch`, and
-implicitly `apismoke.ch`) plus 15 library modules — a rich enough
-corpus to exercise the components schema.
-
-**Deliverable.** A probe script that runs `chelis check --json` on
-every `src/*.ch` file and validates that the component structure is
-sane: each file gets an aggregate score (expected 1.0 for shipped
-code), and the components object contains `dimension`, `effect`,
-`linearity`, `differentiability`, `syntax` keys. Emit a summary table
-to `docs/FITNESS_COMPONENTS_SAMPLE.md` that can feed back into the
-main chelis repo as real-world validation of the component schema.
-
-**Gating.** Only runnable once chelis emits the structured fitness
-JSON. Until then, this work item is queued. Should be the second
-downstream package (after `chelis` itself) to dogfood the new output.
-
-**Size:** Small. ~80 lines of Python + one markdown report.
-
-**Acceptance oracle:** `python tests/run_fitness_probe.py` (new)
-exits 0, emits the sample table, and every Nautilus module's
-aggregate score is 1.0 with a well-formed `components` object.
-
----
-
 ## P1: Multi-Parameter Levenberg-Marquardt
 
 **Driven by:** residual v0.1.0 limitation
@@ -351,6 +317,3 @@ updated with a general-n LinAlg benchmark table.
    closes a known-limitation ticket.
 5. **P2 adaptive ODE** — lands when there's a concrete consumer.
 6. **P2 general-n LinAlg** — a v0.2.0 sub-release on its own.
-
-Structured fitness probe (P1) can run opportunistically whenever
-chelis v0.1.8+ with components JSON lands.
