@@ -10,9 +10,26 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
+**Status snapshot (2026-04-19).**
+
+- Completed in Nautilus: P0 per-row stability column, P1 fast-`chelis eval`
+  benchmark, P2 adaptive-step ODE integrator, P2 `bessel_y1` precision/stability
+  fix.
+- Remaining unblocked Nautilus-only work: none.
+- Remaining work that now depends on upstream Chelis fixes: multi-parameter
+  Levenberg-Marquardt (Jacobian/autodiff surface) and general-`n` LinAlg
+  decompositions (generic fold/control-flow lowering on the build path).
+
 ---
 
-## P0: Per-Row Stability Column in SKILL.md
+## Completed: P0 Per-Row Stability Column in SKILL.md
+
+Landed in commit `084f0ed`. `SKILL.md` now carries a per-row `Stability`
+column, `tests/run_static_checks.py` validates the tables, and
+`scripts/extract_stability.py` emits `dist/stability.json` for downstream
+consumers.
+
+Original planning note:
 
 **Driven by:** `chelis/spec/design/chelis_canonical_reference.md` §
 Cross-Cutting Design Decisions — "stability labels on exported APIs."
@@ -96,7 +113,14 @@ not.
 
 ---
 
-## P1: Upstream the Fast-`chelis eval` Dependency Surface
+## Completed: P1 Upstream the Fast-`chelis eval` Dependency Surface
+
+Landed in commit `084f0ed`. `scripts/bench_eval_startup.py` measures the
+startup path, and `docs/EVAL_STARTUP_FINDINGS.md` records the actionable
+compiler-side recommendations. The findings doc is the handoff: Nautilus
+measures, Chelis core owns the fix.
+
+Original planning note:
 
 **Driven by:** `chelis/spec/design/chelis_project_plan.md` § Pre-Phase
 4 Investments — "fast `chelis eval` with package-aware imports,
@@ -140,7 +164,13 @@ typechecker, specific module) the upstream team can target.
 
 ---
 
-## P1: Multi-Parameter Levenberg-Marquardt
+## Blocked: P1 Multi-Parameter Levenberg-Marquardt
+
+**Current blocker (2026-04-19).** A Nautilus-side implementation attempt against
+the current mac Chelis compiler snapshot stops at the Jacobian surface. The
+needed `grad` path does not currently expose a usable multi-parameter Jacobian
+for this API shape, and Nautilus should **not** ship finite-difference Jacobians
+as a permanent workaround. This is an upstream autodiff-surface request.
 
 **Driven by:** residual v0.1.0 limitation
 (`docs/NAUTILUS_STATUS.md` § 6.1) — `Nautilus.CurveFit` currently
@@ -167,6 +197,11 @@ Where `n` is the parameter count, `m` is the data-point count, and
 Uses existing `Nautilus.LinAlg` solvers — `cg_solve` for SPD
 `J^T J + lambda I`, `inv_2x2`/`inv_3x3` for small `n`.
 
+**Do not do instead.** Do not replace the missing Jacobian path with
+finite-difference columns and then present that as the permanent Nautilus API.
+If the core surface cannot provide the Jacobian cleanly, keep this item blocked
+and hand the requirement back upstream.
+
 **Stability.** Ship as `stable` in the SKILL.md Stability column once
 runtime-tested; demote the existing `lm_scalar_1param` to `alpha` and
 document it as a convenience wrapper over `lm_scalar_nparam`.
@@ -185,7 +220,14 @@ passing.
 
 ---
 
-## P2: Adaptive-Step ODE Integrator
+## Completed: P2 Adaptive-Step ODE Integrator
+
+Landed in commit `ce613f7`. `Nautilus.ODE.rk45_adaptive_solve` now ships as an
+`alpha` endpoint solver, is wired into `src/apismoke.ch`, and is runtime-tested
+in `tests/run_numeric_tests.py` against the decay golden in
+`tests/goldens/ode/scalar.json`.
+
+Original planning note:
 
 **Driven by:** residual v0.1.0 limitation
 (`docs/NAUTILUS_STATUS.md` § 6.1) — `Nautilus.ODE` ships fixed-step
@@ -229,7 +271,13 @@ test case.
 
 ---
 
-## P2: Bessel Y1 Precision Fix
+## Completed: P2 Bessel Y1 Precision Fix
+
+Landed in commit `ce613f7`. The seam moved from `x = 8.0` to `x = 7.5`,
+new `(7.5, 8)` goldens were added, and the `bessel_y1` stability row in
+`SKILL.md` is now `stable`.
+
+Original planning note:
 
 **Driven by:** residual v0.1.0 limitation
 (`docs/NAUTILUS_STATUS.md` § 6.1) — `bessel_y1` has ~1e-3 relative
@@ -258,7 +306,20 @@ column flips `alpha` → `stable`.
 
 ---
 
-## P2: General-n LinAlg (LU, QR, SVD)
+## Blocked: P2 General-n LinAlg (LU, QR, SVD)
+
+**Current blocker (2026-04-19).** A first Nautilus-side attempt to add
+general-`n` `cholesky[n]` reaches `chelis check` cleanly on the current mac
+compiler snapshot, but still fails on the build path in two core-owned ways:
+
+1. Tuple fold accumulators with a tensor in slot 0 mis-lower in emitted C
+   (`l_inner` becomes an `int` instead of `chelis_tensor*`).
+2. Rewriting around that hit a second core limit: control flow inside the
+   generic fold reaches lowering as `` `if` is not representable in the Phase 0e
+   RISC DAG ``.
+
+Until those core issues are fixed, do not treat even general-`n` Cholesky as
+Nautilus-unblocked. LU / QR / SVD remain further behind it.
 
 **Driven by:** residual v0.1.0 limitation — fixed-size 2x2/3x3 only
 for inverse/solve/eigenvalue/Cholesky. General-n is deferred but is
@@ -279,6 +340,15 @@ the largest outstanding gap versus scipy.linalg.
 **AD story.** LU and QR have known adjoints; Jacobi SVD's backward is
 the standard Giles formula. Test AD through each via finite
 differences on 4x4 inputs.
+
+**Documented AD caveats (required, not optional).**
+
+- `lu_solve`: gradients treat pivot choices as fixed. This is correct for most
+  inputs away from pivot boundaries and discontinuous exactly at pivot changes.
+- `qr_decompose`: Householder sign choices are piecewise-smooth, not globally
+  smooth across sign-flip boundaries.
+- `svd`: singular-value ordering and singular-vector bases are discontinuous at
+  repeated or nearly repeated singular values.
 
 **Stability.** All four ship as `alpha` initially — the return-tuple
 shape conventions are likely to shift when named-dim output
@@ -307,16 +377,12 @@ updated with a general-n LinAlg benchmark table.
 
 ---
 
-## Suggested Execution Order
+## Remaining Execution Order
 
-1. **P0 Stability column** first — unblocks Phase 4a corpus curation
-   across the entire ecosystem, small footprint.
-2. **P1 fast-eval benchmark** — fast, produces evidence for the main
-   chelis repo, blocks nothing if the answer is "already fast
-   enough."
-3. **P1 multi-parameter LM** — unblocks Shoals SABR calibration and
-   any Octant calibration path.
-4. **P2 bessel_y1 fix** — promotes a row in the Stability column,
-   closes a known-limitation ticket.
-5. **P2 adaptive ODE** — lands when there's a concrete consumer.
-6. **P2 general-n LinAlg** — a v0.2.0 sub-release on its own.
+1. **Upstream Chelis Jacobian surface for multi-parameter LM.**
+   Nautilus should resume `lm_scalar_nparam` only after the Jacobian path is
+   available without inventing a second derivative API.
+2. **Upstream Chelis generic-fold/control-flow lowering for general-`n`
+   linalg.** Cholesky is the first credible downstream proving ground.
+3. **Then resume Nautilus post-v0.1.0 scope in this order:** multi-parameter LM,
+   then general-`n` Cholesky, then LU / QR / SVD with the documented AD caveats.

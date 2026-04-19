@@ -2,7 +2,7 @@
 
 Prepared for external review. Covers functionality, test coverage,
 performance, upstream dependencies, and known limitations as of
-commit `e0d4b76` (2026-04-16), pinned to `chelis v0.1.7`.
+commit `ce613f7` (2026-04-19), pinned to `chelis v0.1.7`.
 
 ---
 
@@ -19,7 +19,7 @@ no hand-written adjoints. AD flows through tensor-op composition
 automatically because LinAlg is built from `matmul`, `permute`,
 `diagonal`, `trace`, `einsum`, and elementwise primitives.
 
-**3,834 lines of Chelis source** across 15 functional modules + 1 core
+**3,877 lines of Chelis source** across 15 functional modules + 1 core
 version module + 6 executable examples + 1 API smoke-check module.
 
 ---
@@ -34,7 +34,7 @@ version module + 6 executable examples + 1 API smoke-check module.
 | `Nautilus.Stats` | 14 | 216 | sort, numel, enumerate | 14/14 (18 assertions) |
 | `Nautilus.Distance` | 8 | 83 | LinAlg (l2_norm_vec, inner_product, matvec) | 8/8 (10 assertions) |
 | `Nautilus.Roots` | 3 | 177 | scalar math, user `f: f32 -> f32` | 3/3 (6 assertions) |
-| `Nautilus.ODE` | 5 | 157 | scalar math, user `f: f32 -> f32 -> f32` | 5/5 (6 assertions) |
+| `Nautilus.ODE` | 6 | 200 | scalar math, user `f: f32 -> f32 -> f32` | 6/6 (6 assertions) |
 | `Nautilus.Integrate` | 8 | 320 | scalar math, user `f: f32 -> f32` | 8/8 (28 assertions) |
 | `Nautilus.Testing` | 13 | 131 | Distributions (normal_cdf, student_t_cdf, etc.) | 13/13 (60+ assertions) |
 | `Nautilus.Optim` | 4 | 223 | scalar math, user function-typed params | 4/4 (7 assertions) |
@@ -85,7 +85,7 @@ package build time via `src/apismoke.ch`.
 | `trigamma` | recurrence + asymptotic (x > 6) | x > 0 (NaN at poles) | f32, ~1e-6 |
 | `beta`, `lbeta` | via log_gamma | a, b > 0 | f32 |
 | `bessel_j0`, `j1` | rational polynomial + large-x trig | all reals (J0 even, J1 odd) | ~1e-5 near zeros |
-| `bessel_y0`, `y1` | rational + log-singularity + large-x trig | x > 0 (-inf at 0, NaN for x < 0) | y1 drifts ~1e-3 in (7.5, 8) |
+| `bessel_y0`, `y1` | rational + log-singularity + large-x trig | x > 0 (-inf at 0, NaN for x < 0) | y1 seam fixed by switching to the large-x branch at 7.5 |
 | `bessel_i0`, `i1` | polynomial + asymptotic (crossover 3.75) | all reals (I0 even, I1 odd) | f32 |
 | `bessel_k0`, `k1` | polynomial + log + asymptotic (crossover 2) | x > 0 (+inf at 0, NaN for x < 0) | f32 |
 | `airy_ai` | power series (|x| <= 5) + exponential asymptotic (x > 5) | all reals | large negative x: oscillatory, series-only |
