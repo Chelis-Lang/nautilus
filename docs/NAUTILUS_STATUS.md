@@ -227,7 +227,21 @@ ships `bin/chelis`, `lib/libchelis_runtime.a`, and
 | 4 | Nested `exp(neg(mul(x,x)))` int-temp | **Fixed v0.1.4** — all-double temporaries |
 | 5 | Fused tensor op `n_in` assertion mismatch | **Fixed v0.1.7** — fusion/call-site agree |
 
-All seven tracked bugs are resolved. No open upstream blockers.
+All seven **historically tracked** bugs are resolved, but validation against the
+newly published `chelis v0.1.9` exposed two additional blockers for the
+remaining Nautilus next-up scope.
+
+### 5.3 Post-v0.1.7 blockers found while validating v0.1.9
+
+The clean Nautilus baseline still passes **886 / 886** numerical assertions when
+the bare-build harness is pointed at the `v0.1.9` darwin release artifact. That
+means `v0.1.9` does **not** regress the shipped v0.1.0 surface. The remaining
+blockers are specific to the still-unshipped post-v0.1.0 items:
+
+| Blocker | v0.1.9 status | Downstream impact |
+|---|---|---|
+| Tensor-valued `grad` C emission | **Open** — scalar `grad` builds, but tensor-parameter gradient probes still emit invalid C (`chelis_tensor*` / `chelis_list*` locals lowered as `int`) | Keeps multi-parameter LM blocked even though the type surface now accepts richer `grad` shapes |
+| Generic fold/control-flow lowering on tensor accumulators | **Open** — general-`n` Cholesky still fails either by mis-lowering tensor tuple accumulators (`l_inner` becomes `int`) or by panicking with `` `if` is not representable in the Phase 0e RISC DAG `` when rewritten around that path | Keeps general-`n` Cholesky, and therefore LU / QR / SVD follow-ons, blocked |
 
 ---
 
