@@ -166,11 +166,12 @@ typechecker, specific module) the upstream team can target.
 
 ## Blocked: P1 Multi-Parameter Levenberg-Marquardt
 
-**Current blocker (2026-04-19).** A Nautilus-side implementation attempt against
-the current mac Chelis compiler snapshot stops at the Jacobian surface. The
-needed `grad` path does not currently expose a usable multi-parameter Jacobian
-for this API shape, and Nautilus should **not** ship finite-difference Jacobians
-as a permanent workaround. This is an upstream autodiff-surface request.
+**Current blocker (2026-04-19, re-checked on `chelis v0.1.9`).** The blocker is
+now narrower but still real. `v0.1.9` accepts richer `grad` shapes at the type
+surface, and scalar `grad` builds cleanly, but tensor-parameter gradient probes
+still emit invalid C on the native path (`chelis_tensor*` / `chelis_list*`
+temporaries lowered as `int`). That means Nautilus still cannot rely on
+tensor-valued gradients at runtime for a real LM implementation.
 
 **Driven by:** residual v0.1.0 limitation
 (`docs/NAUTILUS_STATUS.md` § 6.1) — `Nautilus.CurveFit` currently
@@ -199,8 +200,8 @@ Uses existing `Nautilus.LinAlg` solvers — `cg_solve` for SPD
 
 **Do not do instead.** Do not replace the missing Jacobian path with
 finite-difference columns and then present that as the permanent Nautilus API.
-If the core surface cannot provide the Jacobian cleanly, keep this item blocked
-and hand the requirement back upstream.
+If the core surface cannot provide the Jacobian cleanly on the native path, keep
+this item blocked and hand the requirement back upstream.
 
 **Stability.** Ship as `stable` in the SKILL.md Stability column once
 runtime-tested; demote the existing `lm_scalar_1param` to `alpha` and
@@ -308,15 +309,23 @@ column flips `alpha` → `stable`.
 
 ## Blocked: P2 General-n LinAlg (LU, QR, SVD)
 
-**Current blocker (2026-04-19).** A first Nautilus-side attempt to add
-general-`n` `cholesky[n]` reaches `chelis check` cleanly on the current mac
-compiler snapshot, but still fails on the build path in two core-owned ways:
+**Current blocker (2026-04-19, re-checked on `chelis v0.1.9`).** A first
+Nautilus-side attempt to add general-`n` `cholesky[n]` still fails on the build
+path in two core-owned ways:
 
 1. Tuple fold accumulators with a tensor in slot 0 mis-lower in emitted C
    (`l_inner` becomes an `int` instead of `chelis_tensor*`).
 2. Rewriting around that hit a second core limit: control flow inside the
    generic fold reaches lowering as `` `if` is not representable in the Phase 0e
    RISC DAG ``.
+
+Those two failures were both reproduced again against the `v0.1.9` darwin
+release artifact:
+
+- the original tuple-accumulator implementation still reaches emitted C with
+  `l_inner` lowered as `int`, producing clang pointer/integer mismatches;
+- a tensor-only sentinel rewrite gets past that point but still panics in
+  lowering with `` `if` is not representable in the Phase 0e RISC DAG ``.
 
 Until those core issues are fixed, do not treat even general-`n` Cholesky as
 Nautilus-unblocked. LU / QR / SVD remain further behind it.

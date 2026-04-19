@@ -5,7 +5,19 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-Summary as of **v0.1.6** — original six bugs all fixed, one new bug found:
+Summary as of **v0.1.9**:
+
+- Historical Bugs 1–5 below are fixed in the released compiler line through
+  `v0.1.7`.
+- Re-validation against `v0.1.9` found two **new** post-v0.1.7 blockers for the
+  remaining Nautilus next-up scope:
+  - tensor-valued `grad` still emits invalid C on the native path even though
+    the type surface now accepts richer `grad` shapes;
+  - generic fold/control-flow lowering on tensor accumulators still blocks the
+    general-`n` Cholesky implementation attempt.
+
+Original historical summary as of **v0.1.6** — original six bugs all fixed, one
+new bug found:
 
 | # | Title | v0.1.3 | v0.1.4 | v0.1.5 | v0.1.6 |
 |---|---|---|---|---|---|
