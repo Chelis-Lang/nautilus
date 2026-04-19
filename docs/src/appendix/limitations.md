@@ -34,12 +34,6 @@ inverses, solves, eigenvalues, and Cholesky are available. `cg_solve`
 provides iterative SPD linear solve at general n. General-n
 decompositions are deferred to a future phase.
 
-## ODE integration
-
-**No adaptive ODE stepping.** `rk4_solve` is fixed-step only. Adaptive
-RK45 with error control is deferred. Users needing adaptive stepping
-must implement their own step-size control loop on top of `rk4_step`.
-
 ## Optimization
 
 **`newton_minimize_1d` strong-convexity heuristic.** The Newton minimizer
@@ -52,12 +46,6 @@ includes a curvature check that can false-positive on very flat minima
 **Signal module is stubs only.** All 7 functions (except `fftfreq`)
 return NaN sentinels. Blocked on upstream complex-number support
 (Phase 5f). See the [Signal chapter](../other/signal.md).
-
-## bessel_y1 precision
-
-**~1e-3 drift in (7.5, 8)** at the seam between rational-polynomial and
-asymptotic branches. This is an f32 coefficient precision limit. See
-the [Precision appendix](precision.md) for details.
 
 ## Airy function coverage
 

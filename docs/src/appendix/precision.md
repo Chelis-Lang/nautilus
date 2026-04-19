@@ -17,7 +17,7 @@ known trouble spots.
 | `ellipk`, `ellipe` | ~1e-8 | AGM recurrence (quadratic convergence) |
 | `bessel_j0`, `j1` | ~1e-5 near zeros | Rational polynomial + large-x trig |
 | `bessel_y0` | ~1e-5 near zeros | Rational + log-singularity |
-| `bessel_y1` | ~1e-3 in (7.5, 8) | See seam issue below |
+| `bessel_y1` | ~1e-5 near zeros | Large-x branch now starts at 7.5 to avoid the old seam drift |
 | `bessel_i0`, `i1` | f32 | Polynomial + asymptotic, crossover 3.75 |
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
@@ -35,14 +35,6 @@ zeros. Near zeros (e.g., j0 near x=2.4048, j1 near x=3.8317), the
 absolute error can reach ~1e-5 because the function value itself is
 near zero while the approximation error is roughly constant in relative
 terms. This is inherent to f32 polynomial evaluation.
-
-### bessel_y1 seam issue
-
-`bessel_y1` has a documented drift of approximately 1e-3 relative error
-in the interval (7.5, 8). This is the transition region between the
-rational-polynomial branch and the asymptotic large-x branch. The
-rational polynomial coefficients lose precision at f32, and the seam
-between branches is not smooth. Golden test points avoid this window.
 
 ### Airy functions at large negative x
 
@@ -70,6 +62,6 @@ in the current toolchain.
 ## Comparison to scipy
 
 scipy operates in f64 (approximately 15 significant digits). Nautilus's
-f32 is roughly 8-9 orders of magnitude less precise. The 881
+f32 is roughly 8-9 orders of magnitude less precise. The 886
 scipy-parity assertions in the test suite use tolerances calibrated to
 f32: typically 1e-4 to 1e-6 relative error, depending on the function.

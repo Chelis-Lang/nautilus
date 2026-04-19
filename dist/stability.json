@@ -98,6 +98,7 @@
   "Nautilus.ODE": {
     "euler_solve": "stable",
     "euler_step": "stable",
+    "rk45_adaptive_solve": "alpha",
     "rk4_solve": "stable",
     "rk4_step": "stable"
   },
@@ -135,7 +136,7 @@
     "bessel_k0": "stable",
     "bessel_k1": "stable",
     "bessel_y0": "stable",
-    "bessel_y1": "alpha",
+    "bessel_y1": "stable",
     "beta": "stable",
     "digamma": "stable",
     "ellipe": "stable",

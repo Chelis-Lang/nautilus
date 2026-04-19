@@ -256,6 +256,7 @@ def p1_dpoly2(x: f32) -> f32 = {
 def p1_cos_minus_x(x: f32) -> f32 = sub(sin(add(x, cast(1.5707963267948966, f32))), x)
 def p1_dcos_minus_x(x: f32) -> f32 = sub(neg(sin(x)), cast(1.0, f32))
 def p1_decay(y: f32, t: f32) -> f32 = neg(y)
+def p1_decay2(y: f32, t: f32) -> f32 = neg(mul(cast(2.0, f32), y))
 
 def p2_x_squared(x: f32) -> f32 = mul(x, x)
 def p2_exp_neg(x: f32) -> f32 = {
@@ -348,6 +349,7 @@ double newton(double (*f)(double), double (*df)(double), double, double, int64_t
 double brent(double (*f)(double), double, double, double, int64_t);
 double euler_solve(double (*f)(double, double), double, double, double, int64_t);
 double rk4_solve(double (*f)(double, double), double, double, double, int64_t);
+double rk45_adaptive_solve(double (*f)(double, double), double, double, double, double, double);
 double trapezoidal(double (*f)(double), double, double, int64_t);
 double simpsons(double (*f)(double), double, double, int64_t);
 double gauss_legendre_5(double (*f)(double), double, double, int64_t);
@@ -391,6 +393,7 @@ double p1_poly1(double), p1_dpoly1(double);
 double p1_poly2(double), p1_dpoly2(double);
 double p1_cos_minus_x(double), p1_dcos_minus_x(double);
 double p1_decay(double, double);
+double p1_decay2(double, double);
 double p2_x_squared(double), p2_exp_neg(double), p2_sin_shifted(double);
 
 int main(int argc, char** argv) {
@@ -404,6 +407,7 @@ int main(int argc, char** argv) {
     if (!strcmp(c, "cosmx_newton"))  { printf("%.15g\n", newton(p1_cos_minus_x, p1_dcos_minus_x, 0.5, 1e-12, 50)); return 0; }
     if (!strcmp(c, "decay_rk4"))     { int64_t n = atoll(argv[2]); printf("%.15g\n", rk4_solve(p1_decay, 1.0, 0.0, 1.0, n)); return 0; }
     if (!strcmp(c, "decay_euler"))   { int64_t n = atoll(argv[2]); printf("%.15g\n", euler_solve(p1_decay, 1.0, 0.0, 1.0, n)); return 0; }
+    if (!strcmp(c, "decay_rk45"))    { printf("%.15g\n", rk45_adaptive_solve(p1_decay2, 1.0, 0.0, 2.0, 1e-6, 1e-8)); return 0; }
 
     // Integrate
     if (!strcmp(c, "trap_x2"))       { printf("%.15g\n", trapezoidal(p2_x_squared, 0.0, 1.0, 100)); return 0; }
@@ -1433,6 +1437,9 @@ def main() -> int:
                 case["expected_abs_err"], 0.0)
     for case in g["euler_cases"]:
         p1_run(case["label"], "decay_euler", (case["n_steps"],), decay_true,
+                case["expected_abs_err"], 0.0)
+    for case in g["adaptive_cases"]:
+        p1_run(case["label"], "decay_rk45", (), case["expected"],
                 case["expected_abs_err"], 0.0)
 
     print("== Integrate ==")

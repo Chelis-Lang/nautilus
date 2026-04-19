@@ -27,7 +27,7 @@ import Nautilus.LinAlg (
   inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2
 )
 import Nautilus.Roots (bisection, newton, brent)
-import Nautilus.ODE (euler_step, euler_solve, rk4_step, rk4_solve)
+import Nautilus.ODE (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve)
 import Nautilus.Stats (
   mean_vec, variance_vec, std_vec,
   skewness_vec, kurtosis_vec, median_vec,
@@ -158,7 +158,8 @@ def smoke_ode() -> f32 = {
   b = rk4_step(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(0.01, f32))
   c = euler_solve(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(100, int64))
   d = rk4_solve(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(100, int64))
-  add(add(add(a, b), c), d)
+  e = rk45_adaptive_solve(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(1.0e-6, f32), cast(1.0e-8, f32))
+  add(add(add(add(a, b), c), d), e)
 }
 
 def smoke_stats[n](v: tensor[n, f32], w: tensor[n, f32]) -> f32 = {

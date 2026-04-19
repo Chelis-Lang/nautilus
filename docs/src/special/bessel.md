@@ -34,8 +34,9 @@ asymptotic trigonometric form as J0/J1 applies.
 - **Domain:** x > 0
 - **At x = 0:** returns -inf
 - **For x < 0:** returns NaN
-- **Known limitation:** `bessel_y1` has ~1e-3 drift near x in (7.5, 8)
-  due to f32 coefficient precision at the branch seam.
+- `bessel_y1` now switches to the large-x branch at `x >= 7.5`, which
+  removes the old seam drift in `(7.5, 8)`. Relative error still grows
+  near zeros, as expected for f32 rational approximations.
 
 ```chelis-fragment
 import Nautilus.Special (bessel_y0, bessel_y1)
