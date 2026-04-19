@@ -28,13 +28,13 @@ version module + 6 executable examples + 1 API smoke-check module.
 
 | Module | Exports | Lines | Dependencies | Runtime-tested |
 |---|---|---|---|---|
-| `Nautilus.Special` | 19 | 796 | scalar math only | 19/19 (132 assertions) |
+| `Nautilus.Special` | 19 | 796 | scalar math only | 19/19 (136 assertions) |
 | `Nautilus.Distributions` | 38 | 685 | Special (erf, erfinv, log_gamma) | 35/38 (350 assertions) |
 | `Nautilus.LinAlg` | 26 | 320 | tensor primitives only | 26/26 (150 assertions) |
 | `Nautilus.Stats` | 14 | 216 | sort, numel, enumerate | 14/14 (18 assertions) |
 | `Nautilus.Distance` | 8 | 83 | LinAlg (l2_norm_vec, inner_product, matvec) | 8/8 (10 assertions) |
 | `Nautilus.Roots` | 3 | 177 | scalar math, user `f: f32 -> f32` | 3/3 (6 assertions) |
-| `Nautilus.ODE` | 4 | 63 | scalar math, user `f: f32 -> f32 -> f32` | 4/4 (5 assertions) |
+| `Nautilus.ODE` | 5 | 157 | scalar math, user `f: f32 -> f32 -> f32` | 5/5 (6 assertions) |
 | `Nautilus.Integrate` | 8 | 320 | scalar math, user `f: f32 -> f32` | 8/8 (28 assertions) |
 | `Nautilus.Testing` | 13 | 131 | Distributions (normal_cdf, student_t_cdf, etc.) | 13/13 (60+ assertions) |
 | `Nautilus.Optim` | 4 | 223 | scalar math, user function-typed params | 4/4 (7 assertions) |
@@ -44,7 +44,7 @@ version module + 6 executable examples + 1 API smoke-check module.
 | `Nautilus.Signal` | 7 stubs | 55 | Phase 5f complex numbers (blocked) | 0/7 (stubs only) |
 | `Nautilus.Core` | 1 | 3 | none | n/a |
 
-**Totals: 150 non-stub exports, 881 runtime scipy-parity assertions,
+**Totals: 151 non-stub exports, 886 runtime scipy-parity assertions,
 all passing.**
 
 ### 2.1 Distributions detail
@@ -120,7 +120,7 @@ systems). General-n SVD/LU/QR/Cholesky/eig remain deferred.
 | cg_solve + eig_2x2_real | 828 (+11) | `d2ec781` |
 | mahalanobis + interp + curvefit | 841 (+13) | `e0d4b76` |
 | v0.1.7 Bug 5 fix + gram/aat/etc | 817→828→841 | `8d800c6`–`e0d4b76` |
-| Wrap-up: coverage gaps closed | **881** (+40) | wrap-up commit |
+| Wrap-up: coverage gaps closed | **886** (+45) | wrap-up commit |
 
 ### 3.2 Test architecture
 
@@ -157,7 +157,7 @@ generated from scipy/numpy reference implementations via
 | Package build | `chelis reef build` | Produces `dist/nautilus-0.1.0.chb` |
 | Goldens drift | `python scripts/gen_goldens.py --check` | No scipy drift |
 | Static exports | `python tests/run_static_checks.py` | API consistency |
-| Numerical parity | `python tests/run_numeric_tests.py` | 881 / 881 |
+| Numerical parity | `python tests/run_numeric_tests.py` | 886 / 886 |
 
 ---
 
@@ -239,10 +239,8 @@ All seven tracked bugs are resolved. No open upstream blockers.
 |---|---|---|
 | **f32 precision throughout** | ~6-7 significant digits; cancellation near function zeros gives ~1e-4 absolute error | scipy runs f64. Acceptable for f32 workloads; f64 promotion would need upstream type support |
 | **No `cos`, `tan`, `atan`, `abs`, `floor`, `ceil` builtins** | Users must express these from primitives: `cos(x)` = `sin(x + pi/2)`, `abs(x)` = `if lt(x, 0) then neg(x) else x` | Documented in spec/phase3j.md Known Limitations. Upstream could add these as builtins |
-| **`bessel_y1` drift in (7.5, 8)** | ~1e-3 relative error near the seam between rational-polynomial and asymptotic branches | f32 precision limit of NR coefficients; golden points avoid this window |
 | **`airy_ai` negative large-x** | Power series only; no asymptotic for x < -5. Oscillatory regime works for moderate |x| but degrades at very large negative x | Could add asymptotic oscillatory branch; not yet needed by any consumer |
 | **No general-n eigenvalue/SVD/LU/QR** | Only 2x2 and 3x3 closed-form inverses, solves, eigenvalues, Cholesky | General-n iterative methods deferred; `cg_solve` provides iterative SPD linear solve at general n |
-| **No adaptive ODE stepping** | `rk4_solve` is fixed-step only | Adaptive RK45 deferred to future phase |
 | **`newton_minimize_1d` strong-convexity heuristic** | False-positives on very-flat minima (`f(x)=x^4` near 0) | Callers should use `brent_minimize` or `golden_section_search` for flat-Hessian targets |
 | **Signal module is stubs only** | 7 functions return NaN sentinels | Blocked on upstream complex-number support (Phase 5f) |
 
@@ -293,7 +291,7 @@ src/
   apismoke.ch        (324 lines)   -- type-level import gate
   example*.ch        (6 files)     -- executable examples
 tests/
-  run_numeric_tests.py             -- 881-assertion harness
+  run_numeric_tests.py             -- 886-assertion harness
   run_static_checks.py             -- export consistency gate
   goldens/                         -- 25 scipy-generated JSON fixtures
 scripts/
@@ -310,7 +308,7 @@ spec/phase3j.md                    -- authoritative scope + acceptance
 ## 8. Recommendation for External Reviewer
 
 **What to verify first:**
-1. `python tests/run_numeric_tests.py` — should report 881 / 881.
+1. `python tests/run_numeric_tests.py` — should report 886 / 886.
 2. `python scripts/gen_goldens.py --check` — goldens haven't drifted.
 3. `chelis reef build` — package builds cleanly.
 4. Spot-check any Special function against scipy at an input not in the
@@ -318,7 +316,6 @@ spec/phase3j.md                    -- authoritative scope + acceptance
    and edge-case behavior is the most likely failure mode.
 
 **Where to look for problems:**
-- `bessel_y1` near x in (7.5, 8) — documented drift, f32 precision.
 - `airy_ai` for x < -10 — no asymptotic branch for negative oscillatory
   regime.
 - Distribution `sample` variants — type-checked but never runtime-exercised.

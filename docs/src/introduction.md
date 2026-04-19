@@ -17,7 +17,7 @@ every function in the library.
 - **Linear algebra**: determinants, inverses, solves, eigenvalues (2x2/3x3), conjugate gradient (general-n)
 - **Statistics**: mean, variance, skewness, kurtosis, median, quantiles, covariance, correlation
 - **Root finding**: bisection, Newton, Brent-Dekker
-- **ODE solvers**: Euler and RK4 (fixed-step)
+- **ODE solvers**: Euler, RK4, and adaptive RK45 endpoint solves
 - **SDE solvers**: Euler-Maruyama and Milstein with caller-supplied noise
 - **Numerical integration**: trapezoidal, Simpson, Gauss-Legendre, adaptive Simpson, Romberg, Gauss-Hermite, Gauss-Laguerre
 - **Optimization**: golden section, Brent minimize, gradient descent, Newton minimize (scalar 1D)
@@ -29,7 +29,7 @@ every function in the library.
 ## Verification
 
 Nautilus is tested against scipy reference values. The test suite runs
-881 numerical assertions comparing Nautilus output to scipy/numpy at
+886 numerical assertions comparing Nautilus output to scipy/numpy at
 documented tolerances. Every non-stub exported function is
 runtime-verified.
 

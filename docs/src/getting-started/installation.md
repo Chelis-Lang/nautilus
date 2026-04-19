@@ -42,7 +42,7 @@ pip install numpy scipy
 python tests/run_numeric_tests.py
 ```
 
-You should see `881 / 881 numerical assertions passed`.
+You should see `886 / 886 numerical assertions passed`.
 
 ## Using Nautilus in your project
 

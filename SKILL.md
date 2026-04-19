@@ -4,7 +4,7 @@
 
 Nautilus is the numerical computing shell for Chelis. It replaces
 numpy.linalg + numpy.random distributions + scipy.* (special, stats,
-optimize, integrate, interpolate, spatial). 150 exports, 881
+optimize, integrate, interpolate, spatial). 151 exports, 886
 scipy-parity assertions, pure Chelis throughout. AD works through
 all functions automatically.
 
@@ -1025,7 +1025,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `bessel_j0` | `(x: f32) -> f32` | `stable` | Rational polynomial + large-x trig, even function, ~1e-5 near zeros |
 | `bessel_j1` | `(x: f32) -> f32` | `stable` | Rational polynomial + large-x trig, odd function, ~1e-5 near zeros |
 | `bessel_y0` | `(x: f32) -> f32` | `stable` | Rational + log-singularity + large-x trig, x > 0, -inf at 0 |
-| `bessel_y1` | `(x: f32) -> f32` | `alpha` | Rational + log + large-x trig, x > 0, -inf at 0, ~1e-3 drift in (7.5, 8) |
+| `bessel_y1` | `(x: f32) -> f32` | `stable` | Rational + log + large-x trig, x > 0, -inf at 0, large-x branch starts at 7.5 to avoid the old seam drift |
 | `airy_ai` | `(x: f32) -> f32` | `alpha` | Power series (|x|<=5) + exponential asymptotic (x>5), oscillatory for large negative x |
 | `airy_bi` | `(x: f32) -> f32` | `stable` | Power series (|x|<=5) + exponential asymptotic (x>5) |
 | `ellipk` | `(m: f32) -> f32` | `stable` | AGM recurrence, ~1e-8, m in [0,1), +inf at m=1, NaN outside |
@@ -1145,7 +1145,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `newton` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f` and `df`; NaN on zero derivative or non-convergence |
 | `brent` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f`; Brent's method with IQI/secant/bisection fallback |
 
-### Nautilus.ODE (4 exports)
+### Nautilus.ODE (5 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
@@ -1153,6 +1153,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `euler_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32` | `stable` | Fixed-step Euler; `f` takes (y, t), returns final y |
 | `rk4_step` | `(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32` | `stable` | Single RK4 step; `f` takes (y, t) |
 | `rk4_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32` | `stable` | Fixed-step RK4; `f` takes (y, t), returns final y |
+| `rk45_adaptive_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t_end: f32, rtol: f32, atol: f32) -> f32` | `alpha` | Scalar Dormand-Prince 5(4) endpoint solve with adaptive step control; returns final y only |
 
 ### Nautilus.Integrate (8 exports)
 

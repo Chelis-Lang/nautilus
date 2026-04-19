@@ -17,7 +17,7 @@ adjoints. Automatic differentiation flows through tensor-op composition.
 | `Nautilus.Stats` | mean, variance, std, skewness, kurtosis, median, min, max, range, quantile, percentile, trimmed mean, covariance, correlation |
 | `Nautilus.Distance` | Euclidean, Manhattan, Chebyshev, cosine, Mahalanobis |
 | `Nautilus.Roots` | bisection, Newton, Brent |
-| `Nautilus.ODE` | Euler and RK4 (step and solve) |
+| `Nautilus.ODE` | Euler and RK4 (step and solve), adaptive RK45 endpoint solve |
 | `Nautilus.Integrate` | trapezoidal, Simpson, Gauss-Legendre, adaptive Simpson, Romberg, Gauss-Hermite, Gauss-Laguerre |
 | `Nautilus.Testing` | z/t/chi-squared statistics and p-values, confidence intervals |
 | `Nautilus.Optim` | golden section, Brent minimize, gradient descent, Newton minimize (scalar 1D) |
@@ -38,7 +38,7 @@ tar xzf chelis-v0.1.7-linux-x86_64.tar.gz
 export PATH="$PWD/chelis-v0.1.7-linux-x86_64/bin:$PATH"
 
 chelis reef build
-python tests/run_numeric_tests.py    # 881 scipy-parity assertions
+python tests/run_numeric_tests.py    # 886 scipy-parity assertions
 ```
 
 ## Tests
@@ -48,7 +48,7 @@ links against `libchelis_runtime.a`, and compares outputs against
 scipy/numpy reference values checked into `tests/goldens/`.
 
 ```sh
-python tests/run_numeric_tests.py      # 881 numerical assertions
+python tests/run_numeric_tests.py      # 886 numerical assertions
 python scripts/gen_goldens.py --check  # verify goldens match scipy
 python tests/run_static_checks.py      # export consistency
 python scripts/extract_stability.py --check

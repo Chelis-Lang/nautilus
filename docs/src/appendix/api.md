@@ -3,7 +3,7 @@
 The full API surface for all Nautilus modules is maintained in
 [SKILL.md, Section 6](https://github.com/Chelis-Lang/nautilus/blob/main/SKILL.md#6-api-surface).
 
-That section contains signature tables for all 150 non-stub exports
+That section contains signature tables for all 151 non-stub exports
 across 14 modules:
 
 - **Nautilus.Special** -- 19 special functions (erf, Bessel, Airy, elliptic integrals)
@@ -13,7 +13,7 @@ across 14 modules:
 - **Nautilus.Testing** -- 13 hypothesis-test helpers
 - **Nautilus.Integrate** -- 8 quadrature methods
 - **Nautilus.Distance** -- 8 distance metrics
-- **Nautilus.ODE** -- 4 fixed-step ODE solvers
+- **Nautilus.ODE** -- 5 ODE solvers including an adaptive RK45 endpoint solver
 - **Nautilus.Optim** -- 4 scalar optimizers
 - **Nautilus.Roots** -- 3 root-finders
 - **Nautilus.Interpolation** -- 3 interpolation methods

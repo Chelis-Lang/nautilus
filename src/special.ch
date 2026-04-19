@@ -615,7 +615,7 @@ def bessel_y1(x: f32) -> f32 = {
   zero = cast(0.0, f32)
   if lt(x, zero) then nan_f32()
   else if eq(x, zero) then neg_inf()
-  else if lt(x, cast(8.0, f32)) then bessel_y1_small(x)
+  else if lt(x, cast(7.5, f32)) then bessel_y1_small(x)
   else bessel_y1_large(x)
 }
 
