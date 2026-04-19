@@ -166,8 +166,8 @@ typechecker, specific module) the upstream team can target.
 
 ## Blocked: P1 Multi-Parameter Levenberg-Marquardt
 
-**Current blocker (2026-04-19, re-checked on `chelis v0.1.10`).** The blocker is
-now narrower but still real. `v0.1.9`/`v0.1.10` accept richer `grad` shapes at
+**Current blocker (2026-04-20, re-checked on `chelis v0.1.11`).** The blocker is
+now narrower but still real. `v0.1.9`/`v0.1.10`/`v0.1.11` accept richer `grad` shapes at
 the type surface, and scalar `grad` builds cleanly, but tensor-parameter
 gradient paths still fail on the native path: simple probes emit invalid C
 (`chelis_tensor*` / `chelis_list*` temporaries lowered as `int`), and a more
@@ -311,7 +311,7 @@ column flips `alpha` → `stable`.
 
 ## Blocked: P2 General-n LinAlg (LU, QR, SVD)
 
-**Current blocker (2026-04-19, re-checked on `chelis v0.1.10`).** A first
+**Current blocker (2026-04-20, re-checked on `chelis v0.1.11`).** A first
 Nautilus-side attempt to add general-`n` `cholesky[n]` still fails on the build
 path in two core-owned ways:
 
@@ -321,7 +321,7 @@ path in two core-owned ways:
    generic fold reaches lowering as `` `if` is not representable in the Phase 0e
    RISC DAG ``.
 
-Those two failures were both reproduced again against the `v0.1.9` / `v0.1.10` darwin
+Those two failures were both reproduced again against the `v0.1.9` / `v0.1.10` / `v0.1.11` darwin
 release artifact:
 
 - the original tuple-accumulator implementation still reaches emitted C with
