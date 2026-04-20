@@ -5,11 +5,11 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-Summary as of **v0.1.11**:
+Summary as of **v0.1.12**:
 
 - Historical Bugs 1–5 below are fixed in the released compiler line through
   `v0.1.7`.
-- Re-validation against `v0.1.9`, `v0.1.10`, and `v0.1.11` found two **new** post-v0.1.7 blockers for the
+- Re-validation against `v0.1.9`, `v0.1.10`, `v0.1.11`, and `v0.1.12` found two **new** post-v0.1.7 blockers for the
   remaining Nautilus next-up scope:
   - tensor-valued `grad` still fails on the native path even though the type
     surface now accepts richer `grad` shapes; simple probes emit invalid C and a
