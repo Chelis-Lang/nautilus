@@ -228,17 +228,17 @@ ships `bin/chelis`, `lib/libchelis_runtime.a`, and
 | 5 | Fused tensor op `n_in` assertion mismatch | **Fixed v0.1.7** — fusion/call-site agree |
 
 All seven **historically tracked** bugs are resolved, but validation against the
-newly published `chelis v0.1.9`, `v0.1.10`, `v0.1.11`, and `v0.1.12` artifacts exposed two additional blockers for the
+newly published `chelis v0.1.9`, `v0.1.10`, `v0.1.11`, `v0.1.12`, and `v0.1.13` artifacts exposed two additional blockers for the
 remaining Nautilus next-up scope.
 
 ### 5.3 Post-v0.1.7 blockers found while validating v0.1.9
 
 The clean Nautilus baseline still passes **886 / 886** numerical assertions when
-the bare-build harness is pointed at the `v0.1.9`, `v0.1.10`, `v0.1.11`, and `v0.1.12` darwin release artifacts. That
+the bare-build harness is pointed at the `v0.1.9`, `v0.1.10`, `v0.1.11`, `v0.1.12`, and `v0.1.13` darwin release artifacts. That
 means these releases do **not** regress the shipped v0.1.0 surface. The remaining
 blockers are specific to the still-unshipped post-v0.1.0 items:
 
-| Blocker | v0.1.9 / v0.1.10 / v0.1.11 / v0.1.12 status | Downstream impact |
+| Blocker | v0.1.9 / v0.1.10 / v0.1.11 / v0.1.12 / v0.1.13 status | Downstream impact |
 |---|---|---|
 | Tensor-valued `grad` native path | **Open** — scalar `grad` builds, but tensor-parameter gradient probes still fail on the native path: simple probes emit invalid C (`chelis_tensor*` / `chelis_list*` locals lowered as `int`), while a more realistic LM-style probe in `v0.1.10` can fail earlier with `` `if` is not representable in the Phase 0e RISC DAG `` | Keeps multi-parameter LM blocked even though the type surface now accepts richer `grad` shapes |
 | Generic fold/control-flow lowering on tensor accumulators | **Open** — general tensor-fold probes still reach emitted C with tensor/list locals lowered as `int`, and the real general-`n` Cholesky rewrite space still runs into the Phase 0e `if` lowering boundary | Keeps general-`n` Cholesky, and therefore LU / QR / SVD follow-ons, blocked |
