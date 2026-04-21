@@ -105,7 +105,7 @@ RISC primitives already carry adjoints.
   `Nautilus.SDE` / `Nautilus.Stats` / `Nautilus.Interpolation`
   tensor-path tests are no longer upstream-blocked. In this shell repo
   they are wired into `tests/run_numeric_tests.py` and counted in the
-  `890 / 890` clean-HEAD pass on the pinned toolchain.
+  `895 / 895` clean-HEAD pass on the pinned toolchain.
 - **Unknown-name silent-compile bug: FIXED in v0.1.4 (still fixed in v0.1.7).** v0.1.3's type checker and
   C backend silently accepted unresolved function names in expression position,
   compiling `sub(x, cos(x))` to a no-op that returned `x`. v0.1.4 now emits

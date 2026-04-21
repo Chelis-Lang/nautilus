@@ -28,7 +28,7 @@ cd nautilus
 chelis reef build
 ```
 
-This produces `dist/nautilus-0.1.0.chb`, the reef package that other
+This produces `dist/nautilus-0.1.1.chb`, the reef package that other
 Chelis projects can depend on.
 
 ## Verify the installation
@@ -42,7 +42,7 @@ pip install numpy scipy
 python tests/run_numeric_tests.py
 ```
 
-You should see `890 / 890 numerical assertions passed`.
+You should see `895 / 895 numerical assertions passed`.
 
 If your `chelis` binary is not on `PATH`, set `CHELIS_BIN=/abs/path/to/chelis`
 when running the Python validation scripts.

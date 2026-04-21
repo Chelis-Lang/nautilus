@@ -218,7 +218,7 @@ generated from scipy `curve_fit`.
 new runtime-test block.
 
 **Acceptance oracle:** `python tests/run_numeric_tests.py` reports
-881 + N assertions (probably +5 to +10 for multi-parameter LM), all
+895 + N assertions (probably +5 to +10 for multi-parameter LM), all
 passing.
 
 ---
