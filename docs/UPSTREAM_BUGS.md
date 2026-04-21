@@ -5,18 +5,32 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-Summary as of **v0.1.13**:
+Summary as of **v0.1.15**:
 
 - Historical Bugs 1–5 below are fixed in the released compiler line through
   `v0.1.7`, and the pinned Nautilus surface remains fully wired into the
-  current runtime harness on the validated `v0.1.13` toolchain.
-- Re-validation against `v0.1.9`, `v0.1.10`, `v0.1.11`, `v0.1.12`, and `v0.1.13` found two **new** post-v0.1.7 blockers for the
-  remaining Nautilus next-up scope:
-  - tensor-valued `grad` still fails on the native path even though the type
-    surface now accepts richer `grad` shapes; simple probes emit invalid C and a
-    more realistic LM-style probe can fail earlier in lowering on `if`;
-  - generic fold/control-flow lowering on tensor accumulators still blocks the
-    general-`n` Cholesky implementation attempt.
+  current runtime harness on the validated `v0.1.15` toolchain
+  (`895 / 895` numerical assertions pass).
+- Re-validation against `v0.1.9`–`v0.1.15` found two **new** post-v0.1.7
+  blockers for the remaining Nautilus next-up scope. On `v0.1.15`:
+  - tensor-valued `grad` still fails on the native path. The symptom in
+    `v0.1.15` has shifted: the C emitter now writes the bare name of the
+    internal reducer (e.g. `__tensor_scalar0_0 = fold;` or
+    `__tensor_scalar0_0 = einsum;`) as if it were a declared C identifier,
+    and in the einsum variant the scalar return is also mistyped
+    (`double __result = chelis_tensor_einsum(...)`). Both variants fail
+    `gcc` compilation of the emitted C. Tensor-valued `grad` on the
+    native path therefore remains unusable; multi-parameter LM stays
+    blocked.
+  - generic fold/control-flow lowering on tensor accumulators has made
+    **partial** progress. A tuple fold with a tensor in slot 0 now lowers
+    correctly (`t_inner` is typed `chelis_tensor*` and populated via
+    `chelis_value_as_tensor`) — the old "`l_inner` as int" symptom
+    appears fixed. However a tensor-valued `if` inside the fold body
+    still mis-lowers: the emitted C declares `int new_t` for a tensor
+    result and assigns `new_t = t_inner` (pointer-to-int), failing `gcc`.
+    General-`n` Cholesky still requires this path and therefore stays
+    blocked.
 
 Original historical summary as of **v0.1.6** — original six bugs all fixed, one
 new bug found:
@@ -57,7 +71,7 @@ new bug found:
 
 This section is historical. Those tensor-path issues were later fixed
 upstream and are now exercised by Nautilus's current `895 / 895`
-runtime-harness pass on the pinned `v0.1.13` toolchain.
+runtime-harness pass on the pinned `v0.1.15` toolchain.
 
 Original repros below were run against `chelis v0.1.3-linux-x86_64`.
 Re-verifications against subsequent releases are noted inline.
