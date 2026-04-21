@@ -1,7 +1,7 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the pinned `chelis v0.1.7` toolchain.
+repository state on the validated `chelis v0.1.13` toolchain.
 
 ## Scope
 
@@ -89,17 +89,17 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to `chelis v0.1.7` exactly via `reef.toml`.
+Nautilus is pinned to `chelis v0.1.13` exactly via `reef.toml`.
 Historical compiler/runtime bugs discovered during Nautilus P0-P3 are
 documented in `docs/UPSTREAM_BUGS.md`.
 
 For the pinned toolchain:
 
-- the originally tracked Bugs 1-5 are fixed through `v0.1.7`
+- the originally tracked Bugs 1-5 remain fixed through `v0.1.13`
 - the currently shipped Nautilus surface is fully wired into the current
   harness and no longer upstream-blocked
 
-For later upstream releases:
+On newer upstream releases through `v0.1.13`:
 
 - validation against `v0.1.9` through `v0.1.13` found two new blockers
   for future Nautilus scope: tensor-valued `grad` on the native path,

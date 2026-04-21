@@ -15,11 +15,16 @@ to this file so Claude-style and Codex-style entry points do not drift.
   policy, scripting-language policy (Python, never shell), and the
   shared local skill set.
 
-## Toolchain Pin
+## Toolchain Policy
 
-- `chelis v0.1.7` is the single supported compiler binary. `reef.toml`
-  pins `compiler = "=0.1.7"`. Version bumps must land in every Chelis
-  shell repo in the same change set — do not bump unilaterally.
+- Nautilus should track the latest **published and validation-clean**
+  Chelis release by default. Treat stale pins as drift, not as a reason
+  to stay on an older compiler.
+- `reef.toml` should pin the currently validated release exactly. As of
+  this repo state, that is `chelis v0.1.13`.
+- If the latest published Chelis release fails Nautilus validation,
+  document the blocker clearly and pin the newest known-good release
+  until the blocker is resolved.
 - Do not vendor or build the Chelis compiler from source inside this
   repo. Consume the released tarball from the private
   `Chelis-Lang/chelis` releases. CI authenticates via the repo secret
@@ -51,8 +56,9 @@ diverges upstream, update this repo in the same change set.
 
 Upstream bugs tracked in [`UPSTREAM_BUGS.md`](docs/UPSTREAM_BUGS.md) —
 originally found against v0.1.3, with per-bug status notes for each
-subsequent release. As of **v0.1.7: ALL SIX TRACKED BUGS FIXED**.
-v0.1.7 closed the last two open issues — Bug 2 (literal-dim
+subsequent release. As of **v0.1.13**, the historically tracked bugs
+that blocked the shipped Nautilus surface are fixed. `v0.1.7` closed
+the last two original open issues — Bug 2 (literal-dim
 shape-checker gap) now emits `DimensionMismatch` at `chelis check`
 time, and Bug 3c (main-entry wrapper emission) now produces
 correct multi-tensor-input entry points with a proper OpenMP

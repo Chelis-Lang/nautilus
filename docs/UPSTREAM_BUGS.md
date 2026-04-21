@@ -8,8 +8,8 @@ per-release **status** line recording what changed.
 Summary as of **v0.1.13**:
 
 - Historical Bugs 1–5 below are fixed in the released compiler line through
-  `v0.1.7`, and the pinned Nautilus surface is fully wired into the
-  current runtime harness on that toolchain.
+  `v0.1.7`, and the pinned Nautilus surface remains fully wired into the
+  current runtime harness on the validated `v0.1.13` toolchain.
 - Re-validation against `v0.1.9`, `v0.1.10`, `v0.1.11`, `v0.1.12`, and `v0.1.13` found two **new** post-v0.1.7 blockers for the
   remaining Nautilus next-up scope:
   - tensor-valued `grad` still fails on the native path even though the type
@@ -57,7 +57,7 @@ new bug found:
 
 This section is historical. Those tensor-path issues were later fixed
 upstream and are now exercised by Nautilus's current `895 / 895`
-runtime-harness pass on the pinned `v0.1.7` toolchain.
+runtime-harness pass on the pinned `v0.1.13` toolchain.
 
 Original repros below were run against `chelis v0.1.3-linux-x86_64`.
 Re-verifications against subsequent releases are noted inline.

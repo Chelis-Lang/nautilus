@@ -11,14 +11,9 @@ Belt-and-suspenders gate that complements `chelis check`:
 2. Every function name listed in the README's "P0 Surface" table is in the
    actual export() clause of the corresponding src/<module>.ch.
 
-3. `tests/goldens/linalg/*.json` are not currently consumed by any test
-   harness in this repo (LinAlg tensor-path runtime tests pending Bug 3
-   v0.1.7 unblocked tensor-path runtime tests — wiring LinAlg /
-   Distance / SDE / Stats / Interpolation runtime numerical
-   assertions into tests/run_numeric_tests.py is the next
-   Nautilus-side milestone). Print a
-   warning and the deferral pointer so it doesn't quietly become "fixture
-   cosplay" — surfaced honestly.
+3. `tests/goldens/linalg/*.json` are consumed by the tensor-path harness.
+   Keep an explicit informational print so this does not silently regress
+   back into unused-fixture drift.
 
 Exit non-zero on any drift.
 """

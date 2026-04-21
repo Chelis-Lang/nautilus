@@ -3,18 +3,18 @@
 ## Prerequisites
 
 Nautilus requires:
-- [Chelis v0.1.7](https://github.com/Chelis-Lang/chelis/releases/tag/v0.1.7) exactly
+- the latest validated Chelis release, currently [Chelis v0.1.13](https://github.com/Chelis-Lang/chelis/releases/tag/v0.1.13)
 - GCC (for compiling generated C code)
 - Python 3.10+ with numpy and scipy (for running the test suite)
 
 ## Download the Chelis toolchain
 
 ```sh
-gh release download v0.1.7 \
+gh release download v0.1.13 \
   --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.1.7-linux-x86_64.tar.gz'
-tar xzf chelis-v0.1.7-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.1.7-linux-x86_64/bin:$PATH"
+  --pattern 'chelis-v0.1.13-linux-x86_64.tar.gz'
+tar xzf chelis-v0.1.13-linux-x86_64.tar.gz
+export PATH="$PWD/chelis-v0.1.13-linux-x86_64/bin:$PATH"
 ```
 
 The tarball contains `bin/chelis`, `lib/libchelis_runtime.a`, and
@@ -28,7 +28,7 @@ cd nautilus
 chelis reef build
 ```
 
-This produces `dist/nautilus-0.1.1.chb`, the reef package that other
+This produces `dist/nautilus-0.1.2.chb`, the reef package that other
 Chelis projects can depend on.
 
 ## Verify the installation
