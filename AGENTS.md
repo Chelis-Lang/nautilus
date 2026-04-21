@@ -21,7 +21,7 @@ to this file so Claude-style and Codex-style entry points do not drift.
   Chelis release by default. Treat stale pins as drift, not as a reason
   to stay on an older compiler.
 - `reef.toml` should pin the currently validated release exactly. As of
-  this repo state, that is `chelis v0.1.16`.
+  this repo state, that is `chelis v0.1.17`.
 - If the latest published Chelis release fails Nautilus validation,
   document the blocker clearly and pin the newest known-good release
   until the blocker is resolved.
@@ -56,7 +56,7 @@ diverges upstream, update this repo in the same change set.
 
 Upstream bugs tracked in [`UPSTREAM_BUGS.md`](docs/UPSTREAM_BUGS.md) —
 originally found against v0.1.3, with per-bug status notes for each
-subsequent release. As of **v0.1.16**, the historically tracked bugs
+subsequent release. As of **v0.1.17**, the historically tracked bugs
 that blocked the shipped Nautilus surface are fixed. `v0.1.7` closed
 the last two original open issues — Bug 2 (literal-dim
 shape-checker gap) now emits `DimensionMismatch` at `chelis check`

@@ -10,7 +10,7 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Status snapshot (2026-04-22, `chelis v0.1.16`).**
+**Status snapshot (2026-04-22, `chelis v0.1.17`).**
 
 - Completed in Nautilus: P0 per-row stability column, P1 fast-`chelis eval`
   benchmark, P2 adaptive-step ODE integrator, P2 `bessel_y1` precision/stability
@@ -166,15 +166,20 @@ typechecker, specific module) the upstream team can target.
 
 ## Blocked: P1 Multi-Parameter Levenberg-Marquardt
 
-**Current blocker (2026-04-22, re-checked on `chelis v0.1.16`).** The blocker
-remains: tensor-parameter `grad` still does not lower to valid C on the native
-path. In `v0.1.16` the specific symptom has shifted again — the C emitter now
-writes `__result = call(__call_arg0_0);` with `call` undeclared, where `call`
-appears to be an internal placeholder for the grad'd reducer. In the einsum
-variant the scalar return is also still mistyped (`double __result =
-chelis_tensor_einsum(...)`). Both variants fail `gcc` compilation of the emitted
-C. Nautilus still cannot rely on tensor-valued gradients at runtime for a real
-LM implementation.
+**Current blocker (2026-04-22, re-checked on `chelis v0.1.17`).** The blocker
+remains but the failure mode has diverged into two parts. The inline
+`grad(f)(x)` pattern now produces a **structured build-time diagnostic** —
+`` `chelis build --target c` can't lower these defs — their body contains a
+higher-order application whose callee isn't a named fn (commonly
+`grad(f)(args)` where f isn't a plain top-level symbol). Add a named wrapper,
+pass the fn directly as an argument, or rewrite the callsite `` — which is
+genuine progress over the invalid C of earlier releases. However the suggested
+local-binding rewrite (`g = grad(f); g(x)`) **compiles but is silently wrong**:
+the binding lowers as `int g = 0`, the call passes `chelis_scalar_tensor_from_f64(g)`
+instead of `x`, and the grad helper body is just `outputs[0] = inputs[0]` —
+i.e. the grad computation is dropped and the function segfaults at runtime on
+any real invocation. Nautilus still cannot rely on tensor-valued gradients at
+runtime for a real LM implementation.
 
 **Driven by:** residual v0.1.0 limitation
 (`docs/NAUTILUS_STATUS.md` § 6.1) — `Nautilus.CurveFit` currently
@@ -312,19 +317,19 @@ column flips `alpha` → `stable`.
 
 ## Blocked: P2 General-n LinAlg (LU, QR, SVD)
 
-**Current blocker (2026-04-22, re-checked on `chelis v0.1.16`).** Partial
+**Current blocker (2026-04-22, re-checked on `chelis v0.1.17`).** Partial
 progress, unchanged since `v0.1.15`. The Nautilus-side attempt to add
 general-`n` `cholesky[n]` still fails on the build path in one of the two
 originally-documented core-owned ways:
 
-1. **FIXED in `v0.1.15`, remains fixed in `v0.1.16`.** Tuple fold
+1. **FIXED in `v0.1.15`, remains fixed in `v0.1.17`.** Tuple fold
    accumulators with a tensor in slot 0 now lower correctly — `t_inner`
    is declared `chelis_tensor*` in the emitted C and populated via
    `chelis_value_as_tensor`. The historical "`l_inner` as int" symptom
    no longer reproduces.
-2. **Still blocking in `v0.1.16`.** Control flow inside the generic fold
+2. **Still blocking in `v0.1.17`.** Control flow inside the generic fold
    body still fails on tensor-valued results. Current symptom is the same
-   as on `v0.1.15`: for
+   as on `v0.1.15`/`v0.1.16`: for
    `new_t = if cond then copy(t_inner) else t_inner`, the C backend
    declares `int new_t` and then writes `new_t = t_inner`
    (`chelis_tensor *` to `int`), which fails `gcc` compilation. The

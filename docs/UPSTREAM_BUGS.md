@@ -5,31 +5,35 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-Summary as of **v0.1.16**:
+Summary as of **v0.1.17**:
 
 - Historical Bugs 1–5 below are fixed in the released compiler line through
   `v0.1.7`, and the pinned Nautilus surface remains fully wired into the
-  current runtime harness on the validated `v0.1.16` toolchain
+  current runtime harness on the validated `v0.1.17` toolchain
   (`895 / 895` numerical assertions pass).
-- Re-validation against `v0.1.9`–`v0.1.16` found two **new** post-v0.1.7
-  blockers for the remaining Nautilus next-up scope. On `v0.1.16`:
-  - tensor-valued `grad` still fails on the native path. The symptom has
-    shifted again: the C emitter now writes
-    `__result = call(__call_arg0_0);` with `call` undeclared, where
-    `call` is evidently an internal placeholder for the grad'd reducer.
-    In the einsum variant the scalar return is also still mistyped
-    (`double __result = chelis_tensor_einsum(...)`). Both variants fail
-    `gcc` compilation of the emitted C. Tensor-valued `grad` on the
-    native path therefore remains unusable; multi-parameter LM stays
-    blocked.
-  - generic fold/control-flow lowering on tensor accumulators is in the
-    same partial state as `v0.1.15`. A tuple fold with a tensor in slot
-    0 lowers correctly (`t_inner` is typed `chelis_tensor*` and populated
-    via `chelis_value_as_tensor`). However a tensor-valued `if` inside
-    the fold body still mis-lowers: the emitted C declares `int new_t`
-    for a tensor result and assigns `new_t = t_inner` (pointer-to-int),
-    failing `gcc`. General-`n` Cholesky still requires this path and
-    therefore stays blocked.
+- Re-validation against `v0.1.9`–`v0.1.17` found two **new** post-v0.1.7
+  blockers for the remaining Nautilus next-up scope. On `v0.1.17`:
+  - tensor-valued `grad` still fails on the native path, with real but
+    partial progress. The inline `grad(f)(x)` pattern now produces a
+    **clear build-time diagnostic** instead of invalid C:
+    `` `chelis build --target c` can't lower these defs — their body
+    contains a higher-order application whose callee isn't a named fn
+    (commonly `grad(f)(args)` where f isn't a plain top-level
+    symbol) `` — that is an improvement over the bogus C the v0.1.16
+    emitter produced. However the suggested rewrite with a local
+    binding (`g = grad(f); g(x)`) **compiles but is silently wrong**:
+    the emitted C lowers the binding as `int g = 0` and the call as
+    a no-op that returns a scalar-zero tensor via
+    `chelis_scalar_tensor_from_f64(g)`, which segfaults at runtime.
+    Multi-parameter LM therefore stays blocked.
+  - generic fold/control-flow lowering on tensor accumulators is in
+    the same partial state as `v0.1.15`/`v0.1.16`. A tuple fold with a
+    tensor in slot 0 lowers correctly (`t_inner` is typed
+    `chelis_tensor*` and populated via `chelis_value_as_tensor`).
+    However a tensor-valued `if` inside the fold body still mis-lowers:
+    the emitted C declares `int new_t` for a tensor result and assigns
+    `new_t = t_inner` (pointer-to-int), failing `gcc`. General-`n`
+    Cholesky still requires this path and therefore stays blocked.
 
 Original historical summary as of **v0.1.6** — original six bugs all fixed, one
 new bug found:
@@ -70,7 +74,7 @@ new bug found:
 
 This section is historical. Those tensor-path issues were later fixed
 upstream and are now exercised by Nautilus's current `895 / 895`
-runtime-harness pass on the pinned `v0.1.16` toolchain.
+runtime-harness pass on the pinned `v0.1.17` toolchain.
 
 Original repros below were run against `chelis v0.1.3-linux-x86_64`.
 Re-verifications against subsequent releases are noted inline.
