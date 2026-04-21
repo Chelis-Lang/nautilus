@@ -56,7 +56,7 @@ mdbook build docs
 Expected runtime-harness result:
 
 ```text
-890 / 890 numerical assertions passed
+895 / 895 numerical assertions passed
 ```
 
 What those gates cover:
@@ -96,7 +96,7 @@ documented in `docs/UPSTREAM_BUGS.md`.
 For the pinned toolchain:
 
 - the originally tracked Bugs 1-5 are fixed through `v0.1.7`
-- the shipped Nautilus v0.1.0 surface is fully wired into the current
+- the currently shipped Nautilus surface is fully wired into the current
   harness and no longer upstream-blocked
 
 For later upstream releases:
@@ -133,7 +133,7 @@ The latest repo sweep closed the remaining documentation and harness
 drift:
 
 - docs/spec text now reflects the current 145-export surface and
-  890-assertion harness
+  895-assertion harness
 - the ODE docs now include the shipped adaptive RK45 endpoint solver
 - the mdBook example validator enforces a minimum number of full
   compile-checked examples

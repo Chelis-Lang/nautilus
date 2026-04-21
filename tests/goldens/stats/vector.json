@@ -36,7 +36,7 @@
   "trimmed_mean_10": 3.0,
   "cov_ddof0": -4.0,
   "cov_ddof1": -4.666666666666666,
-  "correlation": -1.0,
+  "correlation": -0.9999999999999999,
   "abs": 1e-06,
   "rel": 1e-06
 }

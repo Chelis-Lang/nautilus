@@ -62,6 +62,6 @@ in the current toolchain.
 ## Comparison to scipy
 
 scipy operates in f64 (approximately 15 significant digits). Nautilus's
-f32 is roughly 8-9 orders of magnitude less precise. The 890
+f32 is roughly 8-9 orders of magnitude less precise. The 895
 scipy-parity assertions in the test suite use tolerances calibrated to
 f32: typically 1e-4 to 1e-6 relative error, depending on the function.

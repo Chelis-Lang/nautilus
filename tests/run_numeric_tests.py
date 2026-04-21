@@ -21,7 +21,7 @@ The scalar binary covers Nautilus.Special and Nautilus.Distributions.
 Separate binaries in this same harness cover the scalar solver modules
 and the tensor-path LinAlg / Stats / Distance / SDE / Interpolation /
 CurveFit surface. Clean HEAD on the pinned `chelis v0.1.7` toolchain
-passes 890 / 890 numerical assertions.
+passes 895 / 895 numerical assertions.
 """
 from __future__ import annotations
 

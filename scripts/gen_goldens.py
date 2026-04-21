@@ -138,6 +138,7 @@ def goldens_special() -> dict[str, dict]:
     }
 
     xs_jy = [0.1, 1.0, 3.0, 5.0, 7.0, 8.5, 12.0, 20.0]
+    xs_y1 = [0.1, 1.0, 3.0, 5.0, 7.0, 7.6, 7.7, 7.8, 7.9, 8.5, 12.0, 20.0]
     goldens["special/bessel_j0.json"] = {
         "inputs": xs_jy,
         "outputs": [float(sp_special.j0(x)) for x in xs_jy],
@@ -154,8 +155,8 @@ def goldens_special() -> dict[str, dict]:
         **TOL["special/bessel_y0"],
     }
     goldens["special/bessel_y1.json"] = {
-        "inputs": xs_jy,
-        "outputs": [float(sp_special.y1(x)) for x in xs_jy],
+        "inputs": xs_y1,
+        "outputs": [float(sp_special.y1(x)) for x in xs_y1],
         **TOL["special/bessel_y1"],
     }
 
@@ -379,6 +380,18 @@ def goldens_ode() -> dict[str, dict]:
             {"label": "decay_euler_n100",  "n_steps": 100,  "expected_abs_err": 2.5e-3},
             {"label": "decay_euler_n1000", "n_steps": 1000, "expected_abs_err": 2.5e-4},
         ],
+        "adaptive_cases": [
+            {
+                "label": "decay_rk45_t2",
+                "t0": 0.0,
+                "t1": 2.0,
+                "y0": 1.0,
+                "rtol": 1.0e-6,
+                "atol": 1.0e-8,
+                "expected": math.exp(-4.0),
+                "expected_abs_err": 2.0e-6,
+            }
+        ],
         **TOL["ode/scalar"],
     }
     return g
@@ -389,8 +402,10 @@ def goldens_stats() -> dict[str, dict]:
     from scipy.stats import skew, kurtosis, pearsonr
     g = {}
     v = np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0], dtype=np.float64)
+    w = np.array([6.0, 5.0, 4.0, 3.0, 2.0, 1.0, 0.0], dtype=np.float64)
     g["stats/vector.json"] = {
         "v": v.tolist(),
+        "w": w.tolist(),
         "mean":        float(np.mean(v)),
         "var_ddof0":   float(np.var(v, ddof=0)),
         "var_ddof1":   float(np.var(v, ddof=1)),
@@ -399,6 +414,18 @@ def goldens_stats() -> dict[str, dict]:
         "skew":        float(skew(v, bias=True)),
         "kurtosis":    float(kurtosis(v, bias=True, fisher=True)),
         "median":      float(np.median(v)),
+        "min":         float(np.min(v)),
+        "max":         float(np.max(v)),
+        "range":       float(np.max(v) - np.min(v)),
+        "quantile_25": float(np.quantile(v, 0.25)),
+        "quantile_50": float(np.quantile(v, 0.50)),
+        "quantile_75": float(np.quantile(v, 0.75)),
+        "percentile_10": float(np.percentile(v, 10.0)),
+        "percentile_90": float(np.percentile(v, 90.0)),
+        "trimmed_mean_10": float(np.mean(np.sort(v)[1:-1])),
+        "cov_ddof0":   float(np.cov(v, w, ddof=0)[0, 1]),
+        "cov_ddof1":   float(np.cov(v, w, ddof=1)[0, 1]),
+        "correlation": float(pearsonr(v, w).statistic),
         **TOL["stats/vector"],
     }
     return g
@@ -505,6 +532,7 @@ def goldens_distance() -> dict[str, dict]:
         "euclidean":         float(sp_d.euclidean(a, b)),
         "manhattan":         float(sp_d.cityblock(a, b)),
         "chebyshev":         float(sp_d.chebyshev(a, b)),
+        "cosine_similarity": 1.0 - float(sp_d.cosine(a, b)),
         "cosine_distance":   float(sp_d.cosine(a, b)),
         **TOL["distance/vector"],
     }
@@ -767,7 +795,7 @@ def check_goldens() -> int:
             for k, v in fresh.items():
                 if k in ("abs", "rel", "params", "inputs", "inputs_x", "inputs_q",
                           "matrices", "A_3x4", "B_4x2", "v", "w",
-                          "cases", "rk4_cases", "euler_cases",
+                          "cases", "rk4_cases", "euler_cases", "adaptive_cases",
                           "poisson_cases", "binomial_cases",
                           "beta_cases", "f_cases", "weibull_cases", "weibull_inv_cdf"):
                     ev = existing.get(k)
