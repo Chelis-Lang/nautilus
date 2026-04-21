@@ -1,7 +1,7 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the validated `chelis v0.1.13` toolchain.
+repository state on the validated `chelis v0.1.15` toolchain.
 
 ## Scope
 
@@ -89,21 +89,26 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to `chelis v0.1.13` exactly via `reef.toml`.
+Nautilus is pinned to `chelis v0.1.15` exactly via `reef.toml`.
 Historical compiler/runtime bugs discovered during Nautilus P0-P3 are
 documented in `docs/UPSTREAM_BUGS.md`.
 
 For the pinned toolchain:
 
-- the originally tracked Bugs 1-5 remain fixed through `v0.1.13`
+- the originally tracked Bugs 1-5 remain fixed through `v0.1.15`
 - the currently shipped Nautilus surface is fully wired into the current
   harness and no longer upstream-blocked
+  (`895 / 895` numerical assertions on `v0.1.15`)
 
-On newer upstream releases through `v0.1.13`:
+On newer upstream releases through `v0.1.15`:
 
-- validation against `v0.1.9` through `v0.1.13` found two new blockers
-  for future Nautilus scope: tensor-valued `grad` on the native path,
-  and generic fold/control-flow lowering on tensor accumulators
+- validation against `v0.1.9` through `v0.1.15` found two blockers for
+  future Nautilus scope: tensor-valued `grad` on the native path, and
+  tensor-valued `if` inside fold bodies
+- one sub-blocker — tuple fold with a tensor in slot 0 — is fixed in
+  `v0.1.15`, but the control-flow-in-fold sub-blocker remains; the
+  tensor-valued `grad` blocker's symptom shifted in `v0.1.15` (bare
+  builtin name emitted as C identifier) but it still fails to compile
 - those blockers affect next-up work such as richer LM and general-n
   Cholesky, not the currently shipped Nautilus surface
 

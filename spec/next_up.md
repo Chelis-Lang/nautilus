@@ -10,7 +10,7 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Status snapshot (2026-04-19).**
+**Status snapshot (2026-04-21, `chelis v0.1.15`).**
 
 - Completed in Nautilus: P0 per-row stability column, P1 fast-`chelis eval`
   benchmark, P2 adaptive-step ODE integrator, P2 `bessel_y1` precision/stability
@@ -166,14 +166,15 @@ typechecker, specific module) the upstream team can target.
 
 ## Blocked: P1 Multi-Parameter Levenberg-Marquardt
 
-**Current blocker (2026-04-20, re-checked on `chelis v0.1.13`).** The blocker is
-now narrower but still real. `v0.1.9`/`v0.1.10`/`v0.1.11`/`v0.1.12`/`v0.1.13` accept richer `grad` shapes at
-the type surface, and scalar `grad` builds cleanly, but tensor-parameter
-gradient paths still fail on the native path: simple probes emit invalid C
-(`chelis_tensor*` / `chelis_list*` temporaries lowered as `int`), and a more
-realistic LM-style probe can fail even earlier with `` `if` is not representable
-in the Phase 0e RISC DAG ``. That means Nautilus still cannot rely on
-tensor-valued gradients at runtime for a real LM implementation.
+**Current blocker (2026-04-21, re-checked on `chelis v0.1.15`).** The blocker
+remains: tensor-parameter `grad` still does not lower to valid C on the native
+path. In `v0.1.15` the specific symptom has shifted — the C emitter now writes
+the bare name of the internal reducer (e.g. `__tensor_scalar0_0 = fold;` or
+`__tensor_scalar0_0 = einsum;`) as if it were a declared C identifier, and in
+the einsum variant the scalar return is also mistyped (`double __result =
+chelis_tensor_einsum(...)`). Both variants fail `gcc` compilation of the emitted
+C. Nautilus still cannot rely on tensor-valued gradients at runtime for a real
+LM implementation.
 
 **Driven by:** residual v0.1.0 limitation
 (`docs/NAUTILUS_STATUS.md` § 6.1) — `Nautilus.CurveFit` currently
@@ -311,25 +312,26 @@ column flips `alpha` → `stable`.
 
 ## Blocked: P2 General-n LinAlg (LU, QR, SVD)
 
-**Current blocker (2026-04-20, re-checked on `chelis v0.1.13`).** A first
-Nautilus-side attempt to add general-`n` `cholesky[n]` still fails on the build
-path in two core-owned ways:
+**Current blocker (2026-04-21, re-checked on `chelis v0.1.15`).** Partial
+progress. The Nautilus-side attempt to add general-`n` `cholesky[n]` still
+fails on the build path in one of the two originally-documented core-owned
+ways:
 
-1. Tuple fold accumulators with a tensor in slot 0 mis-lower in emitted C
-   (`l_inner` becomes an `int` instead of `chelis_tensor*`).
-2. Rewriting around that hit a second core limit: control flow inside the
-   generic fold reaches lowering as `` `if` is not representable in the Phase 0e
-   RISC DAG ``.
+1. **FIXED in `v0.1.15`.** Tuple fold accumulators with a tensor in slot 0
+   now lower correctly — `t_inner` is declared `chelis_tensor*` in the
+   emitted C and populated via `chelis_value_as_tensor`. The historical
+   "`l_inner` as int" symptom no longer reproduces.
+2. **Still blocking in `v0.1.15`.** Control flow inside the generic fold
+   body still fails on tensor-valued results. Current symptom has shifted
+   from the `v0.1.13` panic (`` `if` is not representable in the Phase 0e
+   RISC DAG ``) to silent mis-emission: for
+   `new_t = if cond then copy(t_inner) else t_inner`, the C backend
+   declares `int new_t` and then writes `new_t = t_inner`
+   (`chelis_tensor *` to `int`), which fails `gcc` compilation. The
+   downstream effect is identical: per-iteration conditional branching
+   on a tensor accumulator inside `fold` is unusable.
 
-Those two failures were both reproduced again against the `v0.1.9` / `v0.1.10` / `v0.1.11` / `v0.1.12` / `v0.1.13` darwin
-release artifact:
-
-- the original tuple-accumulator implementation still reaches emitted C with
-  `l_inner` lowered as `int`, producing clang pointer/integer mismatches;
-- a tensor-only sentinel rewrite gets past that point but still panics in
-  lowering with `` `if` is not representable in the Phase 0e RISC DAG ``.
-
-Until those core issues are fixed, do not treat even general-`n` Cholesky as
+Until core limit (2) is fixed, do not treat even general-`n` Cholesky as
 Nautilus-unblocked. LU / QR / SVD remain further behind it.
 
 **Driven by:** residual v0.1.0 limitation — fixed-size 2x2/3x3 only
