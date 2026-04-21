@@ -28,17 +28,18 @@ adjoints. Automatic differentiation flows through tensor-op composition.
 
 ## Getting started
 
-Requires [chelis v0.1.7](https://github.com/Chelis-Lang/chelis/releases/tag/v0.1.7).
+Requires the latest validated Chelis release, currently
+[chelis v0.1.13](https://github.com/Chelis-Lang/chelis/releases/tag/v0.1.13).
 
 ```sh
-gh release download v0.1.7 \
+gh release download v0.1.13 \
   --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.1.7-linux-x86_64.tar.gz'
-tar xzf chelis-v0.1.7-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.1.7-linux-x86_64/bin:$PATH"
+  --pattern 'chelis-v0.1.13-linux-x86_64.tar.gz'
+tar xzf chelis-v0.1.13-linux-x86_64.tar.gz
+export PATH="$PWD/chelis-v0.1.13-linux-x86_64/bin:$PATH"
 
 chelis reef build
-python tests/run_numeric_tests.py    # 886 scipy-parity assertions
+python tests/run_numeric_tests.py    # 895 scipy-parity assertions
 ```
 
 ## Tests
@@ -48,7 +49,7 @@ links against `libchelis_runtime.a`, and compares outputs against
 scipy/numpy reference values checked into `tests/goldens/`.
 
 ```sh
-python tests/run_numeric_tests.py      # 886 numerical assertions
+python tests/run_numeric_tests.py      # 895 numerical assertions
 python scripts/gen_goldens.py --check  # verify goldens match scipy
 python tests/run_static_checks.py      # export consistency
 python scripts/extract_stability.py --check
