@@ -1,6 +1,6 @@
 module Nautilus.CurveFit
-import Nautilus.LinAlg (inv_2x2, inv_3x3, matvec)
-export (lm_scalar_1param)
+import Nautilus.LinAlg (inv_2x2, inv_3x3, matvec, l2_norm_vec, la_vec_sub, la_vec_add, scale_vec, la_basis_n_f32, cg_solve, la_zeros_mat_like, inner_product)
+export (lm_scalar_1param, lm_scalar_nparam)
 
 def cf_zero_f() -> f32 = cast(0.0, f32)
 def cf_one_f() -> f32 = cast(1.0, f32)
@@ -71,3 +71,122 @@ def lm_scalar_1param[n](
   if lte(n_i, cast(0, int64)) then cf_nan_f()
   else lm1_rec(model, dmodel, xs, ys, theta0, lambda0, tol, max_iters)
 }
+
+def lm_jcol[n, m](
+  model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32],
+  x: tensor[m, f32],
+  theta: tensor[n, f32],
+  base_pred: tensor[m, f32],
+  tpl_n: tensor[n, f32],
+  i: int64,
+  eps: f32
+) -> tensor[m, f32] = {
+  eps_vec = la_basis_n_f32(i, eps, tpl_n)
+  theta_plus = la_vec_add(theta, eps_vec)
+  pred_plus = model(theta_plus, x)
+  scale_vec(la_vec_sub(pred_plus, base_pred), div(cast(1.0, f32), eps))
+}
+
+def lm_build_jtr[n, m](
+  model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32],
+  x: tensor[m, f32],
+  theta: tensor[n, f32],
+  base_pred: tensor[m, f32],
+  r: tensor[m, f32],
+  tpl_n: tensor[n, f32],
+  jtr_acc: tensor[n, f32],
+  i: int64,
+  n_params: int64,
+  eps: f32
+) -> tensor[n, f32] =
+  if gte(i, n_params) then jtr_acc
+  else {
+    j_col = lm_jcol(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), i, eps)
+    jtr_i = inner_product(j_col, copy(r))
+    e_i = la_basis_n_f32(i, jtr_i, copy(tpl_n))
+    jtr_new = la_vec_add(jtr_acc, e_i)
+    lm_build_jtr(model, x, theta, base_pred, r, tpl_n, jtr_new, add(i, cast(1, int64)), n_params, eps)
+  }
+
+def lm_build_jtj_col_j[n, m](
+  model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32],
+  x: tensor[m, f32],
+  theta: tensor[n, f32],
+  base_pred: tensor[m, f32],
+  j_col_i: tensor[m, f32],
+  tpl_n: tensor[n, f32],
+  e_i: tensor[n, f32],
+  jtj_acc: tensor[n, n, f32],
+  j: int64,
+  n_params: int64,
+  eps: f32
+) -> tensor[n, n, f32] =
+  if gte(j, n_params) then jtj_acc
+  else {
+    j_col_j = lm_jcol(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), j, eps)
+    dot_ij = inner_product(copy(j_col_i), j_col_j)
+    e_j = la_basis_n_f32(j, cast(1.0, f32), copy(tpl_n))
+    jtj_new = add(jtj_acc, einsum("i,j->ij", scale_vec(copy(e_i), dot_ij), e_j))
+    lm_build_jtj_col_j(model, x, theta, base_pred, j_col_i, tpl_n, e_i, jtj_new, add(j, cast(1, int64)), n_params, eps)
+  }
+
+def lm_build_jtj[n, m](
+  model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32],
+  x: tensor[m, f32],
+  theta: tensor[n, f32],
+  base_pred: tensor[m, f32],
+  tpl_n: tensor[n, f32],
+  jtj_acc: tensor[n, n, f32],
+  i: int64,
+  n_params: int64,
+  eps: f32
+) -> tensor[n, n, f32] =
+  if gte(i, n_params) then jtj_acc
+  else {
+    j_col_i = lm_jcol(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), i, eps)
+    e_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_n))
+    jtj1 = lm_build_jtj_col_j(model, copy(x), copy(theta), copy(base_pred), j_col_i, copy(tpl_n), e_i, jtj_acc, cast(0, int64), n_params, eps)
+    lm_build_jtj(model, x, theta, base_pred, tpl_n, jtj1, add(i, cast(1, int64)), n_params, eps)
+  }
+
+def lm_nparam_step[n, m](
+  model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32],
+  x: tensor[m, f32],
+  y: tensor[m, f32],
+  theta: tensor[n, f32],
+  lambda: f32,
+  eps: f32
+) -> tensor[n, f32] = {
+  tpl_n = to_tensor(map(fn (t: f32) -> cast(0.0, f32), to_list(copy(theta))))
+  n_params = len(to_list(copy(tpl_n)))
+  base_pred = model(copy(theta), copy(x))
+  r = la_vec_sub(copy(y), copy(base_pred))
+  zero_n = to_tensor(map(fn (t: f32) -> cast(0.0, f32), to_list(copy(tpl_n))))
+  jtr = lm_build_jtr(model, copy(x), copy(theta), copy(base_pred), copy(r), copy(tpl_n), copy(zero_n), cast(0, int64), n_params, eps)
+  ztj_n = scale_vec(copy(tpl_n), cast(0.0, f32))
+  zero_n_mat = einsum("i,j->ij", copy(ztj_n), ztj_n)
+  jtj = lm_build_jtj(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), zero_n_mat, cast(0, int64), n_params, eps)
+  lamb_i = fold(
+    fn (acc: tensor[n, n, f32], i: int64) -> {
+      le_i = la_basis_n_f32(i, lambda, copy(tpl_n))
+      ue_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_n))
+      add(acc, einsum("i,j->ij", le_i, ue_i))
+    }, la_zeros_mat_like(copy(jtj)), range(cast(0, int64), n_params))
+  h = add(jtj, lamb_i)
+  delta = cg_solve(h, jtr, zero_n, cast(1.0e-6, f32), cast(50, int64))
+  la_vec_add(theta, delta)
+}
+
+def lm_scalar_nparam[n, m](
+  model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32],
+  x: tensor[m, f32],
+  y: tensor[m, f32],
+  theta0: tensor[n, f32],
+  tol: f32,
+  max_iters: int64
+) -> tensor[n, f32] =
+  fold(
+    fn (th: tensor[n, f32], iter_idx: int64) ->
+      lm_nparam_step(model, copy(x), copy(y), th, cast(0.01, f32), cast(1.0e-5, f32)),
+    theta0,
+    range(cast(0, int64), max_iters))

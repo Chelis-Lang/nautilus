@@ -842,6 +842,25 @@ def goldens_distributions_continuous_p4() -> dict[str, dict]:
     return g
 
 
+def goldens_curvefit() -> dict[str, dict]:
+    g = {}
+    # Levenberg-Marquardt multi-parameter solver.
+    # Ground truth: linear model y = theta[0]*x + theta[1]; exact fit from analytic solution.
+    cases = [
+        {
+            "label": "linear_2p_6d",
+            "n_theta": 2,
+            "n_data": 6,
+            "theta0": [1.0, 0.0],
+            "x": [0.5, 1.0, 1.5, 2.0, 2.5, 3.0],
+            "y": [1.5, 2.5, 3.5, 4.5, 5.5, 6.5],
+            "theta": [2.0, 0.5],
+        }
+    ]
+    g["curvefit/lm_nparam_linear.json"] = {"cases": cases, "abs": 0.01, "rel": 0.01}
+    return g
+
+
 def goldens_integrate_adaptive() -> dict[str, dict]:
     g = {}
     # Analytic integrals with high-accuracy methods. Tolerance 1e-9 because
@@ -886,7 +905,8 @@ def check_goldens() -> int:
                      ("integrate_adaptive", goldens_integrate_adaptive),
                      ("integrate_hl", goldens_integrate_hermite_laguerre),
                      ("distributions_discrete", goldens_distributions_discrete),
-                     ("distributions_continuous_p4", goldens_distributions_continuous_p4)):
+                     ("distributions_continuous_p4", goldens_distributions_continuous_p4),
+                     ("curvefit", goldens_curvefit)):
         for rel, fresh in gen().items():
             path = GOLDENS / rel
             if not path.exists():
@@ -998,6 +1018,7 @@ def main() -> int:
     all_goldens.update(goldens_integrate_hermite_laguerre())
     all_goldens.update(goldens_distributions_discrete())
     all_goldens.update(goldens_distributions_continuous_p4())
+    all_goldens.update(goldens_curvefit())
     for rel, data in all_goldens.items():
         write_json(GOLDENS / rel, data)
         print(f"wrote {rel}")
