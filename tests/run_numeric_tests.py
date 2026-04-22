@@ -572,6 +572,7 @@ double linear_interp_sorted(chelis_tensor* xs, chelis_tensor* ys, double x_query
 /* curvefit test wrappers */
 double test_lm_linear(chelis_tensor* xs, chelis_tensor* ys, double theta0);
 double test_lm_exp(chelis_tensor* xs, chelis_tensor* ys, double theta0);
+chelis_tensor* test_lm_nparam_linear(chelis_tensor* xs, chelis_tensor* ys, chelis_tensor* th0);
 
 /* distribution sample test wrappers */
 chelis_tensor* test_uniform_sample(chelis_tensor* t);
@@ -1146,6 +1147,17 @@ int main(int argc, char** argv) {
         print_scalar(test_lm_exp(xs, ys, theta0));
         return 0;
     }
+    /* lm_nparam_linear: n_theta, n_data, then n_theta theta0 values, then n_data x values, then n_data y values -> n_theta theta values */
+    if (!strcmp(fn, "lm_nparam_linear")) {
+        int n_th = (int)a[0];
+        int n_d  = (int)a[1];
+        chelis_tensor* th0 = make_vec(n_th, a+2);
+        chelis_tensor* xs  = make_vec(n_d,  a+2+n_th);
+        chelis_tensor* ys  = make_vec(n_d,  a+2+n_th+n_d);
+        chelis_tensor* r   = test_lm_nparam_linear(xs, ys, th0);
+        print_vec(r);
+        return 0;
+    }
 
     /* sample wrappers: N -> vec(N) (template is zeros) */
     if (!strcmp(fn, "test_uniform_sample")) {
@@ -1257,6 +1269,20 @@ def cf_test_exp_dmodel(x: f32, theta: f32) -> f32 = {
 
 def test_lm_exp[n](xs: tensor[n, f32], ys: tensor[n, f32], theta0: f32) -> f32 =
   lm_scalar_1param(cf_test_exp_model, cf_test_exp_dmodel, xs, ys, theta0, cast(0.01, f32), cast(1.0e-6, f32), cast(200, int64))
+
+def cf_nparam_linear_model(theta: tensor[2, f32], x_data: tensor[6, f32]) -> tensor[6, f32] = {
+  tpl_theta = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(theta))))
+  t0 = inner_product(copy(theta), la_basis_n_f32(cast(0, int64), cast(1.0, f32), copy(tpl_theta)))
+  t1 = inner_product(theta, la_basis_n_f32(cast(1, int64), cast(1.0, f32), tpl_theta))
+  ones6 = to_tensor(map(fn (v: f32) -> cast(1.0, f32), to_list(copy(x_data))))
+  la_vec_add(scale_vec(x_data, t0), scale_vec(ones6, t1))
+}
+
+def test_lm_nparam_linear(
+  xs: tensor[6, f32], ys: tensor[6, f32],
+  th0: tensor[2, f32]
+) -> tensor[2, f32] =
+  lm_scalar_nparam(cf_nparam_linear_model, xs, ys, th0, cast(1.0e-5, f32), cast(100, int64))
 """
 
 
@@ -2149,6 +2175,26 @@ def main() -> int:
     noisy_ys = [1.05, 1.92, 3.12, 3.97, 5.07, 5.89, 7.04, 7.94, 9.09, 9.98]
     la_run_scalar("lm_linear(noisy)", "test_lm_linear",
                   [10, 0.5] + noisy_xs + noisy_ys, 2.0, 0.1, 0.05)
+
+    # --- CurveFit: lm_scalar_nparam ---
+    print("== CurveFit: lm_scalar_nparam ==")
+    g_lm = golden("curvefit/lm_nparam_linear.json")
+    for case in g_lm["cases"]:
+        label = case["label"]
+        n_th = case["n_theta"]
+        n_d = case["n_data"]
+        th0 = case["theta0"]
+        xs = case["x"]
+        ys = case["y"]
+        th_exp = case["theta"]
+        args = [float(n_th), float(n_d)] + th0 + xs + ys
+        raw = call_la_fn(la_binary, "lm_nparam_linear", *args)
+        got = [float(v) for v in raw.split()]
+        for k, (g, w) in enumerate(zip(got, th_exp)):
+            total += 1
+            if not close(g, w, g_lm["abs"], g_lm["rel"]):
+                fails += 1
+                print(f"  FAIL lm_nparam({label}) theta[{k}]: got {g:.6g}, want {w:.6g}")
 
     # --- Track 1: distribution sample variants ---
     print("== Distributions: sample (deterministic seed) ==")

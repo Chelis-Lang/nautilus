@@ -61,7 +61,7 @@ import Nautilus.Integrate (
   adaptive_simpson, romberg_5, gauss_legendre_10,
   gauss_hermite_10, gauss_laguerre_10
 )
-import Nautilus.CurveFit (lm_scalar_1param)
+import Nautilus.CurveFit (lm_scalar_1param, lm_scalar_nparam)
 export (
   smoke_special, smoke_distributions, smoke_linalg,
   smoke_roots, smoke_ode, smoke_stats,
@@ -71,7 +71,8 @@ export (
   smoke_integrate_hl, smoke_curvefit, smoke_distributions_p4,
   smoke_stats_p4,
   smoke_qr,
-  smoke_svd_n
+  smoke_svd_n,
+  smoke_lm_nparam
 )
 
 def smoke_poly(x: f32) -> f32 = {
@@ -356,4 +357,15 @@ def smoke_svd_n(a3: tensor[3, 3, f32]) -> f32 = {
   sigma = svd_s.1
   vt = svd_vt.2
   add(add(det_3x3(u), l2_norm_vec(sigma)), det_3x3(vt))
+}
+
+def smoke_lm_nparam(
+  xs: tensor[3, f32],
+  ys: tensor[3, f32],
+  th0: tensor[2, f32]
+) -> f32 = {
+  theta = lm_scalar_nparam(
+    fn (th: tensor[2, f32], xd: tensor[3, f32]) -> scale_vec(xd, l2_norm_vec(th)),
+    xs, ys, th0, cast(1.0e-4, f32), cast(5, int64))
+  l2_norm_vec(theta)
 }
