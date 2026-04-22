@@ -1074,7 +1074,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `weibull_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Closed-form |
 | `weibull_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Closed-form |
 
-### Nautilus.LinAlg (27 exports)
+### Nautilus.LinAlg (29 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
@@ -1105,6 +1105,8 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `eig_2x2_real` | `(a: tensor[2, 2, f32]) -> (f32, f32)` | `stable` | Fixed 2x2, returns tuple of eigenvalues, NaN if complex |
 | `cholesky_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` | Fixed 2x2, lower-triangular, NaN if not SPD |
 | `cholesky_n` | `[n](a: tensor[n, n, f32]) -> tensor[n, n, f32]` | `alpha` | General-n column-by-column Cholesky, lower-triangular, SPD assumed (no explicit check) |
+| `lu_solve` | `[n](a: tensor[n, n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | General-n Doolittle LU, no partial pivoting. Requires all leading submatrices of A to be nonsingular; well-conditioned matrices needing row swaps produce NaN. AD: gradients treat pivot choices as fixed. |
+| `qr_decompose` | `[n](a: tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, n, f32])` | `alpha` | General-n Householder QR (square). Returns (Q, R): Q orthogonal, R upper triangular. AD: Householder sign choices are piecewise-smooth, not globally smooth. |
 
 ### Nautilus.Stats (14 exports)
 

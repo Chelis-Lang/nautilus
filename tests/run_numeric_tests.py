@@ -1837,6 +1837,13 @@ def main() -> int:
                         1.0, 0.0, 0.0], 3)
     la_run_vec_all_nan("cholesky_2x2(non_psd)", "cholesky_2x2",
                        [1.0, 2.0, 2.0, 1.0], 4)
+    # lu_solve: singular matrix — zero pivot at factorization step produces NaN
+    la_run_vec_all_nan("lu_solve(singular_2x2)", "lu_solve",
+                       [2.0,  1.0, 2.0,  2.0, 4.0,  1.0, 0.0], 2)
+    # lu_solve: well-conditioned matrix that needs a row swap (permuted identity)
+    # — documented failure mode: no partial pivoting, so U[0,0]=0 → div-by-zero → NaN
+    la_run_vec_all_nan("lu_solve(pivot_needed_2x2)", "lu_solve",
+                       [2.0,  0.0, 1.0,  1.0, 0.0,  1.0, 2.0], 2)
 
     print("== LinAlg: cholesky_n ==")
     g_chn = golden("linalg/cholesky_n.json")
