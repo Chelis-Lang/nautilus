@@ -11,7 +11,8 @@ export (
   inv_2x2, inv_3x3, solve_2x2, solve_3x3,
   eig_2x2_real, cholesky_2x2,
   cholesky_n,
-  lu_solve
+  lu_solve,
+  qr_decompose
 )
 
 def transpose[m, n](a: tensor[m, n, f32]) -> tensor[n, m, f32] = permute(a, 1, 0)
@@ -155,6 +156,81 @@ def la_mask_gt_j_f32[n](j: int64, template: tensor[n, f32]) -> tensor[n, f32] = 
 def la_elementwise_mul_vec[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32] =
   to_tensor(map(fn (pair: (f32, f32)) -> mul(pair.0, pair.1),
                 zip(to_list(a), to_list(b))))
+
+def la_identity_n[n](template: tensor[n, f32]) -> tensor[n, n, f32] = {
+  n_len = len(to_list(copy(template)))
+  outer = einsum("i,j->ij", copy(template), copy(template))
+  zero_mat = la_zeros_mat_like(outer)
+  fold(
+    fn (acc: tensor[n, n, f32], i: int64) -> {
+      e_i = la_basis_n_f32(i, cast(1.0, f32), copy(template))
+      outer_diag = einsum("i,j->ij", copy(e_i), e_i)
+      add(acc, outer_diag)
+    },
+    zero_mat, range(cast(0, int64), n_len))
+}
+
+def la_qr_hh_step_r[n](a_curr: tensor[n, n, f32], j: int64) -> tensor[n, n, f32] = {
+  template = diag(copy(a_curr))
+  e_j = la_basis_n_f32(j, cast(1.0, f32), copy(template))
+  col_j = matvec(copy(a_curr), copy(e_j))
+  masked_col = la_elementwise_mul_vec(col_j, la_mask_ge_j_f32(j, copy(template)))
+  norm_x = l2_norm_vec(copy(masked_col))
+  x_j = inner_product(copy(masked_col), e_j)
+  sign_xj = if gte(x_j, cast(0.0, f32)) then cast(1.0, f32) else cast(-1.0, f32)
+  shift = la_basis_n_f32(j, mul(sign_xj, norm_x), template)
+  v = la_vec_add(masked_col, shift)
+  norm_v = l2_norm_vec(copy(v))
+  safe_norm_v = if lt(norm_v, cast(1.0e-30, f32)) then cast(1.0, f32) else norm_v
+  v_hat = scale_vec(v, div(cast(1.0, f32), safe_norm_v))
+  vt_A = vecmat(copy(v_hat), copy(a_curr))
+  rank1 = einsum("i,j->ij", scale_vec(copy(v_hat), cast(2.0, f32)), vt_A)
+  sub(a_curr, rank1)
+}
+
+def la_qr_apply_steps_rec[n](a: tensor[n, n, f32], k: int64, target: int64) -> tensor[n, n, f32] =
+  if gte(k, target) then a
+  else la_qr_apply_steps_rec(la_qr_hh_step_r(a, k), add(k, cast(1, int64)), target)
+
+def la_qr_hh_step_q[n](a_orig: tensor[n, n, f32], q_curr: tensor[n, n, f32], j: int64) -> tensor[n, n, f32] = {
+  a_j = la_qr_apply_steps_rec(a_orig, cast(0, int64), j)
+  template = diag(copy(a_j))
+  e_j = la_basis_n_f32(j, cast(1.0, f32), copy(template))
+  col_j = matvec(a_j, copy(e_j))
+  masked_col = la_elementwise_mul_vec(col_j, la_mask_ge_j_f32(j, copy(template)))
+  norm_x = l2_norm_vec(copy(masked_col))
+  x_j = inner_product(copy(masked_col), e_j)
+  sign_xj = if gte(x_j, cast(0.0, f32)) then cast(1.0, f32) else cast(-1.0, f32)
+  shift = la_basis_n_f32(j, mul(sign_xj, norm_x), template)
+  v = la_vec_add(masked_col, shift)
+  norm_v = l2_norm_vec(copy(v))
+  safe_norm_v = if lt(norm_v, cast(1.0e-30, f32)) then cast(1.0, f32) else norm_v
+  v_hat = scale_vec(v, div(cast(1.0, f32), safe_norm_v))
+  qv = matvec(copy(q_curr), copy(v_hat))
+  qv2 = scale_vec(qv, cast(2.0, f32))
+  rank1_q = einsum("i,j->ij", qv2, v_hat)
+  sub(q_curr, rank1_q)
+}
+
+def la_qr_build_r[n](a: tensor[n, n, f32], n_len: int64) -> tensor[n, n, f32] =
+  fold(
+    fn (a_acc: tensor[n, n, f32], j: int64) -> la_qr_hh_step_r(a_acc, j),
+    a, range(cast(0, int64), n_len))
+
+def la_qr_build_q[n](a: tensor[n, n, f32], n_len: int64) -> tensor[n, n, f32] = {
+  template = diag(copy(a))
+  q_init = la_identity_n(template)
+  fold(
+    fn (q_acc: tensor[n, n, f32], j: int64) -> la_qr_hh_step_q(copy(a), q_acc, j),
+    q_init, range(cast(0, int64), n_len))
+}
+
+def qr_decompose[n](a: tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, n, f32]) = {
+  n_len = len(to_list(diag(copy(a))))
+  r_mat = la_qr_build_r(copy(a), n_len)
+  q_mat = la_qr_build_q(a, n_len)
+  (q_mat, r_mat)
+}
 
 def la_lu_compact_step[n](
   lu: tensor[n, n, f32],

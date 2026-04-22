@@ -26,7 +26,8 @@ import Nautilus.LinAlg (
   la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve,
   inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2,
   cholesky_n,
-  lu_solve
+  lu_solve,
+  qr_decompose
 )
 import Nautilus.Roots (bisection, newton, brent)
 import Nautilus.ODE (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve)
@@ -67,7 +68,8 @@ export (
   smoke_optim, smoke_interpolation, smoke_cg_solve,
   smoke_sde, smoke_linalg_inv, smoke_integrate_adaptive,
   smoke_integrate_hl, smoke_curvefit, smoke_distributions_p4,
-  smoke_stats_p4
+  smoke_stats_p4,
+  smoke_qr
 )
 
 def smoke_poly(x: f32) -> f32 = {
@@ -324,6 +326,14 @@ def smoke_distributions_p4() -> f32 = {
   s2 = add(add(add(bep, bec), fp), fc)
   s3 = add(add(wp, wc), wi)
   add(add(s1, s2), s3)
+}
+
+def smoke_qr(a3: tensor[3, 3, f32]) -> f32 = {
+  qr_q = qr_decompose(copy(a3))
+  qr_r = qr_decompose(a3)
+  q = qr_q.0
+  r = qr_r.1
+  add(det_3x3(q), det_3x3(r))
 }
 
 def smoke_stats_p4[n](v: tensor[n, f32]) -> f32 = {
