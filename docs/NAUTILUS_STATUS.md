@@ -16,7 +16,7 @@ hand-written adjoints.
 |---|---|---|
 | `Nautilus.Special` | 19 | runtime-verified |
 | `Nautilus.Distributions` | 38 | runtime-verified except 3 heavy sampling variants |
-| `Nautilus.LinAlg` | 26 | runtime-verified |
+| `Nautilus.LinAlg` | 28 | runtime-verified |
 | `Nautilus.Stats` | 14 | runtime-verified |
 | `Nautilus.Distance` | 8 | runtime-verified |
 | `Nautilus.Roots` | 3 | runtime-verified |

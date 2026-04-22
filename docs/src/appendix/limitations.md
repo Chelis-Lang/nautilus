@@ -29,10 +29,15 @@ could add these as builtins.
 
 ## Linear algebra
 
-**No general-n eigenvalue/SVD/LU/QR.** Only 2x2 and 3x3 closed-form
-inverses, solves, eigenvalues, and Cholesky are available. `cg_solve`
-provides iterative SPD linear solve at general n. General-n
-decompositions are deferred to a future phase.
+**No general-n eigenvalue/SVD.** `lu_solve`, `qr_decompose`, and `cholesky_n`
+are now available at general n (alpha stability). Only 2x2 and 3x3 closed-form
+inverses, solves, and eigenvalues remain fixed-size. `cg_solve` provides
+iterative SPD linear solve at general n. General-n SVD is planned.
+
+**`lu_solve` has no partial pivoting.** Requires all leading submatrices of A
+to be nonsingular. Well-conditioned matrices that need row swaps (e.g.,
+`[[0,1],[1,0]]`) produce NaN instead of correct results. Partial pivoting is
+planned.
 
 ## Optimization
 
