@@ -47,6 +47,7 @@ TOL = {
     "distributions/chi_squared": {"abs": 5.0e-5, "rel": 5.0e-5},
     "distributions/student_t":   {"abs": 1.0e-6, "rel": 1.0e-6},
     "linalg/basic":              {"abs": 1.0e-5, "rel": 1.0e-5},
+    "linalg/cholesky_n":         {"abs": 5.0e-5, "rel": 5.0e-5},
     "roots/scalar":              {"abs": 1.0e-8, "rel": 1.0e-8},
     "ode/scalar":                {"abs": 5.0e-7, "rel": 5.0e-7},
     "stats/vector":              {"abs": 1.0e-6, "rel": 1.0e-6},
@@ -338,6 +339,33 @@ def goldens_linalg() -> dict[str, dict]:
         "l2_v":     float(np.linalg.norm(v)),
         "l2_w":     float(np.linalg.norm(w)),
         **TOL["linalg/basic"],
+    }
+
+    # General-n Cholesky: SPD matrices of several sizes
+    # Generate A = M M^T + eps I for well-conditioned SPD
+    chol_cases = []
+    for n in (2, 3, 4, 5, 6):
+        M_ = rng.standard_normal((n, n))
+        A_ = (M_ @ M_.T) + 0.1 * np.eye(n)
+        L_ = np.linalg.cholesky(A_)
+        chol_cases.append({
+            "label": f"spd_{n}x{n}",
+            "n": n,
+            "A": A_.tolist(),
+            "L": L_.tolist(),
+        })
+    # Simple hand-checked 3x3
+    A_hc = [[4.0, 2.0, 2.0], [2.0, 5.0, 3.0], [2.0, 3.0, 6.0]]
+    L_hc = np.linalg.cholesky(np.array(A_hc))
+    chol_cases.append({
+        "label": "handcheck_3x3",
+        "n": 3,
+        "A": A_hc,
+        "L": L_hc.tolist(),
+    })
+    g["linalg/cholesky_n.json"] = {
+        "cases": chol_cases,
+        **TOL["linalg/cholesky_n"],
     }
 
     return g

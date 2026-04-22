@@ -1074,7 +1074,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `weibull_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Closed-form |
 | `weibull_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Closed-form |
 
-### Nautilus.LinAlg (26 exports)
+### Nautilus.LinAlg (27 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
@@ -1104,6 +1104,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `solve_3x3` | `(a: tensor[3, 3, f32], b: tensor[3, f32]) -> tensor[3, f32]` | `stable` | Fixed 3x3, via inv_3x3 + matvec |
 | `eig_2x2_real` | `(a: tensor[2, 2, f32]) -> (f32, f32)` | `stable` | Fixed 2x2, returns tuple of eigenvalues, NaN if complex |
 | `cholesky_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` | Fixed 2x2, lower-triangular, NaN if not SPD |
+| `cholesky_n` | `[n](a: tensor[n, n, f32]) -> tensor[n, n, f32]` | `alpha` | General-n column-by-column Cholesky, lower-triangular, SPD assumed (no explicit check) |
 
 ### Nautilus.Stats (14 exports)
 

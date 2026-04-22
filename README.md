@@ -13,7 +13,7 @@ adjoints. Automatic differentiation flows through tensor-op composition.
 |---|---|
 | `Nautilus.Special` | erf, erfinv, log_gamma, digamma, trigamma, beta, lbeta, Bessel (J0/J1/Y0/Y1/I0/I1/K0/K1), Airy (Ai/Bi), elliptic integrals (K/E) |
 | `Nautilus.Distributions` | Normal, LogNormal, Uniform, Exponential, Gamma, Chi-squared, Student-t, Poisson, Binomial, Beta, F, Weibull. PDF, CDF, inverse CDF, and sampling where applicable |
-| `Nautilus.LinAlg` | transpose, matmul, gram, aat, det (2x2, 3x3), inv, solve, eigenvalues, Cholesky (2x2), conjugate gradient (general-n SPD), vector ops |
+| `Nautilus.LinAlg` | transpose, matmul, gram, aat, det (2x2, 3x3), inv, solve, eigenvalues, Cholesky (2x2 + general-n), conjugate gradient (general-n SPD), vector ops |
 | `Nautilus.Stats` | mean, variance, std, skewness, kurtosis, median, min, max, range, quantile, percentile, trimmed mean, covariance, correlation |
 | `Nautilus.Distance` | Euclidean, Manhattan, Chebyshev, cosine, Mahalanobis |
 | `Nautilus.Roots` | bisection, Newton, Brent |
@@ -39,7 +39,7 @@ tar xzf chelis-v0.1.18-linux-x86_64.tar.gz
 export PATH="$PWD/chelis-v0.1.18-linux-x86_64/bin:$PATH"
 
 chelis reef build
-python tests/run_numeric_tests.py    # 895 scipy-parity assertions
+python tests/run_numeric_tests.py    # 994 scipy-parity assertions
 ```
 
 ## Tests
@@ -49,7 +49,7 @@ links against `libchelis_runtime.a`, and compares outputs against
 scipy/numpy reference values checked into `tests/goldens/`.
 
 ```sh
-python tests/run_numeric_tests.py      # 895 numerical assertions
+python tests/run_numeric_tests.py      # 994 numerical assertions
 python scripts/gen_goldens.py --check  # verify goldens match scipy
 python tests/run_static_checks.py      # export consistency
 python scripts/extract_stability.py --check

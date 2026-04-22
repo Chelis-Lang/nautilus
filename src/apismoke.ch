@@ -24,7 +24,8 @@ import Nautilus.LinAlg (
   scale_vec, matvec, vecmat,
   det_2x2, det_3x3,
   la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve,
-  inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2
+  inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2,
+  cholesky_n
 )
 import Nautilus.Roots (bisection, newton, brent)
 import Nautilus.ODE (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve)
@@ -263,13 +264,15 @@ def smoke_linalg_inv(
   sol3 = solve_3x3(copy(a3), b3)
   eigs = eig_2x2_real(copy(a2))
   ch2 = cholesky_2x2(a2)
+  chn = cholesky_n(copy(a3))
   d_inv2 = det_2x2(inv2)
   d_inv3 = det_3x3(inv3)
   d_ch2  = det_2x2(ch2)
+  d_chn  = det_3x3(chn)
   n_sol2 = l2_norm_vec(sol2)
   n_sol3 = l2_norm_vec(sol3)
   eig_sum = add(eigs.0, eigs.1)
-  add(add(add(add(add(d_inv2, d_inv3), d_ch2), n_sol2), n_sol3), eig_sum)
+  add(add(add(add(add(add(d_inv2, d_inv3), d_ch2), d_chn), n_sol2), n_sol3), eig_sum)
 }
 
 def smoke_integrate_adaptive_fn(x: f32) -> f32 = mul(x, x)
