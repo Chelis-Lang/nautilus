@@ -341,19 +341,24 @@ def goldens_linalg() -> dict[str, dict]:
         **TOL["linalg/basic"],
     }
 
-    # General-n Cholesky: SPD matrices of several sizes
-    # Generate A = M M^T + eps I for well-conditioned SPD
+    # General-n Cholesky: fixed diagonal-dominant SPD matrices (no RNG, drift-stable)
+    _chol_fixed = [
+        ("spd_2x2", 2, [[4.0, 1.0], [1.0, 3.0]]),
+        ("spd_3x3", 3, [[6.0, 2.0, 1.0], [2.0, 5.0, 2.0], [1.0, 2.0, 4.0]]),
+        ("spd_4x4", 4, [[4.0, 0.5, 0.2, 0.1], [0.5, 5.0, 0.3, 0.2],
+                        [0.2, 0.3, 6.0, 0.4], [0.1, 0.2, 0.4, 7.0]]),
+        ("spd_5x5", 5, [[10.0, 1.0, 0.5, 0.2, 0.1], [1.0, 9.0, 1.0, 0.5, 0.2],
+                        [0.5, 1.0, 8.0, 1.0, 0.5], [0.2, 0.5, 1.0, 7.0, 1.0],
+                        [0.1, 0.2, 0.5, 1.0, 6.0]]),
+        ("spd_6x6", 6, [[12.0, 1.0, 0.5, 0.3, 0.2, 0.1], [1.0, 11.0, 1.0, 0.5, 0.3, 0.2],
+                        [0.5, 1.0, 10.0, 1.0, 0.5, 0.3], [0.3, 0.5, 1.0, 9.0, 1.0, 0.5],
+                        [0.2, 0.3, 0.5, 1.0, 8.0, 1.0], [0.1, 0.2, 0.3, 0.5, 1.0, 7.0]]),
+    ]
     chol_cases = []
-    for n in (2, 3, 4, 5, 6):
-        M_ = rng.standard_normal((n, n))
-        A_ = (M_ @ M_.T) + 0.1 * np.eye(n)
+    for label, n, A_lst in _chol_fixed:
+        A_ = np.array(A_lst)
         L_ = np.linalg.cholesky(A_)
-        chol_cases.append({
-            "label": f"spd_{n}x{n}",
-            "n": n,
-            "A": A_.tolist(),
-            "L": L_.tolist(),
-        })
+        chol_cases.append({"label": label, "n": n, "A": A_lst, "L": L_.tolist()})
     # Simple hand-checked 3x3
     A_hc = [[4.0, 2.0, 2.0], [2.0, 5.0, 3.0], [2.0, 3.0, 6.0]]
     L_hc = np.linalg.cholesky(np.array(A_hc))
