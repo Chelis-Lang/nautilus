@@ -10,15 +10,16 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Status snapshot (2026-04-22, `chelis v0.1.17`).**
+**Status snapshot (2026-04-22, `chelis v0.1.18`).**
 
 - Completed in Nautilus: P0 per-row stability column, P1 fast-`chelis eval`
   benchmark, P2 adaptive-step ODE integrator, P2 `bessel_y1` precision/stability
   fix.
-- Remaining unblocked Nautilus-only work: none.
-- Remaining work that now depends on upstream Chelis fixes: multi-parameter
-  Levenberg-Marquardt (Jacobian/autodiff surface) and general-`n` LinAlg
-  decompositions (generic fold/control-flow lowering on the build path).
+- Remaining Nautilus work **now unblocked on `v0.1.18`**: general-`n` Cholesky
+  (the fold/control-flow compiler blocker cleared — not yet implemented).
+- Remaining work still dependent on upstream Chelis fixes: multi-parameter
+  Levenberg-Marquardt (tensor-valued `grad` on the native path still emits a
+  placeholder helper instead of a real gradient).
 
 ---
 
@@ -166,20 +167,22 @@ typechecker, specific module) the upstream team can target.
 
 ## Blocked: P1 Multi-Parameter Levenberg-Marquardt
 
-**Current blocker (2026-04-22, re-checked on `chelis v0.1.17`).** The blocker
-remains but the failure mode has diverged into two parts. The inline
-`grad(f)(x)` pattern now produces a **structured build-time diagnostic** —
-`` `chelis build --target c` can't lower these defs — their body contains a
-higher-order application whose callee isn't a named fn (commonly
-`grad(f)(args)` where f isn't a plain top-level symbol). Add a named wrapper,
-pass the fn directly as an argument, or rewrite the callsite `` — which is
-genuine progress over the invalid C of earlier releases. However the suggested
-local-binding rewrite (`g = grad(f); g(x)`) **compiles but is silently wrong**:
-the binding lowers as `int g = 0`, the call passes `chelis_scalar_tensor_from_f64(g)`
-instead of `x`, and the grad helper body is just `outputs[0] = inputs[0]` —
-i.e. the grad computation is dropped and the function segfaults at runtime on
-any real invocation. Nautilus still cannot rely on tensor-valued gradients at
-runtime for a real LM implementation.
+**Current blocker (2026-04-22, re-checked on `chelis v0.1.18`).** The blocker
+remains at the semantic level. Real progress on the DX side: the bad call
+patterns (inline `grad(f)(x)` and local binding `g = grad(f); g(x)`) are now
+both rejected at build time with a detailed diagnostic listing a specific
+"compiling workaround" — pass the fn-to-differentiate as a parameter of the
+enclosing def, locally bind a wrapper, call `grad(local, wrt=(arg))(arg)`,
+and reduce via `tensor_to_scalar(sum(mul(v, v), 0))` or `einsum` rather than
+host-lane `fold`/`map`. But the suggested workaround does not actually
+produce a gradient: the emitted helper C body is
+`outputs[0] = chelis_contiguous(inputs[0])` — a copy of the input, not its
+gradient. Concrete call sites still fail the same build-time diagnostic. So
+we can define `lm_scalar_nparam(model, ...)` as a helper with a function
+parameter, but (a) we can't call it from any real user program without also
+building the user program through the same placeholder path, and (b) the
+placeholder returns `x` verbatim instead of `∇f(x)`. LM implementation
+therefore stays blocked until the workaround actually computes a gradient.
 
 **Driven by:** residual v0.1.0 limitation
 (`docs/NAUTILUS_STATUS.md` § 6.1) — `Nautilus.CurveFit` currently
@@ -315,29 +318,26 @@ column flips `alpha` → `stable`.
 
 ---
 
-## Blocked: P2 General-n LinAlg (LU, QR, SVD)
+## Unblocked on v0.1.18: P2 General-n LinAlg (LU, QR, SVD)
 
-**Current blocker (2026-04-22, re-checked on `chelis v0.1.17`).** Partial
-progress, unchanged since `v0.1.15`. The Nautilus-side attempt to add
-general-`n` `cholesky[n]` still fails on the build path in one of the two
-originally-documented core-owned ways:
+**Status (2026-04-22, re-checked on `chelis v0.1.18`).** **Both
+originally-documented core-owned blockers are now fixed.**
 
-1. **FIXED in `v0.1.15`, remains fixed in `v0.1.17`.** Tuple fold
-   accumulators with a tensor in slot 0 now lower correctly — `t_inner`
+1. **FIXED in `v0.1.15`, remains fixed in `v0.1.18`.** Tuple fold
+   accumulators with a tensor in slot 0 lower correctly — `t_inner`
    is declared `chelis_tensor*` in the emitted C and populated via
-   `chelis_value_as_tensor`. The historical "`l_inner` as int" symptom
-   no longer reproduces.
-2. **Still blocking in `v0.1.17`.** Control flow inside the generic fold
-   body still fails on tensor-valued results. Current symptom is the same
-   as on `v0.1.15`/`v0.1.16`: for
+   `chelis_value_as_tensor`.
+2. **FIXED in `v0.1.18`.** Control flow inside the generic fold body
+   over tensor-valued results now lowers correctly. For
    `new_t = if cond then copy(t_inner) else t_inner`, the C backend
-   declares `int new_t` and then writes `new_t = t_inner`
-   (`chelis_tensor *` to `int`), which fails `gcc` compilation. The
-   downstream effect is identical: per-iteration conditional branching
-   on a tensor accumulator inside `fold` is unusable.
+   declares `chelis_tensor* new_t`, both branches assign tensor values,
+   and the enclosing tuple is constructed with
+   `chelis_value_from_tensor`. Runtime-verified on a semantic probe
+   where the two branches return different tensors — compiles and
+   runs correctly.
 
-Until core limit (2) is fixed, do not treat even general-`n` Cholesky as
-Nautilus-unblocked. LU / QR / SVD remain further behind it.
+General-`n` Cholesky is therefore now implementable. LU / QR / SVD follow
+behind it once Cholesky ships. Implementation work not yet started.
 
 **Driven by:** residual v0.1.0 limitation — fixed-size 2x2/3x3 only
 for inverse/solve/eigenvalue/Cholesky. General-n is deferred but is
@@ -397,10 +397,13 @@ updated with a general-n LinAlg benchmark table.
 
 ## Remaining Execution Order
 
-1. **Upstream Chelis Jacobian surface for multi-parameter LM.**
-   Nautilus should resume `lm_scalar_nparam` only after the Jacobian path is
-   available without inventing a second derivative API.
-2. **Upstream Chelis generic-fold/control-flow lowering for general-`n`
-   linalg.** Cholesky is the first credible downstream proving ground.
-3. **Then resume Nautilus post-v0.1.0 scope in this order:** multi-parameter LM,
-   then general-`n` Cholesky, then LU / QR / SVD with the documented AD caveats.
+1. **Nautilus-side: implement general-`n` `cholesky[n]`.** The fold /
+   control-flow blocker cleared in `v0.1.18`, so this is now unblocked. Ship
+   as `alpha`, with a numpy-generated golden and a small SPD test matrix.
+2. **Upstream Chelis: make the "compiling today" grad workaround actually
+   compute a gradient at runtime**, or ship a separately-namespaced real
+   Jacobian surface. Without that, `lm_scalar_nparam` stays blocked even
+   though the error reporting is now excellent.
+3. **Then resume Nautilus post-v0.1.0 scope in this order:** general-`n`
+   Cholesky, then LU / QR / SVD with the documented AD caveats, then
+   multi-parameter LM once (2) lands.

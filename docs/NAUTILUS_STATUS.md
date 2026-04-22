@@ -1,7 +1,7 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the validated `chelis v0.1.17` toolchain.
+repository state on the validated `chelis v0.1.18` toolchain.
 
 ## Scope
 
@@ -89,28 +89,33 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to `chelis v0.1.17` exactly via `reef.toml`.
+Nautilus is pinned to `chelis v0.1.18` exactly via `reef.toml`.
 Historical compiler/runtime bugs discovered during Nautilus P0-P3 are
 documented in `docs/UPSTREAM_BUGS.md`.
 
 For the pinned toolchain:
 
-- the originally tracked Bugs 1-5 remain fixed through `v0.1.17`
+- the originally tracked Bugs 1-5 remain fixed through `v0.1.18`
 - the currently shipped Nautilus surface is fully wired into the current
   harness and no longer upstream-blocked
-  (`895 / 895` numerical assertions on `v0.1.17`)
+  (`895 / 895` numerical assertions on `v0.1.18`)
 
-On newer upstream releases through `v0.1.17`:
+On newer upstream releases through `v0.1.18`:
 
-- validation against `v0.1.9` through `v0.1.17` found two blockers for
+- validation against `v0.1.9` through `v0.1.18` found two blockers for
   future Nautilus scope: tensor-valued `grad` on the native path, and
   tensor-valued `if` inside fold bodies
-- the tuple-fold-with-tensor-slot-0 sub-blocker was fixed in `v0.1.15`
-  and remains fixed in `v0.1.17`; the control-flow-in-fold sub-blocker
-  remains unchanged in `v0.1.17`; for the tensor-valued `grad` blocker,
-  `v0.1.17` added a structured build-time diagnostic for the inline
-  `grad(f)(x)` pattern (actual progress) but the suggested local-binding
-  rewrite silently lowers the grad to a no-op and segfaults at runtime
+- the generic fold / control-flow blocker is **fully cleared in
+  `v0.1.18`** — both sub-(a) (tuple fold with tensor in slot 0) and
+  sub-(b) (tensor-valued `if` inside fold body) now lower correctly and
+  run correctly at runtime; general-`n` Cholesky is now unblocked at
+  the compiler-support level
+- the tensor-valued `grad` blocker is still open at the semantic level
+  on `v0.1.18`: bad call patterns now get a thorough build-time
+  diagnostic with a suggested workaround, but the suggested workaround
+  emits a placeholder helper that drops the grad (`outputs[0] =
+  chelis_contiguous(inputs[0])`), so multi-parameter LM still cannot
+  compute a real gradient
 - those blockers affect next-up work such as richer LM and general-n
   Cholesky, not the currently shipped Nautilus surface
 
