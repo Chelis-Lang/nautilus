@@ -28,7 +28,7 @@ cd nautilus
 chelis reef build
 ```
 
-This produces `dist/nautilus-0.1.3.chb`, the reef package that other
+This produces `dist/nautilus-0.1.4.chb`, the reef package that other
 Chelis projects can depend on.
 
 ## Verify the installation
