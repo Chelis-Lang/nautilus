@@ -540,6 +540,8 @@ chelis_tensor* diag(chelis_tensor* a);
 chelis_tensor* trace_mat(chelis_tensor* a);
 chelis_tensor* cholesky_2x2(chelis_tensor* a);
 chelis_tensor* cholesky_n(chelis_tensor* a);
+/* lu_solve: N×N matrix + N vector -> N vector */
+chelis_tensor* lu_solve(chelis_tensor* a, chelis_tensor* b);
 
 /* tensor-output, two-tensor-input (matrix) */
 chelis_tensor* matmul_wrap(chelis_tensor* a, chelis_tensor* b);
@@ -1026,6 +1028,15 @@ int main(int argc, char** argv) {
         chelis_tensor* mat = make_mat(n, n, a+1);
         chelis_tensor* r = cholesky_n(mat);
         print_mat(r);
+        return 0;
+    }
+    /* lu_solve: N, N*N (A), N (b) -> vec(N) */
+    if (!strcmp(fn, "lu_solve")) {
+        int n = (int)a[0];
+        chelis_tensor* mat = make_mat(n, n, a+1);
+        chelis_tensor* bv = make_vec(n, a+1+n*n);
+        chelis_tensor* r = lu_solve(mat, bv);
+        print_vec(r);
         return 0;
     }
 
@@ -1824,6 +1835,21 @@ def main() -> int:
         flat_exp = [v for row in expected for v in row]
         la_run_vec(f"cholesky_n({label})", "cholesky_n",
                    [float(n)] + flat_A, flat_exp, atol_chn, rtol_chn)
+
+    print("== LinAlg: lu_solve ==")
+    g_lu = golden("linalg/lu_solve.json")
+    atol_lu, rtol_lu = g_lu["abs"], g_lu["rel"]
+    for case in g_lu["cases"]:
+        label = case["label"]
+        n = case["n"]
+        A = case["A"]
+        b_vec = case["b"]
+        x_exp = case["x"]
+        flat_A = [v for row in A for v in row]
+        flat_b = [float(v) for v in b_vec]
+        flat_x = [float(v) for v in x_exp]
+        la_run_vec(f"lu_solve({label})", "lu_solve",
+                   [float(n)] + flat_A + flat_b, flat_x, atol_lu, rtol_lu)
 
     # --- SDE tensor-path tests ---
     print("== SDE ==")

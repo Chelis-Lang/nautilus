@@ -25,7 +25,8 @@ import Nautilus.LinAlg (
   det_2x2, det_3x3,
   la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve,
   inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2,
-  cholesky_n
+  cholesky_n,
+  lu_solve
 )
 import Nautilus.Roots (bisection, newton, brent)
 import Nautilus.ODE (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve)
@@ -237,6 +238,14 @@ def smoke_cg_solve[n](
   x0: tensor[n, f32]
 ) -> f32 = {
   x = cg_solve(a_mat, b, x0, cast(1.0e-10, f32), cast(100, int64))
+  l2_norm_vec(x)
+}
+
+def smoke_lu_solve(
+  a3: tensor[3, 3, f32],
+  b3: tensor[3, f32]
+) -> f32 = {
+  x = lu_solve(a3, b3)
   l2_norm_vec(x)
 }
 

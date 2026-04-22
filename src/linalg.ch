@@ -10,7 +10,8 @@ export (
   cg_solve,
   inv_2x2, inv_3x3, solve_2x2, solve_3x3,
   eig_2x2_real, cholesky_2x2,
-  cholesky_n
+  cholesky_n,
+  lu_solve
 )
 
 def transpose[m, n](a: tensor[m, n, f32]) -> tensor[n, m, f32] = permute(a, 1, 0)
@@ -145,9 +146,88 @@ def la_mask_ge_j_f32[n](j: int64, template: tensor[n, f32]) -> tensor[n, f32] = 
   to_tensor(map(fn (i: int64) -> if gte(i, j) then cast(1.0, f32) else cast(0.0, f32), idxs))
 }
 
+def la_mask_gt_j_f32[n](j: int64, template: tensor[n, f32]) -> tensor[n, f32] = {
+  items_len = len(to_list(copy(template)))
+  idxs = range(cast(0, int64), items_len)
+  to_tensor(map(fn (i: int64) -> if gt(i, j) then cast(1.0, f32) else cast(0.0, f32), idxs))
+}
+
 def la_elementwise_mul_vec[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32] =
   to_tensor(map(fn (pair: (f32, f32)) -> mul(pair.0, pair.1),
                 zip(to_list(a), to_list(b))))
+
+def la_lu_compact_step[n](
+  lu: tensor[n, n, f32],
+  j: int64
+) -> tensor[n, n, f32] = {
+  template = diag(copy(lu))
+  e_j = la_basis_n_f32(j, cast(1.0, f32), copy(template))
+  u_col_j = matvec(copy(lu), copy(e_j))
+  u_jj = inner_product(copy(u_col_j), copy(e_j))
+  inv_ujj = div(cast(1.0, f32), u_jj)
+  m_col = scale_vec(copy(u_col_j), inv_ujj)
+  m_gt = la_elementwise_mul_vec(copy(m_col), la_mask_gt_j_f32(j, copy(template)))
+  u_row_j_raw = vecmat(copy(e_j), copy(lu))
+  u_row_j = la_elementwise_mul_vec(u_row_j_raw, la_mask_ge_j_f32(j, copy(template)))
+  rank1_u = einsum("i,j->ij", copy(m_gt), copy(u_row_j))
+  lu_u = sub(lu, rank1_u)
+  m_l = la_elementwise_mul_vec(m_col, la_mask_gt_j_f32(j, template))
+  col_update = einsum("i,j->ij", m_l, e_j)
+  add(lu_u, col_update)
+}
+
+def la_lu_fwd_step[n](
+  lu: tensor[n, n, f32],
+  y_acc: tensor[n, f32],
+  i: int64
+) -> tensor[n, f32] = {
+  template = diag(copy(lu))
+  e_i = la_basis_n_f32(i, cast(1.0, f32), copy(template))
+  l_row_i = vecmat(copy(e_i), copy(lu))
+  ones = la_mask_ge_j_f32(cast(0, int64), copy(template))
+  mask_ge_i = la_mask_ge_j_f32(i, template)
+  mask_lt_i = la_vec_sub(ones, mask_ge_i)
+  l_left = la_elementwise_mul_vec(l_row_i, mask_lt_i)
+  dot_val = inner_product(l_left, copy(y_acc))
+  la_vec_saxpy(neg(dot_val), y_acc, e_i)
+}
+
+def la_lu_bwd_step[n](
+  lu: tensor[n, n, f32],
+  x_acc: tensor[n, f32],
+  i: int64,
+  n_len_m1: int64
+) -> tensor[n, f32] = {
+  template = diag(copy(lu))
+  i_rev = sub(n_len_m1, i)
+  e_ir = la_basis_n_f32(i_rev, cast(1.0, f32), copy(template))
+  u_row_ir = vecmat(copy(e_ir), copy(lu))
+  mask_gt_ir = la_mask_gt_j_f32(i_rev, copy(template))
+  u_right = la_elementwise_mul_vec(copy(u_row_ir), mask_gt_ir)
+  dot_off = inner_product(u_right, copy(x_acc))
+  u_ii = inner_product(u_row_ir, copy(e_ir))
+  x_ir = inner_product(copy(x_acc), copy(e_ir))
+  x_new = div(sub(x_ir, dot_off), u_ii)
+  correction = sub(x_new, x_ir)
+  la_vec_saxpy(correction, x_acc, e_ir)
+}
+
+def lu_solve[n](a: tensor[n, n, f32], b: tensor[n, f32]) -> tensor[n, f32] = {
+  template = diag(copy(a))
+  n_len = len(to_list(copy(template)))
+  n_len_m1 = sub(n_len, cast(1, int64))
+  lu = fold(
+    fn (lu_acc: tensor[n, n, f32], j: int64) -> la_lu_compact_step(lu_acc, j),
+    a,
+    range(cast(0, int64), n_len))
+  lu_fwd = copy(lu)
+  y = fold(
+    fn (y_acc: tensor[n, f32], i: int64) -> la_lu_fwd_step(copy(lu_fwd), y_acc, i),
+    b, range(cast(0, int64), n_len))
+  fold(
+    fn (x_acc: tensor[n, f32], i: int64) -> la_lu_bwd_step(copy(lu), x_acc, i, n_len_m1),
+    y, range(cast(0, int64), n_len))
+}
 
 def la_chol_col_update[n](
   a_mat: tensor[n, n, f32],
