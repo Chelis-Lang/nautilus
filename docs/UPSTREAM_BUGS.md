@@ -5,29 +5,42 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-Summary as of **v0.1.19**:
+Summary as of **v0.1.20**:
 
 - Historical Bugs 1–5 below are fixed in the released compiler line through
   `v0.1.7`, and the pinned Nautilus surface remains fully wired into the
-  current runtime harness on the validated `v0.1.19` toolchain
+  current runtime harness on the validated `v0.1.20` toolchain
   (`994 / 994` numerical assertions pass).
-- Re-validation against `v0.1.9`–`v0.1.19` on the two **new** post-v0.1.7
+- Re-validation against `v0.1.9`–`v0.1.20` on the two **new** post-v0.1.7
   blockers for the remaining Nautilus next-up scope:
   - **generic fold/control-flow lowering on tensor accumulators is
     FULLY FIXED (since `v0.1.18`).** Both sub-blockers cleared: (a) tuple
     fold with a tensor in slot 0, and (b) tensor-valued `if` inside the
     fold body. General-`n` Cholesky shipped in Nautilus v0.1.3.
   - tensor-valued `grad` at the C-backend lowering level remains blocked
-    through `v0.1.19`. `v0.1.19` introduced a new `grad(expr, wrt = var)`
+    through `v0.1.20`. `v0.1.19` introduced a new `grad(expr, wrt = var)`
     expression syntax returning `(value, gradient)` tuples (type-checks at
-    score 1.0), and changed multi-arg HOF calls from `model(a, b)` to
-    `model((a, b))` for `(A, B) -> C` function types (curried `A -> B -> C`
-    forms unaffected — Nautilus uses curried types throughout). Despite
-    the syntax improvement, `grad(expr, wrt = var)` still fails
-    `chelis build` with the same "can't lower" diagnostic, and the
-    `grad(local, wrt=(arg))(arg)` workaround still emits a placeholder
-    that drops the gradient (`outputs[0] = chelis_contiguous(inputs[0])`).
+    score 1.0). Despite the syntax improvement, `grad(expr, wrt = var)`
+    still fails `chelis build` in v0.1.20 with the error: "can't lower
+    these defs — their body applies/binds `grad` (or `vmap`) in a position
+    the host lane can't resolve". The workaround path `grad(local,
+    wrt=(arg))(arg)` is the only form that builds. Probe also confirms
+    `grad` inside a fold body fails build (the error explicitly states
+    "`grad` through host-lane `fold`/`map` is not currently supported").
     Multi-parameter LM stays blocked.
+
+  **v0.1.20 validation findings (2026-04-22):**
+  - `chelis check` all 21 `src/*.ch` modules: all score 1.0, zero errors.
+  - `chelis reef build`: produces `dist/nautilus-0.1.4.chb` cleanly.
+  - `tests/run_numeric_tests.py`: `994 / 994` numerical assertions passed.
+  - Grad probe (`grad(loss, wrt = theta)` where `loss = einsum("i,i->", v,
+    v)`): `chelis check` passes score 1.0; `chelis build` fails with
+    "can't lower" diagnostic. Blocker persists unchanged from v0.1.19.
+  - Fold-grad probe (`grad` used inside fold body via `jacobian_col`):
+    `chelis check` passes score 1.0; `chelis build` fails with same
+    "can't lower" diagnostic, additionally noting "`grad` through
+    host-lane `fold`/`map` is not currently supported". Both the direct
+    and fold-wrapped grad paths remain blocked.
 
 Original historical summary as of **v0.1.6** — original six bugs all fixed, one
 new bug found:
