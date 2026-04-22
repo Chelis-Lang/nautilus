@@ -29,6 +29,16 @@
         [0.2, 0.5, 0.5, 2.0]
       ],
       "sigma": [6.029300598975757, 3.7685460606550953, 2.4145639330229254, 1.7875894073462253]
+    },
+    {
+      "label": "n2_nearly_equal_sv",
+      "n": 2,
+      "A": [
+        [1.0, 0.0],
+        [0.0, 1.0001]
+      ],
+      "sigma": [1.0001, 1.0],
+      "note": "Nearly-equal singular values; G is already diagonal so Jacobi converges in 0 steps. Tests the skip-rotation path."
     }
   ],
   "abs": 0.001,

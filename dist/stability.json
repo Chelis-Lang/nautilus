@@ -93,6 +93,7 @@
     "scale_vec": "stable",
     "solve_2x2": "stable",
     "solve_3x3": "stable",
+    "svd_n": "alpha",
     "trace_mat": "stable",
     "trace_scalar": "stable",
     "transpose": "stable",
