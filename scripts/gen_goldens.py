@@ -48,6 +48,7 @@ TOL = {
     "distributions/student_t":   {"abs": 1.0e-6, "rel": 1.0e-6},
     "linalg/basic":              {"abs": 1.0e-5, "rel": 1.0e-5},
     "linalg/cholesky_n":         {"abs": 5.0e-5, "rel": 5.0e-5},
+    "linalg/lu_solve":           {"abs": 1.0e-4, "rel": 1.0e-4},
     "roots/scalar":              {"abs": 1.0e-8, "rel": 1.0e-8},
     "ode/scalar":                {"abs": 5.0e-7, "rel": 5.0e-7},
     "stats/vector":              {"abs": 1.0e-6, "rel": 1.0e-6},
@@ -373,6 +374,34 @@ def goldens_linalg() -> dict[str, dict]:
         **TOL["linalg/cholesky_n"],
     }
 
+    return g
+
+
+def goldens_lu_solve() -> dict[str, dict]:
+    import numpy as np
+    import numpy.linalg as nla
+    g = {}
+    # Hardcoded well-conditioned systems (no RNG — drift-stable)
+    cases = []
+    # n=2: diagonal-dominant
+    A2 = [[4.0, 1.0], [2.0, 3.0]]
+    b2 = [1.0, 2.0]
+    x2 = nla.solve(np.array(A2), np.array(b2)).tolist()
+    cases.append({"label": "n2_basic", "n": 2, "A": A2, "b": b2, "x": x2})
+    # n=3
+    A3 = [[6.0, 2.0, 1.0], [2.0, 5.0, 2.0], [1.0, 2.0, 4.0]]
+    b3 = [1.0, 2.0, 3.0]
+    x3 = nla.solve(np.array(A3), np.array(b3)).tolist()
+    cases.append({"label": "n3_spd", "n": 3, "A": A3, "b": b3, "x": x3})
+    # n=4
+    A4 = [[8.0, 2.0, 1.0, 0.5],
+          [2.0, 7.0, 1.5, 1.0],
+          [1.0, 1.5, 6.0, 0.5],
+          [0.5, 1.0, 0.5, 5.0]]
+    b4 = [1.0, 2.0, 3.0, 4.0]
+    x4 = nla.solve(np.array(A4), np.array(b4)).tolist()
+    cases.append({"label": "n4_diag_dom", "n": 4, "A": A4, "b": b4, "x": x4})
+    g["linalg/lu_solve.json"] = {"cases": cases, **TOL["linalg/lu_solve"]}
     return g
 
 
@@ -803,6 +832,7 @@ def check_goldens() -> int:
     for cat, gen in (("special", goldens_special),
                      ("distributions", goldens_distributions),
                      ("linalg", goldens_linalg),
+                     ("linalg_lu_solve", goldens_lu_solve),
                      ("roots", goldens_roots),
                      ("ode", goldens_ode),
                      ("stats", goldens_stats),
@@ -911,6 +941,7 @@ def main() -> int:
     all_goldens.update(goldens_special())
     all_goldens.update(goldens_distributions())
     all_goldens.update(goldens_linalg())
+    all_goldens.update(goldens_lu_solve())
     all_goldens.update(goldens_roots())
     all_goldens.update(goldens_ode())
     all_goldens.update(goldens_stats())
