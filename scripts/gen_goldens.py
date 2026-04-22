@@ -845,6 +845,19 @@ def check_goldens() -> int:
                                             print(f"DRIFT {rel}:{k}.{dk} have={efv} fresh={fv}")
                                             drift += 1
                                             break
+                                    elif isinstance(fv, list) and isinstance(efv, list):
+                                        try:
+                                            fa = np.array(fv, dtype=float).ravel()
+                                            ea = np.array(efv, dtype=float).ravel()
+                                            ok = (len(fa) == len(ea) and
+                                                  all(check_close(x, y, tol_abs, tol_rel)
+                                                      for x, y in zip(fa, ea)))
+                                        except (TypeError, ValueError):
+                                            ok = fv == efv
+                                        if not ok:
+                                            print(f"DRIFT {rel}:{k}.{dk} (value changed)")
+                                            drift += 1
+                                            break
                                     elif fv != efv:
                                         print(f"DRIFT {rel}:{k}.{dk} (key changed)")
                                         drift += 1
