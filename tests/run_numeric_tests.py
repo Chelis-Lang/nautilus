@@ -542,6 +542,8 @@ chelis_tensor* cholesky_2x2(chelis_tensor* a);
 chelis_tensor* cholesky_n(chelis_tensor* a);
 /* lu_solve: N×N matrix + N vector -> N vector */
 chelis_tensor* lu_solve(chelis_tensor* a, chelis_tensor* b);
+/* qr_decompose: N×N matrix -> tuple (Q: N×N, R: N×N) */
+chelis_tuple* qr_decompose(chelis_tensor* a);
 
 /* tensor-output, two-tensor-input (matrix) */
 chelis_tensor* matmul_wrap(chelis_tensor* a, chelis_tensor* b);
@@ -1040,6 +1042,19 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    /* qr_decompose: N, N*N elements -> Q (N*N) then R (N*N), one line each */
+    if (!strcmp(fn, "qr_decompose")) {
+        int n = (int)a[0];
+        chelis_tensor* mat = make_mat(n, n, a+1);
+        chelis_tuple* tup = qr_decompose(mat);
+        chelis_value v0 = chelis_tuple_get(tup, 0);
+        chelis_value v1 = chelis_tuple_get(tup, 1);
+        chelis_tensor* Q = chelis_value_as_tensor(v0);
+        chelis_tensor* R = chelis_value_as_tensor(v1);
+        print_mat(Q);
+        print_mat(R);
+        return 0;
+    }
     /* cg_solve: N, tol, max_iters, N*N (A), N (b), N (x0) -> vec(N) */
     if (!strcmp(fn, "cg_solve")) {
         int n = (int)a[0];
@@ -1850,6 +1865,50 @@ def main() -> int:
         flat_x = [float(v) for v in x_exp]
         la_run_vec(f"lu_solve({label})", "lu_solve",
                    [float(n)] + flat_A + flat_b, flat_x, atol_lu, rtol_lu)
+
+    print("== LinAlg: qr_decompose ==")
+    g_qr = golden("linalg/qr_decompose.json")
+    atol_qr, rtol_qr = g_qr["abs"], g_qr["rel"]
+    for case in g_qr["cases"]:
+        label = case["label"]
+        n = case["n"]
+        A = case["A"]
+        flat_A = [v for row in A for v in row]
+        raw_qr = call_la_fn(la_binary, "qr_decompose", *([float(n)] + flat_A))
+        lines = raw_qr.strip().split("\n")
+        total += 1
+        if len(lines) < 2:
+            fails += 1
+            print(f"  FAIL qr_decompose({label}): expected 2 output lines, got {len(lines)}")
+            continue
+        flat_q = [float(x) for x in lines[0].split()]
+        flat_r = [float(x) for x in lines[1].split()]
+        if len(flat_q) != n * n or len(flat_r) != n * n:
+            fails += 1
+            print(f"  FAIL qr_decompose({label}): Q len={len(flat_q)}, R len={len(flat_r)}, expected {n*n}")
+            continue
+        import numpy as _np
+        Q = _np.array(flat_q, dtype=float).reshape(n, n)
+        R = _np.array(flat_r, dtype=float).reshape(n, n)
+        A_mat = _np.array(flat_A, dtype=float).reshape(n, n)
+        # Check Q*R ≈ A (reconstruction)
+        recon_err = _np.linalg.norm(Q @ R - A_mat, "fro")
+        total += 1
+        if recon_err > 5e-4:
+            fails += 1
+            print(f"  FAIL qr_decompose({label}) reconstruction: ||QR-A||_F={recon_err:.6g}")
+        # Check Q^T * Q ≈ I (orthogonality)
+        orth_err = _np.linalg.norm(Q.T @ Q - _np.eye(n), "fro")
+        total += 1
+        if orth_err > 5e-4:
+            fails += 1
+            print(f"  FAIL qr_decompose({label}) orthogonality: ||Q^TQ-I||_F={orth_err:.6g}")
+        # Check R is upper triangular
+        triu_err = _np.linalg.norm(R - _np.triu(R), "fro")
+        total += 1
+        if triu_err > 5e-4:
+            fails += 1
+            print(f"  FAIL qr_decompose({label}) upper triangular: ||R-triu(R)||_F={triu_err:.6g}")
 
     # --- SDE tensor-path tests ---
     print("== SDE ==")
