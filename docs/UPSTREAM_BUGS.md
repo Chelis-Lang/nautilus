@@ -5,43 +5,29 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-Summary as of **v0.1.18**:
+Summary as of **v0.1.19**:
 
 - Historical Bugs 1–5 below are fixed in the released compiler line through
   `v0.1.7`, and the pinned Nautilus surface remains fully wired into the
-  current runtime harness on the validated `v0.1.18` toolchain
-  (`994 / 994` numerical assertions pass; the `v0.1.18` fold /
-  control-flow blocker fix enabled adding a general-`n` Cholesky path
-  worth `99` of those assertions).
-- Re-validation against `v0.1.9`–`v0.1.18` on the two **new** post-v0.1.7
-  blockers for the remaining Nautilus next-up scope. On `v0.1.18`:
-  - tensor-valued `grad` still fails on the native path at the semantic
-    level. Real progress: the known-bad patterns (inline `grad(f)(x)`,
-    local binding `g = grad(f); g(x)`) are now **both rejected at build
-    time** with a detailed diagnostic that lists a specific "compiling
-    workaround" — pass the function to be differentiated as a parameter
-    of the enclosing def, locally bind a wrapper fn, call
-    `grad(local, wrt=(arg))(arg)`, and reduce with pure tensor ops
-    (`tensor_to_scalar(sum(mul(v, v), 0))` or `einsum`) rather than
-    host-lane `fold`/`map`. The referenced test
-    `build_c_tensor_grad_local_wrapper_over_function_param_builds`
-    does build, but the emitted C is a placeholder — the helper body
-    is `outputs[0] = chelis_contiguous(inputs[0])`, i.e. the grad
-    computation is dropped and a copy of the input is returned.
-    Concrete call sites (`compute_grad(my_model, x)`) still fail the
-    same build-time diagnostic. Multi-parameter LM therefore stays
-    blocked until the workaround actually computes a gradient at
-    runtime.
+  current runtime harness on the validated `v0.1.19` toolchain
+  (`994 / 994` numerical assertions pass).
+- Re-validation against `v0.1.9`–`v0.1.19` on the two **new** post-v0.1.7
+  blockers for the remaining Nautilus next-up scope:
   - **generic fold/control-flow lowering on tensor accumulators is
-    now FULLY FIXED.** Both sub-blockers clear: (a) tuple fold with a
-    tensor in slot 0 lowers correctly — this held since `v0.1.15`; (b)
-    tensor-valued `if` inside the fold body — which failed through
-    `v0.1.17` with `int new_t = t_inner` — now lowers correctly, with
-    `chelis_tensor* new_t` and proper `chelis_value_from_tensor(...)`
-    tuple construction on both branches. Runtime-verified on a
-    semantic probe where the branches return different tensors.
-    General-`n` Cholesky is now unblocked at the compiler-support
-    level.
+    FULLY FIXED (since `v0.1.18`).** Both sub-blockers cleared: (a) tuple
+    fold with a tensor in slot 0, and (b) tensor-valued `if` inside the
+    fold body. General-`n` Cholesky shipped in Nautilus v0.1.3.
+  - tensor-valued `grad` at the C-backend lowering level remains blocked
+    through `v0.1.19`. `v0.1.19` introduced a new `grad(expr, wrt = var)`
+    expression syntax returning `(value, gradient)` tuples (type-checks at
+    score 1.0), and changed multi-arg HOF calls from `model(a, b)` to
+    `model((a, b))` for `(A, B) -> C` function types (curried `A -> B -> C`
+    forms unaffected — Nautilus uses curried types throughout). Despite
+    the syntax improvement, `grad(expr, wrt = var)` still fails
+    `chelis build` with the same "can't lower" diagnostic, and the
+    `grad(local, wrt=(arg))(arg)` workaround still emits a placeholder
+    that drops the gradient (`outputs[0] = chelis_contiguous(inputs[0])`).
+    Multi-parameter LM stays blocked.
 
 Original historical summary as of **v0.1.6** — original six bugs all fixed, one
 new bug found:
@@ -81,8 +67,8 @@ new bug found:
   paths remain deferred.
 
 This section is historical. Those tensor-path issues were later fixed
-upstream and are now exercised by Nautilus's current `895 / 895`
-runtime-harness pass on the pinned `v0.1.18` toolchain.
+upstream and are now exercised by Nautilus's current `994 / 994`
+runtime-harness pass on the pinned `v0.1.19` toolchain.
 
 Original repros below were run against `chelis v0.1.3-linux-x86_64`.
 Re-verifications against subsequent releases are noted inline.

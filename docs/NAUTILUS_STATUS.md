@@ -1,7 +1,7 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the validated `chelis v0.1.18` toolchain.
+repository state on the validated `chelis v0.1.19` toolchain.
 
 ## Scope
 
@@ -89,21 +89,21 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to `chelis v0.1.18` exactly via `reef.toml`.
+Nautilus is pinned to `chelis v0.1.19` exactly via `reef.toml`.
 Historical compiler/runtime bugs discovered during Nautilus P0-P3 are
 documented in `docs/UPSTREAM_BUGS.md`.
 
 For the pinned toolchain:
 
-- the originally tracked Bugs 1-5 remain fixed through `v0.1.18`
+- the originally tracked Bugs 1-5 remain fixed through `v0.1.19`
 - the currently shipped Nautilus surface is fully wired into the current
   harness and no longer upstream-blocked
-  (`994 / 994` numerical assertions on `v0.1.18`, including the new
+  (`994 / 994` numerical assertions on `v0.1.19`, including the new
   general-`n` Cholesky path)
 
-On newer upstream releases through `v0.1.18`:
+On newer upstream releases through `v0.1.19`:
 
-- validation against `v0.1.9` through `v0.1.18` found two blockers for
+- validation against `v0.1.9` through `v0.1.19` found two blockers for
   future Nautilus scope: tensor-valued `grad` on the native path, and
   tensor-valued `if` inside fold bodies
 - the generic fold / control-flow blocker is **fully cleared in
@@ -111,14 +111,17 @@ On newer upstream releases through `v0.1.18`:
   sub-(b) (tensor-valued `if` inside fold body) now lower correctly and
   run correctly at runtime; general-`n` Cholesky is now unblocked at
   the compiler-support level
-- the tensor-valued `grad` blocker is still open at the semantic level
-  on `v0.1.18`: bad call patterns now get a thorough build-time
-  diagnostic with a suggested workaround, but the suggested workaround
-  emits a placeholder helper that drops the grad (`outputs[0] =
-  chelis_contiguous(inputs[0])`), so multi-parameter LM still cannot
-  compute a real gradient
-- those blockers affect next-up work such as richer LM and general-n
-  Cholesky, not the currently shipped Nautilus surface
+- `v0.1.19` ships a new `grad(expr, wrt = var)` expression syntax that
+  returns `(value, gradient)` tuples and type-checks at score 1.0; it
+  also changes multi-arg HOF call syntax so `(A, B) -> C` functions now
+  require tuple call `model((a, b))` (curried `A -> B -> C` forms are
+  unaffected, and all Nautilus HOF uses are curried). The tensor-valued
+  `grad` blocker at the C-backend lowering level persists: `grad(expr,
+  wrt = var)` still fails `chelis build`, and the `grad(local,
+  wrt=(arg))(arg)` workaround emits a placeholder that drops the
+  gradient at runtime. Multi-parameter LM remains blocked.
+- those blockers affect next-up work such as richer LM, not the
+  currently shipped Nautilus surface
 
 ## Known Limitations
 
