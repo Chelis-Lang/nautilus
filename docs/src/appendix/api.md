@@ -9,7 +9,7 @@ That section contains signature tables for the active Nautilus surface:
 
 - **Nautilus.Special** -- 19 special functions (erf, Bessel, Airy, elliptic integrals)
 - **Nautilus.Distributions** -- 38 exports across 12 distribution families
-- **Nautilus.LinAlg** -- 28 linear algebra operations (fixed-size and general-n)
+- **Nautilus.LinAlg** -- 29 linear algebra operations (fixed-size and general-n)
 - **Nautilus.Stats** -- 14 descriptive statistics
 - **Nautilus.Testing** -- 13 hypothesis-test helpers
 - **Nautilus.Integrate** -- 8 quadrature methods

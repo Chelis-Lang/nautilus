@@ -11,6 +11,9 @@ through FFI or opaque intrinsics, AD (automatic differentiation) via
   determinant, solve, eigenvalues, Cholesky (see [Small-N](small-n.md)).
 - **General-n iterative solver**: conjugate gradient for symmetric
   positive-definite systems (see [CG Solve](cg-solve.md)).
+- **General-n decompositions** (alpha): `lu_solve` (Doolittle LU, no pivoting),
+  `qr_decompose` (Householder QR, square), `cholesky_n` (column Cholesky, SPD),
+  `svd_n` (one-sided Jacobi SVD, square, 30n sweeps).
 - **Matrix utilities**: `transpose`, `matmul_wrap`, `gram` (A^T A),
   `aat` (A A^T), `diag`, `trace_mat`, `trace_scalar`.
 - **Vector utilities**: `l2_norm_vec`, `inner_product`, `scale_vec`,

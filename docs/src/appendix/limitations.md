@@ -29,10 +29,16 @@ could add these as builtins.
 
 ## Linear algebra
 
-**No general-n eigenvalue/SVD.** `lu_solve`, `qr_decompose`, and `cholesky_n`
+**No general-n eigenvalue.** `lu_solve`, `qr_decompose`, `cholesky_n`, and `svd_n`
 are now available at general n (alpha stability). Only 2x2 and 3x3 closed-form
 inverses, solves, and eigenvalues remain fixed-size. `cg_solve` provides
-iterative SPD linear solve at general n. General-n SVD is planned.
+iterative SPD linear solve at general n.
+
+**`svd_n` known limitations (alpha):** (a) Uses fixed 30n Jacobi sweeps — poorly
+separated singular values may not fully converge; use absolute-error tolerance
+≥ 1e-3 for sigma. (b) U columns for null-space directions of rank-deficient A
+are zero vectors (not orthonormalized); U is orthogonal only when A has full rank.
+Reconstruction `U Σ Vt ≈ A` is correct regardless.
 
 **`lu_solve` has no partial pivoting.** Requires all leading submatrices of A
 to be nonsingular. Well-conditioned matrices that need row swaps (e.g.,
