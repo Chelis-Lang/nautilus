@@ -3,18 +3,18 @@
 ## Prerequisites
 
 Nautilus requires:
-- the latest validated Chelis release, currently [Chelis v0.1.17](https://github.com/Chelis-Lang/chelis/releases/tag/v0.1.17)
+- the latest validated Chelis release, currently [Chelis v0.1.18](https://github.com/Chelis-Lang/chelis/releases/tag/v0.1.18)
 - GCC (for compiling generated C code)
 - Python 3.10+ with numpy and scipy (for running the test suite)
 
 ## Download the Chelis toolchain
 
 ```sh
-gh release download v0.1.17 \
+gh release download v0.1.18 \
   --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.1.17-linux-x86_64.tar.gz'
-tar xzf chelis-v0.1.17-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.1.17-linux-x86_64/bin:$PATH"
+  --pattern 'chelis-v0.1.18-linux-x86_64.tar.gz'
+tar xzf chelis-v0.1.18-linux-x86_64.tar.gz
+export PATH="$PWD/chelis-v0.1.18-linux-x86_64/bin:$PATH"
 ```
 
 The tarball contains `bin/chelis`, `lib/libchelis_runtime.a`, and
