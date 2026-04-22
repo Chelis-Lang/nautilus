@@ -50,6 +50,7 @@ TOL = {
     "linalg/cholesky_n":         {"abs": 5.0e-5, "rel": 5.0e-5},
     "linalg/lu_solve":           {"abs": 1.0e-4, "rel": 1.0e-4},
     "linalg/qr_decompose":       {"abs": 5.0e-5, "rel": 5.0e-5},
+    "linalg/svd_n":              {"abs": 1.0e-3, "rel": 1.0e-3},
     "roots/scalar":              {"abs": 1.0e-8, "rel": 1.0e-8},
     "ode/scalar":                {"abs": 5.0e-7, "rel": 5.0e-7},
     "stats/vector":              {"abs": 1.0e-6, "rel": 1.0e-6},
@@ -423,6 +424,23 @@ def goldens_qr_decompose() -> dict[str, dict]:
           [0.5, 1.0, 0.5, 5.0]]
     cases.append({"label": "n4_diag_dom", "n": 4, "A": A4})
     g["linalg/qr_decompose.json"] = {"cases": cases, **TOL["linalg/qr_decompose"]}
+    return g
+
+
+def goldens_svd_n() -> dict[str, dict]:
+    import numpy as np
+    g = {}
+    cases = []
+    A2 = [[3.0, 1.0], [0.5, 2.0]]
+    _, sigma2, _ = np.linalg.svd(np.array(A2))
+    cases.append({"label": "n2_basic", "n": 2, "A": A2, "sigma": sigma2.tolist()})
+    A3 = [[4.0, 1.0, 0.5], [1.0, 3.0, 1.0], [0.5, 1.0, 2.0]]
+    _, sigma3, _ = np.linalg.svd(np.array(A3))
+    cases.append({"label": "n3_sym", "n": 3, "A": A3, "sigma": sigma3.tolist()})
+    A4 = [[5.0, 1.0, 0.5, 0.2], [1.0, 4.0, 1.0, 0.5], [0.5, 1.0, 3.0, 0.5], [0.2, 0.5, 0.5, 2.0]]
+    _, sigma4, _ = np.linalg.svd(np.array(A4))
+    cases.append({"label": "n4_dense", "n": 4, "A": A4, "sigma": sigma4.tolist()})
+    g["linalg/svd_n.json"] = {"cases": cases, **TOL["linalg/svd_n"]}
     return g
 
 
@@ -855,6 +873,7 @@ def check_goldens() -> int:
                      ("linalg", goldens_linalg),
                      ("linalg_lu_solve", goldens_lu_solve),
                      ("linalg_qr_decompose", goldens_qr_decompose),
+                     ("linalg_svd_n", goldens_svd_n),
                      ("roots", goldens_roots),
                      ("ode", goldens_ode),
                      ("stats", goldens_stats),
@@ -965,6 +984,7 @@ def main() -> int:
     all_goldens.update(goldens_linalg())
     all_goldens.update(goldens_lu_solve())
     all_goldens.update(goldens_qr_decompose())
+    all_goldens.update(goldens_svd_n())
     all_goldens.update(goldens_roots())
     all_goldens.update(goldens_ode())
     all_goldens.update(goldens_stats())

@@ -544,6 +544,8 @@ chelis_tensor* cholesky_n(chelis_tensor* a);
 chelis_tensor* lu_solve(chelis_tensor* a, chelis_tensor* b);
 /* qr_decompose: N×N matrix -> tuple (Q: N×N, R: N×N) */
 chelis_tuple* qr_decompose(chelis_tensor* a);
+/* svd_n: N×N matrix -> tuple (U: N×N, sigma: N, Vt: N×N) */
+chelis_tuple* svd_n(chelis_tensor* a);
 
 /* tensor-output, two-tensor-input (matrix) */
 chelis_tensor* matmul_wrap(chelis_tensor* a, chelis_tensor* b);
@@ -1053,6 +1055,22 @@ int main(int argc, char** argv) {
         chelis_tensor* R = chelis_value_as_tensor(v1);
         print_mat(Q);
         print_mat(R);
+        return 0;
+    }
+    /* svd_n: N, N*N elements -> U (N*N), sigma (N), Vt (N*N), one line each */
+    if (!strcmp(fn, "svd_n")) {
+        int n = (int)a[0];
+        chelis_tensor* mat = make_mat(n, n, a+1);
+        chelis_tuple* tup = svd_n(mat);
+        chelis_value v0 = chelis_tuple_get(tup, 0);
+        chelis_value v1 = chelis_tuple_get(tup, 1);
+        chelis_value v2 = chelis_tuple_get(tup, 2);
+        chelis_tensor* U = chelis_value_as_tensor(v0);
+        chelis_tensor* sigma = chelis_value_as_tensor(v1);
+        chelis_tensor* Vt = chelis_value_as_tensor(v2);
+        print_mat(U);
+        print_vec(sigma);
+        print_mat(Vt);
         return 0;
     }
     /* cg_solve: N, tol, max_iters, N*N (A), N (b), N (x0) -> vec(N) */
@@ -1916,6 +1934,67 @@ def main() -> int:
         if triu_err > 5e-4:
             fails += 1
             print(f"  FAIL qr_decompose({label}) upper triangular: ||R-triu(R)||_F={triu_err:.6g}")
+
+    print("== LinAlg: svd_n ==")
+    g_svd = golden("linalg/svd_n.json")
+    atol_svd, rtol_svd = g_svd["abs"], g_svd["rel"]
+    for case in g_svd["cases"]:
+        label = case["label"]
+        n = case["n"]
+        A = case["A"]
+        flat_A = [v for row in A for v in row]
+        sigma_exp = case["sigma"]
+        raw_svd = call_la_fn(la_binary, "svd_n", *([float(n)] + flat_A))
+        lines = raw_svd.strip().split("\n")
+        total += 1
+        if len(lines) < 3:
+            fails += 1
+            print(f"  FAIL svd_n({label}): expected 3 output lines, got {len(lines)}")
+            continue
+        flat_u = [float(x) for x in lines[0].split()]
+        flat_sigma = [float(x) for x in lines[1].split()]
+        flat_vt = [float(x) for x in lines[2].split()]
+        if len(flat_u) != n * n or len(flat_sigma) != n or len(flat_vt) != n * n:
+            fails += 1
+            print(f"  FAIL svd_n({label}): U len={len(flat_u)}, sigma len={len(flat_sigma)}, Vt len={len(flat_vt)}")
+            continue
+        import numpy as _np
+        U = _np.array(flat_u, dtype=float).reshape(n, n)
+        sigma_got = _np.array(flat_sigma, dtype=float)
+        Vt = _np.array(flat_vt, dtype=float).reshape(n, n)
+        A_mat = _np.array(flat_A, dtype=float).reshape(n, n)
+        sigma_exp_arr = _np.array(sigma_exp, dtype=float)
+        # Sort both by descending sigma before comparing
+        order_got = _np.argsort(-sigma_got)
+        order_exp = _np.argsort(-sigma_exp_arr)
+        sigma_sorted = sigma_got[order_got]
+        sigma_ref = sigma_exp_arr[order_exp]
+        for i in range(n):
+            total += 1
+            err = abs(sigma_sorted[i] - sigma_ref[i])
+            rel = err / (abs(sigma_ref[i]) + 1e-30)
+            if err > atol_svd and rel > rtol_svd:
+                fails += 1
+                print(f"  FAIL svd_n({label}) sigma[{i}]: got {sigma_sorted[i]:.8g} expected {sigma_ref[i]:.8g}")
+        # Check reconstruction: U @ diag(sigma) @ Vt ≈ A
+        recon = U @ _np.diag(sigma_got) @ Vt
+        recon_err = _np.linalg.norm(recon - A_mat, "fro")
+        total += 1
+        if recon_err > 0.01:
+            fails += 1
+            print(f"  FAIL svd_n({label}) reconstruction: ||U*S*Vt-A||_F={recon_err:.6g}")
+        # Check U orthogonality
+        orth_u = _np.linalg.norm(U.T @ U - _np.eye(n), "fro")
+        total += 1
+        if orth_u > 0.01:
+            fails += 1
+            print(f"  FAIL svd_n({label}) U orthogonality: ||U^TU-I||_F={orth_u:.6g}")
+        # Check Vt orthogonality
+        orth_vt = _np.linalg.norm(Vt @ Vt.T - _np.eye(n), "fro")
+        total += 1
+        if orth_vt > 0.01:
+            fails += 1
+            print(f"  FAIL svd_n({label}) Vt orthogonality: ||Vt*Vt^T-I||_F={orth_vt:.6g}")
 
     # --- SDE tensor-path tests ---
     print("== SDE ==")
