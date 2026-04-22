@@ -56,7 +56,7 @@ mdbook build docs
 Expected runtime-harness result:
 
 ```text
-895 / 895 numerical assertions passed
+994 / 994 numerical assertions passed
 ```
 
 What those gates cover:
@@ -98,7 +98,8 @@ For the pinned toolchain:
 - the originally tracked Bugs 1-5 remain fixed through `v0.1.18`
 - the currently shipped Nautilus surface is fully wired into the current
   harness and no longer upstream-blocked
-  (`895 / 895` numerical assertions on `v0.1.18`)
+  (`994 / 994` numerical assertions on `v0.1.18`, including the new
+  general-`n` Cholesky path)
 
 On newer upstream releases through `v0.1.18`:
 

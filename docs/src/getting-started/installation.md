@@ -42,7 +42,7 @@ pip install numpy scipy
 python tests/run_numeric_tests.py
 ```
 
-You should see `895 / 895 numerical assertions passed`.
+You should see `994 / 994 numerical assertions passed`.
 
 If your `chelis` binary is not on `PATH`, set `CHELIS_BIN=/abs/path/to/chelis`
 when running the Python validation scripts.

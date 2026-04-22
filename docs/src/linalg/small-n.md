@@ -45,13 +45,19 @@ entries are NaN.
 
 ## Cholesky
 
-| Function | Signature |
-|---|---|
-| `cholesky_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` |
+| Function | Signature | Stability |
+|---|---|---|
+| `cholesky_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` |
+| `cholesky_n` | `[n](a: tensor[n, n, f32]) -> tensor[n, n, f32]` | `alpha` |
 
 Returns the lower-triangular Cholesky factor L such that A = L L^T.
-Returns NaN if the matrix is not symmetric positive-definite (symmetry
-tolerance: 1e-6).
+
+`cholesky_2x2` is the closed-form 2×2 variant — returns NaN if the
+matrix is not symmetric positive-definite (symmetry tolerance: 1e-6).
+
+`cholesky_n` is the general-`n` column-by-column variant (Banachiewicz
+form). It assumes the input is SPD and does not emit NaN markers; on a
+non-SPD matrix the output is undefined.
 
 ## Example
 

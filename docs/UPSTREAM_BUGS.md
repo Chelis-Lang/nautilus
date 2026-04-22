@@ -10,7 +10,9 @@ Summary as of **v0.1.18**:
 - Historical Bugs 1–5 below are fixed in the released compiler line through
   `v0.1.7`, and the pinned Nautilus surface remains fully wired into the
   current runtime harness on the validated `v0.1.18` toolchain
-  (`895 / 895` numerical assertions pass).
+  (`994 / 994` numerical assertions pass; the `v0.1.18` fold /
+  control-flow blocker fix enabled adding a general-`n` Cholesky path
+  worth `99` of those assertions).
 - Re-validation against `v0.1.9`–`v0.1.18` on the two **new** post-v0.1.7
   blockers for the remaining Nautilus next-up scope. On `v0.1.18`:
   - tensor-valued `grad` still fails on the native path at the semantic

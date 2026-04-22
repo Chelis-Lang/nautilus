@@ -71,6 +71,7 @@
     "aat": "stable",
     "cg_solve": "stable",
     "cholesky_2x2": "stable",
+    "cholesky_n": "alpha",
     "det_2x2": "stable",
     "det_3x3": "stable",
     "diag": "stable",

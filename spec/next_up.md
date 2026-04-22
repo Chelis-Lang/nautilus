@@ -14,9 +14,10 @@ pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
 - Completed in Nautilus: P0 per-row stability column, P1 fast-`chelis eval`
   benchmark, P2 adaptive-step ODE integrator, P2 `bessel_y1` precision/stability
-  fix.
-- Remaining Nautilus work **now unblocked on `v0.1.18`**: general-`n` Cholesky
-  (the fold/control-flow compiler blocker cleared — not yet implemented).
+  fix, **P2 general-`n` Cholesky (`cholesky_n`)** — shipped as `alpha` on the
+  `v0.1.18` toolchain with a scipy-parity golden.
+- Remaining Nautilus work unblocked on `v0.1.18`: LU / QR / SVD (same
+  compiler-surface now available) — not yet implemented.
 - Remaining work still dependent on upstream Chelis fixes: multi-parameter
   Levenberg-Marquardt (tensor-valued `grad` on the native path still emits a
   placeholder helper instead of a real gradient).
@@ -318,26 +319,32 @@ column flips `alpha` → `stable`.
 
 ---
 
-## Unblocked on v0.1.18: P2 General-n LinAlg (LU, QR, SVD)
+## Completed: P2 General-n Cholesky; next up LU / QR / SVD
 
-**Status (2026-04-22, re-checked on `chelis v0.1.18`).** **Both
-originally-documented core-owned blockers are now fixed.**
+**Status (2026-04-22, `chelis v0.1.18`).** Both originally-documented
+core-owned blockers are fixed upstream, and `cholesky_n` has shipped in
+Nautilus on top of them.
 
 1. **FIXED in `v0.1.15`, remains fixed in `v0.1.18`.** Tuple fold
-   accumulators with a tensor in slot 0 lower correctly — `t_inner`
-   is declared `chelis_tensor*` in the emitted C and populated via
-   `chelis_value_as_tensor`.
+   accumulators with a tensor in slot 0 lower correctly.
 2. **FIXED in `v0.1.18`.** Control flow inside the generic fold body
-   over tensor-valued results now lowers correctly. For
-   `new_t = if cond then copy(t_inner) else t_inner`, the C backend
-   declares `chelis_tensor* new_t`, both branches assign tensor values,
-   and the enclosing tuple is constructed with
-   `chelis_value_from_tensor`. Runtime-verified on a semantic probe
-   where the two branches return different tensors — compiles and
-   runs correctly.
+   over tensor-valued results now lowers correctly (`chelis_tensor*
+   new_t` + `chelis_value_from_tensor` in both branches, runtime-verified).
 
-General-`n` Cholesky is therefore now implementable. LU / QR / SVD follow
-behind it once Cholesky ships. Implementation work not yet started.
+`Nautilus.LinAlg.cholesky_n` is implemented as a column-by-column
+Cholesky-Banachiewicz iteration that folds over `range(0, n)` with a
+full `tensor[n, n, f32]` accumulator. Each step computes column `j` as
+`(A[:,j] - L L[j,:]^T) / sqrt(c[j])` with an index-masking step to keep
+the output lower triangular, and accumulates the new column into `L`
+via `einsum("i,j->ij", new_col, e_j) + L`. No scatter needed; everything
+runs through `matvec` / `vecmat` / `einsum`. Shipped as `alpha` — assumes
+SPD input and emits no NaN markers on non-SPD inputs. Scipy-parity
+golden at `tests/goldens/linalg/cholesky_n.json` covers n=2..6 plus one
+hand-checked 3x3.
+
+LU / QR / SVD are the next unblocked items and remain planned for a
+dedicated sub-release; they share the same fold+control-flow compiler
+surface that Cholesky validated.
 
 **Driven by:** residual v0.1.0 limitation — fixed-size 2x2/3x3 only
 for inverse/solve/eigenvalue/Cholesky. General-n is deferred but is
@@ -397,13 +404,12 @@ updated with a general-n LinAlg benchmark table.
 
 ## Remaining Execution Order
 
-1. **Nautilus-side: implement general-`n` `cholesky[n]`.** The fold /
-   control-flow blocker cleared in `v0.1.18`, so this is now unblocked. Ship
-   as `alpha`, with a numpy-generated golden and a small SPD test matrix.
-2. **Upstream Chelis: make the "compiling today" grad workaround actually
+1. **Upstream Chelis: make the "compiling today" grad workaround actually
    compute a gradient at runtime**, or ship a separately-namespaced real
    Jacobian surface. Without that, `lm_scalar_nparam` stays blocked even
    though the error reporting is now excellent.
-3. **Then resume Nautilus post-v0.1.0 scope in this order:** general-`n`
-   Cholesky, then LU / QR / SVD with the documented AD caveats, then
-   multi-parameter LM once (2) lands.
+2. **Nautilus-side: implement LU / QR / SVD** on the same compiler
+   surface that Cholesky validated — fold with tensor accumulator +
+   control flow on tensor results. Ship as `alpha` with documented AD
+   caveats.
+3. **Then resume the LM work once (1) lands.**

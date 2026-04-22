@@ -21,7 +21,7 @@ The scalar binary covers Nautilus.Special and Nautilus.Distributions.
 Separate binaries in this same harness cover the scalar solver modules
 and the tensor-path LinAlg / Stats / Distance / SDE / Interpolation /
 CurveFit surface. Clean HEAD on the validated `chelis v0.1.18` toolchain
-passes 895 / 895 numerical assertions.
+passes 994 / 994 numerical assertions.
 """
 from __future__ import annotations
 
@@ -539,6 +539,7 @@ chelis_tensor* transpose(chelis_tensor* a);
 chelis_tensor* diag(chelis_tensor* a);
 chelis_tensor* trace_mat(chelis_tensor* a);
 chelis_tensor* cholesky_2x2(chelis_tensor* a);
+chelis_tensor* cholesky_n(chelis_tensor* a);
 
 /* tensor-output, two-tensor-input (matrix) */
 chelis_tensor* matmul_wrap(chelis_tensor* a, chelis_tensor* b);
@@ -1016,6 +1017,14 @@ int main(int argc, char** argv) {
     if (!strcmp(fn, "cholesky_2x2")) {
         chelis_tensor* mat = make_mat(2, 2, a);
         chelis_tensor* r = cholesky_2x2(mat);
+        print_mat(r);
+        return 0;
+    }
+    /* cholesky_n: N, N*N elements -> mat(N,N) */
+    if (!strcmp(fn, "cholesky_n")) {
+        int n = (int)a[0];
+        chelis_tensor* mat = make_mat(n, n, a+1);
+        chelis_tensor* r = cholesky_n(mat);
         print_mat(r);
         return 0;
     }
@@ -1802,6 +1811,19 @@ def main() -> int:
                         1.0, 0.0, 0.0], 3)
     la_run_vec_all_nan("cholesky_2x2(non_psd)", "cholesky_2x2",
                        [1.0, 2.0, 2.0, 1.0], 4)
+
+    print("== LinAlg: cholesky_n ==")
+    g_chn = golden("linalg/cholesky_n.json")
+    atol_chn, rtol_chn = g_chn["abs"], g_chn["rel"]
+    for case in g_chn["cases"]:
+        label = case["label"]
+        n = case["n"]
+        A = case["A"]
+        expected = case["L"]
+        flat_A = [v for row in A for v in row]
+        flat_exp = [v for row in expected for v in row]
+        la_run_vec(f"cholesky_n({label})", "cholesky_n",
+                   [float(n)] + flat_A, flat_exp, atol_chn, rtol_chn)
 
     # --- SDE tensor-path tests ---
     print("== SDE ==")

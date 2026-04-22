@@ -9,7 +9,8 @@ export (
   la_vec_add, la_vec_sub, la_vec_saxpy,
   cg_solve,
   inv_2x2, inv_3x3, solve_2x2, solve_3x3,
-  eig_2x2_real, cholesky_2x2
+  eig_2x2_real, cholesky_2x2,
+  cholesky_n
 )
 
 def transpose[m, n](a: tensor[m, n, f32]) -> tensor[n, m, f32] = permute(a, 1, 0)
@@ -128,6 +129,53 @@ def cg_solve[n](
   p0 = la_vec_add(copy(r0), to_tensor(map(fn (x: f32) -> cast(0.0, f32), to_list(copy(r0)))))
   rs0 = inner_product(copy(r0), copy(r0))
   cg_step_rec(a_mat, x0, r0, p0, rs0, tol, max_iters)
+}
+
+def la_zeros_mat_like[n](a: tensor[n, n, f32]) -> tensor[n, n, f32] = sub(copy(a), a)
+
+def la_basis_n_f32[n](k: int64, s: f32, template: tensor[n, f32]) -> tensor[n, f32] = {
+  items_len = len(to_list(copy(template)))
+  idxs = range(cast(0, int64), items_len)
+  to_tensor(map(fn (i: int64) -> if eq(i, k) then s else cast(0.0, f32), idxs))
+}
+
+def la_mask_ge_j_f32[n](j: int64, template: tensor[n, f32]) -> tensor[n, f32] = {
+  items_len = len(to_list(copy(template)))
+  idxs = range(cast(0, int64), items_len)
+  to_tensor(map(fn (i: int64) -> if gte(i, j) then cast(1.0, f32) else cast(0.0, f32), idxs))
+}
+
+def la_elementwise_mul_vec[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32] =
+  to_tensor(map(fn (pair: (f32, f32)) -> mul(pair.0, pair.1),
+                zip(to_list(a), to_list(b))))
+
+def la_chol_col_update[n](
+  a_mat: tensor[n, n, f32],
+  l_prev: tensor[n, n, f32],
+  j: int64
+) -> tensor[n, n, f32] = {
+  diag_of_l = diag(copy(l_prev))
+  e_j = la_basis_n_f32(j, cast(1.0, f32), diag_of_l)
+  col_a = matvec(copy(a_mat), copy(e_j))
+  row_j_of_l = vecmat(copy(e_j), copy(l_prev))
+  partial = matvec(copy(l_prev), row_j_of_l)
+  c = la_vec_sub(col_a, partial)
+  c_j = inner_product(copy(c), copy(e_j))
+  d = sqrt(c_j)
+  inv_d = div(cast(1.0, f32), d)
+  scaled = scale_vec(copy(c), inv_d)
+  mask = la_mask_ge_j_f32(j, copy(c))
+  new_col = la_elementwise_mul_vec(scaled, mask)
+  outer_add = einsum("i,j->ij", new_col, e_j)
+  add(copy(l_prev), outer_add)
+}
+
+def cholesky_n[n](a: tensor[n, n, f32]) -> tensor[n, n, f32] = {
+  l_init = la_zeros_mat_like(copy(a))
+  n_len = len(to_list(diag(copy(a))))
+  idxs = range(cast(0, int64), n_len)
+  fold(fn (l: tensor[n, n, f32], j: int64) -> la_chol_col_update(copy(a), l, j),
+       l_init, idxs)
 }
 
 def det_3x3(a: tensor[3, 3, f32]) -> f32 = {
