@@ -87,6 +87,75 @@ def lm_jcol[n, m](
   scale_vec(la_vec_sub(pred_plus, base_pred), div(cast(1.0, f32), eps))
 }
 
+def lm_jtr_sum[n, m](
+  model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32],
+  x: tensor[m, f32],
+  theta: tensor[n, f32],
+  base_pred: tensor[m, f32],
+  r: tensor[m, f32],
+  tpl_n: tensor[n, f32],
+  i: int64,
+  n_params: int64,
+  eps: f32
+) -> tensor[n, f32] =
+  if gte(i, n_params) then {
+    to_tensor(map(fn (t: f32) -> cast(0.0, f32), to_list(tpl_n)))
+  }
+  else {
+    j_col = lm_jcol(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), i, eps)
+    jtr_i = inner_product(copy(j_col), copy(r))
+    e_i = la_basis_n_f32(i, jtr_i, copy(tpl_n))
+    rest = lm_jtr_sum(model, x, theta, base_pred, r, tpl_n, add(i, cast(1, int64)), n_params, eps)
+    la_vec_add(e_i, rest)
+  }
+
+def lm_jtj_row_sum[n, m](
+  model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32],
+  x: tensor[m, f32],
+  theta: tensor[n, f32],
+  base_pred: tensor[m, f32],
+  tpl_n: tensor[n, f32],
+  j_col_i: tensor[m, f32],
+  e_i: tensor[n, f32],
+  j: int64,
+  n_params: int64,
+  eps: f32
+) -> tensor[n, n, f32] =
+  if gte(j, n_params) then {
+    ztj = scale_vec(copy(tpl_n), cast(0.0, f32))
+    einsum("i,j->ij", copy(ztj), ztj)
+  }
+  else {
+    j_col_j = lm_jcol(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), j, eps)
+    dot_ij = inner_product(copy(j_col_i), j_col_j)
+    e_j = la_basis_n_f32(j, cast(1.0, f32), copy(tpl_n))
+    this_entry = einsum("i,j->ij", scale_vec(copy(e_i), dot_ij), e_j)
+    rest = lm_jtj_row_sum(model, x, theta, base_pred, tpl_n, j_col_i, e_i, add(j, cast(1, int64)), n_params, eps)
+    add(this_entry, rest)
+  }
+
+def lm_jtj_sum[n, m](
+  model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32],
+  x: tensor[m, f32],
+  theta: tensor[n, f32],
+  base_pred: tensor[m, f32],
+  tpl_n: tensor[n, f32],
+  i: int64,
+  n_params: int64,
+  eps: f32
+) -> tensor[n, n, f32] =
+  if gte(i, n_params) then {
+    ztj = scale_vec(copy(tpl_n), cast(0.0, f32))
+    einsum("i,j->ij", copy(ztj), ztj)
+  }
+  else {
+    j_col_i = lm_jcol(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), i, eps)
+    e_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_n))
+    row_i = lm_jtj_row_sum(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), j_col_i, e_i, cast(0, int64), n_params, eps)
+    rest = lm_jtj_sum(model, x, theta, base_pred, tpl_n, add(i, cast(1, int64)), n_params, eps)
+    add(row_i, rest)
+  }
+
 def lm_nparam_step[n, m](
   model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32],
   x: tensor[m, f32],
@@ -100,40 +169,8 @@ def lm_nparam_step[n, m](
   base_pred = model(copy(theta), copy(x))
   r = la_vec_sub(copy(y), copy(base_pred))
   zero_n = to_tensor(map(fn (t: f32) -> cast(0.0, f32), to_list(copy(tpl_n))))
-  x_c1 = copy(x)
-  theta_c1 = copy(theta)
-  base_pred_c1 = copy(base_pred)
-  r_c1 = copy(r)
-  tpl_n_c1 = copy(tpl_n)
-  jtr = fold(
-    fn (acc: tensor[n, f32], i: int64) -> {
-      j_col_i = lm_jcol(model, copy(x_c1), copy(theta_c1), copy(base_pred_c1), copy(tpl_n_c1), i, eps)
-      jtr_i = inner_product(j_col_i, copy(r_c1))
-      e_i = la_basis_n_f32(i, jtr_i, copy(tpl_n_c1))
-      la_vec_add(acc, e_i)
-    },
-    copy(zero_n),
-    range(cast(0, int64), n_params))
-  n_sq = mul(n_params, n_params)
-  ztj_a = scale_vec(copy(tpl_n), cast(0.0, f32))
-  ztj_b = scale_vec(copy(tpl_n), cast(0.0, f32))
-  x_c2 = copy(x)
-  theta_c2 = copy(theta)
-  base_pred_c2 = copy(base_pred)
-  tpl_n_c2 = copy(tpl_n)
-  jtj = fold(
-    fn (acc: tensor[n, n, f32], k: int64) -> {
-      par_i = div(k, n_params)
-      par_j = sub(k, mul(par_i, n_params))
-      j_col_i2 = lm_jcol(model, copy(x_c2), copy(theta_c2), copy(base_pred_c2), copy(tpl_n_c2), par_i, eps)
-      j_col_j2 = lm_jcol(model, copy(x_c2), copy(theta_c2), copy(base_pred_c2), copy(tpl_n_c2), par_j, eps)
-      dot_ij = inner_product(j_col_i2, j_col_j2)
-      e_i2 = la_basis_n_f32(par_i, dot_ij, copy(tpl_n_c2))
-      e_j2 = la_basis_n_f32(par_j, cast(1.0, f32), copy(tpl_n_c2))
-      add(acc, einsum("i,j->ij", e_i2, e_j2))
-    },
-    einsum("i,j->ij", ztj_a, ztj_b),
-    range(cast(0, int64), n_sq))
+  jtr = lm_jtr_sum(model, copy(x), copy(theta), copy(base_pred), copy(r), copy(tpl_n), cast(0, int64), n_params, eps)
+  jtj = lm_jtj_sum(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), cast(0, int64), n_params, eps)
   lamb_i = fold(
     fn (acc: tensor[n, n, f32], i: int64) -> {
       le_i = la_basis_n_f32(i, lambda, copy(tpl_n))

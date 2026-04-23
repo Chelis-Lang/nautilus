@@ -5,7 +5,7 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-Summary as of **v0.2.0** (Nautilus) / **v0.1.20** (Chelis):
+Summary as of **v0.2.0** (Nautilus) / **v0.1.21** (Chelis):
 
 - Historical Bugs 1–5 below are fixed in the released compiler line through
   `v0.1.7`, and the pinned Nautilus surface remains fully wired into the
@@ -28,6 +28,11 @@ Summary as of **v0.2.0** (Nautilus) / **v0.1.20** (Chelis):
     "`grad` through host-lane `fold`/`map` is not currently supported").
     Multi-parameter LM stays blocked on the grad path; `lm_scalar_nparam`
     ships in Nautilus v0.2.0 using a finite-difference Jacobian workaround.
+    Status as of v0.1.21: **still blocked** (not addressed in this release).
+  - Recursive inliner bugs (Bug 6, Bug 7 below): **FIXED in v0.1.21**.
+    The recursive `lm_jtr_sum` / `lm_jtj_sum` / `lm_jtj_row_sum` formulation
+    compiles, builds, and produces correct results. `lm_scalar_nparam` in
+    Nautilus v0.2.0 reverts to the cleaner recursive formulation on v0.1.21.
 
   **New bugs found during Nautilus v0.2.0 / `lm_scalar_nparam` development
   (2026-04-23, against v0.1.20):**
@@ -40,10 +45,13 @@ Summary as of **v0.2.0** (Nautilus) / **v0.1.20** (Chelis):
   explicit NULL-validation stub the harness injects catches it, producing
   `SIGABRT`. Affects any recursive function where the accumulator is a
   tensor passed as a regular argument (not the return value). Status
-  as of v0.1.20: **open**. Workaround: restructure recursive tensor
-  accumulation as top-level folds with the accumulator in the fold's
-  built-in accumulator position; never pass intermediate tensor accumulators
-  as explicit recursive call arguments.
+  as of v0.1.20: **open**. Status as of v0.1.21: **FIXED** — the
+  recursive `lm_jtr_sum` / `lm_jtj_sum` formulation compiles and runs
+  correctly; `lm_scalar_nparam` reverts to recursive Jacobian assembly.
+  Workaround (v0.1.20 only): restructure recursive tensor accumulation as
+  top-level folds with the accumulator in the fold's built-in accumulator
+  position; never pass intermediate tensor accumulators as explicit
+  recursive call arguments.
 
   **Bug 7 — Recursive inliner: increment propagation to constant arguments**
   When the compiler inlines a recursive call whose counter argument is
@@ -56,9 +64,12 @@ Summary as of **v0.2.0** (Nautilus) / **v0.1.20** (Chelis):
   to start at column 1 instead of column 0. Produces wrong numeric results
   (and eventually a `to_list expects a rank-1 tensor` runtime crash when the
   wrong index propagates to a rank-2 value). Status as of v0.1.20: **open**.
-  Workaround: avoid recursive functions for n-parameter Jacobian assembly;
-  use flat `fold` over `range(0, n_sq)` with integer `div` and `sub` to
-  decode `(i, j)` from a flat index `k`.
+  Status as of v0.1.21: **FIXED** — confirmed by the recursive
+  `lm_jtj_sum(... cast(0, int64) ...)` call chain producing correct JTJ
+  matrices in all test cases (1051/1051 pass with the recursive formulation).
+  Workaround (v0.1.20 only): avoid recursive functions for n-parameter Jacobian
+  assembly; use flat `fold` over `range(0, n_sq)` with integer `div` and `sub`
+  to decode `(i, j)` from a flat index `k`.
 
   **Bug 8 — Fold closure captures by-move; sequential folds sharing
   tensors need explicit named copies**
@@ -87,6 +98,15 @@ Summary as of **v0.2.0** (Nautilus) / **v0.1.20** (Chelis):
     "can't lower" diagnostic, additionally noting "`grad` through
     host-lane `fold`/`map` is not currently supported". Both the direct
     and fold-wrapped grad paths remain blocked.
+
+  **v0.1.21 validation findings (2026-04-23):**
+  - `chelis check src/curvefit.ch`: score 1.0 with recursive Jacobian
+    formulation (`lm_jtr_sum`, `lm_jtj_sum`, `lm_jtj_row_sum`).
+  - `chelis reef build`: produces `dist/nautilus-0.2.0.chb` cleanly.
+  - `tests/run_numeric_tests.py`: `1051 / 1051` numerical assertions passed
+    with the recursive formulation — confirms Bug 6 and Bug 7 both fixed.
+  - Tensor-valued `grad` blocker: not retested (migration guide confirms it
+    remains open in v0.1.21; `lm_scalar_nparam` continues to use FD Jacobian).
 
 Original historical summary as of **v0.1.6** — original six bugs all fixed, one
 new bug found:

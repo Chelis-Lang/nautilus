@@ -1,7 +1,7 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the validated `chelis v0.1.20` toolchain.
+repository state on the validated `chelis v0.1.21` toolchain.
 
 ## Scope
 
@@ -89,19 +89,23 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to `chelis v0.1.20` exactly via `reef.toml`.
+Nautilus is pinned to `chelis v0.1.21` exactly via `reef.toml`.
 Historical compiler/runtime bugs discovered during Nautilus P0-P3 are
 documented in `docs/UPSTREAM_BUGS.md`.
 
 For the pinned toolchain:
 
-- the originally tracked Bugs 1-5 remain fixed through `v0.1.20`
+- the originally tracked Bugs 1-5 remain fixed through `v0.1.21`
+- Bugs 6 and 7 (recursive inliner NULL-shadow and increment-propagation
+  defects discovered during `lm_scalar_nparam` development) are both
+  **fixed in v0.1.21** — `lm_scalar_nparam` uses the cleaner recursive
+  Jacobian formulation on v0.1.21
 - the currently shipped Nautilus surface is fully wired into the current
   harness and no longer upstream-blocked
-  (`1051 / 1051` numerical assertions on `v0.1.20`, including the new
+  (`1051 / 1051` numerical assertions on `v0.1.21`, including the new
   general-`n` Cholesky, LU, QR, SVD, and multi-parameter LM paths)
 
-On newer upstream releases through `v0.1.20`:
+On upstream releases through `v0.1.21`:
 
 - validation against `v0.1.9` through `v0.1.20` found two blockers for
   future Nautilus scope: tensor-valued `grad` on the native path, and
@@ -116,12 +120,10 @@ On newer upstream releases through `v0.1.20`:
   also changes multi-arg HOF call syntax so `(A, B) -> C` functions now
   require tuple call `model((a, b))` (curried `A -> B -> C` forms are
   unaffected, and all Nautilus HOF uses are curried). The tensor-valued
-  `grad` blocker at the C-backend lowering level persists: `grad(expr,
-  wrt = var)` still fails `chelis build`, and the `grad(local,
-  wrt=(arg))(arg)` workaround emits a placeholder that drops the
-  gradient at runtime. `lm_scalar_nparam` ships in v0.2.0 using a
-  finite-difference Jacobian as a workaround; a grad-based Jacobian
-  remains blocked.
+  `grad` blocker at the C-backend lowering level persists through
+  `v0.1.21`: `grad(expr, wrt = var)` still fails `chelis build`.
+  `lm_scalar_nparam` ships in v0.2.0 using a finite-difference Jacobian
+  as a workaround; a grad-based Jacobian remains blocked.
 - those blockers affect next-up work such as gradient-based Jacobian LM,
   not the currently shipped Nautilus surface
 
