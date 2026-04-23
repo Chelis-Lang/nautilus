@@ -99,6 +99,18 @@ Summary as of **v0.2.0** (Nautilus) / **v0.1.21** (Chelis):
     host-lane `fold`/`map` is not currently supported". Both the direct
     and fold-wrapped grad paths remain blocked.
 
+  **Bug 9 — `chelis eval --file` hangs indefinitely in v0.1.21**
+  `chelis eval --file <path> <expr>` blocks without producing output or
+  exiting when the file contains a Nautilus reef import (e.g.
+  `import Nautilus.Special (erf)`). Inline `chelis eval <expr>` (no
+  `--file`) continues to work. Affects `scripts/bench_eval_startup.py`
+  which probes all Nautilus import scenarios via `--file`; the script now
+  applies a 5-second probe timeout and marks all file-backed scenarios as
+  "blocked" on affected toolchains. Status as of v0.1.21: **open**.
+  Workaround: use inline `chelis eval <expr>` for expressions that don't
+  require file-based reef imports; or set `_PROBE_TIMEOUT_S` in the
+  benchmark script to bound the hang.
+
   **v0.1.21 validation findings (2026-04-23):**
   - `chelis check src/curvefit.ch`: score 1.0 with recursive Jacobian
     formulation (`lm_jtr_sum`, `lm_jtj_sum`, `lm_jtj_row_sum`).
@@ -107,6 +119,8 @@ Summary as of **v0.2.0** (Nautilus) / **v0.1.21** (Chelis):
     with the recursive formulation — confirms Bug 6 and Bug 7 both fixed.
   - Tensor-valued `grad` blocker: not retested (migration guide confirms it
     remains open in v0.1.21; `lm_scalar_nparam` continues to use FD Jacobian).
+  - `chelis eval --file` hangs (Bug 9); `bench_eval_startup.py` patched
+    with probe timeout; all import scenarios reported as "blocked".
 
 Original historical summary as of **v0.1.6** — original six bugs all fixed, one
 new bug found:

@@ -95,6 +95,10 @@ def snapshot_descendants(root_pid: int) -> set[str]:
     return commands
 
 
+_PROBE_TIMEOUT_S = 5    # if chelis eval doesn't respond in 5s it's hung
+_TIMED_TIMEOUT_S = 30  # generous for actual measurement trials
+
+
 def run_timed(cmd: list[str]) -> TrialResult:
     start = time.perf_counter()
     proc = subprocess.run(
@@ -102,6 +106,7 @@ def run_timed(cmd: list[str]) -> TrialResult:
         cwd=REPO,
         capture_output=True,
         text=True,
+        timeout=_TIMED_TIMEOUT_S,
     )
     duration_ms = (time.perf_counter() - start) * 1000.0
     if proc.returncode != 0:
@@ -118,7 +123,12 @@ def inspect_child_processes(cmd: list[str]) -> set[str]:
         text=True,
     )
     descendants: set[str] = set()
+    deadline = time.perf_counter() + _TIMED_TIMEOUT_S
     while proc.poll() is None:
+        if time.perf_counter() > deadline:
+            proc.kill()
+            proc.wait()
+            raise RuntimeError(f"command timed out after {_SUBPROCESS_TIMEOUT_S}s")
         descendants |= snapshot_descendants(proc.pid)
         time.sleep(0.05)
     stdout, stderr = proc.communicate()
@@ -169,16 +179,23 @@ def probe_and_measure(trials: int, label: str, cmd: list[str]) -> ScenarioResult
             cwd=REPO,
             capture_output=True,
             text=True,
+            timeout=_PROBE_TIMEOUT_S,
         )
     except FileNotFoundError as exc:
         return ScenarioResult(label=label, stats=None, status="blocked", detail=str(exc))
+    except subprocess.TimeoutExpired:
+        return ScenarioResult(label=label, stats=None, status="blocked",
+                              detail=f"command timed out after {_PROBE_TIMEOUT_S}s (chelis eval --file may hang on this toolchain)")
 
     if probe.returncode != 0:
         detail = probe.stderr.strip() or probe.stdout.strip() or "unknown error"
         return ScenarioResult(label=label, stats=None, status="blocked", detail=detail)
 
-    results = [run_timed(cmd) for _ in range(trials)]
-    children = inspect_child_processes(cmd)
+    try:
+        results = [run_timed(cmd) for _ in range(trials)]
+        children = inspect_child_processes(cmd)
+    except (RuntimeError, subprocess.TimeoutExpired) as exc:
+        return ScenarioResult(label=label, stats=None, status="blocked", detail=str(exc))
     return ScenarioResult(
         label=label,
         stats=summarize(results, children),
