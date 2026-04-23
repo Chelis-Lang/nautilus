@@ -59,6 +59,30 @@ matrix is not symmetric positive-definite (symmetry tolerance: 1e-6).
 form). It assumes the input is SPD and does not emit NaN markers; on a
 non-SPD matrix the output is undefined.
 
+## General-N Decompositions
+
+`alpha` stability. Square matrices only unless noted.
+
+| Function | Signature | Stability |
+|---|---|---|
+| `lu_solve` | `[n](a: tensor[n, n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `alpha` |
+| `qr_decompose` | `[n, m](a: tensor[n, m, f32]) -> (tensor[n, n, f32], tensor[n, m, f32])` | `alpha` |
+| `svd_n` | `[n](a: tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor[n, n, f32])` | `alpha` |
+
+**`lu_solve`** solves `A x = b` via Doolittle LU factorization (no partial
+pivoting). Requires all leading principal submatrices of A to be nonsingular —
+well-conditioned matrices that need row swaps (e.g. `[[0,1],[1,0]]`) will
+produce wrong results, not an error.
+
+**`qr_decompose`** applies Householder reflections and returns `(Q, R)` where
+Q is n×n orthogonal and R is n×m upper triangular, so `A = Q R`. Piecewise-smooth
+AD (Householder sign choices are not globally smooth).
+
+**`svd_n`** returns `(U, sigma, Vt)` where sigma is the vector of singular
+values in descending order and `A ≈ U diag(sigma) Vt`. Uses a fixed 30n Jacobi
+sweeps; poorly separated singular values may not fully converge (use abs
+tolerance ≥ 1e-3 for sigma comparisons). U is orthogonal only for full-rank A.
+
 ## Example
 
 ```chelis-fragment
@@ -70,7 +94,9 @@ def demo_solve(a: tensor[2, 2, f32], b: tensor[2, f32]) -> f32 =
 
 ## Edge cases
 
-- Singular matrices produce NaN results, not exceptions.
+- Singular matrices in the fixed-size routines produce NaN results, not exceptions.
 - The dimension is enforced at compile time: passing a 3x3 tensor to
   `inv_2x2` is a type error caught by `chelis check`.
-- For systems larger than 3x3, use `cg_solve` instead.
+- For general-n linear solve use `lu_solve` (Doolittle, no partial pivoting)
+  or `cg_solve` (iterative, SPD only). For decompositions use `qr_decompose`
+  (Householder QR) or `svd_n` (Jacobi SVD). All three are `alpha` stability.

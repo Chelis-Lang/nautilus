@@ -440,6 +440,10 @@ def goldens_svd_n() -> dict[str, dict]:
     A4 = [[5.0, 1.0, 0.5, 0.2], [1.0, 4.0, 1.0, 0.5], [0.5, 1.0, 3.0, 0.5], [0.2, 0.5, 0.5, 2.0]]
     _, sigma4, _ = np.linalg.svd(np.array(A4))
     cases.append({"label": "n4_dense", "n": 4, "A": A4, "sigma": sigma4.tolist()})
+    A_neq = [[1.0, 0.0], [0.0, 1.0001]]
+    _, sigma_neq, _ = np.linalg.svd(np.array(A_neq))
+    cases.append({"label": "n2_nearly_equal_sv", "n": 2, "A": A_neq, "sigma": sigma_neq.tolist(),
+                  "note": "Nearly-equal singular values; G already diagonal, Jacobi converges in 0 steps. Tests skip-rotation path."})
     g["linalg/svd_n.json"] = {"cases": cases, **TOL["linalg/svd_n"]}
     return g
 
