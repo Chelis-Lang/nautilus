@@ -16,7 +16,7 @@ hand-written adjoints.
 |---|---|---|
 | `Nautilus.Special` | 19 | runtime-verified |
 | `Nautilus.Distributions` | 38 | runtime-verified except 3 heavy sampling variants |
-| `Nautilus.LinAlg` | 29 | runtime-verified |
+| `Nautilus.LinAlg` | 30 | runtime-verified |
 | `Nautilus.Stats` | 14 | runtime-verified |
 | `Nautilus.Distance` | 8 | runtime-verified |
 | `Nautilus.Roots` | 3 | runtime-verified |
@@ -26,14 +26,14 @@ hand-written adjoints.
 | `Nautilus.Optim` | 4 | runtime-verified |
 | `Nautilus.Interpolation` | 3 | runtime-verified |
 | `Nautilus.SDE` | 2 | runtime-verified |
-| `Nautilus.CurveFit` | 1 | runtime-verified |
+| `Nautilus.CurveFit` | 2 | runtime-verified |
 | `Nautilus.Signal` | 7 | typed stubs only |
 | `Nautilus.Core` | 1 | metadata helper |
 
 Totals:
 
-- 145 non-stub exports overall.
-- 144 numerical/library exports are covered by the runtime harness.
+- 150 non-stub exports overall (156 total across all modules, minus 7 Signal stubs = 149 numerical/library, plus 1 Core metadata helper = 150).
+- 149 numerical/library exports are covered by the runtime harness.
 - `Nautilus.Core.version` is package metadata and is not part of the
   numerical harness.
 - `Nautilus.Signal` remains a stub surface pending upstream complex
@@ -56,7 +56,7 @@ mdbook build docs
 Expected runtime-harness result:
 
 ```text
-994 / 994 numerical assertions passed
+1051 / 1051 numerical assertions passed
 ```
 
 What those gates cover:
@@ -98,8 +98,8 @@ For the pinned toolchain:
 - the originally tracked Bugs 1-5 remain fixed through `v0.1.20`
 - the currently shipped Nautilus surface is fully wired into the current
   harness and no longer upstream-blocked
-  (`994 / 994` numerical assertions on `v0.1.20`, including the new
-  general-`n` Cholesky path)
+  (`1051 / 1051` numerical assertions on `v0.1.20`, including the new
+  general-`n` Cholesky, LU, QR, SVD, and multi-parameter LM paths)
 
 On newer upstream releases through `v0.1.20`:
 
@@ -119,20 +119,20 @@ On newer upstream releases through `v0.1.20`:
   `grad` blocker at the C-backend lowering level persists: `grad(expr,
   wrt = var)` still fails `chelis build`, and the `grad(local,
   wrt=(arg))(arg)` workaround emits a placeholder that drops the
-  gradient at runtime. Multi-parameter LM remains blocked.
-- those blockers affect next-up work such as richer LM, not the
-  currently shipped Nautilus surface
+  gradient at runtime. `lm_scalar_nparam` ships in v0.2.0 using a
+  finite-difference Jacobian as a workaround; a grad-based Jacobian
+  remains blocked.
+- those blockers affect next-up work such as gradient-based Jacobian LM,
+  not the currently shipped Nautilus surface
 
 ## Known Limitations
 
 - Nautilus is `f32` only. Precision is generally in the 6-7 significant
   digit range.
-- Chelis still lacks scalar builtins such as `cos`, `tan`, `atan`,
-  `abs`, `floor`, and `ceil`; users must express them from existing
-  primitives.
-- General-n SVD, LU, QR, and eigendecomposition are not yet available.
-  Nautilus ships fixed-size closed-form helpers plus general-n
-  `cg_solve` for SPD systems.
+- `lu_solve`, `qr_decompose`, and `svd_n` are `alpha` stability and square-only.
+  `lu_solve` requires non-zero leading principal submatrices (no partial pivoting).
+  `svd_n` uses a fixed 30n Jacobi sweeps — nearly-equal singular values may not
+  fully converge. General-n eigendecomposition beyond `eig_2x2_real` is not yet available.
 - `rk45_adaptive_solve` provides adaptive endpoint integration, but the
   ODE surface still returns only the final state rather than a saved
   trajectory.
@@ -148,8 +148,8 @@ On newer upstream releases through `v0.1.20`:
 The latest repo sweep closed the remaining documentation and harness
 drift:
 
-- docs/spec text now reflects the current 145-export surface and
-  895-assertion harness
+- docs/spec text now reflects the current 150-export surface and
+  1051-assertion harness
 - the ODE docs now include the shipped adaptive RK45 endpoint solver
 - the mdBook example validator enforces a minimum number of full
   compile-checked examples
