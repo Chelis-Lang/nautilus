@@ -1001,7 +1001,7 @@ Typed API stubs. All return NaN except `fftfreq`. Blocked on upstream complex-nu
 
 - Tensor arguments follow Chelis linear-use discipline. Use `copy(t)` when a tensor is consumed more than once.
 
-- `lm_scalar_nparam` runs for exactly `max_iters` iterations — the `tol` parameter is accepted for API compatibility but does not trigger early exit. Damping `lambda` is fixed at `0.01`. For well-scaled problems with `theta0` near the optimum, 50–200 iterations converge; for `theta0` far from the optimum, increase `max_iters` or rescale parameters to O(1). The finite-difference Jacobian uses `eps=1e-5`; for model outputs or parameters larger than ~100, scale inputs so that the model is O(1) to avoid round-off in the Jacobian.
+- `lm_scalar_nparam` runs for exactly `max_iters` iterations — the `tol` parameter is accepted for API compatibility but does not trigger early exit. Damping `lambda` is fixed at `0.01`. For well-scaled problems with `theta0` near the optimum, 50–200 iterations converge. The finite-difference Jacobian uses `eps=1e-5`; if model outputs or parameters are larger than ~100, scale inputs so that the model is O(1) — once a Jacobian column goes to zero in f32 due to ULP cancellation, increasing `max_iters` does not help and the solver stalls permanently; only rescaling the problem escapes this condition.
 
 - `lu_solve` requires every leading principal submatrix of `A` to be nonsingular. A well-conditioned matrix that needs one row swap (e.g., `[[0,1],[1,0]]`) will divide by zero and return NaN. Matrices that are SPD or strictly diagonally dominant are safe. If in doubt, use `cg_solve` for SPD systems.
 
