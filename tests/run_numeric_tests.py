@@ -573,6 +573,9 @@ double linear_interp_sorted(chelis_tensor* xs, chelis_tensor* ys, double x_query
 double test_lm_linear(chelis_tensor* xs, chelis_tensor* ys, double theta0);
 double test_lm_exp(chelis_tensor* xs, chelis_tensor* ys, double theta0);
 chelis_tensor* test_lm_nparam_linear(chelis_tensor* xs, chelis_tensor* ys, chelis_tensor* th0);
+chelis_tensor* test_lm_nparam_exp3(chelis_tensor* xs, chelis_tensor* ys, chelis_tensor* th0);
+chelis_tensor* test_exp3_model_only(chelis_tensor* theta, chelis_tensor* xs);
+chelis_tensor* test_lm_nparam_poly3(chelis_tensor* xs, chelis_tensor* ys, chelis_tensor* th0);
 
 /* distribution sample test wrappers */
 chelis_tensor* test_uniform_sample(chelis_tensor* t);
@@ -1158,6 +1161,38 @@ int main(int argc, char** argv) {
         print_vec(r);
         return 0;
     }
+    /* lm_nparam_exp3: n_theta, n_data, then n_theta theta0 values, then n_data x values, then n_data y values -> n_theta theta values */
+    if (!strcmp(fn, "lm_nparam_exp3")) {
+        int n_th = (int)a[0];
+        int n_d  = (int)a[1];
+        chelis_tensor* th0 = make_vec(n_th, a+2);
+        chelis_tensor* xs  = make_vec(n_d,  a+2+n_th);
+        chelis_tensor* ys  = make_vec(n_d,  a+2+n_th+n_d);
+        chelis_tensor* r   = test_lm_nparam_exp3(xs, ys, th0);
+        print_vec(r);
+        return 0;
+    }
+    /* exp3_model_only: n_theta, n_data, then n_theta theta values, then n_data x values -> n_data y values */
+    if (!strcmp(fn, "exp3_model_only")) {
+        int n_th = (int)a[0];
+        int n_d  = (int)a[1];
+        chelis_tensor* th = make_vec(n_th, a+2);
+        chelis_tensor* xs = make_vec(n_d,  a+2+n_th);
+        chelis_tensor* r  = test_exp3_model_only(th, xs);
+        print_vec(r);
+        return 0;
+    }
+    /* lm_nparam_poly3: n_theta, n_data, then n_theta theta0 values, then n_data x values, then n_data y values -> n_theta theta values */
+    if (!strcmp(fn, "lm_nparam_poly3")) {
+        int n_th = (int)a[0];
+        int n_d  = (int)a[1];
+        chelis_tensor* th0 = make_vec(n_th, a+2);
+        chelis_tensor* xs  = make_vec(n_d,  a+2+n_th);
+        chelis_tensor* ys  = make_vec(n_d,  a+2+n_th+n_d);
+        chelis_tensor* r   = test_lm_nparam_poly3(xs, ys, th0);
+        print_vec(r);
+        return 0;
+    }
 
     /* sample wrappers: N -> vec(N) (template is zeros) */
     if (!strcmp(fn, "test_uniform_sample")) {
@@ -1283,6 +1318,42 @@ def test_lm_nparam_linear(
   th0: tensor[2, f32]
 ) -> tensor[2, f32] =
   lm_scalar_nparam(cf_nparam_linear_model, xs, ys, th0, cast(1.0e-5, f32), cast(100, int64))
+
+def cf_nparam_exp3_model(theta: tensor[3, f32], x_data: tensor[6, f32]) -> tensor[6, f32] = {
+  tpl_theta = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(theta))))
+  a = inner_product(copy(theta), la_basis_n_f32(cast(0, int64), cast(1.0, f32), copy(tpl_theta)))
+  b = inner_product(copy(theta), la_basis_n_f32(cast(1, int64), cast(1.0, f32), copy(tpl_theta)))
+  c = inner_product(theta, la_basis_n_f32(cast(2, int64), cast(1.0, f32), tpl_theta))
+  bx = scale_vec(copy(x_data), b)
+  exp_bx = to_tensor(map(fn (v: f32) -> exp(v), to_list(bx)))
+  ones6 = to_tensor(map(fn (v: f32) -> cast(1.0, f32), to_list(x_data)))
+  la_vec_add(scale_vec(exp_bx, a), scale_vec(ones6, c))
+}
+
+def test_lm_nparam_exp3(
+  xs: tensor[6, f32], ys: tensor[6, f32],
+  th0: tensor[3, f32]
+) -> tensor[3, f32] =
+  lm_scalar_nparam(cf_nparam_exp3_model, xs, ys, th0, cast(1.0e-5, f32), cast(100, int64))
+
+def test_exp3_model_only(theta: tensor[3, f32], xs: tensor[6, f32]) -> tensor[6, f32] =
+  cf_nparam_exp3_model(theta, xs)
+
+def cf_nparam_poly3_model(theta: tensor[3, f32], x_data: tensor[6, f32]) -> tensor[6, f32] = {
+  tpl_theta = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(theta))))
+  a = inner_product(copy(theta), la_basis_n_f32(cast(0, int64), cast(1.0, f32), copy(tpl_theta)))
+  b = inner_product(copy(theta), la_basis_n_f32(cast(1, int64), cast(1.0, f32), copy(tpl_theta)))
+  c = inner_product(theta, la_basis_n_f32(cast(2, int64), cast(1.0, f32), tpl_theta))
+  x2 = to_tensor(map(fn (v: f32) -> mul(v, v), to_list(copy(x_data))))
+  ones6 = to_tensor(map(fn (v: f32) -> cast(1.0, f32), to_list(copy(x_data))))
+  la_vec_add(la_vec_add(scale_vec(x2, a), scale_vec(x_data, b)), scale_vec(ones6, c))
+}
+
+def test_lm_nparam_poly3(
+  xs: tensor[6, f32], ys: tensor[6, f32],
+  th0: tensor[3, f32]
+) -> tensor[3, f32] =
+  lm_scalar_nparam(cf_nparam_poly3_model, xs, ys, th0, cast(1.0e-5, f32), cast(100, int64))
 """
 
 
@@ -2195,6 +2266,24 @@ def main() -> int:
             if not close(g, w, g_lm["abs"], g_lm["rel"]):
                 fails += 1
                 print(f"  FAIL lm_nparam({label}) theta[{k}]: got {g:.6g}, want {w:.6g}")
+
+    g_exp = golden("curvefit/lm_nparam_expfit.json")
+    for case in g_exp["cases"]:
+        label = case["label"]
+        n_th = case["n_theta"]
+        n_d = case["n_data"]
+        th0 = case["theta0"]
+        xs = case["x"]
+        ys = case["y"]
+        th_exp = case["theta"]
+        args = [float(n_th), float(n_d)] + th0 + xs + ys
+        raw = call_la_fn(la_binary, "lm_nparam_exp3", *args)
+        got = [float(v) for v in raw.split()]
+        for k, (g, w) in enumerate(zip(got, th_exp)):
+            total += 1
+            if not close(g, w, g_exp["abs"], g_exp["rel"]):
+                fails += 1
+                print(f"  FAIL lm_nparam_exp({label}) theta[{k}]: got {g:.6g}, want {w:.6g}")
 
     # --- Track 1: distribution sample variants ---
     print("== Distributions: sample (deterministic seed) ==")

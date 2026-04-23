@@ -1,6 +1,7 @@
 {
   "Nautilus.CurveFit": {
-    "lm_scalar_1param": "alpha"
+    "lm_scalar_1param": "alpha",
+    "lm_scalar_nparam": "alpha"
   },
   "Nautilus.Distance": {
     "chebyshev": "stable",

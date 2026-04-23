@@ -5,14 +5,13 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-Summary as of **v0.1.20**:
+Summary as of **v0.2.0** (Nautilus) / **v0.1.20** (Chelis):
 
 - Historical Bugs 1–5 below are fixed in the released compiler line through
   `v0.1.7`, and the pinned Nautilus surface remains fully wired into the
   current runtime harness on the validated `v0.1.20` toolchain
-  (`994 / 994` numerical assertions pass).
-- Re-validation against `v0.1.9`–`v0.1.20` on the two **new** post-v0.1.7
-  blockers for the remaining Nautilus next-up scope:
+  (`1051 / 1051` numerical assertions pass as of Nautilus v0.2.0).
+- Re-validation against `v0.1.9`–`v0.1.20` on the post-v0.1.7 blockers:
   - **generic fold/control-flow lowering on tensor accumulators is
     FULLY FIXED (since `v0.1.18`).** Both sub-blockers cleared: (a) tuple
     fold with a tensor in slot 0, and (b) tensor-valued `if` inside the
@@ -27,7 +26,54 @@ Summary as of **v0.1.20**:
     wrt=(arg))(arg)` is the only form that builds. Probe also confirms
     `grad` inside a fold body fails build (the error explicitly states
     "`grad` through host-lane `fold`/`map` is not currently supported").
-    Multi-parameter LM stays blocked.
+    Multi-parameter LM stays blocked on the grad path; `lm_scalar_nparam`
+    ships in Nautilus v0.2.0 using a finite-difference Jacobian workaround.
+
+  **New bugs found during Nautilus v0.2.0 / `lm_scalar_nparam` development
+  (2026-04-23, against v0.1.20):**
+
+  **Bug 6 — Recursive inliner: NULL shadow on tensor accumulator**
+  When the compiler inlines a recursive call that passes a named
+  tensor-accumulator variable, the inlined body re-declares the same C
+  intermediate name in the inner scope, shadowing the correctly-allocated
+  outer variable. The inner shadow is uninitialized (NULL), and the
+  explicit NULL-validation stub the harness injects catches it, producing
+  `SIGABRT`. Affects any recursive function where the accumulator is a
+  tensor passed as a regular argument (not the return value). Status
+  as of v0.1.20: **open**. Workaround: restructure recursive tensor
+  accumulation as top-level folds with the accumulator in the fold's
+  built-in accumulator position; never pass intermediate tensor accumulators
+  as explicit recursive call arguments.
+
+  **Bug 7 — Recursive inliner: increment propagation to constant arguments**
+  When the compiler inlines a recursive call whose counter argument is
+  `add(i, cast(1, int64))`, it incorrectly applies the same `+1` increment
+  to **all** integer constants inside the inlined body, including
+  `cast(0, int64)` literals passed to other called functions. For example,
+  `lm_jtj_sum` (which recurses with `add(i, cast(1,int64))`) calls
+  `lm_jtj_row_sum(... cast(0, int64) ...)` inside its body; after inlining,
+  the `cast(0, int64)` becomes `cast(1, int64)`, causing the row accumulator
+  to start at column 1 instead of column 0. Produces wrong numeric results
+  (and eventually a `to_list expects a rank-1 tensor` runtime crash when the
+  wrong index propagates to a rank-2 value). Status as of v0.1.20: **open**.
+  Workaround: avoid recursive functions for n-parameter Jacobian assembly;
+  use flat `fold` over `range(0, n_sq)` with integer `div` and `sub` to
+  decode `(i, j)` from a flat index `k`.
+
+  **Bug 8 — Fold closure captures by-move; sequential folds sharing
+  tensors need explicit named copies**
+  Chelis fold closures capture tensor variables from the enclosing scope
+  by-move (consuming them). Two sequential folds in the same function scope
+  cannot capture the same tensor — the second fold's closure creation fails
+  type-checking with "copy requires tensor input, got ?NNN" because the
+  tensor was consumed by the first fold's closure. Scalars (`f32`, `int64`)
+  and function types are non-affine and can be captured freely by multiple
+  closures. Status as of v0.1.20: **by-design** (affine semantics) but the
+  error message is confusing because the failure surfaces at a `copy` call
+  downstream of the actual capture site. Workaround: before the first fold,
+  create explicit named copies for each fold that needs the variable (e.g.
+  `x_c1 = copy(x)` for the JTR fold, `x_c2 = copy(x)` for the JTJ fold),
+  and reference the named copies inside the respective fold bodies.
 
   **v0.1.20 validation findings (2026-04-22):**
   - `chelis check` all 21 `src/*.ch` modules: all score 1.0, zero errors.

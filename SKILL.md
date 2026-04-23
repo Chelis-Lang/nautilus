@@ -4,7 +4,7 @@
 
 Nautilus is the numerical computing shell for Chelis. It replaces
 numpy.linalg + numpy.random distributions + scipy.* (special, stats,
-optimize, integrate, interpolate, spatial). 151 exports, 886
+optimize, integrate, interpolate, spatial). 156 exports, 1051
 scipy-parity assertions, pure Chelis throughout. AD works through
 all functions automatically.
 
@@ -896,7 +896,11 @@ Gamma/Chi-squared/Student-t have PDF+CDF (some have inv_cdf). Poisson/Binomial h
 ### Nautilus.LinAlg
 Fixed-size closed-form linear algebra: `inv_2x2`, `inv_3x3`, `solve_2x2`, `solve_3x3`,
 `det_2x2`, `det_3x3`, `cholesky_2x2`, `eig_2x2_real`.
-General-n: `cg_solve` (conjugate gradient for SPD systems), `matvec`, `vecmat`, `matmul_wrap`.
+General-n (alpha): `cholesky_n`, `lu_solve`, `qr_decompose`, `svd_n`.
+`lu_solve[n](a, b)` — Doolittle LU, no pivoting; requires non-zero diagonal pivots.
+`qr_decompose[n](a)` — Householder QR, returns `(Q, R)` tuple, Q orthogonal, R upper triangular.
+`svd_n[n](a)` — Jacobi SVD, returns `(U, sigma, Vt)`, fixed 30n sweeps.
+General-n solvers: `cg_solve` (conjugate gradient for SPD systems), `matvec`, `vecmat`, `matmul_wrap`.
 Vector ops: `la_vec_add`, `la_vec_sub`, `la_vec_saxpy`, `scale_vec`, `l2_norm_vec`, `inner_product`.
 Matrix ops: `gram`, `aat`, `transpose`, `diag`, `trace_mat`, `trace_scalar`, `frobenius_norm`, `frobenius_sq`.
 All pure Chelis tensor-op composition. AD flows through `grad` automatically.
@@ -962,6 +966,9 @@ Both take `f32 -> f32 -> f32` drift and diffusion functions. Noise tensor length
 `lm_scalar_1param(model, dmodel, xs, ys, theta0, lambda0, tol, max_iters)`.
 Levenberg-Marquardt for single-parameter curve fitting. `model(x, theta) -> y` and `dmodel(x, theta) -> dy/dtheta`.
 
+`lm_scalar_nparam(model, x, y, theta0, tol, max_iters)`.
+Levenberg-Marquardt for multi-parameter curve fitting. `model` is curried: `model(theta)(x_data)` predicts the m-vector of y values. Uses a finite-difference Jacobian (eps=1e-5). The `tol` parameter is accepted for API compatibility but convergence runs for exactly `max_iters` iterations. Damping lambda is fixed at 0.01.
+
 ### Nautilus.Signal
 Typed API stubs. All return NaN except `fftfreq`. Blocked on upstream complex-number support (Phase 5f).
 
@@ -993,6 +1000,10 @@ Typed API stubs. All return NaN except `fftfreq`. Blocked on upstream complex-nu
   The noise tensor's length determines the number of timesteps. These do NOT sample internally.
 
 - Tensor arguments follow Chelis linear-use discipline. Use `copy(t)` when a tensor is consumed more than once.
+
+- `lm_scalar_nparam` runs for exactly `max_iters` iterations — the `tol` parameter is accepted for API compatibility but does not trigger early exit. Damping `lambda` is fixed at `0.01`. For well-scaled problems with `theta0` near the optimum, 50–200 iterations converge; for `theta0` far from the optimum, increase `max_iters` or rescale parameters to O(1). The finite-difference Jacobian uses `eps=1e-5`; for model outputs or parameters larger than ~100, scale inputs so that the model is O(1) to avoid round-off in the Jacobian.
+
+- `lu_solve` requires every leading principal submatrix of `A` to be nonsingular. A well-conditioned matrix that needs one row swap (e.g., `[[0,1],[1,0]]`) will divide by zero and return NaN. Matrices that are SPD or strictly diagonally dominant are safe. If in doubt, use `cg_solve` for SPD systems.
 
 ## 6. API Surface
 
@@ -1214,11 +1225,12 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `euler_maruyama_fixed` | `[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32` | `alpha` | Caller supplies pre-drawn N(0,1) noise tensor; `f` is drift, `g` is diffusion, both take (y, t) |
 | `milstein_fixed` | `[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, dg_dy: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32` | `alpha` | Caller supplies noise + diffusion derivative `dg_dy`; Milstein correction term included |
 
-### Nautilus.CurveFit (1 export)
+### Nautilus.CurveFit (2 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
 | `lm_scalar_1param` | `[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs: tensor[n, f32], ys: tensor[n, f32], theta0: f32, lambda0: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Levenberg-Marquardt for single-parameter models; `model(x, theta)` and `dmodel(x, theta)` are function-typed |
+| `lm_scalar_nparam` | `[n, m](model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32], x: tensor[m, f32], y: tensor[m, f32], theta0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32]` | `alpha` | Multi-parameter LM via finite-difference Jacobian (eps=1e-5); `tol` accepted but unused (runs full `max_iters`); lambda fixed at 0.01; grad-based Jacobian blocked by upstream compiler bug (tracked in `docs/UPSTREAM_BUGS.md`) |
 
 ### Nautilus.Signal (7 exports -- stubs)
 
