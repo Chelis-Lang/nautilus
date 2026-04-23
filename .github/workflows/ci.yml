@@ -13,6 +13,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reject AI-author commits
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          elif [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            BASE="${{ github.event.before }}"
+          else
+            BASE="$(git rev-parse HEAD~1 2>/dev/null || echo '')"
+          fi
+          RANGE="${BASE:+$BASE..}HEAD"
+          if git log --format="%B" $RANGE | grep -iE "^Co-[Aa]uthored-[Bb]y:.*\b(claude|codex)\b"; then
+            echo "FAIL: AI authorship trailer found in commit range $RANGE"
+            exit 1
+          fi
+          echo "OK: no AI authorship trailers in $RANGE"
 
       - name: Download validated chelis toolchain
         env:

@@ -68,6 +68,16 @@ verification is no longer upstream-blocked. The remaining open
 blocker is tensor-valued `grad` at the C-backend lowering level
 (multi-parameter LM); see `docs/UPSTREAM_BUGS.md` for details.
 
+## Authorship Policy
+
+No commit may carry a `Co-Authored-By:` trailer attributing authorship to an
+AI tool (Claude, Codex, or similar). This is enforced by a commit-msg hook
+and by CI on every push and pull request.
+
+After cloning, install the hook:
+
+    cp hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
+
 ## Scaffolding Drift Rule
 
 All Chelis shell repos share the same scaffolding shape by design. Any
