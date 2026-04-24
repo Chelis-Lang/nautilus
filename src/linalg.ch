@@ -13,7 +13,8 @@ export (
   cholesky_n,
   lu_solve,
   qr_decompose,
-  svd_n
+  svd_n,
+  eig_n
 )
 
 def transpose[m, n](a: tensor[m, n, f32]) -> tensor[n, m, f32] = permute(a, 1, 0)
@@ -438,6 +439,123 @@ def svd_n[n](a: tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor
     svd_zu, range(cast(0, int64), svd_nlen))
   vt = transpose(svd_vf)
   (u, sigma, vt)
+}
+
+def la_eig_rot_a[n](a: tensor[n, n, f32], p: int64, q: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] = {
+  ep = la_basis_n_f32(p, cast(1.0, f32), copy(tpl))
+  eq = la_basis_n_f32(q, cast(1.0, f32), tpl)
+  acp = matvec(copy(a), copy(ep))
+  acq = matvec(copy(a), copy(eq))
+  app = inner_product(copy(acp), copy(ep))
+  aqq = inner_product(copy(acq), copy(eq))
+  apq = inner_product(copy(acp), copy(eq))
+  absapq = if lt(apq, cast(0.0, f32)) then neg(apq) else apq
+  safeapq = if lt(absapq, cast(1.0e-30, f32)) then cast(1.0, f32) else apq
+  tauraw = div(sub(app, aqq), mul(cast(2.0, f32), safeapq))
+  abstau = if lt(tauraw, cast(0.0, f32)) then neg(tauraw) else tauraw
+  signtau = if lt(tauraw, cast(0.0, f32)) then cast(-1.0, f32) else cast(1.0, f32)
+  traw = div(signtau, add(abstau, sqrt(add(cast(1.0, f32), mul(tauraw, tauraw)))))
+  t = if lt(absapq, cast(1.0e-30, f32)) then cast(0.0, f32) else traw
+  c = div(cast(1.0, f32), sqrt(add(cast(1.0, f32), mul(t, t))))
+  s = mul(t, c)
+  cm1 = sub(c, cast(1.0, f32))
+  dcp = la_vec_add(scale_vec(copy(acp), cm1), scale_vec(copy(acq), s))
+  dcq = la_vec_add(scale_vec(copy(acp), neg(s)), scale_vec(copy(acq), cm1))
+  ar = add(add(copy(a), einsum("i,j->ij", copy(dcp), copy(ep))),
+                        einsum("i,j->ij", copy(dcq), copy(eq)))
+  rp = vecmat(copy(ep), copy(ar))
+  rq = vecmat(copy(eq), copy(ar))
+  drp = la_vec_add(scale_vec(copy(rp), cm1), scale_vec(copy(rq), s))
+  drq = la_vec_add(scale_vec(copy(rp), neg(s)), scale_vec(copy(rq), cm1))
+  add(add(ar, einsum("i,j->ij", copy(ep), drp)),
+              einsum("i,j->ij", copy(eq), drq))
+}
+
+def la_eig_rot_q[n](q: tensor[n, n, f32], a: tensor[n, n, f32], p: int64, q_idx: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] = {
+  ep = la_basis_n_f32(p, cast(1.0, f32), copy(tpl))
+  eq = la_basis_n_f32(q_idx, cast(1.0, f32), tpl)
+  acp = matvec(copy(a), copy(ep))
+  acq = matvec(copy(a), copy(eq))
+  app = inner_product(copy(acp), copy(ep))
+  aqq = inner_product(copy(acq), copy(eq))
+  apq = inner_product(copy(acp), copy(eq))
+  absapq = if lt(apq, cast(0.0, f32)) then neg(apq) else apq
+  safeapq = if lt(absapq, cast(1.0e-30, f32)) then cast(1.0, f32) else apq
+  tauraw = div(sub(app, aqq), mul(cast(2.0, f32), safeapq))
+  abstau = if lt(tauraw, cast(0.0, f32)) then neg(tauraw) else tauraw
+  signtau = if lt(tauraw, cast(0.0, f32)) then cast(-1.0, f32) else cast(1.0, f32)
+  traw = div(signtau, add(abstau, sqrt(add(cast(1.0, f32), mul(tauraw, tauraw)))))
+  t = if lt(absapq, cast(1.0e-30, f32)) then cast(0.0, f32) else traw
+  c = div(cast(1.0, f32), sqrt(add(cast(1.0, f32), mul(t, t))))
+  s = mul(t, c)
+  cm1 = sub(c, cast(1.0, f32))
+  qcp = matvec(copy(q), copy(ep))
+  qcq = matvec(copy(q), copy(eq))
+  dvp = la_vec_add(scale_vec(copy(qcp), cm1), scale_vec(copy(qcq), s))
+  dvq = la_vec_add(scale_vec(copy(qcp), neg(s)), scale_vec(qcq, cm1))
+  add(add(q, einsum("i,j->ij", dvp, copy(ep))),
+             einsum("i,j->ij", dvq, eq))
+}
+
+def la_eig_a_iq[n](a: tensor[n, n, f32], p: int64, q: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
+  if gte(q, nlen) then a
+  else la_eig_a_iq(la_eig_rot_a(a, p, q, copy(tpl)), p, add(q, cast(1, int64)), nlen, tpl)
+
+def la_eig_a_ip[n](a: tensor[n, n, f32], p: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
+  if gte(p, sub(nlen, cast(1, int64))) then a
+  else la_eig_a_ip(la_eig_a_iq(a, p, add(p, cast(1, int64)), nlen, copy(tpl)), add(p, cast(1, int64)), nlen, tpl)
+
+def la_eig_a_sw[n](a: tensor[n, n, f32], sw: int64, nsw: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
+  if gte(sw, nsw) then a
+  else la_eig_a_sw(la_eig_a_ip(a, cast(0, int64), nlen, copy(tpl)), add(sw, cast(1, int64)), nsw, nlen, tpl)
+
+def la_eig_a_replay_q[n](a: tensor[n, n, f32], p: int64, q: int64, qtarget: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
+  if gte(q, qtarget) then a
+  else la_eig_a_replay_q(la_eig_rot_a(a, p, q, copy(tpl)), p, add(q, cast(1, int64)), qtarget, tpl)
+
+def la_eig_a_replay_p[n](a: tensor[n, n, f32], p: int64, ptarget: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
+  if gte(p, ptarget) then a
+  else la_eig_a_replay_p(la_eig_a_iq(a, p, add(p, cast(1, int64)), nlen, copy(tpl)), add(p, cast(1, int64)), ptarget, nlen, tpl)
+
+def la_eig_q_iq[n](q: tensor[n, n, f32], a_sw_init: tensor[n, n, f32], p: int64, q_idx: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
+  if gte(q_idx, nlen) then q
+  else {
+    a_at_pq = la_eig_a_replay_q(la_eig_a_replay_p(copy(a_sw_init), cast(0, int64), p, nlen, copy(tpl)), p, add(p, cast(1, int64)), q_idx, copy(tpl))
+    q2 = la_eig_rot_q(q, a_at_pq, p, q_idx, copy(tpl))
+    la_eig_q_iq(q2, a_sw_init, p, add(q_idx, cast(1, int64)), nlen, tpl)
+  }
+
+def la_eig_q_ip[n](q: tensor[n, n, f32], a_sw_init: tensor[n, n, f32], p: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
+  if gte(p, sub(nlen, cast(1, int64))) then q
+  else la_eig_q_ip(la_eig_q_iq(q, copy(a_sw_init), p, add(p, cast(1, int64)), nlen, copy(tpl)), a_sw_init, add(p, cast(1, int64)), nlen, tpl)
+
+def la_eig_q_sw[n](q: tensor[n, n, f32], a0: tensor[n, n, f32], sw: int64, nsw: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
+  if gte(sw, nsw) then q
+  else {
+    a_sw_init = la_eig_a_sw(copy(a0), cast(0, int64), sw, nlen, copy(tpl))
+    q2 = la_eig_q_ip(q, a_sw_init, cast(0, int64), nlen, copy(tpl))
+    la_eig_q_sw(q2, a0, add(sw, cast(1, int64)), nsw, nlen, tpl)
+  }
+
+def eig_n[n](a: tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32]) = {
+  eig_tpl = diag(copy(a))
+  eig_nlen = len(to_list(copy(eig_tpl)))
+  eig_nsw = mul(cast(30, int64), eig_nlen)
+  eig_a0 = copy(a)
+  eig_af = la_eig_a_sw(copy(eig_a0), cast(0, int64), eig_nsw, eig_nlen, copy(eig_tpl))
+  eig_af2 = copy(eig_af)
+  eig_q0 = la_identity_n(copy(eig_tpl))
+  eig_qf = la_eig_q_sw(eig_q0, eig_a0, cast(0, int64), eig_nsw, eig_nlen, copy(eig_tpl))
+  eig_tpl2 = copy(eig_tpl)
+  eig_zlam = to_tensor(map(fn (x: f32) -> cast(0.0, f32), to_list(copy(eig_tpl2))))
+  eigenvalues = fold(
+    fn (acc: tensor[n, f32], i: int64) -> {
+      eig_ei = la_basis_n_f32(i, cast(1.0, f32), copy(eig_tpl2))
+      eig_aii = inner_product(matvec(copy(eig_af2), copy(eig_ei)), copy(eig_ei))
+      la_vec_saxpy(eig_aii, acc, eig_ei)
+    },
+    eig_zlam, range(cast(0, int64), eig_nlen))
+  (eigenvalues, eig_qf)
 }
 
 def la_chol_col_update[n](

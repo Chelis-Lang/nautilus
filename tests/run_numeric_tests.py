@@ -546,6 +546,8 @@ chelis_tensor* lu_solve(chelis_tensor* a, chelis_tensor* b);
 chelis_tuple* qr_decompose(chelis_tensor* a);
 /* svd_n: N×N matrix -> tuple (U: N×N, sigma: N, Vt: N×N) */
 chelis_tuple* svd_n(chelis_tensor* a);
+/* eig_n: N×N matrix -> tuple (eigenvalues: N, Q: N×N) */
+chelis_tuple* eig_n(chelis_tensor* a);
 
 /* tensor-output, two-tensor-input (matrix) */
 chelis_tensor* matmul_wrap(chelis_tensor* a, chelis_tensor* b);
@@ -1075,6 +1077,19 @@ int main(int argc, char** argv) {
         print_mat(U);
         print_vec(sigma);
         print_mat(Vt);
+        return 0;
+    }
+    /* eig_n: N, N*N elements -> eigenvalues (N) then Q (N*N), one line each */
+    if (!strcmp(fn, "eig_n")) {
+        int n = (int)a[0];
+        chelis_tensor* mat = make_mat(n, n, a+1);
+        chelis_tuple* tup = eig_n(mat);
+        chelis_value v0 = chelis_tuple_get(tup, 0);
+        chelis_value v1 = chelis_tuple_get(tup, 1);
+        chelis_tensor* evals = chelis_value_as_tensor(v0);
+        chelis_tensor* Q = chelis_value_as_tensor(v1);
+        print_vec(evals);
+        print_mat(Q);
         return 0;
     }
     /* cg_solve: N, tol, max_iters, N*N (A), N (b), N (x0) -> vec(N) */
@@ -2092,6 +2107,66 @@ def main() -> int:
         if orth_vt > 0.01:
             fails += 1
             print(f"  FAIL svd_n({label}) Vt orthogonality: ||Vt*Vt^T-I||_F={orth_vt:.6g}")
+
+    print("== LinAlg: eig_n ==")
+    import numpy as _np
+    g_eig = golden("linalg/eig_n.json")
+    atol_eig, rtol_eig = g_eig["abs"], g_eig["rel"]
+    for case in g_eig["cases"]:
+        label = case["label"]
+        n = case["n"]
+        A = case["A"]
+        flat_A = [v for row in A for v in row]
+        evals_exp = case["eigenvalues"]
+        raw_eig = call_la_fn(la_binary, "eig_n", *([float(n)] + flat_A))
+        lines = raw_eig.strip().split("\n")
+        total += 1
+        if len(lines) < 2:
+            fails += 1
+            print(f"  FAIL eig_n({label}): expected 2 output lines, got {len(lines)}")
+            continue
+        evals_got = [float(x) for x in lines[0].split()]
+        flat_q = [float(x) for x in lines[1].split()]
+        if len(evals_got) != n or len(flat_q) != n * n:
+            fails += 1
+            print(f"  FAIL eig_n({label}): evals len={len(evals_got)}, Q len={len(flat_q)}, expected {n} and {n*n}")
+            continue
+        evals_arr = _np.array(evals_got, dtype=float)
+        Q = _np.array(flat_q, dtype=float).reshape(n, n)
+        A_mat = _np.array(flat_A, dtype=float).reshape(n, n)
+        evals_ref = _np.array(evals_exp, dtype=float)
+        # Sort both ascending by eigenvalue for comparison
+        order_got = _np.argsort(evals_arr)
+        order_ref = _np.argsort(evals_ref)
+        evals_sorted = evals_arr[order_got]
+        evals_ref_sorted = evals_ref[order_ref]
+        Q_sorted = Q[:, order_got]
+        for i in range(n):
+            total += 1
+            err = abs(evals_sorted[i] - evals_ref_sorted[i])
+            rel = err / (abs(evals_ref_sorted[i]) + 1e-30)
+            if err > atol_eig and rel > rtol_eig:
+                fails += 1
+                print(f"  FAIL eig_n({label}) eigenvalue[{i}]: got {evals_sorted[i]:.8g} expected {evals_ref_sorted[i]:.8g}")
+        # Q^T Q ≈ I (orthogonality)
+        orth_err = _np.linalg.norm(Q.T @ Q - _np.eye(n), "fro")
+        total += 1
+        if orth_err > 1e-2:
+            fails += 1
+            print(f"  FAIL eig_n({label}) Q orthogonality: ||Q^TQ-I||_F={orth_err:.6g}")
+        # A Q ≈ Q diag(lambda) (eigenvector equation)
+        lam_diag = _np.diag(evals_arr)
+        eigvec_err = _np.linalg.norm(A_mat @ Q - Q @ lam_diag, "fro")
+        total += 1
+        if eigvec_err > 1e-2:
+            fails += 1
+            print(f"  FAIL eig_n({label}) eigenvector equation: ||AQ-Q*diag(lam)||_F={eigvec_err:.6g}")
+
+    print("== LinAlg: eig_n (negative: non-symmetric) ==")
+    # Non-symmetric input: just run it and print result, assert nothing (documents behavior)
+    A_nonsym = [1.0, 2.0, 3.0, 4.0]  # 2x2 non-symmetric [[1,2],[3,4]]
+    raw_nonsym = call_la_fn(la_binary, "eig_n", *([2.0] + A_nonsym))
+    print(f"  eig_n([[1,2],[3,4]]) (non-symmetric, result for documentation): {raw_nonsym!r}")
 
     # --- SDE tensor-path tests ---
     print("== SDE ==")

@@ -51,6 +51,7 @@ TOL = {
     "linalg/lu_solve":           {"abs": 1.0e-4, "rel": 1.0e-4},
     "linalg/qr_decompose":       {"abs": 5.0e-5, "rel": 5.0e-5},
     "linalg/svd_n":              {"abs": 1.0e-3, "rel": 1.0e-3},
+    "linalg/eig_n":              {"abs": 1.0e-3, "rel": 1.0e-3},
     "roots/scalar":              {"abs": 1.0e-8, "rel": 1.0e-8},
     "ode/scalar":                {"abs": 5.0e-7, "rel": 5.0e-7},
     "stats/vector":              {"abs": 1.0e-6, "rel": 1.0e-6},
@@ -445,6 +446,34 @@ def goldens_svd_n() -> dict[str, dict]:
     cases.append({"label": "n2_nearly_equal_sv", "n": 2, "A": A_neq, "sigma": sigma_neq.tolist(),
                   "note": "Nearly-equal singular values; G already diagonal, Jacobi converges in 0 steps. Tests skip-rotation path."})
     g["linalg/svd_n.json"] = {"cases": cases, **TOL["linalg/svd_n"]}
+    return g
+
+
+def goldens_eig_n() -> dict[str, dict]:
+    import numpy as np
+    from scipy.linalg import eigh
+    g = {}
+    cases = []
+    # n2_sym: A = [[4,1],[1,4]]
+    A2 = [[4.0, 1.0], [1.0, 4.0]]
+    evals2, _ = eigh(np.array(A2))
+    cases.append({"label": "n2_sym", "n": 2, "A": A2, "eigenvalues": evals2.tolist()})
+    # n3_diag: A = diag([3,1,2]) — eigenvalues [3,1,2], eigenvectors = I (columns permuted)
+    A3d = [[3.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 2.0]]
+    evals3d, _ = eigh(np.array(A3d))
+    cases.append({"label": "n3_diag", "n": 3, "A": A3d, "eigenvalues": evals3d.tolist()})
+    # n3_dense: A = [[4,2,1],[2,5,3],[1,3,6]]
+    A3 = [[4.0, 2.0, 1.0], [2.0, 5.0, 3.0], [1.0, 3.0, 6.0]]
+    evals3, _ = eigh(np.array(A3))
+    cases.append({"label": "n3_dense", "n": 3, "A": A3, "eigenvalues": evals3.tolist()})
+    # n4_dense: 4x4 symmetric
+    A4 = [[5.0, 1.0, 0.5, 0.2],
+          [1.0, 4.0, 1.0, 0.5],
+          [0.5, 1.0, 3.0, 0.5],
+          [0.2, 0.5, 0.5, 2.0]]
+    evals4, _ = eigh(np.array(A4))
+    cases.append({"label": "n4_dense", "n": 4, "A": A4, "eigenvalues": evals4.tolist()})
+    g["linalg/eig_n.json"] = {"cases": cases, **TOL["linalg/eig_n"]}
     return g
 
 
@@ -897,6 +926,7 @@ def check_goldens() -> int:
                      ("linalg_lu_solve", goldens_lu_solve),
                      ("linalg_qr_decompose", goldens_qr_decompose),
                      ("linalg_svd_n", goldens_svd_n),
+                     ("linalg_eig_n", goldens_eig_n),
                      ("roots", goldens_roots),
                      ("ode", goldens_ode),
                      ("stats", goldens_stats),
@@ -1009,6 +1039,7 @@ def main() -> int:
     all_goldens.update(goldens_lu_solve())
     all_goldens.update(goldens_qr_decompose())
     all_goldens.update(goldens_svd_n())
+    all_goldens.update(goldens_eig_n())
     all_goldens.update(goldens_roots())
     all_goldens.update(goldens_ode())
     all_goldens.update(goldens_stats())
