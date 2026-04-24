@@ -66,7 +66,9 @@
   "Nautilus.Interpolation": {
     "cubic_hermite": "stable",
     "linear_interp_sorted": "stable",
-    "linear_interp_uniform": "stable"
+    "linear_interp_uniform": "stable",
+    "spline_eval": "alpha",
+    "spline_fit": "alpha"
   },
   "Nautilus.LinAlg": {
     "aat": "stable",
@@ -77,6 +79,7 @@
     "det_3x3": "stable",
     "diag": "stable",
     "eig_2x2_real": "stable",
+    "eig_n": "alpha",
     "frobenius_norm": "stable",
     "frobenius_sq": "stable",
     "gram": "stable",
@@ -104,6 +107,7 @@
     "euler_solve": "stable",
     "euler_step": "stable",
     "rk45_adaptive_solve": "alpha",
+    "rk45_adaptive_solve_grid": "alpha",
     "rk4_solve": "stable",
     "rk4_step": "stable"
   },

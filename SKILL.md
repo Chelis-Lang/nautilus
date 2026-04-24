@@ -896,7 +896,7 @@ Gamma/Chi-squared/Student-t have PDF+CDF (some have inv_cdf). Poisson/Binomial h
 ### Nautilus.LinAlg
 Fixed-size closed-form linear algebra: `inv_2x2`, `inv_3x3`, `solve_2x2`, `solve_3x3`,
 `det_2x2`, `det_3x3`, `cholesky_2x2`, `eig_2x2_real`.
-General-n (alpha): `cholesky_n`, `lu_solve`, `qr_decompose`, `svd_n`.
+General-n (alpha): `cholesky_n`, `lu_solve`, `qr_decompose`, `svd_n`, `eig_n`.
 `lu_solve[n](a, b)` — Doolittle LU, no pivoting; requires non-zero diagonal pivots.
 `qr_decompose[n](a)` — Householder QR, returns `(Q, R)` tuple, Q orthogonal, R upper triangular.
 `svd_n[n](a)` — Jacobi SVD, returns `(U, sigma, Vt)`, fixed 30n sweeps.
@@ -923,6 +923,7 @@ Fixed-step ODE solvers taking `f: f32 -> f32 -> f32` (dy/dt = f(y, t)):
 `euler_step`, `euler_solve(f, y0, t0, t1, n_steps)`.
 `rk4_step`, `rk4_solve(f, y0, t0, t1, n_steps)`.
 `grad(rk4_solve(f, y0, t0, t1, n))` works for neural ODE composition.
+`rk45_adaptive_solve_grid`: vector ODE solver returning state at caller-supplied output times. `t_out` must be sorted ascending with all values in `(t0, t_end]`. Uses Dormand-Prince Hermite cubic dense output for interpolation.
 
 ### Nautilus.Integrate
 Quadrature taking `f: f32 -> f32`:
@@ -935,6 +936,8 @@ Specialized: `gauss_hermite_10(f)` for integrals with `e^{-x^2}` weight, `gauss_
 `linear_interp_uniform(ys, x_min, x_max, x_query)` on a uniform grid.
 `linear_interp_sorted(xs, ys, x_query)` on a sorted non-uniform grid.
 `cubic_hermite(x0, x1, y0, y1, m0, m1, x)` single-interval Hermite cubic.
+`spline_eval(xs, ys, x_query)` — natural cubic spline; clamped extrapolation outside [xs[0], xs[m-1]]. Every call recomputes the spline coefficients; cache xs/ys if calling repeatedly.
+`spline_fit(xs, ys)` — returns the m second-derivative values M used by the spline. Not needed for evaluation; exposed for inspection or AD.
 
 ### Nautilus.Testing
 Hypothesis test building blocks:
@@ -1119,6 +1122,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `lu_solve` | `[n](a: tensor[n, n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | General-n Doolittle LU, no partial pivoting. Requires all leading submatrices of A to be nonsingular; well-conditioned matrices needing row swaps produce NaN. AD: gradients treat pivot choices as fixed. |
 | `qr_decompose` | `[n](a: tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, n, f32])` | `alpha` | General-n Householder QR (square). Returns (Q, R): Q orthogonal, R upper triangular. AD: Householder sign choices are piecewise-smooth, not globally smooth. |
 | `svd_n` | `[n](a: tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor[n, n, f32])` | `alpha` | General-n square Jacobi SVD. Returns (U, sigma, Vt). Fixed 30n sweeps; poorly-separated singular values may not fully converge. U is orthogonal only for full-rank A. AD: singular-vector bases are discontinuous at repeated singular values. |
+| `eig_n` | `[n](a: tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32])` | `alpha` | Symmetric Jacobi eigendecomposition. Returns (eigenvalues, Q) where Q[:,i] is eigenvector for eigenvalue i. Fixed 30n sweeps. Requires symmetric input — non-symmetric matrices produce wrong results silently. No sorting of eigenvalues guaranteed. |
 
 ### Nautilus.Stats (14 exports)
 
@@ -1169,6 +1173,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `rk4_step` | `(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32` | `stable` | Single RK4 step; `f` takes (y, t) |
 | `rk4_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32` | `stable` | Fixed-step RK4; `f` takes (y, t), returns final y |
 | `rk45_adaptive_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t_end: f32, rtol: f32, atol: f32) -> f32` | `alpha` | Scalar Dormand-Prince 5(4) endpoint solve with adaptive step control; returns final y only |
+| `rk45_adaptive_solve_grid` | `[n, p](f: tensor[n, f32] -> f32 -> tensor[n, f32], t0: f32, y0: tensor[n, f32], t_end: f32, rtol: f32, atol: f32, t_out: tensor[p, f32]) -> tensor[n, p, f32]` | `alpha` | Vector Dormand-Prince 5(4) with Hermite cubic dense output. Returns state at each t_out point. t_out must be sorted ascending, all in (t0, t_end]. f takes (state, t) curried. |
 
 ### Nautilus.Integrate (8 exports)
 
@@ -1210,13 +1215,15 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `gradient_descent_1d` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, lr: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f` and `df`; fixed learning rate, NaN on divergence |
 | `newton_minimize_1d` | `(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Takes function-typed `f`, `df`, `ddf`; requires positive curvature at minimum |
 
-### Nautilus.Interpolation (3 exports)
+### Nautilus.Interpolation (5 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
 | `linear_interp_uniform` | `[n](ys: tensor[n, f32], x_min: f32, x_max: f32, x_query: f32) -> f32` | `stable` | Uniformly-spaced knots, clamped extrapolation |
 | `linear_interp_sorted` | `[n](xs: tensor[n, f32], ys: tensor[n, f32], x_query: f32) -> f32` | `stable` | Arbitrary sorted knots, flat extrapolation outside range |
 | `cubic_hermite` | `(x0: f32, x1: f32, y0: f32, y1: f32, m0: f32, m1: f32, x_query: f32) -> f32` | `stable` | Single-interval cubic Hermite spline, caller supplies tangents m0/m1 |
+| `spline_eval` | `[m](xs: tensor[m, f32], ys: tensor[m, f32], x_query: f32) -> f32` | `alpha` | Natural cubic spline fit + eval in one call. Clamped extrapolation (returns ys[0] or ys[m-1] outside range). xs must be sorted ascending. Every call recomputes M; avoid in tight loops. |
+| `spline_fit` | `[m](xs: tensor[m, f32], ys: tensor[m, f32]) -> tensor[m, f32]` | `alpha` | Returns second-derivative vector M (length m). Natural BCs: M[0]=M[m-1]=0. Exposed for inspection; use spline_eval for evaluation. |
 
 ### Nautilus.SDE (2 exports)
 

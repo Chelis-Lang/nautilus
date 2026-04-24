@@ -749,6 +749,16 @@ def goldens_spline() -> dict[str, dict]:
                                   bc_type="natural")(math.pi / 3))}],
             },
             {
+                "label": "m5_extrapolation",
+                "xs": xs1, "ys": ys1,
+                "queries": [
+                    {"x": -1.0, "expected": 0.0},
+                    {"x": -0.5, "expected": 0.0},
+                    {"x":  5.0, "expected": 16.0},
+                    {"x":  6.0, "expected": 16.0},
+                ],
+            },
+            {
                 "label": "m6_endpoint",
                 "xs": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0],
                 "ys": [float(x ** 3) for x in range(6)],

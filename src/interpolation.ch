@@ -279,7 +279,8 @@ def spline_eval[m](xs: tensor[m, f32], ys: tensor[m, f32], x_query: f32) -> f32 
       is_first = eq(i, cast(0, int64))
       not_found = not(found)
       past_query = gte(xi, x_query)
-      bracket_hit = and(not_found, and(not(is_first), past_query))
+      in_segment   = gte(x_query, prev_x)
+      bracket_hit = and(not_found, and(not(is_first), and(past_query, in_segment)))
       h_seg = sub(xi, prev_x)
       abs_h = if lt(h_seg, cast(0.0, f32)) then neg(h_seg) else h_seg
       safe_h = if lt(abs_h, cast(1.0e-30, f32)) then cast(1.0, f32) else h_seg

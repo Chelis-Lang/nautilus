@@ -28,10 +28,11 @@ import Nautilus.LinAlg (
   cholesky_n,
   lu_solve,
   qr_decompose,
-  svd_n
+  svd_n,
+  eig_n
 )
 import Nautilus.Roots (bisection, newton, brent)
-import Nautilus.ODE (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve)
+import Nautilus.ODE (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve, rk45_adaptive_solve_grid)
 import Nautilus.Stats (
   mean_vec, variance_vec, std_vec,
   skewness_vec, kurtosis_vec, median_vec,
@@ -54,7 +55,7 @@ import Nautilus.Signal (
   lowpass_stub, highpass_stub, bandpass_stub, fftfreq
 )
 import Nautilus.Optim (golden_section_search, brent_minimize, gradient_descent_1d, newton_minimize_1d)
-import Nautilus.Interpolation (linear_interp_uniform, linear_interp_sorted, cubic_hermite)
+import Nautilus.Interpolation (linear_interp_uniform, linear_interp_sorted, cubic_hermite, spline_fit, spline_eval)
 import Nautilus.SDE (euler_maruyama_fixed, milstein_fixed)
 import Nautilus.Integrate (
   trapezoidal, simpsons, gauss_legendre_5,
@@ -72,7 +73,10 @@ export (
   smoke_stats_p4,
   smoke_qr,
   smoke_svd_n,
-  smoke_lm_nparam
+  smoke_lm_nparam,
+  smoke_eig_n,
+  smoke_ode_grid,
+  smoke_spline
 )
 
 def smoke_poly(x: f32) -> f32 = {
@@ -368,4 +372,35 @@ def smoke_lm_nparam(
     fn (th: tensor[2, f32], xd: tensor[3, f32]) -> scale_vec(xd, l2_norm_vec(th)),
     xs, ys, th0, cast(1.0e-4, f32), cast(5, int64))
   l2_norm_vec(theta)
+}
+
+def smoke_eig_n(a3: tensor[3, 3, f32]) -> f32 = {
+  r_evals = eig_n(copy(a3))
+  r_evecs = eig_n(a3)
+  evals = r_evals.0
+  evecs = r_evecs.1
+  add(l2_norm_vec(evals), frobenius_norm(evecs))
+}
+
+def smoke_ode_grid_f(y: tensor[1, f32], t: f32) -> tensor[1, f32] = neg(y)
+
+def smoke_ode_grid(
+  y0: tensor[1, f32],
+  t_out: tensor[4, f32]
+) -> f32 = {
+  grid = rk45_adaptive_solve_grid(
+    smoke_ode_grid_f,
+    cast(0.0, f32), y0, cast(2.0, f32),
+    cast(1.0e-6, f32), cast(1.0e-8, f32),
+    t_out)
+  frobenius_norm(grid)
+}
+
+def smoke_spline(
+  xs: tensor[5, f32],
+  ys: tensor[5, f32]
+) -> f32 = {
+  v = spline_eval(copy(xs), copy(ys), cast(2.5, f32))
+  m = spline_fit(xs, ys)
+  add(v, l2_norm_vec(m))
 }
