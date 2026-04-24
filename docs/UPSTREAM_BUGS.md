@@ -111,6 +111,17 @@ Summary as of **v0.2.0** (Nautilus) / **v0.1.21** (Chelis):
   require file-based reef imports; or set `_PROBE_TIMEOUT_S` in the
   benchmark script to bound the hang.
 
+  **v0.2.1 validation findings (2026-04-23):**
+  - `chelis check src/*.ch`: all 21 files score 1.0, no errors.
+  - `chelis reef build`: produces `dist/nautilus-0.2.1.chb` cleanly.
+  - `tests/run_numeric_tests.py`: 1051 / 1051 numerical assertions passed.
+  - Bug 9 (`chelis eval --file` hang): still open in v0.2.1 — `timeout 3 chelis eval --file probe.ch bench` exits 124. Benchmark probe timeouts remain necessary.
+  - Tensor-valued `grad` blocker: not retested; `lm_scalar_nparam` continues to use FD Jacobian.
+  - No new bugs observed.
+
+  **v0.2.0 validation findings (2026-04-23):**
+  - Skipped — upgraded directly to v0.2.1 (same-day release, supersedes v0.2.0).
+
   **v0.1.21 validation findings (2026-04-23):**
   - `chelis check src/curvefit.ch`: score 1.0 with recursive Jacobian
     formulation (`lm_jtr_sum`, `lm_jtj_sum`, `lm_jtj_row_sum`).
