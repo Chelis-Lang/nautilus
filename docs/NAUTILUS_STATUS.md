@@ -131,10 +131,15 @@ On upstream releases through `v0.1.21`:
 
 - Nautilus is `f32` only. Precision is generally in the 6-7 significant
   digit range.
-- `lu_solve`, `qr_decompose`, and `svd_n` are `alpha` stability and square-only.
-  `lu_solve` requires non-zero leading principal submatrices (no partial pivoting).
-  `svd_n` uses a fixed 30n Jacobi sweeps — nearly-equal singular values may not
-  fully converge. General-n eigendecomposition beyond `eig_2x2_real` is not yet available.
+- `lu_solve`, `qr_decompose`, `svd_n`, and `eig_n` are `alpha` stability and
+  square-only.  `lu_solve` requires non-zero leading principal submatrices (no
+  partial pivoting).  `svd_n` and `eig_n` use a fixed 30n classical Jacobi
+  sweeps with no convergence early-exit; nearly-equal singular/eigen values may
+  require more sweeps on pathological inputs.  `eig_n` assumes symmetric input;
+  results for non-symmetric matrices are undefined (no crash, but eigenvector
+  equation may not hold).  OMP nested-parallelism deadlock: callers must set
+  `OMP_NUM_THREADS=1` when invoking the compiled binary directly; the test
+  harness sets this automatically.
 - `rk45_adaptive_solve` provides adaptive endpoint integration, but the
   ODE surface still returns only the final state rather than a saved
   trajectory.

@@ -607,49 +607,80 @@ def la_eig_a_sw[n](a: tensor[n, n, f32], sw: int64, nsw: int64, nlen: int64, tpl
   if gte(sw, nsw) then a
   else la_eig_a_sw(la_eig_a_ip(a, cast(0, int64), nlen, copy(tpl)), add(sw, cast(1, int64)), nsw, nlen, tpl)
 
-def la_eig_a_replay_q[n](a: tensor[n, n, f32], p: int64, q: int64, qtarget: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
-  if gte(q, qtarget) then a
-  else la_eig_a_replay_q(la_eig_rot_a(a, p, q, copy(tpl)), p, add(q, cast(1, int64)), qtarget, tpl)
-
-def la_eig_a_replay_p[n](a: tensor[n, n, f32], p: int64, ptarget: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
-  if gte(p, ptarget) then a
-  else la_eig_a_replay_p(la_eig_a_iq(a, p, add(p, cast(1, int64)), nlen, copy(tpl)), add(p, cast(1, int64)), ptarget, nlen, tpl)
-
-def la_eig_q_iq[n](q: tensor[n, n, f32], a_sw_init: tensor[n, n, f32], p: int64, q_idx: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
-  if gte(q_idx, nlen) then q
+-- Q-only inner q-loop: accumulate Q by mirroring every Jacobi rotation
+-- applied to A.  A is threaded in lockstep so the angle for each
+-- rotation is computed from the current (pre-rotation) A, then A is
+-- advanced with la_eig_rot_a.  Returns Q only; caller updates A
+-- separately using the existing la_eig_a_* functions.
+def la_eig_aq_iq[n](
+  a: tensor[n, n, f32],
+  q: tensor[n, n, f32],
+  p: int64,
+  q_idx: int64,
+  nlen: int64,
+  tpl: tensor[n, f32]
+) -> tensor[n, n, f32] =
+  if gte(q_idx, nlen) then {
+    ignore_a = a
+    q
+  }
   else {
-    a_at_pq = la_eig_a_replay_q(la_eig_a_replay_p(copy(a_sw_init), cast(0, int64), p, nlen, copy(tpl)), p, add(p, cast(1, int64)), q_idx, copy(tpl))
-    q2 = la_eig_rot_q(q, a_at_pq, p, q_idx, copy(tpl))
-    la_eig_q_iq(q2, a_sw_init, p, add(q_idx, cast(1, int64)), nlen, tpl)
+    q2 = la_eig_rot_q(q, copy(a), p, q_idx, copy(tpl))
+    a2 = la_eig_rot_a(a, p, q_idx, copy(tpl))
+    la_eig_aq_iq(a2, q2, p, add(q_idx, cast(1, int64)), nlen, tpl)
   }
 
-def la_eig_q_ip[n](q: tensor[n, n, f32], a_sw_init: tensor[n, n, f32], p: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
-  if gte(p, sub(nlen, cast(1, int64))) then q
-  else la_eig_q_ip(la_eig_q_iq(q, copy(a_sw_init), p, add(p, cast(1, int64)), nlen, copy(tpl)), a_sw_init, add(p, cast(1, int64)), nlen, tpl)
-
-def la_eig_q_sw[n](q: tensor[n, n, f32], a0: tensor[n, n, f32], sw: int64, nsw: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
-  if gte(sw, nsw) then q
+-- Q-only inner p-loop.  A is advanced in lockstep via la_eig_a_iq so
+-- that la_eig_aq_iq receives the correct pre-sweep A for each p.
+def la_eig_aq_ip[n](
+  a: tensor[n, n, f32],
+  q: tensor[n, n, f32],
+  p: int64,
+  nlen: int64,
+  tpl: tensor[n, f32]
+) -> tensor[n, n, f32] =
+  if gte(p, sub(nlen, cast(1, int64))) then {
+    ignore_a = a
+    q
+  }
   else {
-    a_sw_init = la_eig_a_sw(copy(a0), cast(0, int64), sw, nlen, copy(tpl))
-    q2 = la_eig_q_ip(q, a_sw_init, cast(0, int64), nlen, copy(tpl))
-    la_eig_q_sw(q2, a0, add(sw, cast(1, int64)), nsw, nlen, tpl)
+    q2 = la_eig_aq_iq(copy(a), q, p, add(p, cast(1, int64)), nlen, copy(tpl))
+    a2 = la_eig_a_iq(a, p, add(p, cast(1, int64)), nlen, copy(tpl))
+    la_eig_aq_ip(a2, q2, add(p, cast(1, int64)), nlen, tpl)
+  }
+
+-- Q-only outer sweep loop.  A advances via la_eig_a_ip in lockstep.
+def la_eig_aq_sw[n](
+  a: tensor[n, n, f32],
+  q: tensor[n, n, f32],
+  sw: int64,
+  nsw: int64,
+  nlen: int64,
+  tpl: tensor[n, f32]
+) -> tensor[n, n, f32] =
+  if gte(sw, nsw) then {
+    ignore_a = a
+    q
+  }
+  else {
+    q2 = la_eig_aq_ip(copy(a), q, cast(0, int64), nlen, copy(tpl))
+    a2 = la_eig_a_ip(a, cast(0, int64), nlen, copy(tpl))
+    la_eig_aq_sw(a2, q2, add(sw, cast(1, int64)), nsw, nlen, tpl)
   }
 
 def eig_n[n](a: tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32]) = {
   eig_tpl = diag(copy(a))
   eig_nlen = len(to_list(copy(eig_tpl)))
   eig_nsw = mul(cast(30, int64), eig_nlen)
-  eig_a0 = copy(a)
-  eig_af = la_eig_a_sw(copy(eig_a0), cast(0, int64), eig_nsw, eig_nlen, copy(eig_tpl))
-  eig_af2 = copy(eig_af)
   eig_q0 = la_identity_n(copy(eig_tpl))
-  eig_qf = la_eig_q_sw(eig_q0, eig_a0, cast(0, int64), eig_nsw, eig_nlen, copy(eig_tpl))
+  eig_af = la_eig_a_sw(copy(a), cast(0, int64), eig_nsw, eig_nlen, copy(eig_tpl))
+  eig_qf = la_eig_aq_sw(copy(a), eig_q0, cast(0, int64), eig_nsw, eig_nlen, copy(eig_tpl))
   eig_tpl2 = copy(eig_tpl)
   eig_zlam = to_tensor(map(fn (x: f32) -> cast(0.0, f32), to_list(copy(eig_tpl2))))
   eigenvalues = fold(
     fn (acc: tensor[n, f32], i: int64) -> {
       eig_ei = la_basis_n_f32(i, cast(1.0, f32), copy(eig_tpl2))
-      eig_aii = inner_product(matvec(copy(eig_af2), copy(eig_ei)), copy(eig_ei))
+      eig_aii = inner_product(matvec(copy(eig_af), copy(eig_ei)), copy(eig_ei))
       la_vec_saxpy(eig_aii, acc, eig_ei)
     },
     eig_zlam, range(cast(0, int64), eig_nlen))

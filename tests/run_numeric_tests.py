@@ -487,8 +487,9 @@ int main(int argc, char** argv) {
 def build_p1_binary() -> Path:
     bare = "\n".join(
         strip_module((SRC / f).read_text())
-        for f in ("special.ch", "distributions.ch", "roots.ch", "ode.ch", "integrate.ch", "testing.ch", "optim.ch", "interpolation.ch", "sde.ch")
+        for f in ("special.ch", "distributions.ch", "linalg.ch", "roots.ch", "ode.ch", "integrate.ch", "testing.ch", "optim.ch", "interpolation.ch", "sde.ch")
     ) + P1_TEST_HELPERS_CH + "\ndef main() -> f32 = p1_poly1(cast(1.0, f32))\n"
+    bare = _dedup_defs(bare)
     workdir = Path(tempfile.mkdtemp(prefix="nautilus-p1-"))
     bare_ch = workdir / "p1_bare.ch"
     bare_ch.write_text(bare)
@@ -1413,8 +1414,8 @@ def ode_grid_sys2(y: tensor[2, f32], t: f32) -> tensor[2, f32] = {
   tpl = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(y))))
   y1 = inner_product(copy(y), la_basis_n_f32(cast(0, int64), cast(1.0, f32), copy(tpl)))
   y2 = inner_product(y, la_basis_n_f32(cast(1, int64), cast(1.0, f32), tpl))
-  e1 = la_basis_n_f32(cast(0, int64), neg(y1), to_tensor(map(fn (v: f32) -> cast(0.0, f32), range(cast(0, int64), cast(2, int64)))))
-  e2 = la_basis_n_f32(cast(1, int64), mul(neg(cast(2.0, f32)), y2), to_tensor(map(fn (v: f32) -> cast(0.0, f32), range(cast(0, int64), cast(2, int64)))))
+  e1 = la_basis_n_f32(cast(0, int64), neg(y1), to_tensor(map(fn (v: int64) -> cast(0.0, f32), range(cast(0, int64), cast(2, int64)))))
+  e2 = la_basis_n_f32(cast(1, int64), mul(neg(cast(2.0, f32)), y2), to_tensor(map(fn (v: int64) -> cast(0.0, f32), range(cast(0, int64), cast(2, int64)))))
   la_vec_add(e1, e2)
 }
 
@@ -1450,10 +1451,20 @@ def build_linalg_binary() -> Path:
 
 
 def call_la_fn(binary: Path, fn: str, *args: float) -> str:
-    """Call a linalg function and return raw stdout."""
+    """Call a linalg function and return raw stdout.
+
+    OMP_NUM_THREADS is forced to 1: the Chelis-compiled recursive functions
+    (eig_n, svd_n, etc.) call OMP-parallelised tensor ops from within their
+    own recursive loops.  With multiple OMP threads those nested parallel
+    regions deadlock on the shared thread-pool.  Single-threaded OMP avoids
+    the deadlock at the cost of SIMD-only throughput, which is fine for
+    small test matrices.
+    """
+    env = dict(os.environ, OMP_NUM_THREADS="1")
     res = subprocess.run(
         [str(binary), fn, *(str(a) for a in args)],
         capture_output=True, text=True, check=True,
+        env=env,
     )
     return res.stdout.strip()
 
