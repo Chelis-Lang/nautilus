@@ -381,20 +381,22 @@ def rk45_adaptive_grid_rec[n, p](
     else {
       abs_h = ode_abs_f(h)
       h_capped = if gt(abs_h, abs_remaining) then remaining else h
-      y_next = rk45_dopri_step_dense(f, copy(y), t, h_capped)
-      err = rk45_dopri_step_dense_err(f, copy(y), t, h_capped)
-      k1 = f(copy(y), t)
+      y_step = copy(y)
+      y_next = rk45_dopri_step_dense(f, copy(y_step), t, h_capped)
+      err = rk45_dopri_step_dense_err(f, copy(y_step), t, h_capped)
+      k1 = f(copy(y_step), t)
       k7 = f(copy(y_next), add(t, h_capped))
-      scale_f = rk45_vec_scale_err(copy(y), copy(y_next), rtol, atol)
+      scale_f = rk45_vec_scale_err(copy(y_step), copy(y_next), rtol, atol)
       err_ratio = div(err, scale_f)
       next_h = rk45_vec_next_step(h_capped, err_ratio)
       if lte(err_ratio, ode_one_f()) then {
         t_next = add(t, h_capped)
-        new_output = rk45_grid_inner_rec(copy(t_out), copy(template_p), copy(y), copy(y_next), copy(k1), copy(k7), t, h_capped, copy(output), cast(0, int64), p_len)
+        t_start = sub(t_next, h_capped)
+        new_output = rk45_grid_inner_rec(copy(t_out), copy(template_p), y_step, copy(y_next), copy(k1), copy(k7), t_start, h_capped, copy(output), cast(0, int64), p_len)
         if lt(ode_abs_f(sub(t_end, t_next)), tiny_h) then new_output
         else rk45_adaptive_grid_rec(f, y_next, t_next, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()), new_output, copy(t_out), copy(template_p))
       } else {
-        rk45_adaptive_grid_rec(f, copy(y), t, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()), copy(output), copy(t_out), copy(template_p))
+        rk45_adaptive_grid_rec(f, copy(y_step), t, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()), copy(output), copy(t_out), copy(template_p))
       }
     }
   }
