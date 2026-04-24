@@ -290,6 +290,104 @@ def la_lu_bwd_step[n](
   la_vec_saxpy(correction, x_acc, e_ir)
 }
 
+-- Thomas algorithm O(n) tridiagonal solve (INTERNAL — do not export).
+-- Convention: lower[0] unused, upper[n-1] unused.
+-- Forward-eliminate the diagonal; captures lower/upper/diag_prev via closure.
+def la_tridiag_fwd_diag[n](
+  lower: tensor[n, f32],
+  diag_in: tensor[n, f32],
+  upper: tensor[n, f32],
+  n_len: int64
+) -> tensor[n, f32] = {
+  tpl = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(diag_in))))
+  fold(
+    fn (dacc: tensor[n, f32], i: int64) -> {
+      e_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl))
+      e_im1 = la_basis_n_f32(sub(i, cast(1, int64)), cast(1.0, f32), copy(tpl))
+      lower_i = inner_product(copy(lower), copy(e_i))
+      diag_im1 = inner_product(copy(dacc), copy(e_im1))
+      upper_im1 = inner_product(copy(upper), copy(e_im1))
+      diag_i = inner_product(copy(dacc), copy(e_i))
+      abs_d = if lt(diag_im1, cast(0.0, f32)) then neg(diag_im1) else diag_im1
+      safe_d = if lt(abs_d, cast(1.0e-30, f32)) then cast(1.0, f32) else diag_im1
+      w = div(lower_i, safe_d)
+      new_diag_i = sub(diag_i, mul(w, upper_im1))
+      corr_d = sub(new_diag_i, diag_i)
+      la_vec_saxpy(corr_d, dacc, e_i)
+    },
+    diag_in, range(cast(1, int64), n_len))
+}
+
+-- Forward-eliminate the rhs; requires the updated diagonal at each step.
+def la_tridiag_fwd_b[n](
+  lower: tensor[n, f32],
+  diag_f: tensor[n, f32],
+  upper: tensor[n, f32],
+  b_in: tensor[n, f32],
+  n_len: int64
+) -> tensor[n, f32] = {
+  tpl = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(b_in))))
+  fold(
+    fn (bacc: tensor[n, f32], i: int64) -> {
+      e_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl))
+      e_im1 = la_basis_n_f32(sub(i, cast(1, int64)), cast(1.0, f32), copy(tpl))
+      lower_i = inner_product(copy(lower), copy(e_i))
+      diag_im1 = inner_product(copy(diag_f), copy(e_im1))
+      b_im1 = inner_product(copy(bacc), copy(e_im1))
+      b_i = inner_product(copy(bacc), copy(e_i))
+      abs_d = if lt(diag_im1, cast(0.0, f32)) then neg(diag_im1) else diag_im1
+      safe_d = if lt(abs_d, cast(1.0e-30, f32)) then cast(1.0, f32) else diag_im1
+      w = div(lower_i, safe_d)
+      new_b_i = sub(b_i, mul(w, b_im1))
+      corr_b = sub(new_b_i, b_i)
+      la_vec_saxpy(corr_b, bacc, e_i)
+    },
+    b_in, range(cast(1, int64), n_len))
+}
+
+def la_tridiag_bwd[n](
+  upper: tensor[n, f32],
+  diag_f: tensor[n, f32],
+  b_f: tensor[n, f32],
+  n_len: int64,
+  n_len_m1: int64
+) -> tensor[n, f32] = {
+  tpl = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(diag_f))))
+  x_init = copy(tpl)
+  fold(
+    fn (x_acc: tensor[n, f32], j: int64) -> {
+      i = sub(n_len_m1, j)
+      e_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl))
+      b_i = inner_product(copy(b_f), copy(e_i))
+      diag_i = inner_product(copy(diag_f), copy(e_i))
+      upper_i = inner_product(copy(upper), copy(e_i))
+      x_ip1 = inner_product(copy(x_acc), la_basis_n_f32(add(i, cast(1, int64)), cast(1.0, f32), copy(tpl)))
+      abs_di = if lt(diag_i, cast(0.0, f32)) then neg(diag_i) else diag_i
+      safe_di = if lt(abs_di, cast(1.0e-30, f32)) then cast(1.0, f32) else diag_i
+      is_last = eq(i, n_len_m1)
+      rhs = if is_last then b_i else sub(b_i, mul(upper_i, x_ip1))
+      x_i = div(rhs, safe_di)
+      x_prev = inner_product(copy(x_acc), copy(e_i))
+      corr = sub(x_i, x_prev)
+      la_vec_saxpy(corr, x_acc, e_i)
+    },
+    x_init, range(cast(0, int64), n_len))
+}
+
+def la_tridiag_solve[n](
+  lower: tensor[n, f32],
+  diag: tensor[n, f32],
+  upper: tensor[n, f32],
+  b: tensor[n, f32]
+) -> tensor[n, f32] = {
+  tpl0 = copy(diag)
+  n_len = len(to_list(tpl0))
+  n_len_m1 = sub(n_len, cast(1, int64))
+  diag_f = la_tridiag_fwd_diag(copy(lower), diag, copy(upper), n_len)
+  b_f = la_tridiag_fwd_b(lower, copy(diag_f), copy(upper), b, n_len)
+  la_tridiag_bwd(upper, diag_f, b_f, n_len, n_len_m1)
+}
+
 def lu_solve[n](a: tensor[n, n, f32], b: tensor[n, f32]) -> tensor[n, f32] = {
   template = diag(copy(a))
   n_len = len(to_list(copy(template)))

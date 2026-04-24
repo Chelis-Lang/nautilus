@@ -3,7 +3,9 @@ module Nautilus.Interpolation
 export (
   linear_interp_uniform,
   linear_interp_sorted,
-  cubic_hermite
+  cubic_hermite,
+  spline_fit,
+  spline_eval
 )
 
 def interp_zero_f() -> f32 = cast(0.0, f32)
@@ -141,4 +143,163 @@ def cubic_hermite(x0: f32, x1: f32, y0: f32, y1: f32, m0: f32, m1: f32, x_query:
     term3 = mul(h11, mul(h, m1))
     add(add(term0, term1), add(term2, term3))
   }
+}
+
+-- spline_zeros[m]: INTERNAL — zero vector of size m, derived from xs.
+def spline_zeros[m](xs: tensor[m, f32]) -> tensor[m, f32] =
+  to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(xs)))
+
+-- spline_fit_h[m]: INTERNAL — compute h[i] = xs[i+1] - xs[i] for i=0..m-2.
+-- h[m-1] slot left 0 (unused sentinel).
+def spline_fit_h[m](xs: tensor[m, f32], h0: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] =
+  fold(
+    fn (hacc: tensor[m, f32], i: int64) -> {
+      tpl_loc = spline_zeros(copy(hacc))
+      e_i     = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_loc))
+      e_ip1   = la_basis_n_f32(add(i, cast(1, int64)), cast(1.0, f32), tpl_loc)
+      xi      = inner_product(copy(xs), copy(e_i))
+      xip1    = inner_product(copy(xs), e_ip1)
+      hi      = sub(xip1, xi)
+      abs_hi  = if lt(hi, cast(0.0, f32)) then neg(hi) else hi
+      safe_hi = if lt(abs_hi, cast(1.0e-30, f32)) then cast(1.0, f32) else hi
+      la_vec_saxpy(safe_hi, hacc, e_i)
+    },
+    h0, range(cast(0, int64), n_len_m1))
+
+-- spline_fit_lower[m]: INTERNAL — build lower diagonal (lower[i] = h[i-1] for i=1..m-2).
+def spline_fit_lower[m](h: tensor[m, f32], low0: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] =
+  fold(
+    fn (acc: tensor[m, f32], i: int64) -> {
+      tpl_loc = spline_zeros(copy(acc))
+      e_im1   = la_basis_n_f32(sub(i, cast(1, int64)), cast(1.0, f32), copy(tpl_loc))
+      e_i     = la_basis_n_f32(i, cast(1.0, f32), tpl_loc)
+      h_im1   = inner_product(copy(h), e_im1)
+      la_vec_saxpy(h_im1, acc, e_i)
+    },
+    low0, range(cast(1, int64), n_len_m1))
+
+-- spline_fit_diag[m]: INTERNAL — build main diagonal.
+-- diag[0]=diag[m-1]=1 (natural BC), diag[i]=2*(h[i-1]+h[i]) for i=1..m-2.
+def spline_fit_diag[m](h: tensor[m, f32], d_init: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] =
+  fold(
+    fn (acc: tensor[m, f32], i: int64) -> {
+      tpl_loc = spline_zeros(copy(acc))
+      e_im1   = la_basis_n_f32(sub(i, cast(1, int64)), cast(1.0, f32), copy(tpl_loc))
+      e_i     = la_basis_n_f32(i, cast(1.0, f32), tpl_loc)
+      h_im1   = inner_product(copy(h), e_im1)
+      h_i     = inner_product(copy(h), copy(e_i))
+      d_i     = mul(cast(2.0, f32), add(h_im1, h_i))
+      la_vec_saxpy(d_i, acc, e_i)
+    },
+    d_init, range(cast(1, int64), n_len_m1))
+
+-- spline_fit_upper[m]: INTERNAL — build upper diagonal (upper[i] = h[i] for i=1..m-2).
+def spline_fit_upper[m](h: tensor[m, f32], up0: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] =
+  fold(
+    fn (acc: tensor[m, f32], i: int64) -> {
+      tpl_loc = spline_zeros(copy(acc))
+      e_i     = la_basis_n_f32(i, cast(1.0, f32), tpl_loc)
+      h_i     = inner_product(copy(h), copy(e_i))
+      la_vec_saxpy(h_i, acc, e_i)
+    },
+    up0, range(cast(1, int64), n_len_m1))
+
+-- spline_fit_rhs[m]: INTERNAL — build right-hand side of the moment system.
+def spline_fit_rhs[m](
+  ys: tensor[m, f32], h: tensor[m, f32],
+  rhs0: tensor[m, f32], n_len_m1: int64
+) -> tensor[m, f32] =
+  fold(
+    fn (acc: tensor[m, f32], i: int64) -> {
+      tpl_loc = spline_zeros(copy(acc))
+      e_im1   = la_basis_n_f32(sub(i, cast(1, int64)), cast(1.0, f32), copy(tpl_loc))
+      e_i     = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_loc))
+      e_ip1   = la_basis_n_f32(add(i, cast(1, int64)), cast(1.0, f32), tpl_loc)
+      h_im1   = inner_product(copy(h), copy(e_im1))
+      h_i     = inner_product(copy(h), copy(e_i))
+      y_im1   = inner_product(copy(ys), copy(e_im1))
+      y_i     = inner_product(copy(ys), copy(e_i))
+      y_ip1   = inner_product(copy(ys), e_ip1)
+      safe_him1 = if lt(h_im1, cast(1.0e-30, f32)) then cast(1.0, f32) else h_im1
+      safe_hi   = if lt(h_i,   cast(1.0e-30, f32)) then cast(1.0, f32) else h_i
+      rhs_i   = mul(cast(6.0, f32),
+                  sub(div(sub(y_ip1, y_i), safe_hi),
+                      div(sub(y_i, y_im1), safe_him1)))
+      la_vec_saxpy(rhs_i, acc, e_i)
+    },
+    rhs0, range(cast(1, int64), n_len_m1))
+
+-- spline_fit[m]: Natural cubic spline — returns the second-derivative vector M
+-- (tensor[m, f32]) with M[0] = M[m-1] = 0 (natural boundary conditions).
+-- xs must be sorted ascending.  Call spline_eval to evaluate.
+def spline_fit[m](xs: tensor[m, f32], ys: tensor[m, f32]) -> tensor[m, f32] = {
+  n_len    = len(to_list(copy(xs)))
+  n_len_m1 = sub(n_len, cast(1, int64))
+  zeros0   = spline_zeros(copy(xs))
+  h        = spline_fit_h(copy(xs), copy(zeros0), n_len_m1)
+  lower_v  = spline_fit_lower(copy(h), copy(zeros0), n_len_m1)
+  -- diag: start with 1 at position 0 and m-1, then add 2*(h[i-1]+h[i]) for i=1..m-2
+  e_0      = la_basis_n_f32(cast(0, int64), cast(1.0, f32), copy(zeros0))
+  e_last   = la_basis_n_f32(n_len_m1, cast(1.0, f32), zeros0)
+  d_init   = la_vec_saxpy(cast(1.0, f32), la_vec_saxpy(cast(1.0, f32), spline_zeros(copy(xs)), e_0), e_last)
+  diag_v   = spline_fit_diag(copy(h), d_init, n_len_m1)
+  upper_v  = spline_fit_upper(copy(h), spline_zeros(copy(xs)), n_len_m1)
+  rhs_v    = spline_fit_rhs(copy(ys), h, spline_zeros(xs), n_len_m1)
+  la_tridiag_solve(lower_v, diag_v, upper_v, rhs_v)
+}
+
+-- spline_eval[m]: Evaluate the natural cubic spline at x_query.
+-- xs must be sorted ascending.  Clamps to ys[0] or ys[m-1] at boundaries.
+def spline_eval[m](xs: tensor[m, f32], ys: tensor[m, f32], x_query: f32) -> f32 = {
+  m_sec = spline_fit(copy(xs), copy(ys))
+  n_len = len(to_list(copy(xs)))
+  n_len_m1 = sub(n_len, cast(1, int64))
+  tpl = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(xs))))
+  x_list = to_list(copy(xs))
+  y_list = to_list(copy(ys))
+  zipped = zip(x_list, y_list)
+  enum_zipped = enumerate(zipped)
+  first_x = inner_product(copy(xs), la_basis_n_f32(cast(0, int64), cast(1.0, f32), copy(tpl)))
+  first_y = inner_product(copy(ys), la_basis_n_f32(cast(0, int64), cast(1.0, f32), copy(tpl)))
+  last_y  = inner_product(copy(ys), la_basis_n_f32(n_len_m1, cast(1.0, f32), copy(tpl)))
+  -- Accumulator: (found: bool, result: f32, prev_x: f32, prev_y: f32, prev_M: f32)
+  init = (false, cast(0.0, f32), first_x, first_y, cast(0.0, f32))
+  acc_final = fold(
+    fn (acc: (bool, f32, f32, f32, f32), entry: (int64, (f32, f32))) -> {
+      i      = entry.0
+      xy     = entry.1
+      xi     = xy.0
+      yi     = xy.1
+      found  = acc.0
+      result_prev = acc.1
+      prev_x = acc.2
+      prev_y = acc.3
+      prev_m = acc.4
+      mi_val = inner_product(copy(m_sec), la_basis_n_f32(i, cast(1.0, f32), copy(tpl)))
+      is_first = eq(i, cast(0, int64))
+      not_found = not(found)
+      past_query = gte(xi, x_query)
+      bracket_hit = and(not_found, and(not(is_first), past_query))
+      h_seg = sub(xi, prev_x)
+      abs_h = if lt(h_seg, cast(0.0, f32)) then neg(h_seg) else h_seg
+      safe_h = if lt(abs_h, cast(1.0e-30, f32)) then cast(1.0, f32) else h_seg
+      t  = sub(x_query, prev_x)
+      t2 = mul(t, t)
+      t3 = mul(t2, t)
+      a_c = prev_y
+      b_c = sub(div(sub(yi, prev_y), safe_h),
+                div(mul(safe_h, add(mul(cast(2.0, f32), prev_m), mi_val)), cast(6.0, f32)))
+      c_c = div(prev_m, cast(2.0, f32))
+      d_c = div(sub(mi_val, prev_m), mul(cast(6.0, f32), safe_h))
+      seg_val = add(add(a_c, mul(b_c, t)), add(mul(c_c, t2), mul(d_c, t3)))
+      new_found  = if bracket_hit then true else found
+      new_result = if bracket_hit then seg_val else result_prev
+      (new_found, new_result, xi, yi, mi_val)
+    },
+    init, enum_zipped)
+  found  = acc_final.0
+  result = acc_final.1
+  if found then result
+  else if lt(x_query, first_x) then first_y
+  else last_y
 }

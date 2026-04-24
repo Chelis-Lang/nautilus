@@ -65,6 +65,7 @@ TOL = {
     "distance/vector":           {"abs": 1.0e-6, "rel": 1.0e-6},
     "optim/scalar":              {"abs": 1.0e-5, "rel": 1.0e-5},
     "interpolation/scalar":      {"abs": 1.0e-7, "rel": 1.0e-7},
+    "interpolation/spline":      {"abs": 1.0e-4, "rel": 1.0e-4},
     "sde/scalar":                {"abs": 1.0e-6, "rel": 1.0e-6},
     # Romberg-5 and GL10 saturate at f32's ~1e-7 unit roundoff — the
     # scipy goldens are f64, so bound at 1e-7 to honor the double vs
@@ -720,6 +721,48 @@ def goldens_interpolation() -> dict[str, dict]:
     return g
 
 
+def goldens_spline() -> dict[str, dict]:
+    from scipy.interpolate import CubicSpline
+    g = {}
+    tol = TOL["interpolation/spline"]
+
+    # m5_quadratic: xs=[0,1,2,3,4], ys=x^2 — natural cubic spline reference
+    xs1 = [0.0, 1.0, 2.0, 3.0, 4.0]
+    ys1 = [0.0, 1.0, 4.0, 9.0, 16.0]
+    cs1 = CubicSpline(xs1, ys1, bc_type="natural")
+    xq1 = [0.5, 1.5, 2.5, 3.5]
+    g["interpolation/spline.json"] = {
+        "cases": [
+            {
+                "label": "m5_quadratic",
+                "xs": xs1, "ys": ys1,
+                "queries": [{"x": xq, "expected": float(cs1(xq))} for xq in xq1],
+            },
+            {
+                "label": "m5_trig",
+                "xs": [0.0, math.pi / 4, math.pi / 2, 3 * math.pi / 4, math.pi],
+                "ys": [math.sin(x) for x in [0.0, math.pi / 4, math.pi / 2, 3 * math.pi / 4, math.pi]],
+                "queries": [{"x": math.pi / 3,
+                              "expected": float(CubicSpline(
+                                  [0.0, math.pi / 4, math.pi / 2, 3 * math.pi / 4, math.pi],
+                                  [math.sin(x) for x in [0.0, math.pi / 4, math.pi / 2, 3 * math.pi / 4, math.pi]],
+                                  bc_type="natural")(math.pi / 3))}],
+            },
+            {
+                "label": "m6_endpoint",
+                "xs": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0],
+                "ys": [float(x ** 3) for x in range(6)],
+                "queries": [
+                    {"x": 0.0, "expected": 0.0},
+                    {"x": 5.0, "expected": 125.0},
+                ],
+            },
+        ],
+        **tol,
+    }
+    return g
+
+
 def goldens_sde() -> dict[str, dict]:
     # SDE dY = f*dt + g*dW, f(y,t)=-y (drift → exponential decay toward 0),
     # g(y,t) = sigma constant. Zero-noise reduces to ODE: exact y(t) = y0 * exp(-t).
@@ -976,6 +1019,7 @@ def check_goldens() -> int:
                      ("distance", goldens_distance),
                      ("optim", goldens_optim),
                      ("interpolation", goldens_interpolation),
+                     ("spline", goldens_spline),
                      ("sde", goldens_sde),
                      ("integrate_adaptive", goldens_integrate_adaptive),
                      ("integrate_hl", goldens_integrate_hermite_laguerre),
@@ -1090,6 +1134,7 @@ def main() -> int:
     all_goldens.update(goldens_distance())
     all_goldens.update(goldens_optim())
     all_goldens.update(goldens_interpolation())
+    all_goldens.update(goldens_spline())
     all_goldens.update(goldens_sde())
     all_goldens.update(goldens_integrate_adaptive())
     all_goldens.update(goldens_integrate_hermite_laguerre())

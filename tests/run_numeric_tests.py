@@ -570,6 +570,7 @@ double mahalanobis(chelis_tensor* a, chelis_tensor* b, chelis_tensor* cov_inv);
 /* interpolation */
 double linear_interp_uniform(chelis_tensor* ys, double x_min, double x_max, double x_query);
 double linear_interp_sorted(chelis_tensor* xs, chelis_tensor* ys, double x_query);
+double spline_eval(chelis_tensor* xs, chelis_tensor* ys, double x_query);
 
 /* curvefit test wrappers */
 double test_lm_linear(chelis_tensor* xs, chelis_tensor* ys, double theta0);
@@ -1150,6 +1151,15 @@ int main(int argc, char** argv) {
         chelis_tensor* xs = make_vec(n, a+2);
         chelis_tensor* ys = make_vec(n, a+2+n);
         print_scalar(linear_interp_sorted(xs, ys, x_query));
+        return 0;
+    }
+    /* spline_eval: N, x_query, then N xs + N ys -> scalar */
+    if (!strcmp(fn, "spline_eval")) {
+        int n = (int)a[0];
+        double x_query = a[1];
+        chelis_tensor* xs = make_vec(n, a+2);
+        chelis_tensor* ys = make_vec(n, a+2+n);
+        print_scalar(spline_eval(xs, ys, x_query));
         return 0;
     }
     /* test_lm_linear: N, theta0, then N xs + N ys -> scalar (fitted theta) */
@@ -2316,6 +2326,22 @@ def main() -> int:
     # query x=6 → between (4,40) and (8,80), frac=(6-4)/(8-4)=0.5 → 60
     la_run_scalar("linear_interp_sorted(6)", "linear_interp_sorted",
                   [4, 6.0, 1.0, 2.0, 4.0, 8.0, 10.0, 20.0, 40.0, 80.0], 60.0, 1e-5, 1e-5)
+
+    # --- Interpolation: spline_eval ---
+    print("== Interpolation: spline_eval ==")
+    g_sp = golden("interpolation/spline.json")
+    sp_atol, sp_rtol = g_sp["abs"], g_sp["rel"]
+    for case in g_sp["cases"]:
+        label = case["label"]
+        xs_sp = case["xs"]
+        ys_sp = case["ys"]
+        n_sp = len(xs_sp)
+        for q in case["queries"]:
+            xq = q["x"]
+            exp = q["expected"]
+            args = [float(n_sp), float(xq)] + xs_sp + ys_sp
+            la_run_scalar(f"spline_eval({label},x={xq:.4g})", "spline_eval",
+                          args, exp, sp_atol, sp_rtol)
 
     # --- CurveFit ---
     print("== CurveFit: lm_scalar_1param ==")
