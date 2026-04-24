@@ -1,5 +1,8 @@
 [package]
 name = "nautilus"
 version = "0.2.2"
-compiler = "=0.2.3"
+compiler = "=0.2.4"
 module_prefix = "Nautilus"
+
+[dependencies]
+chelis-std = { version = "0.1.0" }

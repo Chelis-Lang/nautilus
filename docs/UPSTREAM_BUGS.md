@@ -5,6 +5,27 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
+## v0.2.4 validation (2026-04-25)
+
+- `chelis check src/*.ch` — all 21 modules score 1.0, zero errors.
+- `chelis reef build` — produces `dist/nautilus-0.2.2.chb` cleanly.
+- `chelis 0.2.4 python tests/run_numeric_tests.py` — **1096 / 1096
+  numerical assertions pass** (no regressions vs the v0.2.3 baseline).
+- `chelis test --help` — present, documents `--filter`, `--json`,
+  `--timeout`. CLI subcommand surface as advertised in the cutover spec.
+- **`Std.Test` strict-load probe:** wrote a one-test fixture
+  (`/tmp/std-test-probe/tests/probe.ch`) that does
+  `import Std.Test (assert_close, assert_true)` and runs `chelis test
+  tests/`. Passed cleanly:
+  ```
+  test_id_close ................. PASS
+  test_true ..................... PASS
+  ```
+  The v0.2.3 strict-load gripe documented in `pseudo_nautilus/tests/
+  special.ch` (lines 5–13) is **resolved in v0.2.4**. Nautilus tests
+  written during the cutover use `import Std.Test` directly — no
+  fallback to raw `test_assert*` builtins is required.
+
 Summary as of **v0.2.0** (Nautilus) / **v0.1.21** (Chelis):
 
 - Historical Bugs 1–5 below are fixed in the released compiler line through
