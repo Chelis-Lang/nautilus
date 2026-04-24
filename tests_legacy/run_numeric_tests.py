@@ -37,7 +37,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "src"
-GOLDENS = REPO / "tests" / "goldens"
+GOLDENS = REPO / "tests_legacy" / "goldens"
 sys.path.insert(0, str(REPO))
 
 from scripts.chelis_toolchain import resolve_chelis_bin

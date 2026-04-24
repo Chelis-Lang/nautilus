@@ -115,13 +115,13 @@ def check_readme(fail: list[str]) -> None:
 
 
 def check_linalg_goldens_consumed() -> None:
-    linalg_g = REPO / "tests" / "goldens" / "linalg"
+    linalg_g = REPO / "tests_legacy" / "goldens" / "linalg"
     if not linalg_g.exists():
         return
     files = sorted(p.name for p in linalg_g.glob("*.json"))
     if not files:
         return
-    print("[info] tests/goldens/linalg/*.json consumed by tensor-path harness")
+    print("[info] tests_legacy/goldens/linalg/*.json consumed by tensor-path harness")
     print("       (v0.1.7 fixed Bug 5; linalg runtime tests now fully wired).")
     print("       Files:", ", ".join(files))
 

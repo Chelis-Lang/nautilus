@@ -17,7 +17,7 @@ from scipy import special as sp_special
 from scipy import stats as sp_stats
 
 REPO = Path(__file__).resolve().parent.parent
-GOLDENS = REPO / "tests" / "goldens"
+GOLDENS = REPO / "tests_legacy" / "goldens"
 
 # Per-function tolerances — honest about each approximation's accuracy floor.
 TOL = {
