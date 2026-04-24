@@ -585,6 +585,10 @@ chelis_tensor* test_normal_sample(chelis_tensor* t);
 chelis_tensor* test_exponential_sample(chelis_tensor* t);
 chelis_tensor* test_lognormal_sample(chelis_tensor* t);
 
+/* ode grid test wrappers */
+chelis_tensor* test_ode_grid_n1_p4(chelis_tensor* y0, chelis_tensor* t_out);
+chelis_tensor* test_ode_grid_n2_p3(chelis_tensor* y0, chelis_tensor* t_out);
+
 /* SDE: scalar + tensor -> scalar (test wrappers defined in harness source) */
 double test_em_decay_s1(double y0, double t0, double t1, chelis_tensor* noise);
 double test_em_decay_s01(double y0, double t0, double t1, chelis_tensor* noise);
@@ -1209,6 +1213,24 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    /* ode grid wrappers */
+    if (!strcmp(fn, "test_ode_grid_n1_p4")) {
+        /* y0: 1 element, t_out: 4 elements -> mat(1,4) printed as 4 elements */
+        chelis_tensor* y0 = make_vec(1, a);
+        chelis_tensor* t_out = make_vec(4, a+1);
+        chelis_tensor* r = test_ode_grid_n1_p4(y0, t_out);
+        print_mat(r);
+        return 0;
+    }
+    if (!strcmp(fn, "test_ode_grid_n2_p3")) {
+        /* y0: 2 elements, t_out: 3 elements -> mat(2,3) printed as 6 elements */
+        chelis_tensor* y0 = make_vec(2, a);
+        chelis_tensor* t_out = make_vec(3, a+2);
+        chelis_tensor* r = test_ode_grid_n2_p3(y0, t_out);
+        print_mat(r);
+        return 0;
+    }
+
     /* sample wrappers: N -> vec(N) (template is zeros) */
     if (!strcmp(fn, "test_uniform_sample")) {
         int n = (int)a[0];
@@ -1369,6 +1391,26 @@ def test_lm_nparam_poly3(
   th0: tensor[3, f32]
 ) -> tensor[3, f32] =
   lm_scalar_nparam(cf_nparam_poly3_model, xs, ys, th0, cast(1.0e-5, f32), cast(100, int64))
+
+def ode_grid_decay1(y: tensor[1, f32], t: f32) -> tensor[1, f32] =
+  scale_vec(y, neg(cast(1.0, f32)))
+
+def test_ode_grid_n1_p4(y0: tensor[1, f32], t_out: tensor[4, f32]) -> tensor[1, 4, f32] =
+  rk45_adaptive_solve_grid(ode_grid_decay1, cast(0.0, f32), y0, cast(2.0, f32),
+    cast(1.0e-6, f32), cast(1.0e-8, f32), t_out)
+
+def ode_grid_sys2(y: tensor[2, f32], t: f32) -> tensor[2, f32] = {
+  tpl = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(y))))
+  y1 = inner_product(copy(y), la_basis_n_f32(cast(0, int64), cast(1.0, f32), copy(tpl)))
+  y2 = inner_product(y, la_basis_n_f32(cast(1, int64), cast(1.0, f32), tpl))
+  e1 = la_basis_n_f32(cast(0, int64), neg(y1), to_tensor(map(fn (v: f32) -> cast(0.0, f32), range(cast(0, int64), cast(2, int64)))))
+  e2 = la_basis_n_f32(cast(1, int64), mul(neg(cast(2.0, f32)), y2), to_tensor(map(fn (v: f32) -> cast(0.0, f32), range(cast(0, int64), cast(2, int64)))))
+  la_vec_add(e1, e2)
+}
+
+def test_ode_grid_n2_p3(y0: tensor[2, f32], t_out: tensor[3, f32]) -> tensor[2, 3, f32] =
+  rk45_adaptive_solve_grid(ode_grid_sys2, cast(0.0, f32), y0, cast(1.5, f32),
+    cast(1.0e-6, f32), cast(1.0e-8, f32), t_out)
 """
 
 
@@ -1376,7 +1418,7 @@ def build_linalg_binary() -> Path:
     """Build a binary for tensor-path linalg + stats + distance + SDE functions."""
     bare = "\n".join(
         strip_module((SRC / f).read_text())
-        for f in ("special.ch", "distributions.ch", "linalg.ch", "stats.ch", "distance.ch", "sde.ch", "interpolation.ch", "curvefit.ch")
+        for f in ("special.ch", "distributions.ch", "linalg.ch", "stats.ch", "distance.ch", "sde.ch", "interpolation.ch", "curvefit.ch", "ode.ch")
     ) + TEST_HELPERS_CH + "\ndef main() -> f32 = cast(0.0, f32)\n"
     bare = _dedup_defs(bare)
     workdir = Path(tempfile.mkdtemp(prefix="nautilus-la-"))
@@ -2380,6 +2422,48 @@ def main() -> int:
                [17.0960292816162, 1.20331025123596, 0.554790198802948, 3.77820539474487,
                 1.12696087360382, 2.29537868499756, 0.705433547496796, 1.53805804252625],
                1e-4, 1e-4)
+
+    # --- ODE grid: rk45_adaptive_solve_grid ---
+    print("== ODE: rk45_adaptive_solve_grid ==")
+    g_grid = golden("ode/grid.json")
+    atol_grid, rtol_grid = g_grid["abs"], g_grid["rel"]
+
+    # Case 1: n=1, p=4, scalar decay y'=-y
+    c1 = g_grid["case1"]
+    y0_1 = c1["y0"]
+    t_out_1 = c1["t_out"]
+    expected_1 = c1["expected"]   # list of p sub-lists, each of length n
+    raw1 = call_la_fn(la_binary, "test_ode_grid_n1_p4", *y0_1, *t_out_1)
+    got1 = [float(x) for x in raw1.split()]
+    # got1 is the flat tensor[1,4,f32] in row-major (n=1 row, p=4 cols)
+    # expected_1[j] = [y_at_t_out[j]] for each j in 0..p-1
+    for j in range(c1["p"]):
+        for i in range(c1["n"]):
+            total += 1
+            idx = i * c1["p"] + j
+            want = expected_1[j][i]
+            have = got1[idx] if idx < len(got1) else float("nan")
+            if not close(have, want, atol_grid, rtol_grid):
+                fails += 1
+                print(f"  FAIL ode_grid case1 [i={i},j={j}]: got {have:.8g}, want {want:.8g}")
+
+    # Case 2: n=2, p=3, 2-state decay system
+    c2 = g_grid["case2"]
+    y0_2 = c2["y0"]
+    t_out_2 = c2["t_out"]
+    expected_2 = c2["expected"]   # list of p sub-lists, each of length n
+    raw2 = call_la_fn(la_binary, "test_ode_grid_n2_p3", *y0_2, *t_out_2)
+    got2 = [float(x) for x in raw2.split()]
+    # got2 is the flat tensor[2,3,f32]: row-major, n=2 rows, p=3 cols
+    for j in range(c2["p"]):
+        for i in range(c2["n"]):
+            total += 1
+            idx = i * c2["p"] + j
+            want = expected_2[j][i]
+            have = got2[idx] if idx < len(got2) else float("nan")
+            if not close(have, want, atol_grid, rtol_grid):
+                fails += 1
+                print(f"  FAIL ode_grid case2 [i={i},j={j}]: got {have:.8g}, want {want:.8g}")
 
     print(f"\n{total - fails} / {total} numerical assertions passed")
     return 1 if fails else 0

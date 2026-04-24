@@ -875,6 +875,47 @@ def goldens_distributions_continuous_p4() -> dict[str, dict]:
     return g
 
 
+def goldens_ode_grid() -> dict[str, dict]:
+    g = {}
+    # Case 1: scalar decay wrapped as tensor[1,f32]
+    # y' = -y, y(0)=1, t_out=[0.5, 1.0, 1.5, 2.0], expected y[:,j] = exp(-t_out[j])
+    t_out_1 = [0.5, 1.0, 1.5, 2.0]
+    expected_1 = [[math.exp(-t)] for t in t_out_1]
+    # Case 2: 2-state system [y1'=-y1, y2'=-2*y2], y0=[1,1]
+    # t_out=[0.5, 1.0, 1.5]
+    t_out_2 = [0.5, 1.0, 1.5]
+    expected_2 = [
+        [math.exp(-0.5), math.exp(-1.0)],
+        [math.exp(-1.0), math.exp(-2.0)],
+        [math.exp(-1.5), math.exp(-3.0)],
+    ]
+    g["ode/grid.json"] = {
+        "case1": {
+            "n": 1, "p": 4,
+            "y0": [1.0],
+            "t0": 0.0,
+            "t_end": 2.0,
+            "rtol": 1.0e-6,
+            "atol": 1.0e-8,
+            "t_out": t_out_1,
+            "expected": expected_1,
+        },
+        "case2": {
+            "n": 2, "p": 3,
+            "y0": [1.0, 1.0],
+            "t0": 0.0,
+            "t_end": 1.5,
+            "rtol": 1.0e-6,
+            "atol": 1.0e-8,
+            "t_out": t_out_2,
+            "expected": expected_2,
+        },
+        "abs": 1.0e-5,
+        "rel": 1.0e-5,
+    }
+    return g
+
+
 def goldens_curvefit() -> dict[str, dict]:
     g = {}
     # Levenberg-Marquardt multi-parameter solver.
@@ -940,7 +981,8 @@ def check_goldens() -> int:
                      ("integrate_hl", goldens_integrate_hermite_laguerre),
                      ("distributions_discrete", goldens_distributions_discrete),
                      ("distributions_continuous_p4", goldens_distributions_continuous_p4),
-                     ("curvefit", goldens_curvefit)):
+                     ("curvefit", goldens_curvefit),
+                     ("ode_grid", goldens_ode_grid)):
         for rel, fresh in gen().items():
             path = GOLDENS / rel
             if not path.exists():
@@ -1054,6 +1096,7 @@ def main() -> int:
     all_goldens.update(goldens_distributions_discrete())
     all_goldens.update(goldens_distributions_continuous_p4())
     all_goldens.update(goldens_curvefit())
+    all_goldens.update(goldens_ode_grid())
     for rel, data in all_goldens.items():
         write_json(GOLDENS / rel, data)
         print(f"wrote {rel}")
