@@ -76,15 +76,19 @@ archive — the C backend supports all three.
 **Testable from chelis test under v0.2.4:** `lu_solve`, `cholesky_n`,
 `qr_decompose` (only via per-element extraction — `Q^T Q` etc. needs
 `matmul`/`sum`), `eig_n` (via trace identity, no Frobenius), `cg_solve`,
-`inv_2x2`, `solve_2x2`, `cholesky_2x2`, `eig_2x2_real`, the bulk
-vector/matvec surface.
+the bulk vector/matvec surface.
 
 **NOT testable from chelis test (covered only by legacy harness):**
 `svd_n` (uses `permute`), `transpose`, `matmul`, `gram`, `aat`,
-`matmul_wrap`, `det_2x2`, `det_3x3`, `inv_3x3`, `solve_3x3` — these
-either are or call `matmul`/`permute`. They have native scipy-derived
-golden coverage in the legacy harness; until the chelis test host
-runtime ships these primitives, the legacy harness must stay in CI.
+`matmul_wrap`, `det_2x2`, `det_3x3`, `inv_2x2`, `inv_3x3`, `solve_2x2`,
+`solve_3x3`, `eig_2x2_real`, `cholesky_2x2`. The 2x2 surface is in this
+list because **`det_2x2` is implemented via the Cayley–Hamilton trick
+`(trace² - trace(A²)) / 2` which uses `matmul(A, A)`**. Every downstream
+2x2 op (`inv_2x2` → `det_2x2`, `solve_2x2` → `inv_2x2`, `eig_2x2_real`
+→ `det_2x2`) inherits the host-runtime gap. `cholesky_2x2` similarly
+uses `matmul`. They have native scipy-derived golden coverage in the
+legacy harness; until the chelis test host runtime ships these
+primitives, the legacy harness must stay in CI.
 
 **Phase 3 deletion gate:** when chelis ships `matmul`/`permute`/`sum`
 in the test host runtime, port the deferred coverage to a new
