@@ -32,33 +32,39 @@ jobs:
           fi
           echo "OK: no AI authorship trailers in $RANGE"
 
-      # Guard 1: no Python files under tests/ — the .ch test directory is
-      # the Chelis-native gate. Any .py here is a backslide of the cutover.
+      # Guard 1: no Python under tests/ — the .ch test directory is the
+      # Chelis-native gate. Any .py / .pyc / .pyi here is a backslide of
+      # the cutover. .pyc/.pyi added per red-team round 3 MEDIUM-3 (a stale
+      # __pycache__ would otherwise have slipped through bare `.py`).
       - name: Hard rule — no Python under tests/
         run: |
-          if find tests -name '*.py' | grep -q .; then
-            echo "Hard rule violation: .py file under tests/" >&2
-            find tests -name '*.py' >&2
-            exit 1
-          fi
-          echo "OK: tests/ is Python-free"
-
-      # Guard 2: no scipy/pandas/sympy/quantlib import or `from x import` in
-      # any .py file under tests/ or src/. We restrict to .py because Chelis
-      # source files (.ch) may legitimately mention scipy in a comment such
-      # as "matches scipy.special.erf to 1e-7" — that's documentation, not
-      # a dependency. The hard rule is "no Python code under tests/, no
-      # oracle calls in Chelis code" — not "no mention of the word scipy."
-      - name: Hard rule — no scipy/pandas import in src/ or tests/ .py files
-        run: |
-          hits=$(grep -rEln '^[[:space:]]*(import|from)[[:space:]]+(scipy|pandas|sympy|quantlib)\b' \
-                   --include='*.py' src tests 2>/dev/null || true)
+          hits=$(find tests -type f \( -name '*.py' -o -name '*.pyc' -o -name '*.pyi' \) 2>/dev/null || true)
           if [ -n "$hits" ]; then
-            echo "Hard rule violation: scipy/pandas import in .py under src/ or tests/:" >&2
+            echo "Hard rule violation: Python file/artifact under tests/:" >&2
             echo "$hits" >&2
             exit 1
           fi
-          echo "OK: no scipy/pandas imports in src/ or tests/ .py files"
+          echo "OK: tests/ is Python-free (.py / .pyc / .pyi)"
+
+      # Guard 2: no oracle-library imports (scipy/numpy/pandas/sympy/quantlib)
+      # in any .py file under tests/ or src/. We restrict to .py because
+      # Chelis source files (.ch) may legitimately mention scipy in a
+      # comment such as "matches scipy.special.erf to 1e-7" — that's
+      # documentation, not a dependency. The hard rule is "no Python code
+      # under tests/, no oracle calls in Chelis code" — not "no mention of
+      # the word scipy". numpy added per red-team round 3 MEDIUM-2 — it's
+      # the most common numerical oracle and was missing from the
+      # original guard list.
+      - name: Hard rule — no oracle import in src/ or tests/ .py files
+        run: |
+          hits=$(grep -rEln '^[[:space:]]*(import|from)[[:space:]]+(scipy|numpy|pandas|sympy|quantlib)\b' \
+                   --include='*.py' src tests 2>/dev/null || true)
+          if [ -n "$hits" ]; then
+            echo "Hard rule violation: oracle import in .py under src/ or tests/:" >&2
+            echo "$hits" >&2
+            exit 1
+          fi
+          echo "OK: no oracle imports in src/ or tests/ .py files"
 
       # Guard 3: no oracle-callable sites inside Chelis source. We match the
       # dotted-callable pattern (e.g. `scipy.foo(...)` or `scipy.special.erf(...)`
@@ -66,16 +72,26 @@ jobs:
       # descriptive comments still pass. The trailing `[\w.]*` segment after
       # the first dot must be allowed to contain its own dots so we catch
       # canonical scipy submodule paths (red-team CRITICAL-1, 2026-04-25).
+      # Comment lines starting with `--` are stripped first so descriptive
+      # text like `-- approximates scipy.special.erf to 1e-7` passes (red-team
+      # round 3 MEDIUM-1). numpy added to oracle list (red-team MEDIUM-2).
       - name: Hard rule — no oracle callable in .ch sources
         run: |
-          hits=$(grep -rEln '\b(scipy|pandas|sympy|quantlib)\.[a-zA-Z_][a-zA-Z_0-9.]*[[:space:]]*\(' \
-                   --include='*.ch' src tests 2>/dev/null || true)
-          if [ -n "$hits" ]; then
-            echo "Hard rule violation: oracle callable used in Chelis source:" >&2
-            echo "$hits" >&2
-            exit 1
-          fi
-          echo "OK: no oracle callables in src/ or tests/ .ch files"
+          tmp=$(mktemp)
+          # Strip both line-leading comments (`-- ...`) and inline trailing
+          # comments before grepping. Doesn't handle string literals, but
+          # Chelis test files don't put scipy.foo( inside a string.
+          for f in $(find src tests -name '*.ch' 2>/dev/null); do
+            sed -E 's/--.*$//' "$f" > "$tmp"
+            if grep -EHn '\b(scipy|numpy|pandas|sympy|quantlib)\.[a-zA-Z_][a-zA-Z_0-9.]*[[:space:]]*\(' \
+                 --label="$f" "$tmp"; then
+              echo "Hard rule violation: oracle callable in $f (above)" >&2
+              rm -f "$tmp"
+              exit 1
+            fi
+          done
+          rm -f "$tmp"
+          echo "OK: no oracle callables in src/ or tests/ .ch source code"
 
   chelis-tests:
     runs-on: ubuntu-latest

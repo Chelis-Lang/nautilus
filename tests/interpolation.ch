@@ -6,7 +6,7 @@ module Nautilus.Tests.Interpolation
 -- recovery of polynomials of degree <= spline order), or simple
 -- linear-interpolation midpoints.  No scipy-derived numerics.
 
-import Nautilus.Interpolation (linear_interp_sorted, spline_fit, spline_eval)
+import Nautilus.Interpolation (linear_interp_sorted, spline_eval)
 import Std.Test (assert_close)
 
 -- ===========================================================================

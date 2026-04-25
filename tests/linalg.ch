@@ -22,7 +22,7 @@ module Nautilus.Tests.LinAlg
 -- one bare. This file uses single-assertion test bodies almost
 -- everywhere, so the quirk doesn't bite.
 
-import Std.Test (assert_close, assert_true)
+import Std.Test (assert_close)
 import Nautilus.LinAlg (
   matvec, vecmat,
   inner_product, l2_norm_vec, scale_vec,

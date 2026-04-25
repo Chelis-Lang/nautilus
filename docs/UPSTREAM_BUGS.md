@@ -26,6 +26,36 @@ per-release **status** line recording what changed.
   written during the cutover use `import Std.Test` directly — no
   fallback to raw `test_assert*` builtins is required.
 
+## v0.2.4 chelis test host runtime is missing tensor reductions (2026-04-25)
+
+**Affects:** native `chelis test` coverage of any `Nautilus.LinAlg` symbol
+that internally calls `matmul`, `permute`, or `sum`.
+
+The `chelis test` runtime under v0.2.4 reports `unsupported builtin
+'matmul'`, `unsupported builtin 'permute'`, and `unsupported builtin 'sum'`
+when those primitives appear in the dependency graph of a test function.
+The legacy harness (`tests_legacy/run_numeric_tests.py`) does not hit
+this because it builds a real C binary and links the chelis runtime
+archive — the C backend supports all three.
+
+**Testable from chelis test under v0.2.4:** `lu_solve`, `cholesky_n`,
+`qr_decompose` (only via per-element extraction — `Q^T Q` etc. needs
+`matmul`/`sum`), `eig_n` (via trace identity, no Frobenius), `cg_solve`,
+`inv_2x2`, `solve_2x2`, `cholesky_2x2`, `eig_2x2_real`, the bulk
+vector/matvec surface.
+
+**NOT testable from chelis test (covered only by legacy harness):**
+`svd_n` (uses `permute`), `transpose`, `matmul`, `gram`, `aat`,
+`matmul_wrap`, `det_2x2`, `det_3x3`, `inv_3x3`, `solve_3x3` — these
+either are or call `matmul`/`permute`. They have native scipy-derived
+golden coverage in the legacy harness; until the chelis test host
+runtime ships these primitives, the legacy harness must stay in CI.
+
+**Phase 3 deletion gate:** when chelis ships `matmul`/`permute`/`sum`
+in the test host runtime, port the deferred coverage to a new
+`tests/linalg_matmul.ch` file before deleting `tests_legacy/`.
+Red-team round 3 HIGH-2.
+
 ## v0.2.4 upstream observations from cutover red-team (2026-04-25)
 
 These are not bugs but observations worth raising upstream because they

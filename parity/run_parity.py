@@ -35,7 +35,16 @@ PROBE_PATH = PKG / "src" / "probe.ch"
 
 # Result line format from `chelis eval --file`:
 #   result_<index> = <float>
-RESULT_RE = re.compile(r"^result_(\d+)\s*=\s*(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\s*$")
+# The value side accepts plain floats, scientific notation, and the
+# `NaN` / `inf` / `-inf` literals chelis emits for non-finite results.
+# Recognising those explicitly lets us distinguish "chelis returned a
+# non-finite value" (legitimate FAIL) from "the parser missed the line"
+# (parser regression — the line gets logged at the bottom of the run).
+# Red-team round 3 HIGH-1.
+RESULT_RE = re.compile(
+    r"^result_(\d+)\s*=\s*"
+    r"(-?(?:\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|nan|NaN|inf|Inf|-inf|-Inf))\s*$"
+)
 
 
 def load_scipy():
@@ -98,15 +107,40 @@ def chelis_eval_batch(
         return {}
 
     out: dict[int, float] = {}
+    unparsed_result_lines: list[str] = []
+    seen: set[int] = set()
     for line in completed.stdout.splitlines():
-        m = RESULT_RE.match(line.strip())
+        s = line.strip()
+        m = RESULT_RE.match(s)
         if m is None:
+            # Anything that *looks like* a result binding (starts with
+            # `result_<digits>`) but doesn't match the value regex is a
+            # parser-regression smell — surface it loudly so a future
+            # chelis output-format change doesn't masquerade as silent
+            # NaN. Red-team round 3 HIGH-1.
+            if s.startswith("result_") and "=" in s:
+                unparsed_result_lines.append(s)
             continue
         idx = int(m.group(1))
+        if idx in seen:
+            print(
+                f"WARN: duplicate result_{idx} binding in chelis output; "
+                f"last-wins (probable run_parity flat-list index collision)",
+                file=sys.stderr,
+            )
+        seen.add(idx)
         try:
             out[idx] = float(m.group(2))
         except ValueError:
-            continue
+            unparsed_result_lines.append(s)
+    if unparsed_result_lines:
+        print("WARN: chelis emitted result lines the parser couldn't read:",
+              file=sys.stderr)
+        for s in unparsed_result_lines[:10]:
+            print(f"  {s}", file=sys.stderr)
+        if len(unparsed_result_lines) > 10:
+            print(f"  ... ({len(unparsed_result_lines) - 10} more)",
+                  file=sys.stderr)
     return out
 
 

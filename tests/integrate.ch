@@ -10,7 +10,7 @@ module Nautilus.Tests.Integrate
 import Nautilus.Integrate (trapezoidal, simpsons, gauss_legendre_5,
                            adaptive_simpson, romberg_5, gauss_legendre_10,
                            gauss_hermite_10, gauss_laguerre_10)
-import Std.Test (assert_close, assert_true)
+import Std.Test (assert_close)
 
 -- ===== integrand definitions =====
 -- Chelis quadrature takes function-typed parameters f: f32 -> f32.
