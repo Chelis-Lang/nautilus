@@ -61,10 +61,18 @@ publish to a hosted registry) so downstream packages can fetch it
 declaratively. Until then, every shell repo that depends on chelis-std
 must replicate the manual-bootstrap dance.
 
-## v0.2.4 chelis test host runtime is missing tensor reductions (2026-04-25)
+## v0.2.4 chelis test host runtime is missing tensor reductions — FIXED in v0.2.5 (2026-04-25)
 
-**Affects:** native `chelis test` coverage of any `Nautilus.LinAlg` symbol
-that internally calls `matmul`, `permute`, or `sum`.
+**Status as of v0.2.5:** **fixed**. `matmul`, `permute`, and `sum` are
+now in the chelis test host runtime. Probed locally with five
+representative tests (`inv_2x2`, `transpose`, `frobenius_norm`,
+`svd_n` singular-value sum, `matmul_wrap`) — all pass under
+`chelis test --timeout 120`. The deferred LinAlg surface is covered
+natively in `tests/linalg_matmul.ch` (19 tests).
+
+**Affects (v0.2.4 only):** native `chelis test` coverage of any
+`Nautilus.LinAlg` symbol that internally calls `matmul`, `permute`,
+or `sum`.
 
 The `chelis test` runtime under v0.2.4 reports `unsupported builtin
 'matmul'`, `unsupported builtin 'permute'`, and `unsupported builtin 'sum'`
@@ -90,10 +98,12 @@ uses `matmul`. They have native scipy-derived golden coverage in the
 legacy harness; until the chelis test host runtime ships these
 primitives, the legacy harness must stay in CI.
 
-**Phase 3 deletion gate:** when chelis ships `matmul`/`permute`/`sum`
+**Phase 3 deletion gate:** ~~when chelis ships `matmul`/`permute`/`sum`
 in the test host runtime, port the deferred coverage to a new
-`tests/linalg_matmul.ch` file before deleting `tests_legacy/`.
-Red-team round 3 HIGH-2.
+`tests/linalg_matmul.ch` file before deleting `tests_legacy/`.~~
+**Resolved in v0.2.5.** `tests/linalg_matmul.ch` shipped with 19
+identity tests covering the previously-deferred LinAlg surface.
+Red-team round 3 HIGH-2 is closed.
 
 ## v0.2.4 upstream observations from cutover red-team (2026-04-25)
 

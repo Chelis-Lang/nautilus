@@ -26,7 +26,7 @@
 #                   (defaults to v0.2.4)
 set -euo pipefail
 
-CHELIS_TAG="${CHELIS_TAG:-v0.2.4}"
+CHELIS_TAG="${CHELIS_TAG:-v0.2.5}"
 WORK_DIR="${WORK_DIR:-/tmp/chelis-monorepo-for-std}"
 REEF_HOME="${HOME}/.chelis/reef"
 

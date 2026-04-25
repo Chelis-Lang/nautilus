@@ -106,11 +106,11 @@ def test_qr_orthogonality_diagonal_2x2() -> unit ! { Test } = {
                "QR: ||column 0 of Q||^2 = 1")
 }
 
--- NOTE: svd_n is not testable under `chelis test` in v0.2.4 because
--- the SVD implementation uses `permute` internally, and `permute` is
--- not in the chelis test host runtime. svd_n identity coverage stays
--- in `tests_legacy/run_numeric_tests.py` (compiled-binary path) until
--- the host runtime adds `permute`.
+-- NOTE: svd_n + the matmul/permute/sum-using LinAlg surface
+-- (transpose, gram, aat, det_*x*, inv_*x*, solve_*x*, eig_2x2_real,
+-- cholesky_2x2, frobenius_norm, frobenius_sq) live in
+-- `tests/linalg_matmul.ch`. They became testable in chelis v0.2.5
+-- once the test host runtime gained matmul / permute / sum.
 
 -- ===== eig_n =====
 -- For symmetric A, sum of eigenvalues = trace(A).
