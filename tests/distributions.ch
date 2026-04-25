@@ -5,8 +5,8 @@ import Nautilus.Distributions (
   exponential_pdf, exponential_cdf, exponential_inv_cdf,
   normal_pdf, normal_cdf, normal_inv_cdf,
   lognormal_pdf, lognormal_cdf, lognormal_inv_cdf,
-  gamma_pdf, gamma_cdf,
-  chi_squared_pdf, chi_squared_cdf,
+  gamma_pdf, gamma_cdf, gamma_inv_cdf,
+  chi_squared_pdf, chi_squared_cdf, chi_squared_inv_cdf,
   student_t_pdf, student_t_cdf,
   poisson_pmf, poisson_cdf,
   binomial_pmf, binomial_cdf,
@@ -680,4 +680,47 @@ def test_weibull_cdf_monotone() -> unit ! { Test } = {
   c = weibull_cdf(cast(2.0, f32), cast(2.0, f32), cast(1.0, f32))
   _ = assert_true(lt(a, b), "W cdf monotone a<b");
   assert_true(lt(b, c), "W cdf monotone b<c")
+}
+
+-- ===== Inverse-CDF round-trips for gamma + chi-squared =====
+-- Round-trip tests don't need scipy: cdf(inv_cdf(p)) ~= p by definition.
+
+def test_gamma_inv_cdf_roundtrip() -> unit ! { Test } = {
+  -- gamma_cdf(gamma_inv_cdf(p, shape, scale), shape, scale) ~= p
+  shape = cast(2.0, f32)
+  scale = cast(1.5, f32)
+  p = cast(0.4, f32)
+  x = gamma_inv_cdf(p, shape, scale)
+  q = gamma_cdf(x, shape, scale)
+  assert_close(q, p, cast(1.0e-3, f32),
+               "gamma cdf(inv_cdf(p)) = p")
+}
+
+def test_gamma_inv_cdf_roundtrip_high_p() -> unit ! { Test } = {
+  shape = cast(2.0, f32)
+  scale = cast(1.5, f32)
+  p = cast(0.95, f32)
+  x = gamma_inv_cdf(p, shape, scale)
+  q = gamma_cdf(x, shape, scale)
+  assert_close(q, p, cast(1.0e-3, f32),
+               "gamma cdf(inv_cdf(0.95)) = 0.95")
+}
+
+def test_chi_squared_inv_cdf_roundtrip() -> unit ! { Test } = {
+  -- chi_squared_cdf(chi_squared_inv_cdf(p, df), df) ~= p
+  df = cast(4.0, f32)
+  p = cast(0.5, f32)
+  x = chi_squared_inv_cdf(p, df)
+  q = chi_squared_cdf(x, df)
+  assert_close(q, p, cast(1.0e-3, f32),
+               "chi^2 cdf(inv_cdf(p)) = p")
+}
+
+def test_chi_squared_inv_cdf_roundtrip_low_p() -> unit ! { Test } = {
+  df = cast(4.0, f32)
+  p = cast(0.05, f32)
+  x = chi_squared_inv_cdf(p, df)
+  q = chi_squared_cdf(x, df)
+  assert_close(q, p, cast(1.0e-3, f32),
+               "chi^2 cdf(inv_cdf(0.05)) = 0.05")
 }

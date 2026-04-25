@@ -61,11 +61,14 @@ jobs:
           echo "OK: no scipy/pandas imports in src/ or tests/ .py files"
 
       # Guard 3: no oracle-callable sites inside Chelis source. We match the
-      # dotted-callable pattern (e.g. `scipy.special.erf(...)`) rather than
-      # the bare word, so descriptive comments still pass.
+      # dotted-callable pattern (e.g. `scipy.foo(...)` or `scipy.special.erf(...)`
+      # or `scipy.stats.norm.pdf(...)`) rather than the bare word, so
+      # descriptive comments still pass. The trailing `[\w.]*` segment after
+      # the first dot must be allowed to contain its own dots so we catch
+      # canonical scipy submodule paths (red-team CRITICAL-1, 2026-04-25).
       - name: Hard rule — no oracle callable in .ch sources
         run: |
-          hits=$(grep -rEln '\b(scipy|pandas|sympy|quantlib)\.[a-zA-Z_]+[[:space:]]*\(' \
+          hits=$(grep -rEln '\b(scipy|pandas|sympy|quantlib)\.[a-zA-Z_][a-zA-Z_0-9.]*[[:space:]]*\(' \
                    --include='*.ch' src tests 2>/dev/null || true)
           if [ -n "$hits" ]; then
             echo "Hard rule violation: oracle callable used in Chelis source:" >&2

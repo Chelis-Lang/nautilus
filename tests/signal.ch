@@ -28,12 +28,12 @@ def is_nan(x: f32) -> bool = neq(x, x)
 def sample4() -> tensor[4, f32] =
   to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32)])
 
--- ===== Module load smoke =====
-
-def test_signal_module_loads() -> unit ! { Test } =
-  assert_true(true, "Nautilus.Signal module loads under chelis test")
-
 -- ===== Stub shape preservation =====
+-- (Module-load is implicit: the imports above already exercise the
+--  symbol resolution that a "module loads" smoke test would check.
+--  Red-team MEDIUM-3 flagged the prior assert_true(true, ...) as a
+--  tautology — removed.)
+
 
 def test_fft_magnitude_stub_preserves_length() -> unit ! { Test } = {
   y = fft_magnitude_stub(sample4())

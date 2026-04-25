@@ -26,6 +26,33 @@ per-release **status** line recording what changed.
   written during the cutover use `import Std.Test` directly — no
   fallback to raw `test_assert*` builtins is required.
 
+## v0.2.4 upstream observations from cutover red-team (2026-04-25)
+
+These are not bugs but observations worth raising upstream because they
+shaped how the Nautilus tests/ files had to be written:
+
+- **`chelis test` recompiles per test function and `--filter` does not
+  amortize this cost.** Empirically (red-team CRITICAL-2):
+  - `chelis test tests/special.ch` (51 tests) — 31.96 s wall-clock
+  - `chelis test --filter test_erf_zero tests/special.ch` (1 test) — 30.17 s
+  Filter saves ~6 % — virtually nothing. Per-file compile dominates;
+  the `chelis __test_file` worker re-walks the dependency graph for
+  every test function. For Nautilus this means the test surface is
+  bounded by per-test compile cost, not by the number of small
+  assertions. Concretely: `tests/linalg.ch` was originally written as
+  4 packed mega-tests (200+ assertions in 4 functions) but timed out
+  at >10 min because each per-test compile pulled in the heavy
+  factorization graph. The shipped form splits cheap vector ops
+  (`tests/linalg.ch`, 29 small tests) from heavy factorizations
+  (`tests/linalg_factor.ch`, 6 small tests, ~10 min wall-clock).
+- **`chelis eval --file` pays the same per-call compile cost** (~35 s
+  with `Nautilus.Special` imported). The Nautilus parity script
+  (`parity/run_parity.py`) batches all samples for a domain into one
+  probe (`result_0 = ...`, `result_1 = ...`, ...) so total wall-clock
+  is ~70 s for 205 samples instead of ~2 hours.
+- These compile costs would benefit from a session-cached eval daemon
+  or per-build artifact reuse. Recording for future upstream design.
+
 Summary as of **v0.2.0** (Nautilus) / **v0.1.21** (Chelis):
 
 - Historical Bugs 1–5 below are fixed in the released compiler line through

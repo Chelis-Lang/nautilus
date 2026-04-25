@@ -4,7 +4,7 @@ module Nautilus.Tests.Distance
 -- All expected values are mathematical identities, exact constants,
 -- or symmetry / triangle-inequality properties. No external numerics.
 
-import Nautilus.Distance (euclidean, manhattan, chebyshev,
+import Nautilus.Distance (euclidean, squared_euclidean, manhattan, chebyshev,
                           cosine_similarity, cosine_distance,
                           mahalanobis, mahalanobis_squared)
 import Std.Test (assert_close, assert_true)
@@ -253,4 +253,33 @@ def test_euclidean_triangle_inequality() -> unit ! { Test } = {
   sum_ab_bc = add(dab, dbc)
   assert_true(lte(dac, sum_ab_bc),
               "euclidean: d(a,c) <= d(a,b) + d(b,c)")
+}
+
+-- ===== squared_euclidean =====
+
+def test_squared_euclidean_self_zero() -> unit ! { Test } = {
+  -- d^2(v, v) = 0
+  v = to_tensor([cast(1.5, f32), cast(-2.0, f32), cast(3.5, f32)])
+  s = squared_euclidean(copy(v), v)
+  assert_close(s, cast(0.0, f32), cast(1.0e-6, f32),
+               "squared_euclidean(v, v) = 0")
+}
+
+def test_squared_euclidean_3_4_5() -> unit ! { Test } = {
+  -- (3, 4) vs (0, 0): squared distance = 9 + 16 = 25 (exact)
+  a = to_tensor([cast(0.0, f32), cast(0.0, f32)])
+  b = to_tensor([cast(3.0, f32), cast(4.0, f32)])
+  s = squared_euclidean(a, b)
+  assert_close(s, cast(25.0, f32), cast(1.0e-5, f32),
+               "squared_euclidean((0,0),(3,4)) = 25")
+}
+
+def test_squared_euclidean_matches_euclidean_squared() -> unit ! { Test } = {
+  -- squared_euclidean(a, b) = euclidean(a, b)^2 (definition)
+  a = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)])
+  b = to_tensor([cast(4.0, f32), cast(0.0, f32), cast(-1.0, f32)])
+  s = squared_euclidean(copy(a), copy(b))
+  e = euclidean(a, b)
+  assert_close(s, mul(e, e), cast(1.0e-4, f32),
+               "squared_euclidean = euclidean^2")
 }

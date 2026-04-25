@@ -4,7 +4,8 @@ module Nautilus.Tests.Special
 -- All expected values are mathematical identities, exact constants,
 -- documented bounds, or round-trips. No scipy-derived numerics.
 
-import Nautilus.Special (erf, erfinv, log_gamma, digamma, beta, trigamma,
+import Nautilus.Special (erf, erfinv, log_gamma, digamma, beta, lbeta,
+                         trigamma,
                          bessel_i0, bessel_i1, bessel_k0, bessel_k1,
                          bessel_j0, bessel_j1, bessel_y0, bessel_y1,
                          airy_ai, airy_bi, ellipk, ellipe)
@@ -356,4 +357,28 @@ def test_ellipk_ge_ellipe() -> unit ! { Test } = {
   -- For m in (0, 1), K(m) > E(m) (and equal at m=0)
   m = cast(0.5, f32)
   assert_true(gt(ellipk(m), ellipe(m)), "K(0.5) > E(0.5)")
+}
+
+-- ===== lbeta (log of Beta function) =====
+
+def test_lbeta_one_one_zero() -> unit ! { Test } =
+  -- B(1,1) = 1, so log(B(1,1)) = 0 exactly.
+  assert_close(lbeta(cast(1.0, f32), cast(1.0, f32)),
+               cast(0.0, f32), cast(1.0e-6, f32),
+               "lbeta(1,1) = log(1) = 0")
+
+def test_lbeta_symmetric() -> unit ! { Test } = {
+  -- B(a,b) = B(b,a), so lbeta is symmetric in its args.
+  l = lbeta(cast(2.0, f32), cast(3.0, f32))
+  r = lbeta(cast(3.0, f32), cast(2.0, f32))
+  assert_close(l, r, cast(1.0e-6, f32), "lbeta symmetric")
+}
+
+def test_lbeta_matches_log_beta() -> unit ! { Test } = {
+  -- lbeta(a, b) = log(beta(a, b)) by definition.
+  a = cast(2.5, f32)
+  b = cast(3.5, f32)
+  lhs = lbeta(a, b)
+  rhs = log(beta(a, b))
+  assert_close(lhs, rhs, cast(1.0e-5, f32), "lbeta = log(beta)")
 }
