@@ -26,6 +26,41 @@ per-release **status** line recording what changed.
   written during the cutover use `import Std.Test` directly — no
   fallback to raw `test_assert*` builtins is required.
 
+## v0.2.4 chelis-std bootstrap on a fresh Reef registry (2026-04-25)
+
+**Affects:** every CI run on a fresh runner (no pre-existing
+`~/.chelis/reef/` cache).
+
+Symptom: every `chelis check` / `chelis test` / `chelis eval` against
+a package with `chelis-std` in its `[dependencies]` fails with
+
+```
+error: package `chelis-std` version `0.1.0` missing from local
+registry index — run `chelis reef build` first to populate the cache
+```
+
+But `chelis reef build` itself fails with the **same** error — it
+needs the dep to already be in the registry to build. Circular.
+
+`chelis reef --help` lists only `init`, `build`, and `publish`. There
+is no `install` / `add` / `fetch` subcommand. `chelis reef publish
+<path>` requires a buildable source tree, and the chelis monorepo's
+`packages/chelis-std/src/` does not type-check standalone (`unbound
+variable: test_assert_eq_tensor_int64`) — only the prebuilt artifact
+under `packages/chelis-std/dist/` works.
+
+**Workaround:** `scripts/install_chelis_std.sh` clones the chelis
+monorepo at the matching tag, copies the prebuilt
+`chelis-std-0.1.0.{chb,tar.zst}` into
+`~/.chelis/reef/packages/chelis-std/0.1.0/`, and writes
+`~/.chelis/reef/index.json` by hand. CI runs this once per job after
+the toolchain download.
+
+**Upstream ask:** ship chelis-std as its own release artifact (or
+publish to a hosted registry) so downstream packages can fetch it
+declaratively. Until then, every shell repo that depends on chelis-std
+must replicate the manual-bootstrap dance.
+
 ## v0.2.4 chelis test host runtime is missing tensor reductions (2026-04-25)
 
 **Affects:** native `chelis test` coverage of any `Nautilus.LinAlg` symbol
