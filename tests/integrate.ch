@@ -102,6 +102,29 @@ def test_gl10_x_symmetric() -> unit ! { Test } = {
                "gauss_legendre_10: integral of x over [-1,1] = 0 (odd on symmetric)")
 }
 
+-- ----- non-symmetric integrand on symmetric bracket — catches bad weights -----
+-- The two `_x_symmetric` tests above cancel by ANTI-symmetry regardless of
+-- whether the quadrature weights are correct; a buggy weighting that just
+-- preserves antisymmetry would still pass them. These two tests use an
+-- EVEN integrand (x^2) on the same [-1, 1] bracket, where the answer
+-- depends on the weights being right: integral of x^2 over [-1, 1] = 2/3.
+-- Red-team round 2 LOW-3.
+
+def test_simp_xsq_symmetric_bracket() -> unit ! { Test } = {
+  v = simpsons(f_xsq, cast(-1.0, f32), cast(1.0, f32), cast(10, int64))
+  -- 2/3 = 0.6666666... documented (catches bad-weight bugs that pass the
+  --                     odd-symmetric anti-cancellation tests).
+  assert_close(v, cast(0.6666666, f32), cast(1.0e-5, f32),
+               "simpsons: x^2 over [-1,1] = 2/3 (weight check)")
+}
+
+def test_gl10_xsq_symmetric_bracket() -> unit ! { Test } = {
+  v = gauss_legendre_10(f_xsq, cast(-1.0, f32), cast(1.0, f32))
+  -- 2/3 = 0.6666666...
+  assert_close(v, cast(0.6666666, f32), cast(1.0e-5, f32),
+               "gauss_legendre_10: x^2 over [-1,1] = 2/3 (weight check)")
+}
+
 -- ----- quadratic: integral of x^2 over [0,1] = 1/3 (Simpson and above exact) -----
 
 def test_simp_xsq() -> unit ! { Test } = {

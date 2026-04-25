@@ -708,8 +708,11 @@ def test_gamma_inv_cdf_roundtrip_high_p() -> unit ! { Test } = {
 
 def test_chi_squared_inv_cdf_roundtrip() -> unit ! { Test } = {
   -- chi_squared_cdf(chi_squared_inv_cdf(p, df), df) ~= p
+  -- p=0.4 (not 0.5) — Newton lands at 0.5 bit-exactly because the chi^2
+  -- median is a fixed point of the iteration on f32; off-median p
+  -- exercises the actual Newton step. Red-team round 2 MEDIUM-1.
   df = cast(4.0, f32)
-  p = cast(0.5, f32)
+  p = cast(0.4, f32)
   x = chi_squared_inv_cdf(p, df)
   q = chi_squared_cdf(x, df)
   assert_close(q, p, cast(1.0e-3, f32),

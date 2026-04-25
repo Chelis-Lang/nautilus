@@ -268,15 +268,18 @@ def test_bessel_j0_bounded() -> unit ! { Test } = {
 
 -- ===== bessel_y =====
 
-def test_bessel_y0_finite_pos() -> unit ! { Test } = {
-  -- Y0(1) is finite (not NaN)
+def test_bessel_y0_not_nan_pos() -> unit ! { Test } = {
+  -- Y0(1) is well-defined and not NaN. NaN-only check (eq(x,x) is the
+  -- IEEE NaN idiom); a strict "is finite" check would also exclude
+  -- +/-Inf, but Y0(1) is bounded and we trust the implementation
+  -- doesn't return Inf. Red-team round 2 LOW-2 — renamed for clarity.
   v = bessel_y0(cast(1.0, f32))
-  assert_true(eq(v, v), "Y0(1) is finite (not NaN)")
+  assert_true(eq(v, v), "Y0(1) is not NaN")
 }
 
-def test_bessel_y1_finite_pos() -> unit ! { Test } = {
+def test_bessel_y1_not_nan_pos() -> unit ! { Test } = {
   v = bessel_y1(cast(1.0, f32))
-  assert_true(eq(v, v), "Y1(1) is finite (not NaN)")
+  assert_true(eq(v, v), "Y1(1) is not NaN")
 }
 
 def test_bessel_y1_negative_near_zero() -> unit ! { Test } =
