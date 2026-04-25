@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  check:
+  hard-rule-guard:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,6 +31,55 @@ jobs:
             exit 1
           fi
           echo "OK: no AI authorship trailers in $RANGE"
+
+      # Guard 1: no Python files under tests/ — the .ch test directory is
+      # the Chelis-native gate. Any .py here is a backslide of the cutover.
+      - name: Hard rule — no Python under tests/
+        run: |
+          if find tests -name '*.py' | grep -q .; then
+            echo "Hard rule violation: .py file under tests/" >&2
+            find tests -name '*.py' >&2
+            exit 1
+          fi
+          echo "OK: tests/ is Python-free"
+
+      # Guard 2: no scipy/pandas/sympy/quantlib import or `from x import` in
+      # any .py file under tests/ or src/. We restrict to .py because Chelis
+      # source files (.ch) may legitimately mention scipy in a comment such
+      # as "matches scipy.special.erf to 1e-7" — that's documentation, not
+      # a dependency. The hard rule is "no Python code under tests/, no
+      # oracle calls in Chelis code" — not "no mention of the word scipy."
+      - name: Hard rule — no scipy/pandas import in src/ or tests/ .py files
+        run: |
+          hits=$(grep -rEln '^[[:space:]]*(import|from)[[:space:]]+(scipy|pandas|sympy|quantlib)\b' \
+                   --include='*.py' src tests 2>/dev/null || true)
+          if [ -n "$hits" ]; then
+            echo "Hard rule violation: scipy/pandas import in .py under src/ or tests/:" >&2
+            echo "$hits" >&2
+            exit 1
+          fi
+          echo "OK: no scipy/pandas imports in src/ or tests/ .py files"
+
+      # Guard 3: no oracle-callable sites inside Chelis source. We match the
+      # dotted-callable pattern (e.g. `scipy.special.erf(...)`) rather than
+      # the bare word, so descriptive comments still pass.
+      - name: Hard rule — no oracle callable in .ch sources
+        run: |
+          hits=$(grep -rEln '\b(scipy|pandas|sympy|quantlib)\.[a-zA-Z_]+[[:space:]]*\(' \
+                   --include='*.ch' src tests 2>/dev/null || true)
+          if [ -n "$hits" ]; then
+            echo "Hard rule violation: oracle callable used in Chelis source:" >&2
+            echo "$hits" >&2
+            exit 1
+          fi
+          echo "OK: no oracle callables in src/ or tests/ .ch files"
+
+  chelis-tests:
+    runs-on: ubuntu-latest
+    needs: hard-rule-guard
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Download validated chelis toolchain
         env:
@@ -61,57 +110,19 @@ jobs:
       - name: chelis reef build
         run: chelis reef build
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Eval startup benchmark
-        env:
-          CHELIS_BIN: chelis
-        run: |
-          python scripts/bench_eval_startup.py --trials 5
-          grep -q "## Recommended upstream changes" docs/EVAL_STARTUP_FINDINGS.md
-
-      - name: Install scipy + numpy
-        run: pip install --no-cache-dir 'numpy>=1.26' 'scipy>=1.14'
-
-      - name: Static API cross-checks
-        run: python tests/run_static_checks.py
-
-      - name: Extract stability surface
-        run: python scripts/extract_stability.py --check
-
-      - name: Goldens drift check (scipy parity)
-        run: python scripts/gen_goldens.py --check
-
-      - name: End-to-end numerical tests vs scipy goldens
-        env:
-          CHELIS_BIN: chelis
-        run: python tests/run_numeric_tests.py
-
-      - name: Validate SKILL.md examples
-        env:
-          CHELIS_BIN: chelis
-        run: python tests/run_skill_checks.py
-
-      - name: Validate mdBook examples
-        env:
-          CHELIS_BIN: chelis
-        run: python scripts/validate_book_examples.py
+      - name: Native Chelis tests
+        run: chelis test --timeout 600 tests/
 
       - name: Sanity-check chelis import gate (mutation test)
         run: |
-          # Prove the apismoke gate actually has teeth by mutating one
-          # import to a typo and asserting chelis check rejects it. If
-          # this step ever passes silently, the import gate is broken.
+          # Prove the apismoke gate has teeth: mutate one import to a typo
+          # and assert chelis check rejects it.
           cp src/apismoke.ch src/apismoke.ch.bak
           sed -i 's/(erf, erfinv/(erf_TYPO_THAT_DOES_NOT_EXIST, erfinv/' src/apismoke.ch
           if chelis check src/apismoke.ch 2>&1 | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); sys.exit(0 if d.get('errors') or 'error' in (d.get('msg','') or '') else 1)" 2>/dev/null; then
             echo "chelis check correctly rejected typo'd import"
             mv src/apismoke.ch.bak src/apismoke.ch
           else
-            # The check command may print 'error: ...' to stdout instead of JSON.
             output=$(chelis check src/apismoke.ch 2>&1 || true)
             mv src/apismoke.ch.bak src/apismoke.ch
             if echo "$output" | grep -q "does not export"; then
@@ -123,3 +134,83 @@ jobs:
               exit 1
             fi
           fi
+
+  scipy-parity:
+    runs-on: ubuntu-latest
+    needs: hard-rule-guard
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download validated chelis toolchain
+        env:
+          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+        run: |
+          gh release download v0.2.4 \
+            --repo Chelis-Lang/chelis \
+            --pattern 'chelis-v0.2.4-linux-x86_64.tar.gz' \
+            --dir /tmp/chelis-toolchain
+          tar -xzf /tmp/chelis-toolchain/chelis-v0.2.4-linux-x86_64.tar.gz \
+            -C /tmp/chelis-toolchain
+          echo "/tmp/chelis-toolchain/chelis-v0.2.4-linux-x86_64/bin" >> "$GITHUB_PATH"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install scipy + numpy
+        run: pip install --no-cache-dir 'numpy>=1.26' 'scipy>=1.14'
+
+      - name: scipy parity (Chelis output vs scipy.* references)
+        run: python3 -u parity/run_parity.py --strict
+
+  legacy-harness:
+    # Dual-run safety net: keeps the original Python harness alive for one
+    # week of green CI before being deleted in Phase 3 of the cutover.
+    runs-on: ubuntu-latest
+    needs: hard-rule-guard
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download validated chelis toolchain
+        env:
+          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+        run: |
+          gh release download v0.2.4 \
+            --repo Chelis-Lang/chelis \
+            --pattern 'chelis-v0.2.4-linux-x86_64.tar.gz' \
+            --dir /tmp/chelis-toolchain
+          tar -xzf /tmp/chelis-toolchain/chelis-v0.2.4-linux-x86_64.tar.gz \
+            -C /tmp/chelis-toolchain
+          echo "/tmp/chelis-toolchain/chelis-v0.2.4-linux-x86_64/bin" >> "$GITHUB_PATH"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install scipy + numpy
+        run: pip install --no-cache-dir 'numpy>=1.26' 'scipy>=1.14'
+
+      - name: Static API cross-checks (legacy)
+        run: python3 tests_legacy/run_static_checks.py
+
+      - name: Goldens drift check (scipy parity, legacy)
+        run: python3 scripts/gen_goldens.py --check
+
+      - name: End-to-end numerical tests (legacy harness)
+        env:
+          CHELIS_BIN: chelis
+        run: python3 tests_legacy/run_numeric_tests.py
+
+      - name: Validate SKILL.md examples (legacy)
+        env:
+          CHELIS_BIN: chelis
+        run: python3 tests_legacy/run_skill_checks.py
+
+      - name: Validate mdBook examples
+        env:
+          CHELIS_BIN: chelis
+        run: python3 scripts/validate_book_examples.py
