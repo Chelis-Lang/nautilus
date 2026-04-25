@@ -117,6 +117,16 @@ jobs:
           chelis --version
           test "$(chelis --version)" = "chelis 0.2.4"
 
+      # `chelis reef build` populates the local registry index with
+      # chelis-std (and any other reef.toml dep) so subsequent
+      # `chelis check / eval / test` invocations can resolve
+      # `import Std.Test`. Without this step, every chelis call fails
+      # with "package `chelis-std` version `0.1.0` missing from local
+      # registry index". Ordered FIRST so `chelis check` below can
+      # see the dep.
+      - name: chelis reef build (populate registry)
+        run: chelis reef build
+
       - name: chelis check (all modules)
         run: |
           for f in src/*.ch; do
@@ -125,9 +135,6 @@ jobs:
             echo "$out"
             echo "$out" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); sys.exit(0 if d['score']==1 and not d['errors'] else 1)"
           done
-
-      - name: chelis reef build
-        run: chelis reef build
 
       - name: Native Chelis tests
         run: chelis test --timeout 600 tests/
@@ -173,6 +180,10 @@ jobs:
             -C /tmp/chelis-toolchain
           echo "/tmp/chelis-toolchain/chelis-v0.2.4-linux-x86_64/bin" >> "$GITHUB_PATH"
 
+      # Populate local registry so chelis eval can resolve chelis-std.
+      - name: chelis reef build (populate registry)
+        run: chelis reef build
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -204,6 +215,12 @@ jobs:
           tar -xzf /tmp/chelis-toolchain/chelis-v0.2.4-linux-x86_64.tar.gz \
             -C /tmp/chelis-toolchain
           echo "/tmp/chelis-toolchain/chelis-v0.2.4-linux-x86_64/bin" >> "$GITHUB_PATH"
+
+      # Populate local registry so SKILL.md / mdBook example chelis-checks
+      # can resolve chelis-std (the legacy run_skill_checks.py and
+      # validate_book_examples.py invoke chelis check on each fenced block).
+      - name: chelis reef build (populate registry)
+        run: chelis reef build
 
       - name: Set up Python
         uses: actions/setup-python@v5
