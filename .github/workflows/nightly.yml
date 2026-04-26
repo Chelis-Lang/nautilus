@@ -44,6 +44,22 @@ jobs:
       - name: Install scipy + numpy
         run: pip install --no-cache-dir 'numpy>=1.26' 'scipy>=1.14'
 
+      # Per-file chelis check with score=1 enforcement. Removed from
+      # the PR gate (ci.yml) because each invocation costs ~25s on a
+      # GitHub Actions runner (1000× slower than local). 21 files ×
+      # 25s = ~9 min — fine for a nightly job, unacceptable on PRs.
+      # The PR gate has chelis reef build (whole-package type check)
+      # plus a one-file rotating chelis check smoke; this is the
+      # comprehensive pass.
+      - name: chelis check (all modules, score=1 enforced)
+        run: |
+          for f in src/*.ch; do
+            echo "=== $f ==="
+            out=$(chelis check "$f" 2>&1)
+            echo "$out"
+            echo "$out" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); sys.exit(0 if d['score']==1 and not d['errors'] else 1)"
+          done
+
       - name: Static API cross-checks (legacy)
         run: python3 tests_legacy/run_static_checks.py
 

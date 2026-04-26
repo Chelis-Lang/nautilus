@@ -5,6 +5,31 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
+## v0.2.7 `chelis check` 1000× slower on GitHub Actions runners (2026-04-26)
+
+Local timing of `chelis check src/<file>.ch` on representative Nautilus
+src files (5 sampled): **20-21 ms each**. CI timing of the same command
+on `ubuntu-latest`: **~25,000 ms each (25 s)**. Per-file chelis check
+across 21 src files takes ~8m22s on CI, dominating wall-clock for the
+PR gate.
+
+The cost is in `chelis check` itself — not in our wrapping. Probed by
+running the SAME bash heredoc loop locally: completes in ~2 s for 21
+files (~95 ms each), so the bash subshell capture / json-parse pipeline
+isn't the bottleneck. Whatever expensive work `chelis check` does on
+startup (dependency-graph re-resolution? registry index re-validation?
+chelis-std re-extraction?) doesn't show up locally on a hot disk cache,
+but does on a fresh GHA runner.
+
+**Workaround:** `.github/workflows/ci.yml` now runs `chelis reef build`
+(whole-package type-check) on the PR gate plus a single rotating
+`chelis check` smoke. The exhaustive per-file score-1 enforcement
+moves to `.github/workflows/nightly.yml` where 8 min is acceptable.
+
+**Upstream ask:** profile `chelis check` startup on a cold cache and
+identify what's amortizing badly. Likely candidates: chelis-std
+tarball re-extraction, registry index walk, OMP runtime init.
+
 ## v0.2.7 validation (2026-04-26)
 
 - `chelis check src/*.ch` — all 21 modules score 1.0, zero errors.
