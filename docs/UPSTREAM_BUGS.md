@@ -5,6 +5,23 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
+## v0.2.7 validation (2026-04-26)
+
+- `chelis check src/*.ch` — all 21 modules score 1.0, zero errors.
+- `chelis reef build` — clean (`dist/nautilus-0.3.1.{chb,tar.zst}`).
+- `chelis test tests/` — **438 / 438 native assertions pass** (411 from
+  cutover + 19 LinAlg matmul/permute/sum + 8 Stats higher-moments).
+- `parity/run_parity.py --strict` — 205 / 205 scipy samples pass.
+- `tests_legacy/run_numeric_tests.py` — 1096 / 1096 still passing
+  during the dual-run window.
+- `chelis-std v0.1.0` re-installed from the v0.2.7 monorepo tag.
+  The compiler pin embedded in `~/.chelis/reef/index.json` for
+  chelis-std jumps from `=0.2.5` → `=0.2.7` (chelis enforces this).
+  `scripts/install_chelis_std.sh` now reads the pin from the
+  installed package's `reef.toml` instead of hardcoding `=0.2.4` —
+  the prior hardcode masked this gap until v0.2.7 tightened the
+  enforcement.
+
 ## v0.2.4 validation (2026-04-25)
 
 - `chelis check src/*.ch` — all 21 modules score 1.0, zero errors.

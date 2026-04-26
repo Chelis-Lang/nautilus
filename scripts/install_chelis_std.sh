@@ -26,7 +26,7 @@
 #                   (defaults to v0.2.4)
 set -euo pipefail
 
-CHELIS_TAG="${CHELIS_TAG:-v0.2.5}"
+CHELIS_TAG="${CHELIS_TAG:-v0.2.7}"
 WORK_DIR="${WORK_DIR:-/tmp/chelis-monorepo-for-std}"
 REEF_HOME="${HOME}/.chelis/reef"
 
@@ -37,8 +37,19 @@ gh repo clone Chelis-Lang/chelis "${WORK_DIR}" -- --depth 1 --branch "${CHELIS_T
 DIST="${WORK_DIR}/packages/chelis-std/dist"
 TARBALL="${DIST}/chelis-std-0.1.0.tar.zst"
 CHB="${DIST}/chelis-std-0.1.0.chb"
-test -f "${TARBALL}" || { echo "missing ${TARBALL}" >&2; exit 1; }
-test -f "${CHB}"     || { echo "missing ${CHB}"     >&2; exit 1; }
+SRC_REEF="${WORK_DIR}/packages/chelis-std/reef.toml"
+test -f "${TARBALL}"  || { echo "missing ${TARBALL}"  >&2; exit 1; }
+test -f "${CHB}"      || { echo "missing ${CHB}"      >&2; exit 1; }
+test -f "${SRC_REEF}" || { echo "missing ${SRC_REEF}" >&2; exit 1; }
+
+# Read the compiler pin from the source reef.toml. chelis enforces that
+# the registry-index `compiler` field matches what the package was built
+# against; hardcoding it (we did until v0.2.5) silently breaks when
+# upstream bumps. Now derived per-tag.
+COMPILER_PIN=$(grep -E '^[[:space:]]*compiler[[:space:]]*=' "${SRC_REEF}" \
+                 | head -1 \
+                 | sed -E 's/^[^"]*"([^"]*)".*$/\1/')
+test -n "${COMPILER_PIN}" || { echo "could not parse compiler pin from ${SRC_REEF}" >&2; exit 1; }
 
 mkdir -p "${REEF_HOME}/packages/chelis-std/0.1.0"
 cp "${TARBALL}" "${CHB}" "${REEF_HOME}/packages/chelis-std/0.1.0/"
@@ -52,7 +63,7 @@ cat > "${REEF_HOME}/index.json" <<EOF
     "chelis-std": [
       {
         "version": "0.1.0",
-        "compiler": "=0.2.4",
+        "compiler": "${COMPILER_PIN}",
         "archive_sha256": "${TSHA}",
         "shell_sha256": "${CSHA}"
       }
@@ -61,5 +72,5 @@ cat > "${REEF_HOME}/index.json" <<EOF
 }
 EOF
 
-echo "[chelis-std-install] installed chelis-std v0.1.0 (archive sha=${TSHA:0:12}…)"
+echo "[chelis-std-install] installed chelis-std v0.1.0 compiler=${COMPILER_PIN} (archive sha=${TSHA:0:12}…)"
 echo "[chelis-std-install] index at ${REEF_HOME}/index.json"
