@@ -1,0 +1,187 @@
+# Nautilus tests/
+
+Native Chelis identity / structural tests, run by `chelis test tests/`.
+This is the **internal-correctness gate** on every PR.
+
+scipy parity lives in `parity/`, NOT here. Anything Python under `tests/`
+is a hard-rule violation (CI Guard 1).
+
+---
+
+## How CI runs these
+
+Each `tests/*.ch` file is its own GitHub Actions matrix entry — they run
+in parallel on separate runners. The matrix is generated dynamically
+from `find tests -name '*.ch'` at job time, so adding a new test file
+is reflected automatically. There is no hardcoded list to drift.
+
+Wall-clock for the whole gate is `max(per-file-time) + ~40s setup`,
+typically **~90 seconds**.
+
+---
+
+## Why per-file overhead matters more than per-test count
+
+`chelis test` (v0.2.7) recompiles the dependency graph **per test
+function** and runs each in its own subprocess — there's no `--jobs`
+flag for in-process parallelism. But there's also a fixed ~30-35s
+file-level overhead that dominates over the per-test compile cost on
+all but the heaviest tests. A 102-test file (distributions.ch) runs in
+~41s; a 5-test file (linalg_factor.ch) runs in ~33s.
+
+The practical consequence:
+
+> **Adding tests to an existing file is nearly free. Adding a new file
+> costs a fresh ~35s slot in the matrix.**
+
+When you have a new identity to assert, **prefer extending an existing
+test file** unless the imports / dependency surface are materially
+different. Don't create `tests/foo_extra.ch` just because `tests/foo.ch`
+already has 30 tests.
+
+---
+
+## Eight principles
+
+1. **PR gate must complete in ≤ 5 minutes wall-clock.** Anything that
+   doesn't fit gets demoted to a scheduled `nightly.yml` job or a
+   post-merge runner. Long-running tests are a red flag, not a
+   completeness signal.
+
+2. **chelis-tests is the *internal-correctness* gate.** Mathematical
+   identities (`erf(0) = 0`, `Q^T Q ≈ I`), structural invariants
+   (transpose-of-transpose, trace-equals-sum-of-eigenvalues), exact
+   known constants (π, e, √π, 1/e, …), round-trips
+   (`erfinv(erf(x)) ≈ x`), smoke-callability. **No scipy.** If the
+   expected value comes from `scipy.foo(...)`, the test belongs in
+   `parity/`, not here.
+
+3. **scipy-parity is the *external-oracle* gate.** Lives in
+   `parity/run_parity.py`. It catches Nautilus drift from scipy
+   semantics. Runs on every PR (it's fast — ~70s, batched probes).
+
+4. **One test, one conceptual claim.** Pack assertions only when they
+   share both setup AND failure mode. Don't pack `erf(0) = 0` and
+   `gamma(1) = 1` together — they fail for different reasons. DO pack
+   `erf` symmetry at three different x values into one
+   `test_erf_odd_symmetry` (one setup, one failure mode: oddness
+   broken).
+
+5. **Per-file overhead is fixed (~35s).** See the section above. Add
+   tests to existing files unless the import surface materially
+   changes (e.g., bringing in heavy LinAlg factorizations into a
+   currently-cheap file).
+
+6. **CI parallelizes at the file boundary.** Don't try to parallelize
+   within a file — `chelis test` won't. Don't structure tests assuming
+   serial execution either.
+
+7. **Legacy harness has a defined sunset.** `tests_legacy/` runs in
+   the scheduled `nightly.yml` workflow as a dual-run safety net. It
+   is deleted in Phase 4 of the cutover plan once the native gates
+   have full coverage parity. No clinging.
+
+8. **Trivial tests are deleted on sight.** `assert_true(true, ...)`,
+   `assert_close(x, x, tol)`, `assert_eq(constant, constant, label)`,
+   tests where the expected value is computed from the actual value
+   in the same expression — all banned. Smoke tests must call a real
+   export with real input.
+
+---
+
+## How to add a test
+
+1. **Pick the existing file** that already imports the symbol you want
+   to test. `tests/special.ch` for special-function identities,
+   `tests/distributions.ch` for PDF/CDF claims, `tests/linalg.ch`
+   for vector ops, `tests/linalg_factor.ch` for the heavy
+   factorizations (lu_solve, cholesky_n, qr_decompose, eig_n,
+   cg_solve), `tests/linalg_matmul.ch` for matmul/permute/sum-using
+   surface (transpose, det, inv, solve, gram, aat, frobenius, svd).
+
+2. **Add a `def test_*() -> unit ! { Test }` function**. Prefer
+   single-assertion tests for clarity. If you must pack multiple
+   asserts:
+
+   ```chelis
+   def test_normal_pdf_three_invariants() -> unit ! { Test } = {
+     -- All three test the same property (peak shape) at different x.
+     _ = assert_close(normal_pdf(cast(0.0, f32), m, s), expected_at_0,
+                      tol, "peak at mean")
+     _ = assert_close(normal_pdf(cast(-x, f32), m, s),
+                      normal_pdf(cast(x, f32), m, s),
+                      tol, "symmetric")
+     assert_true(gt(normal_pdf(m, m, s), normal_pdf(m_plus_3sd, m, s)),
+                 "peak > tail")
+   }
+   ```
+
+   The v0.2.4 chelis test parser quirk: multiple bare `assert_*` calls
+   in one block trigger "function arity mismatch: expected 2 args,
+   got 3". Bind every leading assert as `_ = assert_*(...)` and leave
+   only the LAST one bare. (Documented in the file headers of every
+   test file.)
+
+3. **Run locally** before pushing:
+
+   ```
+   /tmp/chelis-toolchain-27/chelis-v0.2.7-linux-x86_64/bin/chelis test \
+     --filter test_my_new_thing --timeout 120 tests/<file>.ch
+   ```
+
+4. **Self-check:** `grep -E '[0-9]\.[0-9]{4,}' tests/<file>.ch`. Every
+   4+-digit decimal must either be a documented mathematical constant
+   (with an inline `--` comment naming it: `1.4142135` = √2, etc.) or
+   be removed.
+
+---
+
+## Adding a new test file
+
+Only do this if the dependency surface is materially different from
+existing files. Costs ~35s of CI matrix time per file.
+
+When you do:
+
+1. Create `tests/<name>.ch` with a `module Nautilus.Tests.<Name>`
+   header.
+2. **No CI yaml change needed** — the matrix is generated from
+   `find tests -name '*.ch'`.
+3. **No README update needed** unless the new file represents a new
+   testing pattern worth documenting in the "How to add a test"
+   section above.
+
+---
+
+## Runtime constraints (chelis v0.2.7)
+
+The `chelis test` host runtime supports `matmul`, `permute`, and `sum`
+as of chelis v0.2.5. All `Nautilus.LinAlg` exports are testable
+natively. Earlier upstream limitations and their fix history are in
+`docs/UPSTREAM_BUGS.md`.
+
+Known v0.2.7 quirks (no current workaround needed in tests/):
+
+- The chelis test parser requires `_ = assert_*(...)` for all but the
+  last assert in a multi-assert block (see point 2 of "How to add a
+  test").
+- `chelis test` recompiles per test function (no `--jobs`). Worked
+  around at the CI layer via per-file matrix parallelism.
+- `assert_eq` is f32-strict. For int64 comparisons, use
+  `assert_true(eq(x, y), "...")`.
+
+---
+
+## Forbidden imports / patterns
+
+The CI hard-rule guards (`hard-rule-guard` job in `.github/workflows/ci.yml`)
+will reject:
+
+- `.py` / `.pyc` / `.pyi` files anywhere under `tests/`
+- `import scipy` / `import numpy` / `import pandas` / etc. in any `.py`
+  file under `src/` or `tests/`
+- `scipy.foo(...)` / `numpy.linalg.solve(...)` / etc. in any `.ch` file
+  (descriptive comments are fine — the grep matches dotted callable
+  syntax, not bare-word mentions)
+- An empty `tests/` directory (the matrix generator would otherwise
+  produce zero entries and silently pass)
