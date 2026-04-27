@@ -30,6 +30,63 @@ moves to `.github/workflows/nightly.yml` where 8 min is acceptable.
 identify what's amortizing badly. Likely candidates: chelis-std
 tarball re-extraction, registry index walk, OMP runtime init.
 
+## v0.3.0 validation (2026-04-28)
+
+Major upstream release: Compiled Artifact Caching. Headline upstream
+numbers: Coral `chelis test` 6m40s → 29.4s cold (13.6×), 11.1s warm
+(36×). Nautilus impact is more modest because chelis check stays on
+the legacy fitness emitter (no cache benefit) and our matrix-per-file
+CI already worked around per-test recompile.
+
+Local timing under v0.3.0 (single thread):
+
+| Operation | v0.2.7 | v0.3.0 cold | v0.3.0 warm | speedup |
+|---|---|---|---|---|
+| `chelis check src/special.ch` | ~21 ms | 11.7 s | 12.4 s | **regressed** |
+| `chelis test tests/distributions.ch` | 41 s | 17.9 s | 17.9 s | 2.3× |
+| `chelis test tests/` (full) | ~22 min | 3m 49s | n/a | **5.7×** |
+| `chelis reef build` | ~10 s | 11 s | n/a | unchanged |
+
+Two unexpected results:
+
+1. **`chelis check` regressed locally.** v0.2.7 was 21 ms, v0.3.0 is
+   12 s — a 600× slowdown. Per the release notes, chelis check stays
+   on the legacy emitter; the regression is presumably an unintended
+   side effect of the annotate-pass / linearity-checker rewiring.
+   The CI cost we documented under v0.2.7 (1000× slower on GHA
+   runners) is now likely wash-or-better since local matches CI.
+   Workaround unchanged: PR gate stays on `chelis reef build` +
+   1-file rotating smoke; full per-file score=1 enforcement stays
+   on `nightly.yml`.
+
+2. **`chelis test` cache miss.** v0.3.0 ships disk cache for warm
+   re-invocation, but a second `chelis test` on the same file under
+   our setup gives the same wall-clock as cold. Either the cache
+   path isn't where we expect, or cache key sensitivity to env we
+   haven't pinned (HOME? cwd? umask?). Worth investigating but the
+   cold-only 5.7× win is already substantial.
+
+### v0.3.0 linearity tightening (consumer-visible)
+
+Per release notes: "the old monolithic check_linearity was silently
+lenient on expressions whose types were unresolved (Cons/Nil etc).
+With the annotate fix, real use-after-consume violations surface."
+
+**Hit one site in Nautilus:** `tests/sde.ch::test_milstein_zero_diff_zero_noise_matches_em`
+reused `noise` after `euler_maruyama_fixed` consumed it, then passed
+the same binding to `milstein_fixed`. Fixed by adding `copy(noise)`
+on the first call. v0.2.7 silently accepted the bug; v0.3.0 correctly
+rejects. No other Nautilus tests/src files affected.
+
+### v0.3.0 chelis reef install — chelis-std bootstrap properly resolved
+
+v0.3.0 ships `chelis reef install --from-monorepo <path> [<name>=<version>]`,
+the upstream-sanctioned way to populate the local registry from the
+chelis monorepo's prebuilt artifacts. `scripts/install_chelis_std.sh`
+now delegates the file copy + index.json write to this command instead
+of doing both by hand. The "v0.2.4 chelis-std bootstrap" entry in this
+doc is **resolved** as of v0.3.0.
+
 ## v0.2.7 validation (2026-04-26)
 
 - `chelis check src/*.ch` — all 21 modules score 1.0, zero errors.

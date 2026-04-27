@@ -2,75 +2,42 @@
 # Install chelis-std v0.1.0 into the local Reef registry from the
 # Chelis monorepo's prebuilt artifact.
 #
-# Why this exists: chelis v0.2.4's `chelis reef publish` requires a
-# buildable source tree, and the chelis monorepo's chelis-std source
-# does not type-check standalone (`unbound variable:
-# test_assert_eq_tensor_int64`). The chelis monorepo nonetheless
-# ships a prebuilt `chelis-std-0.1.0.{chb,tar.zst}` under
-# `packages/chelis-std/dist/` at every release tag, and chelis v0.2.4
-# is happy to consume them if they're placed in
-# `~/.chelis/reef/packages/chelis-std/0.1.0/` with a matching
-# `~/.chelis/reef/index.json` entry.
+# Why this exists: chelis-std is not shipped as a release artifact of
+# Chelis-Lang/chelis (only the toolchain tarball is). The prebuilt
+# `chelis-std-0.1.0.{chb,tar.zst}` ships inside the chelis monorepo at
+# every release tag under `packages/chelis-std/dist/`. This script
+# clones that tag and hands it to `chelis reef install --from-monorepo`,
+# which (as of chelis v0.3.0) is the sanctioned way to populate the
+# local registry without source-rebuilding chelis-std.
 #
-# Until upstream ships chelis-std as its own release artifact (or
-# `chelis reef install <name>=<version>` lands), this script is the
-# CI bootstrap path. See docs/UPSTREAM_BUGS.md "v0.2.4 chelis-std
-# bootstrap" for the upstream issue.
+# Pre-v0.3.0 history: this script used to hand-roll the install by
+# copying files into ~/.chelis/reef/packages/<name>/<version>/ and
+# writing the index.json by hand, because chelis v0.2.x had no
+# `reef install` subcommand. v0.3.0 shipped the proper command — see
+# `chelis reef install --help` and docs/UPSTREAM_BUGS.md
+# ("v0.2.4 chelis-std bootstrap" — now resolved).
 #
 # Usage:
-#   GH_TOKEN=...  CHELIS_TAG=v0.2.4  scripts/install_chelis_std.sh
+#   GH_TOKEN=...  CHELIS_TAG=v0.3.0  scripts/install_chelis_std.sh
 #
 # Env:
 #   GH_TOKEN      — PAT with `contents: read` on Chelis-Lang/chelis
 #   CHELIS_TAG    — tag of the chelis monorepo to fetch chelis-std from
-#                   (defaults to v0.2.4)
+#                   (defaults to v0.3.0)
+#   CHELIS_BIN    — chelis binary to use for `reef install`. Defaults
+#                   to whichever `chelis` is on PATH; CI sets this to
+#                   the v0.3.0 toolchain it just downloaded.
 set -euo pipefail
 
-CHELIS_TAG="${CHELIS_TAG:-v0.2.7}"
+CHELIS_TAG="${CHELIS_TAG:-v0.3.0}"
+CHELIS_BIN="${CHELIS_BIN:-chelis}"
 WORK_DIR="${WORK_DIR:-/tmp/chelis-monorepo-for-std}"
-REEF_HOME="${HOME}/.chelis/reef"
 
 echo "[chelis-std-install] cloning Chelis-Lang/chelis at ${CHELIS_TAG} into ${WORK_DIR}"
 rm -rf "${WORK_DIR}"
 gh repo clone Chelis-Lang/chelis "${WORK_DIR}" -- --depth 1 --branch "${CHELIS_TAG}" --quiet
 
-DIST="${WORK_DIR}/packages/chelis-std/dist"
-TARBALL="${DIST}/chelis-std-0.1.0.tar.zst"
-CHB="${DIST}/chelis-std-0.1.0.chb"
-SRC_REEF="${WORK_DIR}/packages/chelis-std/reef.toml"
-test -f "${TARBALL}"  || { echo "missing ${TARBALL}"  >&2; exit 1; }
-test -f "${CHB}"      || { echo "missing ${CHB}"      >&2; exit 1; }
-test -f "${SRC_REEF}" || { echo "missing ${SRC_REEF}" >&2; exit 1; }
+echo "[chelis-std-install] running chelis reef install --from-monorepo"
+"${CHELIS_BIN}" reef install --from-monorepo "${WORK_DIR}" chelis-std
 
-# Read the compiler pin from the source reef.toml. chelis enforces that
-# the registry-index `compiler` field matches what the package was built
-# against; hardcoding it (we did until v0.2.5) silently breaks when
-# upstream bumps. Now derived per-tag.
-COMPILER_PIN=$(grep -E '^[[:space:]]*compiler[[:space:]]*=' "${SRC_REEF}" \
-                 | head -1 \
-                 | sed -E 's/^[^"]*"([^"]*)".*$/\1/')
-test -n "${COMPILER_PIN}" || { echo "could not parse compiler pin from ${SRC_REEF}" >&2; exit 1; }
-
-mkdir -p "${REEF_HOME}/packages/chelis-std/0.1.0"
-cp "${TARBALL}" "${CHB}" "${REEF_HOME}/packages/chelis-std/0.1.0/"
-
-TSHA=$(sha256sum "${TARBALL}" | awk '{print $1}')
-CSHA=$(sha256sum "${CHB}"     | awk '{print $1}')
-
-cat > "${REEF_HOME}/index.json" <<EOF
-{
-  "packages": {
-    "chelis-std": [
-      {
-        "version": "0.1.0",
-        "compiler": "${COMPILER_PIN}",
-        "archive_sha256": "${TSHA}",
-        "shell_sha256": "${CSHA}"
-      }
-    ]
-  }
-}
-EOF
-
-echo "[chelis-std-install] installed chelis-std v0.1.0 compiler=${COMPILER_PIN} (archive sha=${TSHA:0:12}…)"
-echo "[chelis-std-install] index at ${REEF_HOME}/index.json"
+echo "[chelis-std-install] done"

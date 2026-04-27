@@ -149,10 +149,12 @@ def test_milstein_zero_noise_gbm_one_step() -> unit ! { Test } = {
 def test_milstein_zero_diff_zero_noise_matches_em() -> unit ! { Test } = {
   -- With g=0 and noise=0, both Milstein correction (g*dg*(dW^2-dt)) and
   -- diffusion term vanish; Milstein reduces to forward Euler, same as EM.
+  -- copy(noise) on the first consume because chelis v0.3.0 linearity
+  -- correctly flags reuse-after-consume; v0.2.7 silently let it pass.
   noise = to_tensor([cast(0.0, f32)])
   y_em = euler_maruyama_fixed(decay_drift, zero_diffusion,
                               cast(1.0, f32), cast(0.0, f32),
-                              cast(0.1, f32), noise)
+                              cast(0.1, f32), copy(noise))
   y_m = milstein_fixed(decay_drift, zero_diffusion, zero_diffusion,
                        cast(1.0, f32), cast(0.0, f32),
                        cast(0.1, f32), noise)
