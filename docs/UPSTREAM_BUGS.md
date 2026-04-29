@@ -5,6 +5,28 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
+## v0.4.0 validation (2026-04-29)
+
+v0.4.0 ships **Phase M — Metal Apple Silicon GPU backend**
+(`chelis build --target metal`). Pure Objective-C++ string emission with
+embedded MSL kernel strings; no metal-rs Rust dep. Two correctness
+bugs caught and locked by the M6 oracle on real hardware (duplicate
+`[[thread_position_in_threadgroup]]` and a non-power-of-2 tree-reduction
+miscompile). Plus macOS CI hardening (Accelerate framework linking,
+`chelis_math.h` include propagation in C codegen).
+
+**Nautilus impact: zero.** The Metal backend is opt-in via
+`--target metal`; we ship Linux x86_64 only. No API breaks. No
+test/src changes needed. v0.3.2 → v0.4.0 is the workspace's
+own version bump; it doesn't change anything Nautilus depends on.
+
+All gates clean on first run after the toolchain pin update:
+* chelis check src/*.ch — 21/21 score 1.0
+* chelis reef build — clean (`dist/nautilus-0.3.4.{chb,tar.zst}`)
+* chelis test tests/ — 438/438
+* parity --strict — 205/205
+* legacy harness — 1096/1096
+
 ## v0.3.2 validation (2026-04-29)
 
 v0.3.2 is a small type-system bug fix: `gt(scalar, tensor)` and other
