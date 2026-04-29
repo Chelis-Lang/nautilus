@@ -174,8 +174,17 @@ def special_cases(scipy):
     return [
         ("erf",        mk1("erf"),       lambda x: float(sp.erf(x)),
                                                        [-2.0, -0.5, 0.0, 0.7, 2.0],            5e-6),
+        # `erfc` is implemented as `1 - erf(x)`; the tolerance widens for
+        # large positive x where catastrophic cancellation eats f32
+        # precision (`erf(2)` is already ~0.995, so the tail bits of
+        # `1 - erf(2) ~ 0.0047` are at f32 epsilon). Keep samples in the
+        # range Shoals actually uses (option pricing tail probabilities).
+        ("erfc",       mk1("erfc"),      lambda x: float(sp.erfc(x)),
+                                                       [-2.0, -0.5, 0.0, 0.7, 1.5],            5e-5),
         ("erfinv",     mk1("erfinv"),    lambda x: float(sp.erfinv(x)),
                                                        [-0.9, -0.3, 0.5, 0.95],                5e-4),
+        ("gamma",      mk1("gamma"),     lambda x: float(sp.gamma(x)),
+                                                       [0.5, 1.5, 2.5, 5.0, -0.5, -1.5],       5e-4),
         ("log_gamma",  mk1("log_gamma"), lambda x: float(sp.gammaln(x)),
                                                        [0.5, 1.5, 2.5, 5.0, 10.0],             5e-4),
         ("digamma",    mk1("digamma"),   lambda x: float(sp.digamma(x)),
@@ -363,7 +372,7 @@ def distribution_cases(scipy):
 
 
 SPECIAL_IMPORTS = (
-    "import Nautilus.Special (erf, erfinv, log_gamma, digamma, trigamma, beta, "
+    "import Nautilus.Special (erf, erfc, erfinv, gamma, log_gamma, digamma, trigamma, beta, "
     "bessel_i0, bessel_i1, bessel_k0, bessel_k1, "
     "bessel_j0, bessel_j1, bessel_y0, bessel_y1, "
     "airy_ai, airy_bi, ellipk, ellipe)\n"

@@ -1,5 +1,5 @@
 module Nautilus.Special
-export (erf, erfinv, log_gamma, digamma, beta, lbeta,
+export (erf, erfc, erfinv, gamma, log_gamma, digamma, beta, lbeta,
         trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1,
         bessel_j0, bessel_j1, bessel_y0, bessel_y1,
         airy_ai, airy_bi, ellipk, ellipe)
@@ -43,6 +43,8 @@ def erf(x: f32) -> f32 = {
     if lt(x, cast(0.0, f32)) then neg(y) else y
   }
 }
+
+def erfc(x: f32) -> f32 = sub(cast(1.0, f32), erf(x))
 
 def lanczos_sum(x: f32) -> f32 = {
   c0 = cast(0.99999999999980993, f32)
@@ -92,6 +94,19 @@ def log_gamma(x: f32) -> f32 = {
     lgc = log_gamma_core(one_minus_x)
     sub(sub(log_pi, log_aspix), lgc)
   } else log_gamma_core(x)
+}
+
+def gamma(x: f32) -> f32 = {
+  half = cast(0.5, f32)
+  pi = cast(3.1415926535897932, f32)
+  if is_nonpositive_integer(x) then pos_inf()
+  else if lt(x, half) then {
+    pix = mul(pi, x)
+    spix = sin(pix)
+    one_minus_x = sub(cast(1.0, f32), x)
+    g1 = exp(log_gamma_core(one_minus_x))
+    div(pi, mul(spix, g1))
+  } else exp(log_gamma_core(x))
 }
 
 def digamma_asymptotic(x: f32) -> f32 = {

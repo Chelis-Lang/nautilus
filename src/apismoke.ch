@@ -1,5 +1,5 @@
 module Nautilus.Apismoke
-import Nautilus.Special (erf, erfinv, log_gamma, digamma, beta, lbeta,
+import Nautilus.Special (erf, erfc, erfinv, gamma, log_gamma, digamma, beta, lbeta,
   trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1,
   bessel_j0, bessel_j1, bessel_y0, bessel_y1,
   airy_ai, airy_bi, ellipk, ellipe)
@@ -88,7 +88,9 @@ def smoke_decay(y: f32, t: f32) -> f32 = neg(y)
 
 def smoke_special() -> f32 = {
   e = erf(cast(0.5, f32))
+  ec = erfc(cast(0.5, f32))
   ei = erfinv(cast(0.5, f32))
+  g  = gamma(cast(3.0, f32))
   lg = log_gamma(cast(3.0, f32))
   dg = digamma(cast(3.0, f32))
   b  = beta(cast(2.0, f32), cast(3.0, f32))
@@ -106,7 +108,7 @@ def smoke_special() -> f32 = {
   abi = airy_bi(cast(1.0, f32))
   ek = ellipk(cast(0.5, f32))
   ee = ellipe(cast(0.5, f32))
-  s0 = add(add(add(add(add(e, ei), lg), dg), b), lb)
+  s0 = add(add(add(add(add(add(add(e, ec), ei), g), lg), dg), b), lb)
   s1 = add(add(add(add(tg, bi0), bi1), bk0), bk1)
   s2 = add(add(add(add(bj0, bj1), by0), by1), aai)
   s3 = add(add(abi, ek), ee)
