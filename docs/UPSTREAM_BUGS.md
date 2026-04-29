@@ -5,6 +5,19 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
+## v0.3.2 validation (2026-04-29)
+
+v0.3.2 is a small type-system bug fix: `gt(scalar, tensor)` and other
+comparison ops with a leading-scalar arg now correctly return
+`tensor[D, bool]` instead of `Prim(Bool)`. Bug introduced in v0.3.1's
+broadcast-rewrite block (post-unify override at infer.rs:4441 only
+inspected `arg_tys[0]`); v0.3.2 walks all args for the dim source.
+
+Nautilus impact: **none**. We don't write `gt(scalar, tensor)` anywhere
+in src or tests. All 438 native + 205 parity + 1096 legacy assertions
+pass on first run. Reef build clean. The pin bump is purely a
+maintenance keep-current.
+
 ## v0.2.7 `chelis check` 1000× slower on GitHub Actions runners (2026-04-26)
 
 Local timing of `chelis check src/<file>.ch` on representative Nautilus

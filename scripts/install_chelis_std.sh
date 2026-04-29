@@ -18,18 +18,18 @@
 # ("v0.2.4 chelis-std bootstrap" — now resolved).
 #
 # Usage:
-#   GH_TOKEN=...  CHELIS_TAG=v0.3.0  scripts/install_chelis_std.sh
+#   GH_TOKEN=...  CHELIS_TAG=v0.3.2  scripts/install_chelis_std.sh
 #
 # Env:
 #   GH_TOKEN      — PAT with `contents: read` on Chelis-Lang/chelis
 #   CHELIS_TAG    — tag of the chelis monorepo to fetch chelis-std from
-#                   (defaults to v0.3.0)
+#                   (defaults to v0.3.2)
 #   CHELIS_BIN    — chelis binary to use for `reef install`. Defaults
 #                   to whichever `chelis` is on PATH; CI sets this to
-#                   the v0.3.0 toolchain it just downloaded.
+#                   the v0.3.2 toolchain it just downloaded.
 set -euo pipefail
 
-CHELIS_TAG="${CHELIS_TAG:-v0.3.0}"
+CHELIS_TAG="${CHELIS_TAG:-v0.3.2}"
 CHELIS_BIN="${CHELIS_BIN:-chelis}"
 WORK_DIR="${WORK_DIR:-/tmp/chelis-monorepo-for-std}"
 
