@@ -166,7 +166,14 @@ jobs:
           # Prove the apismoke gate has teeth: mutate one import to a typo
           # and assert chelis check rejects it.
           cp src/apismoke.ch src/apismoke.ch.bak
-          sed -i 's/(erf, erfinv/(erf_TYPO_THAT_DOES_NOT_EXIST, erfinv/' src/apismoke.ch
+          # Mutate the first import in `Nautilus.Special (erf, erfc, ...)` to a
+          # name that cannot exist. `(erf,` is unique to the import line in
+          # this file (no body call site has that exact prefix). Robust
+          # against new exports being appended; if someone reorders so `erf`
+          # is no longer the first import, the sed becomes a no-op and this
+          # gate fails loudly — that's intended (forces an explicit review
+          # rather than a silent gate-bypass).
+          sed -i 's/(erf,/(erf_TYPO_THAT_DOES_NOT_EXIST,/' src/apismoke.ch
           if chelis check src/apismoke.ch 2>&1 | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); sys.exit(0 if d.get('errors') or 'error' in (d.get('msg','') or '') else 1)" 2>/dev/null; then
             echo "chelis check correctly rejected typo'd import"
             mv src/apismoke.ch.bak src/apismoke.ch
