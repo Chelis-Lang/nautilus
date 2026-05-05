@@ -1,7 +1,8 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the validated `chelis v0.1.21` toolchain.
+repository state on the validated `chelis 0.5.0` toolchain
+(Nautilus `0.5.0`).
 
 ## Scope
 
@@ -14,17 +15,17 @@ hand-written adjoints.
 
 | Module | Exports | Runtime status |
 |---|---|---|
-| `Nautilus.Special` | 19 | runtime-verified |
+| `Nautilus.Special` | 21 | runtime-verified |
 | `Nautilus.Distributions` | 38 | runtime-verified except 3 heavy sampling variants |
-| `Nautilus.LinAlg` | 30 | runtime-verified |
+| `Nautilus.LinAlg` | 31 | runtime-verified |
 | `Nautilus.Stats` | 14 | runtime-verified |
 | `Nautilus.Distance` | 8 | runtime-verified |
 | `Nautilus.Roots` | 3 | runtime-verified |
-| `Nautilus.ODE` | 5 | runtime-verified |
+| `Nautilus.ODE` | 6 | runtime-verified |
 | `Nautilus.Integrate` | 8 | runtime-verified |
 | `Nautilus.Testing` | 13 | runtime-verified |
 | `Nautilus.Optim` | 4 | runtime-verified |
-| `Nautilus.Interpolation` | 3 | runtime-verified |
+| `Nautilus.Interpolation` | 5 | runtime-verified |
 | `Nautilus.SDE` | 2 | runtime-verified |
 | `Nautilus.CurveFit` | 2 | runtime-verified |
 | `Nautilus.Signal` | 7 | typed stubs only |
@@ -32,8 +33,12 @@ hand-written adjoints.
 
 Totals:
 
-- 150 non-stub exports overall (156 total across all modules, minus 7 Signal stubs = 149 numerical/library, plus 1 Core metadata helper = 150).
-- 149 numerical/library exports are covered by the runtime harness.
+- Library surface: 163 total exports across all modules. Minus 7
+  `Nautilus.Signal` stubs = 156 non-stub exports. Of those, 155 are
+  numerical/library entries and 1 is the `Nautilus.Core.version`
+  metadata helper.
+- All 155 numerical/library exports are covered by the native Chelis
+  test gate (`chelis test tests/`) and by `parity/run_parity.py`.
 - `Nautilus.Core.version` is package metadata and is not part of the
   numerical harness.
 - `Nautilus.Signal` remains a stub surface pending upstream complex
@@ -45,31 +50,40 @@ Clean `HEAD` is expected to pass these repo-local gates:
 
 ```sh
 chelis reef build
-python tests/run_static_checks.py
+chelis test tests/
+python parity/run_parity.py --strict
 python scripts/gen_goldens.py --check
-CHELIS_BIN=chelis python tests/run_numeric_tests.py
-CHELIS_BIN=chelis python tests/run_skill_checks.py
-CHELIS_BIN=chelis python scripts/validate_book_examples.py
+python scripts/extract_stability.py --check
+python scripts/validate_book_examples.py
 mdbook build docs
 ```
 
-Expected runtime-harness result:
+Expected results on a clean run:
 
 ```text
-1051 / 1051 numerical assertions passed
+chelis test tests/         -> 438 passed, 0 failed
+parity/run_parity.py       -> parity totals: 216 passed, 0 failed
 ```
 
 What those gates cover:
 
 - `chelis reef build`: reef packaging and import surface
-- `tests/run_static_checks.py`: export/import consistency
+- `chelis test tests/`: native identity / structural assertions across
+  `tests/*.ch`. This is the internal-correctness gate.
+- `parity/run_parity.py --strict`: scipy/numpy oracle for the
+  Nautilus surface (special functions and distributions). External
+  drift detector.
 - `scripts/gen_goldens.py --check`: checked-in scipy/numpy fixtures
-- `tests/run_numeric_tests.py`: scalar, solver, tensor-path, sampling,
-  and negative-matrix runtime parity
-- `tests/run_skill_checks.py`: full `chelis` examples in `SKILL.md`
+  for the legacy harness still match scipy
+- `scripts/extract_stability.py --check`: SKILL.md stability tables
+  parse cleanly and round-trip to `dist/stability.json`
 - `scripts/validate_book_examples.py`: full `chelis` blocks in the
   mdBook, with a minimum-block sanity check
 - `mdbook build docs`: rendered docs stay buildable
+
+The legacy Python harness (`tests_legacy/run_numeric_tests.py`) still
+runs in the scheduled `nightly.yml` workflow as a dual-run safety net;
+it is not part of the PR gate.
 
 ## Harness Notes
 
@@ -89,21 +103,41 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to `chelis v0.1.21` exactly via `reef.toml`.
-Historical compiler/runtime bugs discovered during Nautilus P0-P3 are
-documented in `docs/UPSTREAM_BUGS.md`.
+Nautilus is pinned to `chelis 0.5.0` exactly via `reef.toml`. Historical
+compiler/runtime bugs discovered during Nautilus P0-P3 are documented in
+`docs/UPSTREAM_BUGS.md`.
 
 For the pinned toolchain:
 
-- the originally tracked Bugs 1-5 remain fixed through `v0.1.21`
+- The shipped Nautilus surface is no longer upstream-blocked. The
+  native `chelis test tests/` gate runs `438 / 438` clean on
+  `chelis 0.5.0`, and `parity/run_parity.py --strict` is `216 / 216`
+  against scipy (both verified 2026-05-05).
+- The post-`v0.1.21` toolchain bumps (`v0.2.x` → `0.5.0`) were
+  consumed as maintenance / pin-tracking releases. None changed the
+  Nautilus blocker set materially.
+- Tensor-valued `grad` at the C-backend lowering level was last
+  verified blocked on `v0.1.21` and has not been re-probed against
+  `0.5.0`. Multi-parameter Levenberg-Marquardt (`lm_scalar_nparam`)
+  ships using a finite-difference Jacobian as a workaround.
+
+### Historical upstream blocker analysis through v0.1.21
+
+The summary below is preserved as historical context for the
+post-`v0.1.7` blocker work. It is not a fresh restatement of the
+`0.5.0` state; for that, see the section above.
+
+For the v0.1.21 toolchain (the last pin against which the historical
+analysis was captured):
+
+- the originally tracked Bugs 1-5 remained fixed
 - Bugs 6 and 7 (recursive inliner NULL-shadow and increment-propagation
-  defects discovered during `lm_scalar_nparam` development) are both
+  defects discovered during `lm_scalar_nparam` development) were both
   **fixed in v0.1.21** — `lm_scalar_nparam` uses the cleaner recursive
   Jacobian formulation on v0.1.21
-- the currently shipped Nautilus surface is fully wired into the current
-  harness and no longer upstream-blocked
-  (`1051 / 1051` numerical assertions on `v0.1.21`, including the new
-  general-`n` Cholesky, LU, QR, SVD, and multi-parameter LM paths)
+- the shipped Nautilus surface ran the legacy `1051 / 1051` numerical
+  assertions on `v0.1.21`, including the general-`n` Cholesky, LU, QR,
+  SVD, and multi-parameter LM paths
 
 On upstream releases through `v0.1.21`:
 
@@ -152,13 +186,22 @@ On upstream releases through `v0.1.21`:
 
 ## Recent Review Outcome
 
-The latest repo sweep closed the remaining documentation and harness
-drift:
+The most recent repo sweep (2026-05-05, against `chelis 0.5.0`) refreshed
+the documentation surface to the current implementation state:
 
-- docs/spec text now reflects the current 150-export surface and
-  1051-assertion harness
-- the ODE docs now include the shipped adaptive RK45 endpoint solver
+- docs/spec text now reflects the 163-export library surface (155
+  numerical/library + 1 metadata helper + 7 Signal stubs), the
+  216/216 scipy-parity gate, and the native `chelis test tests/`
+  harness as the internal-correctness gate.
+- README, mdBook, and SKILL.md list the v0.4.0 additions (`erfc`,
+  unary `gamma`).
+- `docs/UPSTREAM_BUGS.md` carries an explicit `v0.5.0 validation`
+  block at the top so the historical body below is unambiguously
+  archival.
+- the ODE docs continue to document the shipped adaptive RK45
+  endpoint solver
 - the mdBook example validator enforces a minimum number of full
   compile-checked examples
-- the runtime harness includes adversarial negative-matrix cases that
-  exercise the NaN-failure paths
+- the legacy harness in `tests_legacy/` includes adversarial
+  negative-matrix cases that exercise the NaN-failure paths and
+  still runs nightly as a dual-run safety net

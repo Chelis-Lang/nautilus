@@ -10,7 +10,7 @@ safe to differentiate via `grad`.
 ## Imports
 
 ```chelis-fragment
-import Nautilus.Special (erf, erfinv, log_gamma, digamma, trigamma, beta, lbeta)
+import Nautilus.Special (erf, erfc, erfinv, gamma, log_gamma, digamma, trigamma, beta, lbeta)
 import Nautilus.Special (bessel_j0, bessel_j1, bessel_y0, bessel_y1)
 import Nautilus.Special (bessel_i0, bessel_i1, bessel_k0, bessel_k1)
 import Nautilus.Special (airy_ai, airy_bi, ellipk, ellipe)
@@ -20,9 +20,11 @@ import Nautilus.Special (airy_ai, airy_bi, ellipk, ellipe)
 
 ### Error functions
 - `erf(x)`: the error function, ~1e-7 relative precision
+- `erfc(x)`: complementary error function `1 - erf(x)`, same precision domain as `erf`
 - `erfinv(x)`: inverse error function for x in (-1, 1), ~1e-8
 
 ### Gamma-related
+- `gamma(x)`: the gamma function via Lanczos + reflection, +inf at non-positive integers
 - `log_gamma(x)`: log of the gamma function (Lanczos, g=7), ~1e-9
 - `digamma(x)`: psi function (derivative of log_gamma), ~1e-7
 - `trigamma(x)`: derivative of digamma, ~1e-6

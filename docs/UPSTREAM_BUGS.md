@@ -5,6 +5,40 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
+> **Current pin: `chelis 0.5.0`.** Entries below are arranged newest
+> first; everything below the v0.5.0 entry is historical record from
+> earlier toolchain pins.
+
+## v0.5.0 validation (2026-05-05)
+
+Pin bump only — `reef.toml` advanced from `chelis 0.4.0` to `chelis 0.5.0`
+in commit `d80e51c` (Nautilus 0.5.0 release; `ef73bd2` re-bumped after a
+chelis registry republish). Upstream `0.5.0` is documented as a
+maintenance / registry release; no changes to the public Chelis surface
+that Nautilus depends on, no API breaks.
+
+**Nautilus impact: zero.** No `src/` or `tests/` edits were required to
+consume the bump. The CI guard fix in `fcb8eee` (sed mutation for the
+import-gate matcher) is a Nautilus-internal CI fix triggered by an
+unrelated rename of the apismoke imports, not a 0.5.0-induced
+regression.
+
+Validation captured at the time of pin:
+
+* `parity/run_parity.py --strict` — **216 / 216** scipy samples pass
+  (verified 2026-05-05).
+* No fresh red-team probes were run for this pin. Bug 9
+  (`chelis eval --file` hang on Nautilus reef imports) was last
+  open against `v0.1.21` and is **not retested** for `0.5.0`. Tensor-
+  valued `grad` at the C-backend lowering level is similarly carried
+  forward as "blocker last verified on `v0.1.21`, not retested for
+  `0.5.0`."
+
+This entry is a release-pin acknowledgement, not a re-validation. If
+you need a fresh signal on a specific historical bug, re-run the
+documented repro at the bottom of that bug's section against the
+current toolchain.
+
 ## v0.4.0 validation (2026-04-29)
 
 v0.4.0 ships **Phase M — Metal Apple Silicon GPU backend**

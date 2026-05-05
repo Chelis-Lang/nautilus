@@ -10,17 +10,30 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Status snapshot (2026-04-22, `chelis v0.1.18`).**
+**Status snapshot (2026-05-05, `chelis 0.5.0`).**
+
+- Current pin is `chelis 0.5.0` (Nautilus `0.5.0`). LU / QR / SVD shipped
+  alongside Cholesky on the `v0.2.0` compiler surface; the `v0.4.0` Nautilus
+  release added `erfc` and unary `gamma` to `Nautilus.Special`. Parity is
+  216/216 against scipy.
+- The `v0.4.0` → `v0.5.0` Nautilus bumps were maintenance / pin-tracking; no
+  feature work has landed since the last roadmap snapshot.
+- Multi-parameter Levenberg-Marquardt remains blocked on tensor-valued `grad`
+  at the C-backend lowering level. The blocker was last verified against
+  `chelis v0.1.21`; the `0.2.x` → `0.5.0` toolchain bumps have not been
+  re-probed against this specific issue. Re-probe before assuming state.
+
+Historical snapshot (2026-04-22, `chelis v0.1.18`):
 
 - Completed in Nautilus: P0 per-row stability column, P1 fast-`chelis eval`
   benchmark, P2 adaptive-step ODE integrator, P2 `bessel_y1` precision/stability
   fix, **P2 general-`n` Cholesky (`cholesky_n`)** — shipped as `alpha` on the
   `v0.1.18` toolchain with a scipy-parity golden.
 - Remaining Nautilus work unblocked on `v0.1.18`: LU / QR / SVD (same
-  compiler-surface now available) — not yet implemented.
+  compiler-surface now available) — shipped subsequently in Nautilus `v0.2.0`.
 - Remaining work still dependent on upstream Chelis fixes: multi-parameter
-  Levenberg-Marquardt (tensor-valued `grad` on the native path still emits a
-  placeholder helper instead of a real gradient).
+  Levenberg-Marquardt (tensor-valued `grad` on the native path still emitted a
+  placeholder helper instead of a real gradient as of v0.1.18).
 
 ---
 
@@ -168,8 +181,9 @@ typechecker, specific module) the upstream team can target.
 
 ## Blocked: P1 Multi-Parameter Levenberg-Marquardt
 
-**Current blocker (2026-04-22, re-checked on `chelis v0.1.18`).** The blocker
-remains at the semantic level. Real progress on the DX side: the bad call
+**Current blocker (last full re-check 2026-04-22 on `chelis v0.1.18`; not
+re-probed against the `0.2.x` → `0.5.0` toolchain bumps as of 2026-05-05).**
+The blocker remains at the semantic level. Real progress on the DX side: the bad call
 patterns (inline `grad(f)(x)` and local binding `g = grad(f); g(x)`) are now
 both rejected at build time with a detailed diagnostic listing a specific
 "compiling workaround" — pass the fn-to-differentiate as a parameter of the

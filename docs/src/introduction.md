@@ -12,7 +12,7 @@ every function in the library.
 
 ## What Nautilus provides
 
-- **Special functions**: erf, Bessel, Airy, elliptic integrals, gamma, beta, digamma
+- **Special functions**: erf, erfc, erfinv, gamma, log_gamma, digamma, trigamma, beta, lbeta, Bessel, Airy, elliptic integrals
 - **Probability distributions**: 12 families (Normal, Gamma, Student-t, Poisson, Binomial, etc.) with PDF, CDF, inverse CDF, and sampling
 - **Linear algebra**: determinants, inverses, solves, eigenvalues (2x2/3x3), conjugate gradient (general-n)
 - **Statistics**: mean, variance, skewness, kurtosis, median, quantiles, covariance, correlation
@@ -28,11 +28,13 @@ every function in the library.
 
 ## Verification
 
-Nautilus is tested against scipy reference values. The test suite runs
-994 numerical assertions comparing Nautilus output to scipy/numpy at
-documented tolerances. Every non-stub exported function is
-runtime-verified on clean `HEAD`; `Nautilus.Core.version` is package
-metadata rather than part of the numerical harness.
+Nautilus has two test gates. `chelis test tests/` runs 438 native
+identity and structural tests across the library; `parity/run_parity.py`
+runs a scipy-oracle pass that compares Nautilus output to scipy/numpy at
+documented tolerances and currently passes 216/216 samples. Every
+non-stub exported function is runtime-verified on clean `HEAD`;
+`Nautilus.Core.version` is package metadata rather than part of the
+numerical harness.
 
 ## Precision
 

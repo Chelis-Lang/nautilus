@@ -3,11 +3,12 @@
 The full API surface for all Nautilus modules is maintained in
 [SKILL.md, Section 6](https://github.com/Chelis-Lang/nautilus/blob/main/SKILL.md#6-api-surface).
 
-That section contains signature tables for the active Nautilus surface:
-146 non-stub exports including 145 numerical/library entries plus
-`Nautilus.Core.version`, alongside 7 signal-processing stubs.
+That section contains signature tables for the active Nautilus surface,
+arranged module by module. The current row counts below sum to the
+shipped library surface plus the seven `Nautilus.Signal` stubs and the
+`Nautilus.Core.version` metadata helper.
 
-- **Nautilus.Special** -- 19 special functions (erf, Bessel, Airy, elliptic integrals)
+- **Nautilus.Special** -- 21 special functions (erf, erfc, gamma, Bessel, Airy, elliptic integrals)
 - **Nautilus.Distributions** -- 38 exports across 12 distribution families
 - **Nautilus.LinAlg** -- 29 linear algebra operations (fixed-size and general-n)
 - **Nautilus.Stats** -- 14 descriptive statistics

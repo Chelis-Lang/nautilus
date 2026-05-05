@@ -3,18 +3,18 @@
 ## Prerequisites
 
 Nautilus requires:
-- the latest validated Chelis release, currently [Chelis v0.1.20](https://github.com/Chelis-Lang/chelis/releases/tag/v0.1.20)
+- the latest validated Chelis release, currently [Chelis 0.5.0](https://github.com/Chelis-Lang/chelis/releases/tag/v0.5.0)
 - GCC (for compiling generated C code)
-- Python 3.10+ with numpy and scipy (for running the test suite)
+- Python 3.10+ with numpy and scipy (for the scipy-parity oracle in `parity/`)
 
 ## Download the Chelis toolchain
 
 ```sh
-gh release download v0.1.20 \
+gh release download v0.5.0 \
   --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.1.20-linux-x86_64.tar.gz'
-tar xzf chelis-v0.1.20-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.1.20-linux-x86_64/bin:$PATH"
+  --pattern 'chelis-v0.5.0-linux-x86_64.tar.gz'
+tar xzf chelis-v0.5.0-linux-x86_64.tar.gz
+export PATH="$PWD/chelis-v0.5.0-linux-x86_64/bin:$PATH"
 ```
 
 The tarball contains `bin/chelis`, `lib/libchelis_runtime.a`, and
@@ -28,7 +28,7 @@ cd nautilus
 chelis reef build
 ```
 
-This produces `dist/nautilus-0.2.0.chb`, the reef package that other
+This produces `dist/nautilus-0.5.0.chb`, the reef package that other
 Chelis projects can depend on.
 
 ## Verify the installation
@@ -37,12 +37,16 @@ Chelis projects can depend on.
 # Type-check all modules
 for f in src/*.ch; do chelis check "$f"; done
 
-# Run the scipy-parity test suite (requires numpy + scipy)
+# Run the native identity / structural test gate (438 tests)
+chelis test tests/
+
+# Run the scipy-parity oracle (requires numpy + scipy)
 pip install numpy scipy
-python tests/run_numeric_tests.py
+python parity/run_parity.py --strict
 ```
 
-You should see `1051 / 1051 numerical assertions passed`.
+You should see `438 passed, 0 failed` from `chelis test`, and
+`parity totals: 216 passed, 0 failed` from the parity oracle.
 
 If your `chelis` binary is not on `PATH`, set `CHELIS_BIN=/abs/path/to/chelis`
 when running the Python validation scripts.

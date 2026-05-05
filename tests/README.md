@@ -125,8 +125,7 @@ already has 30 tests.
 3. **Run locally** before pushing:
 
    ```
-   /tmp/chelis-toolchain-27/chelis-v0.2.7-linux-x86_64/bin/chelis test \
-     --filter test_my_new_thing --timeout 120 tests/<file>.ch
+   chelis test --filter test_my_new_thing --timeout 120 tests/<file>.ch
    ```
 
 4. **Self-check:** `grep -E '[0-9]\.[0-9]{4,}' tests/<file>.ch`. Every
@@ -153,14 +152,15 @@ When you do:
 
 ---
 
-## Runtime constraints (chelis v0.2.7)
+## Runtime constraints (chelis 0.5.0)
 
 The `chelis test` host runtime supports `matmul`, `permute`, and `sum`
 as of chelis v0.2.5. All `Nautilus.LinAlg` exports are testable
 natively. Earlier upstream limitations and their fix history are in
 `docs/UPSTREAM_BUGS.md`.
 
-Known v0.2.7 quirks (no current workaround needed in tests/):
+Known quirks (still observed under the current pin; no workaround
+needed in tests/):
 
 - The chelis test parser requires `_ = assert_*(...)` for all but the
   last assert in a multi-assert block (see point 2 of "How to add a

@@ -1,8 +1,30 @@
 # Gamma-Related Functions
 
-Five functions related to the gamma function: the log-gamma function,
-its first and second derivatives (digamma, trigamma), and the beta
-function in both regular and log forms.
+Six functions related to the gamma function: the gamma function itself,
+its log, its first and second derivatives (digamma, trigamma), and the
+beta function in both regular and log forms.
+
+## gamma
+
+**Signature:** `(x: f32) -> f32`
+
+Computes the gamma function `Gamma(x)` using the Lanczos approximation
+with `g=7` and 8-term series. For `x < 0.5`, the reflection formula
+`Gamma(x) = pi / (sin(pi x) * Gamma(1 - x))` is applied, sharing the
+same Lanczos-sum core that `log_gamma` uses.
+
+- **Domain:** all reals except non-positive integers
+- **Precision:** ~1e-7 relative (f32 ceiling on the Lanczos+reflection path)
+- **At non-positive integers:** returns +inf (poles)
+
+```chelis-fragment
+import Nautilus.Special (gamma)
+
+g5 = gamma(cast(5.0, f32))   -- 4! = 24
+```
+
+If you need the log-magnitude only (for very small or very large `x`
+where `Gamma(x)` would underflow or overflow), prefer `log_gamma`.
 
 ## log_gamma
 

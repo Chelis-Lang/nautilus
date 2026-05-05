@@ -11,7 +11,7 @@ adjoints. Automatic differentiation flows through tensor-op composition.
 
 | Module | What it provides |
 |---|---|
-| `Nautilus.Special` | erf, erfinv, log_gamma, digamma, trigamma, beta, lbeta, Bessel (J0/J1/Y0/Y1/I0/I1/K0/K1), Airy (Ai/Bi), elliptic integrals (K/E) |
+| `Nautilus.Special` | erf, erfc, erfinv, gamma, log_gamma, digamma, trigamma, beta, lbeta, Bessel (J0/J1/Y0/Y1/I0/I1/K0/K1), Airy (Ai/Bi), elliptic integrals (K/E) |
 | `Nautilus.Distributions` | Normal, LogNormal, Uniform, Exponential, Gamma, Chi-squared, Student-t, Poisson, Binomial, Beta, F, Weibull. PDF, CDF, inverse CDF, and sampling where applicable |
 | `Nautilus.LinAlg` | transpose, matmul, gram, aat, det (2x2, 3x3), inv, solve, eigenvalues, Cholesky (2x2 + general-n), conjugate gradient (general-n SPD), vector ops |
 | `Nautilus.Stats` | mean, variance, std, skewness, kurtosis, median, min, max, range, quantile, percentile, trimmed mean, covariance, correlation |
@@ -29,30 +29,32 @@ adjoints. Automatic differentiation flows through tensor-op composition.
 ## Getting started
 
 Requires the latest validated Chelis release, currently
-[chelis v0.1.20](https://github.com/Chelis-Lang/chelis/releases/tag/v0.1.20).
+[chelis 0.5.0](https://github.com/Chelis-Lang/chelis/releases/tag/v0.5.0).
 
 ```sh
-gh release download v0.1.20 \
+gh release download v0.5.0 \
   --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.1.20-linux-x86_64.tar.gz'
-tar xzf chelis-v0.1.20-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.1.20-linux-x86_64/bin:$PATH"
+  --pattern 'chelis-v0.5.0-linux-x86_64.tar.gz'
+tar xzf chelis-v0.5.0-linux-x86_64.tar.gz
+export PATH="$PWD/chelis-v0.5.0-linux-x86_64/bin:$PATH"
 
 chelis reef build
-python tests/run_numeric_tests.py    # 994 scipy-parity assertions
+chelis test tests/                     # 438 native identity / structural tests
+python parity/run_parity.py --strict   # 216 scipy-parity samples
 ```
 
 ## Tests
 
-The test harness compiles Nautilus source through the chelis C backend,
-links against `libchelis_runtime.a`, and compares outputs against
-scipy/numpy reference values checked into `tests/goldens/`.
+Internal correctness lives in native `tests/*.ch` files run by
+`chelis test`; scipy parity lives in `parity/run_parity.py`. Goldens
+under `tests_legacy/goldens/` are reused by both the legacy harness
+(scheduled nightly) and the parity script.
 
 ```sh
-python tests/run_numeric_tests.py      # 994 numerical assertions
-python scripts/gen_goldens.py --check  # verify goldens match scipy
-python tests/run_static_checks.py      # export consistency
-python scripts/extract_stability.py --check
+chelis test tests/                          # 438 native identity / structural tests
+python parity/run_parity.py --strict        # scipy oracle (216 samples)
+python scripts/gen_goldens.py --check       # verify checked-in goldens match scipy
+python scripts/extract_stability.py --check # SKILL.md stability column gate
 ```
 
 ## Benchmarks

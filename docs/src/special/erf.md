@@ -23,6 +23,25 @@ val = erf(cast(0.5, f32))        -- approximately 0.5205
 neg_val = erf(cast(-1.0, f32))   -- approximately -0.8427
 ```
 
+## erfc
+
+**Signature:** `(x: f32) -> f32`
+
+Computes the complementary error function `erfc(x) = 1 - erf(x)`. Implemented
+as a one-line subtraction off `erf`, so it shares `erf`'s precision and domain.
+Prefer `erfc` over `1 - erf(x)` only when you would otherwise lose significant
+digits in the subtraction (large positive `x`, where `erf(x)` is close to 1).
+
+- **Domain:** all reals
+- **Range:** (0, 2)
+- **Precision:** ~1e-7 relative (inherits `erf`'s tolerance)
+
+```chelis-fragment
+import Nautilus.Special (erfc)
+
+tail = erfc(cast(2.0, f32))      -- approximately 0.0047
+```
+
 ## erfinv
 
 **Signature:** `(x: f32) -> f32`
@@ -42,11 +61,11 @@ x = erfinv(cast(0.5, f32))      -- approximately 0.4769
 
 ## Edge cases
 
-| Input | `erf` result | `erfinv` result |
-|---|---|---|
-| 0.0 | 0.0 | 0.0 |
-| +large | approaches 1.0 | n/a (outside domain) |
-| -large | approaches -1.0 | n/a (outside domain) |
-| NaN | NaN | NaN |
-| 1.0 | n/a | +inf |
-| -1.0 | n/a | -inf |
+| Input | `erf` result | `erfc` result | `erfinv` result |
+|---|---|---|---|
+| 0.0 | 0.0 | 1.0 | 0.0 |
+| +large | approaches 1.0 | approaches 0.0 | n/a (outside domain) |
+| -large | approaches -1.0 | approaches 2.0 | n/a (outside domain) |
+| NaN | NaN | NaN | NaN |
+| 1.0 | n/a | n/a | +inf |
+| -1.0 | n/a | n/a | -inf |

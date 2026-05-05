@@ -10,8 +10,8 @@
 # Special Functions
 
 - [Overview](special/overview.md)
-- [Error Function (erf, erfinv)](special/erf.md)
-- [Gamma Functions (log_gamma, digamma, beta)](special/gamma.md)
+- [Error Function (erf, erfc, erfinv)](special/erf.md)
+- [Gamma Functions (gamma, log_gamma, digamma, beta)](special/gamma.md)
 - [Bessel Functions](special/bessel.md)
 - [Airy Functions](special/airy.md)
 - [Elliptic Integrals](special/elliptic.md)

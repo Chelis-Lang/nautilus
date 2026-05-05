@@ -21,7 +21,7 @@ to this file so Claude-style and Codex-style entry points do not drift.
   Chelis release by default. Treat stale pins as drift, not as a reason
   to stay on an older compiler.
 - `reef.toml` should pin the currently validated release exactly. As of
-  this repo state, that is `chelis v0.1.20`.
+  this repo state, that is `chelis 0.5.0`.
 - If the latest published Chelis release fails Nautilus validation,
   document the blocker clearly and pin the newest known-good release
   until the blocker is resolved.
@@ -56,17 +56,19 @@ diverges upstream, update this repo in the same change set.
 
 Upstream bugs tracked in [`UPSTREAM_BUGS.md`](docs/UPSTREAM_BUGS.md) —
 originally found against v0.1.3, with per-bug status notes for each
-subsequent release. As of **v0.1.20**, the historically tracked bugs
-that blocked the shipped Nautilus surface are fixed. `v0.1.7` closed
-the last two original open issues — Bug 2 (literal-dim
-shape-checker gap) now emits `DimensionMismatch` at `chelis check`
-time, and Bug 3c (main-entry wrapper emission) now produces
-correct multi-tensor-input entry points with a proper OpenMP
+subsequent release. The historically tracked bugs that blocked the
+shipped Nautilus surface have all been fixed in releases up through
+`v0.1.21`. `v0.1.7` closed the last two original open issues — Bug 2
+(literal-dim shape-checker gap) now emits `DimensionMismatch` at
+`chelis check` time, and Bug 3c (main-entry wrapper emission) now
+produces correct multi-tensor-input entry points with a proper OpenMP
 elementwise-add loop for tensor-on-tensor operations. LinAlg /
 Distance / SDE / Stats / Interpolation tensor-path runtime
 verification is no longer upstream-blocked. The remaining open
-blocker is tensor-valued `grad` at the C-backend lowering level
-(multi-parameter LM); see `docs/UPSTREAM_BUGS.md` for details.
+blocker — tensor-valued `grad` at the C-backend lowering level
+(multi-parameter LM) — was last verified against `v0.1.21` and has
+not been re-probed against the current `0.5.0` pin; see
+`docs/UPSTREAM_BUGS.md` for details.
 
 ## Authorship Policy
 

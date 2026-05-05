@@ -4,16 +4,19 @@
 
 Nautilus is the numerical computing shell for Chelis. It replaces
 numpy.linalg + numpy.random distributions + scipy.* (special, stats,
-optimize, integrate, interpolate, spatial). 156 exports, 1051
-scipy-parity assertions, pure Chelis throughout. AD works through
-all functions automatically.
+optimize, integrate, interpolate, spatial). 163 library exports
+(155 numerical/library + 1 `Nautilus.Core.version` metadata helper +
+7 `Nautilus.Signal` stubs); native gate `chelis test tests/` is
+438/438 clean and `parity/run_parity.py --strict` is 216/216 against
+scipy. Pure Chelis throughout. AD works through all functions
+automatically.
 
 ## 2. Import Patterns
 
 ### Surf
 
 ```chelis-fragment
-import Nautilus.Special (erf, erfinv, log_gamma, digamma, trigamma)
+import Nautilus.Special (erf, erfc, erfinv, gamma, log_gamma, digamma, trigamma)
 import Nautilus.Distributions (normal_cdf, normal_inv_cdf, normal_pdf, gamma_cdf)
 import Nautilus.LinAlg (solve_2x2, inv_2x2, det_2x2, cg_solve, matvec)
 import Nautilus.Stats (mean_vec, variance_vec, median_vec, covariance_scalar)
@@ -881,7 +884,7 @@ Expected result: approximately 2.0 (the exact integral of sin(x) from 0 to pi).
 
 ### Nautilus.Special
 Special mathematical functions. All pure, f32, no effects.
-Key exports: `erf`, `erfinv`, `log_gamma`, `digamma`, `trigamma`, `beta`, `lbeta`.
+Key exports: `erf`, `erfc`, `erfinv`, `gamma`, `log_gamma`, `digamma`, `trigamma`, `beta`, `lbeta`.
 Bessel: `bessel_j0`, `bessel_j1`, `bessel_y0`, `bessel_y1`, `bessel_i0`, `bessel_i1`, `bessel_k0`, `bessel_k1`.
 Airy: `airy_ai`, `airy_bi`. Elliptic: `ellipk`, `ellipe`.
 Precision varies by function (1e-9 for log_gamma to 1e-5 near Bessel zeros). See section 6 for per-function notes.
@@ -1021,12 +1024,14 @@ decision in `chelis/spec/design/chelis_canonical_reference.md`:
 The `Stability` column is the source of truth for row-level classification. Use
 `dist/stability.json` when a downstream consumer needs the machine-readable surface.
 
-### Nautilus.Special (19 exports)
+### Nautilus.Special (21 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
 | `erf` | `(x: f32) -> f32` | `stable` | Horner rational approx, ~1e-7 relative, all reals |
+| `erfc` | `(x: f32) -> f32` | `stable` | `1 - erf(x)`, same precision domain as `erf` |
 | `erfinv` | `(x: f32) -> f32` | `stable` | Acklam inverse normal + rescale, ~1e-8, domain (-1, 1) |
+| `gamma` | `(x: f32) -> f32` | `stable` | Lanczos (g=7) with reflection, ~1e-7 relative, +inf at non-positive integers |
 | `log_gamma` | `(x: f32) -> f32` | `stable` | Lanczos (g=7) with reflection, ~1e-9, +inf at non-positive integers |
 | `digamma` | `(x: f32) -> f32` | `stable` | Recurrence + asymptotic (x>=6), ~1e-7, NaN at non-positive integers |
 | `beta` | `(a: f32, b: f32) -> f32` | `stable` | exp(lbeta(a,b)), a,b > 0 |
