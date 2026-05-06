@@ -23,13 +23,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
         run: |
-          gh release download v0.6.0 \
+          gh release download v0.6.1 \
             --repo Chelis-Lang/chelis \
-            --pattern 'chelis-v0.6.0-linux-x86_64.tar.gz' \
+            --pattern 'chelis-v0.6.1-linux-x86_64.tar.gz' \
             --dir /tmp/chelis-toolchain
-          tar -xzf /tmp/chelis-toolchain/chelis-v0.6.0-linux-x86_64.tar.gz \
+          tar -xzf /tmp/chelis-toolchain/chelis-v0.6.1-linux-x86_64.tar.gz \
             -C /tmp/chelis-toolchain
-          echo "/tmp/chelis-toolchain/chelis-v0.6.0-linux-x86_64/bin" >> "$GITHUB_PATH"
+          echo "/tmp/chelis-toolchain/chelis-v0.6.1-linux-x86_64/bin" >> "$GITHUB_PATH"
 
       - name: Install chelis-std into local registry
         env:

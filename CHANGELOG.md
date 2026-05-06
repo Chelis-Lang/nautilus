@@ -6,6 +6,15 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-05-06
+
+Compiler-pin alignment release. Tracks chelis 0.6.0 → 0.6.1
+(bootstrap-list patch). No source changes — only the package
+version bump and the `compiler = "=0.6.0"` → `"=0.6.1"` pin.
+Required because chelis 0.6.0's source tree shipped pre-rename
+chelis-std-0.1.0 artifacts; chelis 0.6.1 ships the post-rename
+chelis-std-0.2.0 artifacts that downstream consumers need.
+
 ## [0.6.0] — 2026-05-06
 
 Naming-convention release. Aligns nautilus with the recorded style
