@@ -135,7 +135,7 @@ jobs:
       - name: Install chelis-std into local registry
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: scripts/install_chelis_std.sh
+        run: python3 scripts/install_chelis_std.py
 
       # chelis reef build does whole-package type checking — if any src
       # file fails type-check or has unresolved imports, the build fails.
@@ -221,7 +221,7 @@ jobs:
       - name: Install chelis-std into local registry
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: scripts/install_chelis_std.sh
+        run: python3 scripts/install_chelis_std.py
 
       - name: chelis test (${{ matrix.file }})
         run: chelis test --timeout 600 ${{ matrix.file }}
@@ -262,7 +262,7 @@ jobs:
       - name: Install chelis-std into local registry
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: scripts/install_chelis_std.sh
+        run: python3 scripts/install_chelis_std.py
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -305,7 +305,7 @@ jobs:
       - name: Install chelis-std into local registry
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: scripts/install_chelis_std.sh
+        run: python3 scripts/install_chelis_std.py
 
       - name: chelis reef build (proof-of-life)
         run: chelis reef build

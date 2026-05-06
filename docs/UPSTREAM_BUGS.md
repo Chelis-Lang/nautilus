@@ -151,7 +151,7 @@ rejects. No other Nautilus tests/src files affected.
 
 v0.3.0 ships `chelis reef install --from-monorepo <path> [<name>=<version>]`,
 the upstream-sanctioned way to populate the local registry from the
-chelis monorepo's prebuilt artifacts. `scripts/install_chelis_std.sh`
+chelis monorepo's prebuilt artifacts. `scripts/install_chelis_std.py`
 now delegates the file copy + index.json write to this command instead
 of doing both by hand. The "v0.2.4 chelis-std bootstrap" entry in this
 doc is **resolved** as of v0.3.0.
@@ -168,7 +168,7 @@ doc is **resolved** as of v0.3.0.
 - `chelis-std v0.1.0` re-installed from the v0.2.7 monorepo tag.
   The compiler pin embedded in `~/.chelis/reef/index.json` for
   chelis-std jumps from `=0.2.5` → `=0.2.7` (chelis enforces this).
-  `scripts/install_chelis_std.sh` now reads the pin from the
+  `scripts/install_chelis_std.py` now reads the pin from the
   installed package's `reef.toml` instead of hardcoding `=0.2.4` —
   the prior hardcode masked this gap until v0.2.7 tightened the
   enforcement.
@@ -217,7 +217,7 @@ is no `install` / `add` / `fetch` subcommand. `chelis reef publish
 variable: test_assert_eq_tensor_int64`) — only the prebuilt artifact
 under `packages/chelis-std/dist/` works.
 
-**Workaround:** `scripts/install_chelis_std.sh` clones the chelis
+**Workaround:** `scripts/install_chelis_std.py` clones the chelis
 monorepo at the matching tag, copies the prebuilt
 `chelis-std-0.1.0.{chb,tar.zst}` into
 `~/.chelis/reef/packages/chelis-std/0.1.0/`, and writes
