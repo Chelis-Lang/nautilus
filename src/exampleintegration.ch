@@ -1,4 +1,4 @@
-module Nautilus.Exampleintegration
+module Nautilus.ExampleIntegration
 import Nautilus.Integrate (
   trapezoidal, simpsons, gauss_legendre_5, adaptive_simpson, romberg_5, gauss_legendre_10
 )

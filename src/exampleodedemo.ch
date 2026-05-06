@@ -1,4 +1,4 @@
-module Nautilus.Exampleodedemo
+module Nautilus.ExampleOdeDemo
 import Nautilus.ODE (rk4_solve, euler_solve)
 export (example_decay_rk4, example_decay_euler, example_forced_rk4)
 

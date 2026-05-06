@@ -1,4 +1,4 @@
-module Nautilus.Apismoke
+module Nautilus.ApiSmoke
 import Nautilus.Special (erf, erfc, erfinv, gamma, log_gamma, digamma, beta, lbeta,
   trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1,
   bessel_j0, bessel_j1, bessel_y0, bessel_y1,

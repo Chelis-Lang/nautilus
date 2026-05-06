@@ -1,4 +1,4 @@
-module Nautilus.Examplerootfind
+module Nautilus.ExampleRootFind
 import Nautilus.Roots (bisection, newton, brent)
 export (example_sqrt2, example_cos_minus_x, example_projectile_angle)
 

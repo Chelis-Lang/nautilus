@@ -1,4 +1,4 @@
-module Nautilus.Exampledistributions
+module Nautilus.ExampleDistributions
 import Nautilus.Distributions (normal_cdf, normal_inv_cdf, student_t_cdf)
 import Nautilus.Testing (
   z_statistic, z_p_value_two_sided, normal_ci_half_width,

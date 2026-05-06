@@ -1,4 +1,4 @@
-module Nautilus.Exampleoptim
+module Nautilus.ExampleOptim
 import Nautilus.Optim (golden_section_search, brent_minimize, newton_minimize_1d)
 export (
   example_min_parabola_gss,
