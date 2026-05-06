@@ -462,7 +462,7 @@ new bug found:
   emits `n_in == 1`, slot 0 labeled by the helper function name, and
   a body that drops the second operand. ~100+ scipy-parity assertions
   in `tests/goldens/linalg/`, `tests/goldens/distance/`, and the
-  tensor-path `Nautilus.Stats`/`Nautilus.SDE`/`Nautilus.Interpolation`
+  tensor-path `Nautilus.Stats`/`Nautilus.Sde`/`Nautilus.Interpolation`
   paths remain deferred.
 
 This section is historical. Those tensor-path issues were later fixed
@@ -526,7 +526,7 @@ environment as polymorphic identity rather than flagged as errors.
 
 **Downstream impact.** Any user `f: f32 -> f32` argument supplied to
 `Nautilus.Roots.{bisection,newton,brent}`,
-`Nautilus.ODE.{euler_*,rk4_*}`, `Nautilus.Integrate.{trapezoidal,
+`Nautilus.Ode.{euler_*,rk4_*}`, `Nautilus.Integrate.{trapezoidal,
 simpsons,gauss_legendre_5,adaptive_simpson,romberg_5,gauss_legendre_10}`,
 or `Nautilus.Optim.{golden_section_search,brent_minimize,
 gradient_descent_1d,newton_minimize_1d}` that references a non-builtin

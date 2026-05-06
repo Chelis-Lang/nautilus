@@ -82,7 +82,7 @@ different):**
 - `Nautilus.Stats` — all 14 exports `stable`.
 - `Nautilus.Distance` — all 8 exports `stable`.
 - `Nautilus.Roots` — all 3 exports `stable`.
-- `Nautilus.ODE` — all four fixed-step exports (`euler_step`,
+- `Nautilus.Ode` — all four fixed-step exports (`euler_step`,
   `euler_solve`, `rk4_step`, `rk4_solve`) are `stable`; adaptive-step
   variants stay `alpha` (API not yet designed).
 - `Nautilus.Integrate` — all 8 exports `stable`.
@@ -93,7 +93,7 @@ different):**
   `lm_scalar_1param` moves to the `CurveFit` column — mark `alpha`
   until multi-parameter LM lands.
 - `Nautilus.Interpolation` — all 3 exports `stable`.
-- `Nautilus.SDE` — `euler_maruyama_fixed` and `milstein_fixed`
+- `Nautilus.Sde` — `euler_maruyama_fixed` and `milstein_fixed`
   `alpha` (APIs may shift when autonomous `Random` sampling lands).
 - `Nautilus.CurveFit` — `lm_scalar_1param` `alpha`.
 - `Nautilus.Signal` — all 7 stubs `alpha` (blocked on Phase 5f
@@ -249,7 +249,7 @@ passing.
 
 ## Completed: P2 Adaptive-Step ODE Integrator
 
-Landed in commit `ce613f7`. `Nautilus.ODE.rk45_adaptive_solve` now ships as an
+Landed in commit `ce613f7`. `Nautilus.Ode.rk45_adaptive_solve` now ships as an
 `alpha` endpoint solver, is wired into `src/apismoke.ch`, and is runtime-tested
 in `tests/run_numeric_tests.py` against the decay golden in
 `tests/goldens/ode/scalar.json`.
@@ -257,7 +257,7 @@ in `tests/run_numeric_tests.py` against the decay golden in
 Original planning note:
 
 **Driven by:** residual v0.1.0 limitation
-(`docs/NAUTILUS_STATUS.md` § 6.1) — `Nautilus.ODE` ships fixed-step
+(`docs/NAUTILUS_STATUS.md` § 6.1) — `Nautilus.Ode` ships fixed-step
 only. Scipy's `solve_ivp(method="RK45")` is the workhorse; real
 consumers (Shoals SDE discretization with adaptive time steps) need
 it.

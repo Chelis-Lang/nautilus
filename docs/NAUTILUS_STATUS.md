@@ -21,12 +21,12 @@ hand-written adjoints.
 | `Nautilus.Stats` | 14 | runtime-verified |
 | `Nautilus.Distance` | 8 | runtime-verified |
 | `Nautilus.Roots` | 3 | runtime-verified |
-| `Nautilus.ODE` | 6 | runtime-verified |
+| `Nautilus.Ode` | 6 | runtime-verified |
 | `Nautilus.Integrate` | 8 | runtime-verified |
 | `Nautilus.Testing` | 13 | runtime-verified |
 | `Nautilus.Optim` | 4 | runtime-verified |
 | `Nautilus.Interpolation` | 5 | runtime-verified |
-| `Nautilus.SDE` | 2 | runtime-verified |
+| `Nautilus.Sde` | 2 | runtime-verified |
 | `Nautilus.CurveFit` | 2 | runtime-verified |
 | `Nautilus.Signal` | 7 | typed stubs only |
 | `Nautilus.Core` | 1 | metadata helper |

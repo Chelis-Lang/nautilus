@@ -1,6 +1,6 @@
-module Nautilus.Tests.SDE
+module Nautilus.Tests.Sde
 
--- Identity / structural tests for Nautilus.SDE.
+-- Identity / structural tests for Nautilus.Sde.
 -- All expected values are mathematical identities, exact constants,
 -- or documented closed-form results derived from the EM / Milstein
 -- update equations. No scipy-derived numerics.
@@ -13,7 +13,7 @@ module Nautilus.Tests.SDE
 --   EM:       y_{k+1} = y_k + f(y_k, t_k)*dt + g(y_k, t_k)*dW
 --   Milstein: y_{k+1} = y_k + f*dt + g*dW + 0.5 * g * dg_dy * (dW^2 - dt)
 
-import Nautilus.SDE (euler_maruyama_fixed, milstein_fixed)
+import Nautilus.Sde (euler_maruyama_fixed, milstein_fixed)
 import Std.Test (assert_close, assert_true)
 
 -- ===== drift / diffusion functions =====

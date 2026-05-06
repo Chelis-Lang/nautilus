@@ -1,4 +1,4 @@
-module Nautilus.SDE
+module Nautilus.Sde
 export (euler_maruyama_fixed, milstein_fixed)
 
 def sde_zero_f() -> f32 = cast(0.0, f32)

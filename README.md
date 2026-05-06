@@ -17,12 +17,12 @@ adjoints. Automatic differentiation flows through tensor-op composition.
 | `Nautilus.Stats` | mean, variance, std, skewness, kurtosis, median, min, max, range, quantile, percentile, trimmed mean, covariance, correlation |
 | `Nautilus.Distance` | Euclidean, Manhattan, Chebyshev, cosine, Mahalanobis |
 | `Nautilus.Roots` | bisection, Newton, Brent |
-| `Nautilus.ODE` | Euler and RK4 (step and solve), adaptive RK45 endpoint solve |
+| `Nautilus.Ode` | Euler and RK4 (step and solve), adaptive RK45 endpoint solve |
 | `Nautilus.Integrate` | trapezoidal, Simpson, Gauss-Legendre, adaptive Simpson, Romberg, Gauss-Hermite, Gauss-Laguerre |
 | `Nautilus.Testing` | z/t/chi-squared statistics and p-values, confidence intervals |
 | `Nautilus.Optim` | golden section, Brent minimize, gradient descent, Newton minimize (scalar 1D) |
 | `Nautilus.Interpolation` | linear (uniform and sorted grids), cubic Hermite |
-| `Nautilus.SDE` | Euler-Maruyama, Milstein (caller-supplied noise) |
+| `Nautilus.Sde` | Euler-Maruyama, Milstein (caller-supplied noise) |
 | `Nautilus.CurveFit` | Levenberg-Marquardt single-parameter fitting |
 | `Nautilus.Signal` | typed stubs (real implementations pending complex-number support) |
 

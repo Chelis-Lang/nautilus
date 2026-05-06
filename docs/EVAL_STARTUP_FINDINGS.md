@@ -36,12 +36,12 @@ Skipped. No documented persistent eval/session surface is exposed here.
 | Nautilus.Stats | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
 | Nautilus.Distance | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
 | Nautilus.Roots | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
-| Nautilus.ODE | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
+| Nautilus.Ode | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
 | Nautilus.Integrate | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
 | Nautilus.Testing | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
 | Nautilus.Optim | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
 | Nautilus.Interpolation | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
-| Nautilus.SDE | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
+| Nautilus.Sde | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
 | Nautilus.CurveFit | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
 | Nautilus.Signal | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |
 | all_modules | blocked | command timed out after 5s (chelis eval --file may hang on this toolchain) |

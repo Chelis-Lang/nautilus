@@ -96,7 +96,7 @@ double beta_cdf(double, double, double);
 double weibull_cdf(double, double, double);
 double poisson_cdf(double, double);
 
-/* Nautilus.ODE + Nautilus.Roots — take function pointers. Signatures
+/* Nautilus.Ode + Nautilus.Roots — take function pointers. Signatures
  * from the chelis v0.1.7 C backend (tests/run_numeric_tests.py
  * documents these):
  *   double rk4_solve(double (*f)(double, double),

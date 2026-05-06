@@ -103,7 +103,7 @@
     "transpose": "stable",
     "vecmat": "stable"
   },
-  "Nautilus.ODE": {
+  "Nautilus.Ode": {
     "euler_solve": "stable",
     "euler_step": "stable",
     "rk45_adaptive_solve": "alpha",
@@ -122,7 +122,7 @@
     "brent": "stable",
     "newton": "stable"
   },
-  "Nautilus.SDE": {
+  "Nautilus.Sde": {
     "euler_maruyama_fixed": "alpha",
     "milstein_fixed": "alpha"
   },
@@ -151,7 +151,9 @@
     "ellipe": "stable",
     "ellipk": "stable",
     "erf": "stable",
+    "erfc": "stable",
     "erfinv": "stable",
+    "gamma": "stable",
     "lbeta": "stable",
     "log_gamma": "stable",
     "trigamma": "stable"

@@ -1,6 +1,6 @@
 # SDE Solvers
 
-The `Nautilus.SDE` module provides two fixed-step stochastic
+The `Nautilus.Sde` module provides two fixed-step stochastic
 differential equation integrators: Euler-Maruyama (strong order 0.5)
 and Milstein (strong order 1.0).
 
@@ -32,7 +32,7 @@ This design makes paths reproducible and avoids effect annotations
 ## Example: Euler-Maruyama
 
 ```chelis-fragment
-import Nautilus.SDE (euler_maruyama_fixed)
+import Nautilus.Sde (euler_maruyama_fixed)
 
 def em_drift(y: f32, t: f32) -> f32 = neg(y)
 def em_diffusion(y: f32, t: f32) -> f32 = cast(0.1, f32)
@@ -51,7 +51,7 @@ improves the strong convergence order from 0.5 to 1.0. The user must
 supply `dg_dy` analytically.
 
 ```chelis-fragment
-import Nautilus.SDE (milstein_fixed)
+import Nautilus.Sde (milstein_fixed)
 
 def m_drift(y: f32, t: f32) -> f32 = neg(y)
 def m_diff(y: f32, t: f32) -> f32 = mul(cast(0.3, f32), y)

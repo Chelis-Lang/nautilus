@@ -1,6 +1,6 @@
 # ODE Solvers
 
-The `Nautilus.ODE` module provides scalar initial-value solvers for
+The `Nautilus.Ode` module provides scalar initial-value solvers for
 dy/dt = f(y, t). Euler and RK4 are available in fixed-step form, and
 `rk45_adaptive_solve` provides an adaptive Dormand-Prince 5(4) endpoint
 solver.
@@ -28,7 +28,7 @@ better default when you only need the endpoint value `y(t_end)`.
 ## Example: exponential decay
 
 ```chelis-fragment
-import Nautilus.ODE (rk4_solve, euler_solve, rk45_adaptive_solve)
+import Nautilus.Ode (rk4_solve, euler_solve, rk45_adaptive_solve)
 
 def decay(y: f32, t: f32) -> f32 = neg(y)
 
@@ -52,7 +52,7 @@ RK45 reaches similar endpoint accuracy without a user-chosen `n_steps`.
 ## Example: forced ODE
 
 ```chelis-fragment
-import Nautilus.ODE (rk4_solve)
+import Nautilus.Ode (rk4_solve)
 
 def forced(y: f32, t: f32) -> f32 = {
   half_pi = cast(1.5707963267948966, f32)

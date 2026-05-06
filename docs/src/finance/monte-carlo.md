@@ -19,10 +19,10 @@ Under the risk-neutral measure, a stock price follows:
     dS = r * S * dt + sigma * S * dW
 
 This is a GBM SDE. Nautilus can simulate it using `euler_maruyama_fixed`
-from `Nautilus.SDE`:
+from `Nautilus.Sde`:
 
 ```chelis-fragment
-import Nautilus.SDE (euler_maruyama_fixed)
+import Nautilus.Sde (euler_maruyama_fixed)
 
 def gbm_drift(y: f32, t: f32) -> f32 = mul(cast(0.05, f32), y)   // r * S
 def gbm_diff(y: f32, t: f32) -> f32 = mul(cast(0.2, f32), y)     // sigma * S

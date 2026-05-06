@@ -35,7 +35,7 @@ MODULES = {
     "Nautilus.Distributions": SRC / "distributions.ch",
     "Nautilus.LinAlg":        SRC / "linalg.ch",
     "Nautilus.Roots":         SRC / "roots.ch",
-    "Nautilus.ODE":           SRC / "ode.ch",
+    "Nautilus.Ode":           SRC / "ode.ch",
     "Nautilus.Stats":         SRC / "stats.ch",
     "Nautilus.Integrate":     SRC / "integrate.ch",
     "Nautilus.Testing":       SRC / "testing.ch",
@@ -43,7 +43,7 @@ MODULES = {
     "Nautilus.Signal":        SRC / "signal.ch",
     "Nautilus.Optim":         SRC / "optim.ch",
     "Nautilus.Interpolation": SRC / "interpolation.ch",
-    "Nautilus.SDE":           SRC / "sde.ch",
+    "Nautilus.Sde":           SRC / "sde.ch",
     "Nautilus.CurveFit":      SRC / "curvefit.ch",
 }
 

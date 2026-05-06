@@ -1,4 +1,4 @@
-module Nautilus.ODE
+module Nautilus.Ode
 import Nautilus.LinAlg (scale_vec, la_vec_add, la_basis_n_f32, inner_product)
 export (
   euler_step, euler_solve,

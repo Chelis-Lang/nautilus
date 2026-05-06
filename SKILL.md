@@ -21,13 +21,13 @@ import Nautilus.Distributions (normal_cdf, normal_inv_cdf, normal_pdf, gamma_cdf
 import Nautilus.LinAlg (solve_2x2, inv_2x2, det_2x2, cg_solve, matvec)
 import Nautilus.Stats (mean_vec, variance_vec, median_vec, covariance_scalar)
 import Nautilus.Roots (brent, bisection, newton)
-import Nautilus.ODE (rk4_solve, euler_solve)
+import Nautilus.Ode (rk4_solve, euler_solve)
 import Nautilus.Integrate (adaptive_simpson, gauss_legendre_10, romberg_5)
 import Nautilus.Interpolation (linear_interp_sorted, cubic_hermite)
 import Nautilus.Testing (z_statistic, t_p_value_two_sided)
 import Nautilus.Optim (brent_minimize, golden_section_search)
 import Nautilus.Distance (euclidean, cosine_distance, mahalanobis)
-import Nautilus.SDE (euler_maruyama_fixed, milstein_fixed)
+import Nautilus.Sde (euler_maruyama_fixed, milstein_fixed)
 import Nautilus.CurveFit (lm_scalar_1param)
 ```
 
@@ -407,7 +407,7 @@ function takes `(y: f32, t: f32) -> f32` with both arguments explicit.
 
 ```chelis
 module Nautilus.Pat07
-import Nautilus.ODE (rk4_solve)
+import Nautilus.Ode (rk4_solve)
 export (main)
 
 def decay(y: f32, t: f32) -> f32 = neg(y)
@@ -726,7 +726,7 @@ reproducible paths). The function is polymorphic over the noise length `n`.
 
 ```chelis
 module Nautilus.Pat13
-import Nautilus.SDE (euler_maruyama_fixed)
+import Nautilus.Sde (euler_maruyama_fixed)
 export (main)
 
 def em_drift(y: f32, t: f32) -> f32 = neg(y)
@@ -921,7 +921,7 @@ Three root-finders, all taking `f: f32 -> f32`:
 `newton(f, df, x0, tol, max_iters)` with user-supplied derivative.
 `brent(f, a, b, tol, max_iters)` with full Brent-Dekker IQI.
 
-### Nautilus.ODE
+### Nautilus.Ode
 Fixed-step ODE solvers taking `f: f32 -> f32 -> f32` (dy/dt = f(y, t)):
 `euler_step`, `euler_solve(f, y0, t0, t1, n_steps)`.
 `rk4_step`, `rk4_solve(f, y0, t0, t1, n_steps)`.
@@ -962,7 +962,7 @@ Vector distance metrics taking two `tensor[n, f32]` inputs:
 `cosine_similarity`, `cosine_distance`.
 `mahalanobis(a, b, cov_inv)`, `mahalanobis_squared(a, b, cov_inv)` with covariance-inverse matrix.
 
-### Nautilus.SDE
+### Nautilus.Sde
 Stochastic ODE solvers with caller-supplied noise tensor:
 `euler_maruyama_fixed(drift, diffusion, y0, t0, t1, noise)`.
 `milstein_fixed(drift, diffusion, dg_dy, y0, t0, t1, noise)`.
@@ -1169,7 +1169,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `newton` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f` and `df`; NaN on zero derivative or non-convergence |
 | `brent` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f`; Brent's method with IQI/secant/bisection fallback |
 
-### Nautilus.ODE (5 exports)
+### Nautilus.Ode (5 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
@@ -1230,7 +1230,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `spline_eval` | `[m](xs: tensor[m, f32], ys: tensor[m, f32], x_query: f32) -> f32` | `alpha` | Natural cubic spline fit + eval in one call. Clamped extrapolation (returns ys[0] or ys[m-1] outside range). xs must be sorted ascending. Every call recomputes M; avoid in tight loops. |
 | `spline_fit` | `[m](xs: tensor[m, f32], ys: tensor[m, f32]) -> tensor[m, f32]` | `alpha` | Returns second-derivative vector M (length m). Natural BCs: M[0]=M[m-1]=0. Exposed for inspection; use spline_eval for evaluation. |
 
-### Nautilus.SDE (2 exports)
+### Nautilus.Sde (2 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|

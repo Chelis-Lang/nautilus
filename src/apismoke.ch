@@ -32,7 +32,7 @@ import Nautilus.LinAlg (
   eig_n
 )
 import Nautilus.Roots (bisection, newton, brent)
-import Nautilus.ODE (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve, rk45_adaptive_solve_grid)
+import Nautilus.Ode (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve, rk45_adaptive_solve_grid)
 import Nautilus.Stats (
   mean_vec, variance_vec, std_vec,
   skewness_vec, kurtosis_vec, median_vec,
@@ -56,7 +56,7 @@ import Nautilus.Signal (
 )
 import Nautilus.Optim (golden_section_search, brent_minimize, gradient_descent_1d, newton_minimize_1d)
 import Nautilus.Interpolation (linear_interp_uniform, linear_interp_sorted, cubic_hermite, spline_fit, spline_eval)
-import Nautilus.SDE (euler_maruyama_fixed, milstein_fixed)
+import Nautilus.Sde (euler_maruyama_fixed, milstein_fixed)
 import Nautilus.Integrate (
   trapezoidal, simpsons, gauss_legendre_5,
   adaptive_simpson, romberg_5, gauss_legendre_10,

@@ -1,11 +1,11 @@
-module Nautilus.Tests.ODE
+module Nautilus.Tests.Ode
 
--- Identity / structural tests for Nautilus.ODE.
+-- Identity / structural tests for Nautilus.Ode.
 -- All expected values are mathematical identities, exact constants,
 -- documented closed-form solutions, or convergence-order checks.
 -- No scipy-derived numerics.
 
-import Nautilus.ODE (euler_step, euler_solve,
+import Nautilus.Ode (euler_step, euler_solve,
                     rk4_step, rk4_solve,
                     rk45_adaptive_solve, rk45_adaptive_solve_grid)
 import Nautilus.LinAlg (inner_product, la_basis_n_f32)

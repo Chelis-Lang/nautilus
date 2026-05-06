@@ -15,11 +15,11 @@ shipped library surface plus the seven `Nautilus.Signal` stubs and the
 - **Nautilus.Testing** -- 13 hypothesis-test helpers
 - **Nautilus.Integrate** -- 8 quadrature methods
 - **Nautilus.Distance** -- 8 distance metrics
-- **Nautilus.ODE** -- 5 ODE solvers including an adaptive RK45 endpoint solver
+- **Nautilus.Ode** -- 5 ODE solvers including an adaptive RK45 endpoint solver
 - **Nautilus.Optim** -- 4 scalar optimizers
 - **Nautilus.Roots** -- 3 root-finders
 - **Nautilus.Interpolation** -- 3 interpolation methods
-- **Nautilus.SDE** -- 2 stochastic ODE integrators
+- **Nautilus.Sde** -- 2 stochastic ODE integrators
 - **Nautilus.CurveFit** -- 2 Levenberg-Marquardt fitters
 - **Nautilus.Signal** -- 7 stubs (blocked on complex numbers)
 

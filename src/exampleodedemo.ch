@@ -1,5 +1,5 @@
 module Nautilus.ExampleOdeDemo
-import Nautilus.ODE (rk4_solve, euler_solve)
+import Nautilus.Ode (rk4_solve, euler_solve)
 export (example_decay_rk4, example_decay_euler, example_forced_rk4)
 
 def eo_decay(y: f32, t: f32) -> f32 = neg(y)
