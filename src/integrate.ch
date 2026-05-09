@@ -1,56 +1,31 @@
 module Nautilus.Integrate
-export (
-  trapezoidal, simpsons, gauss_legendre_5,
-  adaptive_simpson, romberg_5, gauss_legendre_10,
-  gauss_hermite_10, gauss_laguerre_10
-)
-
-def trap_rec(
-  f: f32 -> f32,
-  x: f32,
-  h: f32,
-  k: int64,
-  acc: f32
-) -> f32 = {
+export (trapezoidal, simpsons, gauss_legendre_5, adaptive_simpson, romberg_5, gauss_legendre_10, gauss_hermite_10, gauss_laguerre_10)
+def trap_rec(f: f32 -> f32, x: f32, h: f32, k: int64, acc: f32) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
-  if lte(k, zero_i) then acc
-  else {
+  if lte(k, zero_i) then acc else {
     fx = f(x)
     acc_next = add(acc, fx)
     x_next = add(x, h)
     trap_rec(f, x_next, h, sub(k, one_i), acc_next)
   }
 }
-
-def trapezoidal(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = {
-  if lte(n_steps, cast(0, int64)) then div(cast(0.0, f32), cast(0.0, f32))
-  else {
-    n_f = cast(n_steps, f32)
-    h = div(sub(b, a), n_f)
-    fa = f(a)
-    fb = f(b)
-    endpoint_sum = mul(cast(0.5, f32), add(fa, fb))
-    x1 = add(a, h)
-    inner_count = sub(n_steps, cast(1, int64))
-    inner_sum = trap_rec(f, x1, h, inner_count, cast(0.0, f32))
-    total = add(endpoint_sum, inner_sum)
-    mul(h, total)
-  }
-}
-
-def simpson_rec(
-  f: f32 -> f32,
-  x: f32,
-  h: f32,
-  k: int64,
-  is_odd_step: bool,
-  acc: f32
-) -> f32 = {
+def trapezoidal(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = { if lte(n_steps, cast(0, int64)) then div(cast(0.0, f32), cast(0.0, f32)) else {
+  n_f = cast(n_steps, f32)
+  h = div(sub(b, a), n_f)
+  fa = f(a)
+  fb = f(b)
+  endpoint_sum = mul(cast(0.5, f32), add(fa, fb))
+  x1 = add(a, h)
+  inner_count = sub(n_steps, cast(1, int64))
+  inner_sum = trap_rec(f, x1, h, inner_count, cast(0.0, f32))
+  total = add(endpoint_sum, inner_sum)
+  mul(h, total)
+} }
+def simpson_rec(f: f32 -> f32, x: f32, h: f32, k: int64, is_odd_step: bool, acc: f32) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
-  if lte(k, zero_i) then acc
-  else {
+  if lte(k, zero_i) then acc else {
     fx = f(x)
     weight = if is_odd_step then cast(4.0, f32) else cast(2.0, f32)
     term = mul(weight, fx)
@@ -59,15 +34,12 @@ def simpson_rec(
     simpson_rec(f, x_next, h, sub(k, one_i), not(is_odd_step), acc_next)
   }
 }
-
 def simpsons(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = {
   zero_i = cast(0, int64)
   two_i = cast(2, int64)
-  if lte(n_steps, zero_i) then div(cast(0.0, f32), cast(0.0, f32))
-  else {
+  if lte(n_steps, zero_i) then div(cast(0.0, f32), cast(0.0, f32)) else {
     parity = mod(n_steps, two_i)
-    if neq(parity, zero_i) then div(cast(0.0, f32), cast(0.0, f32))
-    else {
+    if neq(parity, zero_i) then div(cast(0.0, f32), cast(0.0, f32)) else {
       n_f = cast(n_steps, f32)
       h = div(sub(b, a), n_f)
       fa = f(a)
@@ -81,23 +53,13 @@ def simpsons(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = {
     }
   }
 }
-
 def int_simpson_small(h: f32, fa: f32, fm: f32, fb: f32) -> f32 = {
   four_fm = mul(cast(4.0, f32), fm)
   inner = add(add(fa, four_fm), fb)
   mul(div(h, cast(6.0, f32)), inner)
 }
-
 def int_abs(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
-
-def adaptive_simpson_rec(
-  f: f32 -> f32,
-  a: f32, b: f32,
-  fa: f32, fb: f32, fm: f32,
-  whole: f32,
-  tol: f32,
-  depth: int64
-) -> f32 = {
+def adaptive_simpson_rec(f: f32 -> f32, a: f32, b: f32, fa: f32, fb: f32, fm: f32, whole: f32, tol: f32, depth: int64) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
   half_f = cast(0.5, f32)
@@ -108,7 +70,7 @@ def adaptive_simpson_rec(
   frm = f(rm)
   h = sub(b, a)
   h_half = mul(half_f, h)
-  left_s  = int_simpson_small(h_half, fa, flm, fm)
+  left_s = int_simpson_small(h_half, fa, flm, fm)
   right_s = int_simpson_small(h_half, fm, frm, fb)
   sum_lr = add(left_s, right_s)
   diff = sub(sum_lr, whole)
@@ -116,21 +78,22 @@ def adaptive_simpson_rec(
   fifteen_tol = mul(cast(15.0, f32), tol)
   converged = lt(abs_diff, fifteen_tol)
   exhausted = lte(depth, zero_i)
-  if or(converged, exhausted) then {
+  __borrow_migration_out_0 = if or(converged, exhausted) then {
     correction = div(diff, cast(15.0, f32))
     add(sum_lr, correction)
-  }
-  else {
-    tol_floor = cast(1.0e-7, f32)
+  } else {
+    tol_floor = cast(0.0000001, f32)
     raw_half_tol = mul(half_f, tol)
     half_tol = if lt(raw_half_tol, tol_floor) then tol_floor else raw_half_tol
     depth_next = sub(depth, one_i)
-    left  = adaptive_simpson_rec(f, a, m, fa, fm, flm, left_s,  half_tol, depth_next)
+    left = adaptive_simpson_rec(f, a, m, fa, fm, flm, left_s, half_tol, depth_next)
     right = adaptive_simpson_rec(f, m, b, fm, fb, frm, right_s, half_tol, depth_next)
     add(left, right)
   }
+  _ = drop(m)
+  _ = drop(diff)
+  __borrow_migration_out_0
 }
-
 def adaptive_simpson(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: int64) -> f32 = {
   depth_cap = cast(30, int64)
   capped_depth = if gt(max_depth, depth_cap) then depth_cap else max_depth
@@ -140,14 +103,15 @@ def adaptive_simpson(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: int64) 
   fm = f(m)
   h = sub(b, a)
   whole = int_simpson_small(h, fa, fm, fb)
-  adaptive_simpson_rec(f, a, b, fa, fb, fm, whole, tol, capped_depth)
+  __borrow_migration_out_1 = adaptive_simpson_rec(f, a, b, fa, fb, fm, whole, tol, capped_depth)
+  _ = drop(m)
+  __borrow_migration_out_1
 }
-
 def romberg_5(f: f32 -> f32, a: f32, b: f32) -> f32 = {
-  t_1  = trapezoidal(f, a, b, cast(1,  int64))
-  t_2  = trapezoidal(f, a, b, cast(2,  int64))
-  t_4  = trapezoidal(f, a, b, cast(4,  int64))
-  t_8  = trapezoidal(f, a, b, cast(8,  int64))
+  t_1 = trapezoidal(f, a, b, cast(1, int64))
+  t_2 = trapezoidal(f, a, b, cast(2, int64))
+  t_4 = trapezoidal(f, a, b, cast(4, int64))
+  t_8 = trapezoidal(f, a, b, cast(8, int64))
   t_16 = trapezoidal(f, a, b, cast(16, int64))
   four = cast(4.0, f32)
   three = cast(3.0, f32)
@@ -157,9 +121,9 @@ def romberg_5(f: f32 -> f32, a: f32, b: f32) -> f32 = {
   sixty_three = cast(63.0, f32)
   two_56 = cast(256.0, f32)
   two_55 = cast(255.0, f32)
-  r_1_1 = div(sub(mul(four, t_2),  t_1), three)
-  r_2_1 = div(sub(mul(four, t_4),  t_2), three)
-  r_3_1 = div(sub(mul(four, t_8),  t_4), three)
+  r_1_1 = div(sub(mul(four, t_2), t_1), three)
+  r_2_1 = div(sub(mul(four, t_4), t_2), three)
+  r_3_1 = div(sub(mul(four, t_8), t_4), three)
   r_4_1 = div(sub(mul(four, t_16), t_8), three)
   r_2_2 = div(sub(mul(sixteen, r_2_1), r_1_1), fifteen)
   r_3_2 = div(sub(mul(sixteen, r_3_1), r_2_1), fifteen)
@@ -169,39 +133,38 @@ def romberg_5(f: f32 -> f32, a: f32, b: f32) -> f32 = {
   r_4_4 = div(sub(mul(two_56, r_4_3), r_3_3), two_55)
   r_4_4
 }
-
 def gauss_legendre_10(f: f32 -> f32, a: f32, b: f32) -> f32 = {
   half_range = mul(cast(0.5, f32), sub(b, a))
   mid = mul(cast(0.5, f32), add(a, b))
-  x1  = add(mid, mul(half_range, cast(-0.9739065285171717, f32)))
-  x2  = add(mid, mul(half_range, cast(-0.8650633666889845, f32)))
-  x3  = add(mid, mul(half_range, cast(-0.6794095682990244, f32)))
-  x4  = add(mid, mul(half_range, cast(-0.4333953941292472, f32)))
-  x5  = add(mid, mul(half_range, cast(-0.1488743389816312, f32)))
-  x6  = add(mid, mul(half_range, cast( 0.1488743389816312, f32)))
-  x7  = add(mid, mul(half_range, cast( 0.4333953941292472, f32)))
-  x8  = add(mid, mul(half_range, cast( 0.6794095682990244, f32)))
-  x9  = add(mid, mul(half_range, cast( 0.8650633666889845, f32)))
-  x10 = add(mid, mul(half_range, cast( 0.9739065285171717, f32)))
-  w1  = cast(0.0666713443086881, f32)
-  w2  = cast(0.1494513491505806, f32)
-  w3  = cast(0.2190863625159820, f32)
-  w4  = cast(0.2692667193099963, f32)
-  w5  = cast(0.2955242247147529, f32)
-  w6  = cast(0.2955242247147529, f32)
-  w7  = cast(0.2692667193099963, f32)
-  w8  = cast(0.2190863625159820, f32)
-  w9  = cast(0.1494513491505806, f32)
+  x1 = add(mid, mul(half_range, cast(-0.9739065285171717, f32)))
+  x2 = add(mid, mul(half_range, cast(-0.8650633666889845, f32)))
+  x3 = add(mid, mul(half_range, cast(-0.6794095682990244, f32)))
+  x4 = add(mid, mul(half_range, cast(-0.4333953941292472, f32)))
+  x5 = add(mid, mul(half_range, cast(-0.1488743389816312, f32)))
+  x6 = add(mid, mul(half_range, cast(0.1488743389816312, f32)))
+  x7 = add(mid, mul(half_range, cast(0.4333953941292472, f32)))
+  x8 = add(mid, mul(half_range, cast(0.6794095682990244, f32)))
+  x9 = add(mid, mul(half_range, cast(0.8650633666889845, f32)))
+  x10 = add(mid, mul(half_range, cast(0.9739065285171717, f32)))
+  w1 = cast(0.0666713443086881, f32)
+  w2 = cast(0.1494513491505806, f32)
+  w3 = cast(0.219086362515982, f32)
+  w4 = cast(0.2692667193099963, f32)
+  w5 = cast(0.2955242247147529, f32)
+  w6 = cast(0.2955242247147529, f32)
+  w7 = cast(0.2692667193099963, f32)
+  w8 = cast(0.219086362515982, f32)
+  w9 = cast(0.1494513491505806, f32)
   w10 = cast(0.0666713443086881, f32)
-  s1  = mul(w1,  f(x1))
-  s2  = mul(w2,  f(x2))
-  s3  = mul(w3,  f(x3))
-  s4  = mul(w4,  f(x4))
-  s5  = mul(w5,  f(x5))
-  s6  = mul(w6,  f(x6))
-  s7  = mul(w7,  f(x7))
-  s8  = mul(w8,  f(x8))
-  s9  = mul(w9,  f(x9))
+  s1 = mul(w1, f(x1))
+  s2 = mul(w2, f(x2))
+  s3 = mul(w3, f(x3))
+  s4 = mul(w4, f(x4))
+  s5 = mul(w5, f(x5))
+  s6 = mul(w6, f(x6))
+  s7 = mul(w7, f(x7))
+  s8 = mul(w8, f(x8))
+  s9 = mul(w9, f(x9))
   s10 = mul(w10, f(x10))
   sum_a = add(add(s1, s2), add(s3, s4))
   sum_b = add(add(s5, s6), add(s7, s8))
@@ -209,93 +172,90 @@ def gauss_legendre_10(f: f32 -> f32, a: f32, b: f32) -> f32 = {
   total = add(add(sum_a, sum_b), sum_c)
   mul(half_range, total)
 }
-
 def gauss_hermite_10(f: f32 -> f32) -> f32 = {
-  x1  = cast(-3.4361591188377376, f32)
-  x2  = cast(-2.5327316742327897, f32)
-  x3  = cast(-1.7566836492998817, f32)
-  x4  = cast(-1.0366108297895138, f32)
-  x5  = cast(-0.3429013272237046, f32)
-  x6  = cast( 0.3429013272237046, f32)
-  x7  = cast( 1.0366108297895138, f32)
-  x8  = cast( 1.7566836492998817, f32)
-  x9  = cast( 2.5327316742327897, f32)
-  x10 = cast( 3.4361591188377376, f32)
-  w1  = cast(7.6404328552326090e-6, f32)
-  w2  = cast(1.3436457467812327e-3, f32)
-  w3  = cast(3.3874394455481063e-2, f32)
-  w4  = cast(2.4013861108231468e-1, f32)
-  w5  = cast(6.1086263373532580e-1, f32)
-  w6  = cast(6.1086263373532580e-1, f32)
-  w7  = cast(2.4013861108231468e-1, f32)
-  w8  = cast(3.3874394455481063e-2, f32)
-  w9  = cast(1.3436457467812327e-3, f32)
-  w10 = cast(7.6404328552326090e-6, f32)
-  s1  = mul(w1,  f(x1))
-  s2  = mul(w2,  f(x2))
-  s3  = mul(w3,  f(x3))
-  s4  = mul(w4,  f(x4))
-  s5  = mul(w5,  f(x5))
-  s6  = mul(w6,  f(x6))
-  s7  = mul(w7,  f(x7))
-  s8  = mul(w8,  f(x8))
-  s9  = mul(w9,  f(x9))
+  x1 = cast(-3.4361591188377374, f32)
+  x2 = cast(-2.5327316742327897, f32)
+  x3 = cast(-1.7566836492998816, f32)
+  x4 = cast(-1.0366108297895138, f32)
+  x5 = cast(-0.3429013272237046, f32)
+  x6 = cast(0.3429013272237046, f32)
+  x7 = cast(1.0366108297895138, f32)
+  x8 = cast(1.7566836492998816, f32)
+  x9 = cast(2.5327316742327897, f32)
+  x10 = cast(3.4361591188377374, f32)
+  w1 = cast(0.000007640432855232609, f32)
+  w2 = cast(0.0013436457467812326, f32)
+  w3 = cast(0.033874394455481065, f32)
+  w4 = cast(0.24013861108231468, f32)
+  w5 = cast(0.6108626337353258, f32)
+  w6 = cast(0.6108626337353258, f32)
+  w7 = cast(0.24013861108231468, f32)
+  w8 = cast(0.033874394455481065, f32)
+  w9 = cast(0.0013436457467812326, f32)
+  w10 = cast(0.000007640432855232609, f32)
+  s1 = mul(w1, f(x1))
+  s2 = mul(w2, f(x2))
+  s3 = mul(w3, f(x3))
+  s4 = mul(w4, f(x4))
+  s5 = mul(w5, f(x5))
+  s6 = mul(w6, f(x6))
+  s7 = mul(w7, f(x7))
+  s8 = mul(w8, f(x8))
+  s9 = mul(w9, f(x9))
   s10 = mul(w10, f(x10))
   sum_a = add(add(s1, s2), add(s3, s4))
   sum_b = add(add(s5, s6), add(s7, s8))
   sum_c = add(s9, s10)
   add(add(sum_a, sum_b), sum_c)
 }
-
 def gauss_laguerre_10(f: f32 -> f32) -> f32 = {
-  x1  = cast(0.13779347054049244, f32)
-  x2  = cast(0.72945454950317055, f32)
-  x3  = cast(1.80834290174031605, f32)
-  x4  = cast(3.40143369785489951, f32)
-  x5  = cast(5.55249614006380364, f32)
-  x6  = cast(8.33015274676449671, f32)
-  x7  = cast(11.8437858379000656, f32)
-  x8  = cast(16.2792578313781021, f32)
-  x9  = cast(21.9965858119807619, f32)
-  x10 = cast(29.9206970122738917, f32)
-  w1  = cast(3.08441115765020141e-1, f32)
-  w2  = cast(4.01119929155273552e-1, f32)
-  w3  = cast(2.18068287611809422e-1, f32)
-  w4  = cast(6.20874560986777473e-2, f32)
-  w5  = cast(9.50151697518110055e-3, f32)
-  w6  = cast(7.53008388587538775e-4, f32)
-  w7  = cast(2.82592334959956577e-5, f32)
-  w8  = cast(4.24931398496268637e-7, f32)
-  w9  = cast(1.83956482397963078e-9, f32)
-  w10 = cast(9.91182721960900856e-13, f32)
-  s1  = mul(w1,  f(x1))
-  s2  = mul(w2,  f(x2))
-  s3  = mul(w3,  f(x3))
-  s4  = mul(w4,  f(x4))
-  s5  = mul(w5,  f(x5))
-  s6  = mul(w6,  f(x6))
-  s7  = mul(w7,  f(x7))
-  s8  = mul(w8,  f(x8))
-  s9  = mul(w9,  f(x9))
+  x1 = cast(0.13779347054049243, f32)
+  x2 = cast(0.7294545495031706, f32)
+  x3 = cast(1.808342901740316, f32)
+  x4 = cast(3.4014336978548996, f32)
+  x5 = cast(5.552496140063804, f32)
+  x6 = cast(8.330152746764497, f32)
+  x7 = cast(11.843785837900066, f32)
+  x8 = cast(16.279257831378104, f32)
+  x9 = cast(21.99658581198076, f32)
+  x10 = cast(29.92069701227389, f32)
+  w1 = cast(0.30844111576502015, f32)
+  w2 = cast(0.40111992915527356, f32)
+  w3 = cast(0.2180682876118094, f32)
+  w4 = cast(0.062087456098677746, f32)
+  w5 = cast(0.0095015169751811, f32)
+  w6 = cast(0.0007530083885875388, f32)
+  w7 = cast(0.00002825923349599566, f32)
+  w8 = cast(0.00000042493139849626863, f32)
+  w9 = cast(0.0000000018395648239796308, f32)
+  w10 = cast(0.0000000000009911827219609008, f32)
+  s1 = mul(w1, f(x1))
+  s2 = mul(w2, f(x2))
+  s3 = mul(w3, f(x3))
+  s4 = mul(w4, f(x4))
+  s5 = mul(w5, f(x5))
+  s6 = mul(w6, f(x6))
+  s7 = mul(w7, f(x7))
+  s8 = mul(w8, f(x8))
+  s9 = mul(w9, f(x9))
   s10 = mul(w10, f(x10))
   sum_a = add(add(s1, s2), add(s3, s4))
   sum_b = add(add(s5, s6), add(s7, s8))
   sum_c = add(s9, s10)
   add(add(sum_a, sum_b), sum_c)
 }
-
 def gauss_legendre_5(f: f32 -> f32, a: f32, b: f32, n_points: int64) -> f32 = {
   ignore_n = n_points
   half_range = mul(cast(0.5, f32), sub(b, a))
   mid = mul(cast(0.5, f32), add(a, b))
-  x1_t = mul(half_range, cast(-0.9061798459386640, f32))
+  x1_t = mul(half_range, cast(-0.906179845938664, f32))
   x1 = add(mid, x1_t)
   x2_t = mul(half_range, cast(-0.5384693101056831, f32))
   x2 = add(mid, x2_t)
   x3 = mid
   x4_t = mul(half_range, cast(0.5384693101056831, f32))
   x4 = add(mid, x4_t)
-  x5_t = mul(half_range, cast(0.9061798459386640, f32))
+  x5_t = mul(half_range, cast(0.906179845938664, f32))
   x5 = add(mid, x5_t)
   f1 = f(x1)
   f2 = f(x2)

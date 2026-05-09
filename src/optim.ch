@@ -1,63 +1,37 @@
 module Nautilus.Optim
 export (golden_section_search, brent_minimize, gradient_descent_1d, newton_minimize_1d)
-
 def opt_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def opt_nan_f32() -> f32 = div(cast(0.0, f32), cast(0.0, f32))
 def opt_phi() -> f32 = cast(0.6180339887, f32)
-
-def opt_gs_rec(
-  f: f32 -> f32,
-  a: f32,
-  b: f32,
-  tol: f32,
-  iters: int64
-) -> f32 = {
+def opt_gs_rec(f: f32 -> f32, a: f32, b: f32, tol: f32, iters: int64) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
-  if lte(iters, zero_i) then mul(cast(0.5, f32), add(a, b))
-  else {
+  if lte(iters, zero_i) then mul(cast(0.5, f32), add(a, b)) else {
     width = sub(b, a)
     awidth = opt_abs_f32(width)
-    if lt(awidth, tol) then mul(cast(0.5, f32), add(a, b))
-    else {
+    if lt(awidth, tol) then mul(cast(0.5, f32), add(a, b)) else {
       phi = opt_phi()
       gap = mul(phi, width)
       c = sub(b, gap)
       d = add(a, gap)
       fc = f(c)
       fd = f(d)
-      if lt(fc, fd) then opt_gs_rec(f, a, d, tol, sub(iters, one_i))
-      else opt_gs_rec(f, c, b, tol, sub(iters, one_i))
+      __borrow_migration_out_0 = if lt(fc, fd) then opt_gs_rec(f, a, d, tol, sub(iters, one_i)) else opt_gs_rec(f, c, b, tol, sub(iters, one_i))
+      _ = drop(c)
+      _ = drop(d)
+      __borrow_migration_out_0
     }
   }
 }
-
-def golden_section_search(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 =
-  opt_gs_rec(f, lo, hi, tol, max_iters)
-
-def opt_brent_rec(
-  f: f32 -> f32,
-  a: f32,
-  b: f32,
-  u: f32,
-  v: f32,
-  w: f32,
-  fu: f32,
-  fv: f32,
-  fw: f32,
-  tol: f32,
-  iters: int64,
-  total_iters: int64
-) -> f32 = {
+def golden_section_search(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 = opt_gs_rec(f, lo, hi, tol, max_iters)
+def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32, fv: f32, fw: f32, tol: f32, iters: int64, total_iters: int64) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
   two_i = cast(2, int64)
-  if lte(iters, zero_i) then u
-  else {
+  if lte(iters, zero_i) then u else {
     width = sub(b, a)
     awidth = opt_abs_f32(width)
-    if lt(awidth, tol) then u
-    else {
+    if lt(awidth, tol) then u else {
       done_iters = sub(total_iters, iters)
       parity = mod(done_iters, two_i)
       use_golden = eq(parity, zero_i)
@@ -68,7 +42,7 @@ def opt_brent_rec(
         d = add(a, gap)
         fc = f(c)
         fd = f(d)
-        if lt(fc, fd) then {
+        __borrow_migration_out_1 = if lt(fc, fd) then {
           new_fu = if lt(fc, fu) then fc else fu
           new_u = if lt(fc, fu) then c else u
           opt_brent_rec(f, a, d, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -77,6 +51,9 @@ def opt_brent_rec(
           new_u = if lt(fd, fu) then d else u
           opt_brent_rec(f, c, b, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
         }
+        _ = drop(c)
+        _ = drop(d)
+        __borrow_migration_out_1
       } else {
         d1 = sub(v, u)
         d2 = sub(w, u)
@@ -89,7 +66,7 @@ def opt_brent_rec(
         num = sub(num1, num2)
         den = sub(den1, den2)
         aden = opt_abs_f32(den)
-        too_flat = lt(aden, cast(1.0e-30, f32))
+        too_flat = lt(aden, cast(0.000000000000000000000000000001, f32))
         if too_flat then {
           phi = opt_phi()
           gap = mul(phi, width)
@@ -97,7 +74,7 @@ def opt_brent_rec(
           d = add(a, gap)
           fc = f(c)
           fd = f(d)
-          if lt(fc, fd) then {
+          __borrow_migration_out_2 = if lt(fc, fd) then {
             new_fu = if lt(fc, fu) then fc else fu
             new_u = if lt(fc, fu) then c else u
             opt_brent_rec(f, a, d, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -106,6 +83,9 @@ def opt_brent_rec(
             new_u = if lt(fd, fu) then d else u
             opt_brent_rec(f, c, b, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
           }
+          _ = drop(c)
+          _ = drop(d)
+          __borrow_migration_out_2
         } else {
           half = cast(0.5, f32)
           offset = mul(half, div(num, den))
@@ -129,7 +109,7 @@ def opt_brent_rec(
             d = add(a, gap)
             fc = f(c)
             fd = f(d)
-            if lt(fc, fd) then {
+            __borrow_migration_out_3 = if lt(fc, fd) then {
               new_fu = if lt(fc, fu) then fc else fu
               new_u = if lt(fc, fu) then c else u
               opt_brent_rec(f, a, d, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -138,13 +118,15 @@ def opt_brent_rec(
               new_u = if lt(fd, fu) then d else u
               opt_brent_rec(f, c, b, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
             }
+            _ = drop(c)
+            _ = drop(d)
+            __borrow_migration_out_3
           }
         }
       }
     }
   }
 }
-
 def brent_minimize(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 = {
   mid = mul(cast(0.5, f32), add(lo, hi))
   quarter = add(lo, mul(cast(0.25, f32), sub(hi, lo)))
@@ -154,63 +136,40 @@ def brent_minimize(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) 
   ft = f(three_q)
   opt_brent_rec(f, lo, hi, mid, quarter, three_q, fm, fq, ft, tol, max_iters, max_iters)
 }
-
-def opt_gd_rec(
-  f: f32 -> f32,
-  df: f32 -> f32,
-  x: f32,
-  lr: f32,
-  iters: int64
-) -> f32 = {
+def opt_gd_rec(f: f32 -> f32, df: f32 -> f32, x: f32, lr: f32, iters: int64) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
-  if lte(iters, zero_i) then x
-  else {
+  if lte(iters, zero_i) then x else {
     g = df(x)
     ag = opt_abs_f32(g)
-    if lt(ag, cast(1.0e-10, f32)) then x
-    else {
+    if lt(ag, cast(0.0000000001, f32)) then x else {
       x_next = sub(x, mul(lr, g))
       x_next_abs = opt_abs_f32(x_next)
-      runaway = gt(x_next_abs, cast(1.0e15, f32))
+      runaway = gt(x_next_abs, cast(1000000000000000.0, f32))
       diff = sub(x_next, x_next)
       nan_produced = not(eq(diff, cast(0.0, f32)))
-      if or(runaway, nan_produced) then opt_nan_f32()
-      else opt_gd_rec(f, df, x_next, lr, sub(iters, one_i))
+      __borrow_migration_out_0 = if or(runaway, nan_produced) then opt_nan_f32() else opt_gd_rec(f, df, x_next, lr, sub(iters, one_i))
+      _ = drop(diff)
+      __borrow_migration_out_0
     }
   }
 }
-
-def gradient_descent_1d(f: f32 -> f32, df: f32 -> f32, x0: f32, lr: f32, max_iters: int64) -> f32 =
-  opt_gd_rec(f, df, x0, lr, max_iters)
-
-def opt_nmin_rec(
-  f: f32 -> f32,
-  df: f32 -> f32,
-  ddf: f32 -> f32,
-  x: f32,
-  tol: f32,
-  iters: int64
-) -> f32 = {
+def gradient_descent_1d(f: f32 -> f32, df: f32 -> f32, x0: f32, lr: f32, max_iters: int64) -> f32 = opt_gd_rec(f, df, x0, lr, max_iters)
+def opt_nmin_rec(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x: f32, tol: f32, iters: int64) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
-  if lte(iters, zero_i) then opt_nan_f32()
-  else {
+  if lte(iters, zero_i) then opt_nan_f32() else {
     g = df(x)
     ag = opt_abs_f32(g)
     if lt(ag, tol) then {
       h = ddf(x)
       ah = opt_abs_f32(h)
-      curvature_floor = cast(1.0e-2, f32)
-      if lt(ah, curvature_floor) then opt_nan_f32()
-      else if lte(h, cast(0.0, f32)) then opt_nan_f32()
-      else x
-    }
-    else {
+      curvature_floor = cast(0.01, f32)
+      if lt(ah, curvature_floor) then opt_nan_f32() else if lte(h, cast(0.0, f32)) then opt_nan_f32() else x
+    } else {
       h = ddf(x)
       ah = opt_abs_f32(h)
-      if lt(ah, cast(1.0e-30, f32)) then opt_nan_f32()
-      else {
+      if lt(ah, cast(0.000000000000000000000000000001, f32)) then opt_nan_f32() else {
         step = div(g, h)
         x_next = sub(x, step)
         opt_nmin_rec(f, df, ddf, x_next, tol, sub(iters, one_i))
@@ -218,6 +177,4 @@ def opt_nmin_rec(
     }
   }
 }
-
-def newton_minimize_1d(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32 =
-  opt_nmin_rec(f, df, ddf, x0, tol, max_iters)
+def newton_minimize_1d(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32 = opt_nmin_rec(f, df, ddf, x0, tol, max_iters)

@@ -1,99 +1,34 @@
 module Nautilus.ApiSmoke
-import Nautilus.Special (erf, erfc, erfinv, gamma, log_gamma, digamma, beta, lbeta,
-  trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1,
-  bessel_j0, bessel_j1, bessel_y0, bessel_y1,
-  airy_ai, airy_bi, ellipk, ellipe)
-import Nautilus.Distributions (
-  normal_pdf, normal_cdf, normal_inv_cdf,
-  uniform_pdf, uniform_cdf, uniform_inv_cdf,
-  exponential_pdf, exponential_cdf, exponential_inv_cdf,
-  lognormal_pdf, lognormal_cdf, lognormal_inv_cdf,
-  gamma_pdf, gamma_cdf, gamma_inv_cdf,
-  chi_squared_pdf, chi_squared_cdf, chi_squared_inv_cdf,
-  student_t_pdf,
-  poisson_pmf, poisson_cdf,
-  binomial_pmf, binomial_cdf,
-  beta_pdf, beta_cdf,
-  f_pdf, f_cdf,
-  weibull_pdf, weibull_cdf, weibull_inv_cdf
-)
-import Nautilus.LinAlg (
-  transpose, matmul_wrap, gram, aat,
-  diag, trace_mat, trace_scalar,
-  l2_norm_vec, inner_product, frobenius_sq, frobenius_norm,
-  scale_vec, matvec, vecmat,
-  det_2x2, det_3x3,
-  la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve,
-  inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2,
-  cholesky_n,
-  lu_solve,
-  qr_decompose,
-  svd_n,
-  eig_n
-)
+import Nautilus.Special (erf, erfc, erfinv, gamma, log_gamma, digamma, beta, lbeta, trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1, bessel_j0, bessel_j1, bessel_y0, bessel_y1, airy_ai, airy_bi, ellipk, ellipe)
+import Nautilus.Distributions (normal_pdf, normal_cdf, normal_inv_cdf, uniform_pdf, uniform_cdf, uniform_inv_cdf, exponential_pdf, exponential_cdf, exponential_inv_cdf, lognormal_pdf, lognormal_cdf, lognormal_inv_cdf, gamma_pdf, gamma_cdf, gamma_inv_cdf, chi_squared_pdf, chi_squared_cdf, chi_squared_inv_cdf, student_t_pdf, poisson_pmf, poisson_cdf, binomial_pmf, binomial_cdf, beta_pdf, beta_cdf, f_pdf, f_cdf, weibull_pdf, weibull_cdf, weibull_inv_cdf)
+import Nautilus.LinAlg (transpose, matmul_wrap, gram, aat, diag, trace_mat, trace_scalar, l2_norm_vec, inner_product, frobenius_sq, frobenius_norm, scale_vec, matvec, vecmat, det_2x2, det_3x3, la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve, inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2, cholesky_n, lu_solve, qr_decompose, svd_n, eig_n)
 import Nautilus.Roots (bisection, newton, brent)
 import Nautilus.Ode (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve, rk45_adaptive_solve_grid)
-import Nautilus.Stats (
-  mean_vec, variance_vec, std_vec,
-  skewness_vec, kurtosis_vec, median_vec,
-  covariance_scalar, correlation_scalar,
-  min_vec, max_vec, range_vec,
-  quantile_vec, percentile_vec, trimmed_mean_vec
-)
+import Nautilus.Stats (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec)
 import Nautilus.Integrate (trapezoidal, simpsons, gauss_legendre_5)
-import Nautilus.Testing (
-  z_statistic, z_p_value_two_sided, z_p_value_upper, z_p_value_lower,
-  normal_ci_half_width, chi_squared_p_value
-)
-import Nautilus.Distance (
-  squared_euclidean, euclidean, manhattan, chebyshev,
-  cosine_similarity, cosine_distance,
-  mahalanobis_squared, mahalanobis
-)
-import Nautilus.Signal (
-  fft_magnitude_stub, ifft_magnitude_stub, stft_magnitude_stub,
-  lowpass_stub, highpass_stub, bandpass_stub, fftfreq
-)
+import Nautilus.Testing (z_statistic, z_p_value_two_sided, z_p_value_upper, z_p_value_lower, normal_ci_half_width, chi_squared_p_value)
+import Nautilus.Distance (squared_euclidean, euclidean, manhattan, chebyshev, cosine_similarity, cosine_distance, mahalanobis_squared, mahalanobis)
+import Nautilus.Signal (fft_magnitude_stub, ifft_magnitude_stub, stft_magnitude_stub, lowpass_stub, highpass_stub, bandpass_stub, fftfreq)
 import Nautilus.Optim (golden_section_search, brent_minimize, gradient_descent_1d, newton_minimize_1d)
 import Nautilus.Interpolation (linear_interp_uniform, linear_interp_sorted, cubic_hermite, spline_fit, spline_eval)
 import Nautilus.Sde (euler_maruyama_fixed, milstein_fixed)
-import Nautilus.Integrate (
-  trapezoidal, simpsons, gauss_legendre_5,
-  adaptive_simpson, romberg_5, gauss_legendre_10,
-  gauss_hermite_10, gauss_laguerre_10
-)
+import Nautilus.Integrate (trapezoidal, simpsons, gauss_legendre_5, adaptive_simpson, romberg_5, gauss_legendre_10, gauss_hermite_10, gauss_laguerre_10)
 import Nautilus.CurveFit (lm_scalar_1param, lm_scalar_nparam)
-export (
-  smoke_special, smoke_distributions, smoke_linalg,
-  smoke_roots, smoke_ode, smoke_stats,
-  smoke_integrate, smoke_testing, smoke_distance, smoke_signal,
-  smoke_optim, smoke_interpolation, smoke_cg_solve,
-  smoke_sde, smoke_linalg_inv, smoke_integrate_adaptive,
-  smoke_integrate_hl, smoke_curvefit, smoke_distributions_p4,
-  smoke_stats_p4,
-  smoke_qr,
-  smoke_svd_n,
-  smoke_lm_nparam,
-  smoke_eig_n,
-  smoke_ode_grid,
-  smoke_spline
-)
-
+export (smoke_special, smoke_distributions, smoke_linalg, smoke_roots, smoke_ode, smoke_stats, smoke_integrate, smoke_testing, smoke_distance, smoke_signal, smoke_optim, smoke_interpolation, smoke_cg_solve, smoke_sde, smoke_linalg_inv, smoke_integrate_adaptive, smoke_integrate_hl, smoke_curvefit, smoke_distributions_p4, smoke_stats_p4, smoke_qr, smoke_svd_n, smoke_lm_nparam, smoke_eig_n, smoke_ode_grid, smoke_spline)
 def smoke_poly(x: f32) -> f32 = {
   x2 = mul(x, x)
   sub(x2, cast(2.0, f32))
 }
 def smoke_dpoly(x: f32) -> f32 = mul(cast(2.0, f32), x)
 def smoke_decay(y: f32, t: f32) -> f32 = neg(y)
-
 def smoke_special() -> f32 = {
   e = erf(cast(0.5, f32))
   ec = erfc(cast(0.5, f32))
   ei = erfinv(cast(0.5, f32))
-  g  = gamma(cast(3.0, f32))
+  g = gamma(cast(3.0, f32))
   lg = log_gamma(cast(3.0, f32))
   dg = digamma(cast(3.0, f32))
-  b  = beta(cast(2.0, f32), cast(3.0, f32))
+  b = beta(cast(2.0, f32), cast(3.0, f32))
   lb = lbeta(cast(2.0, f32), cast(3.0, f32))
   tg = trigamma(cast(2.0, f32))
   bi0 = bessel_i0(cast(1.0, f32))
@@ -114,7 +49,6 @@ def smoke_special() -> f32 = {
   s3 = add(add(abi, ek), ee)
   add(add(add(s0, s1), s2), s3)
 }
-
 def smoke_distributions() -> f32 = {
   a = normal_pdf(cast(0.0, f32), cast(0.0, f32), cast(1.0, f32))
   b = normal_cdf(cast(1.0, f32), cast(0.0, f32), cast(1.0, f32))
@@ -139,9 +73,13 @@ def smoke_distributions() -> f32 = {
   s2 = add(add(add(add(f, g), h), i), j)
   s3 = add(add(add(add(k, l), m), n), o)
   s4 = add(add(add(p, q), r), s)
-  add(add(add(s1, s2), s3), s4)
+  __borrow_migration_out_0 = add(add(add(s1, s2), s3), s4)
+  _ = drop(c)
+  _ = drop(d)
+  _ = drop(r)
+  _ = drop(m)
+  __borrow_migration_out_0
 }
-
 def smoke_linalg[m, k, n](a: tensor[m, k, f32], b: tensor[k, n, f32], v: tensor[k, f32], w: tensor[k, f32], s: tensor[2, 2, f32], t3: tensor[3, 3, f32]) -> f32 = {
   at = transpose(copy(a))
   ab = matmul_wrap(copy(a), b)
@@ -156,27 +94,32 @@ def smoke_linalg[m, k, n](a: tensor[m, k, f32], b: tensor[k, n, f32], v: tensor[
   n2 = l2_norm_vec(v)
   d2 = det_2x2(s)
   d3 = det_3x3(t3)
-  add(add(add(inner, n2), d2), d3)
+  __borrow_migration_out_1 = add(add(add(inner, n2), d2), d3)
+  _ = drop(at)
+  _ = drop(ignore_ab)
+  _ = drop(ignore_g)
+  _ = drop(ignore_aat)
+  __borrow_migration_out_1
 }
-
 def smoke_roots() -> f32 = {
-  r1 = bisection(smoke_poly, cast(1.0, f32), cast(2.0, f32), cast(1.0e-10, f32), cast(100, int64))
-  r2 = newton(smoke_poly, smoke_dpoly, cast(1.5, f32), cast(1.0e-12, f32), cast(50, int64))
-  r3 = brent(smoke_poly, cast(1.0, f32), cast(2.0, f32), cast(1.0e-10, f32), cast(100, int64))
+  r1 = bisection(smoke_poly, cast(1.0, f32), cast(2.0, f32), cast(0.0000000001, f32), cast(100, int64))
+  r2 = newton(smoke_poly, smoke_dpoly, cast(1.5, f32), cast(0.000000000001, f32), cast(50, int64))
+  r3 = brent(smoke_poly, cast(1.0, f32), cast(2.0, f32), cast(0.0000000001, f32), cast(100, int64))
   add(add(r1, r2), r3)
 }
-
 def smoke_ode() -> f32 = {
   a = euler_step(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(0.01, f32))
   b = rk4_step(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(0.01, f32))
   c = euler_solve(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(100, int64))
   d = rk4_solve(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(100, int64))
-  e = rk45_adaptive_solve(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(1.0e-6, f32), cast(1.0e-8, f32))
-  add(add(add(add(a, b), c), d), e)
+  e = rk45_adaptive_solve(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(0.000001, f32), cast(0.00000001, f32))
+  __borrow_migration_out_2 = add(add(add(add(a, b), c), d), e)
+  _ = drop(c)
+  _ = drop(d)
+  __borrow_migration_out_2
 }
-
 def smoke_stats[n](v: tensor[n, f32], w: tensor[n, f32]) -> f32 = {
-  m  = mean_vec(copy(v))
+  m = mean_vec(copy(v))
   vr = variance_vec(copy(v), cast(0, int64))
   sd = std_vec(copy(v), cast(1, int64))
   sk = skewness_vec(copy(v))
@@ -186,16 +129,16 @@ def smoke_stats[n](v: tensor[n, f32], w: tensor[n, f32]) -> f32 = {
   cr = correlation_scalar(v, w)
   s1 = add(add(add(m, vr), sd), sk)
   s2 = add(add(add(ku, md), cv), cr)
-  add(s1, s2)
+  __borrow_migration_out_0 = add(s1, s2)
+  _ = drop(m)
+  __borrow_migration_out_0
 }
-
 def smoke_integrate() -> f32 = {
   t = trapezoidal(smoke_poly, cast(0.0, f32), cast(1.0, f32), cast(100, int64))
   s = simpsons(smoke_poly, cast(0.0, f32), cast(1.0, f32), cast(100, int64))
   g = gauss_legendre_5(smoke_poly, cast(0.0, f32), cast(1.0, f32), cast(5, int64))
   add(add(t, s), g)
 }
-
 def smoke_testing() -> f32 = {
   z = z_statistic(cast(102.0, f32), cast(100.0, f32), cast(15.0, f32), cast(25.0, f32))
   p1 = z_p_value_two_sided(z)
@@ -203,9 +146,10 @@ def smoke_testing() -> f32 = {
   p3 = z_p_value_lower(cast(-1.96, f32))
   ci = normal_ci_half_width(cast(0.95, f32), cast(15.0, f32), cast(25.0, f32))
   cp = chi_squared_p_value(cast(11.07, f32), cast(5.0, f32))
-  add(add(add(add(add(z, p1), p2), p3), ci), cp)
+  __borrow_migration_out_3 = add(add(add(add(add(z, p1), p2), p3), ci), cp)
+  _ = drop(z)
+  __borrow_migration_out_3
 }
-
 def smoke_distance[n](v: tensor[n, f32], w: tensor[n, f32], cov_inv: tensor[n, n, f32]) -> f32 = {
   se = squared_euclidean(copy(v), copy(w))
   eu = euclidean(copy(v), copy(w))
@@ -218,66 +162,51 @@ def smoke_distance[n](v: tensor[n, f32], w: tensor[n, f32], cov_inv: tensor[n, n
   s2 = add(add(cs, cd), ma)
   add(s1, s2)
 }
-
 def smoke_signal[n](x: tensor[n, f32]) -> tensor[n, f32] = fft_magnitude_stub(x)
-
 def smoke_optim_parab(x: f32) -> f32 = {
   d = sub(x, cast(2.0, f32))
-  mul(d, d)
+  __borrow_migration_out_4 = mul(d, d)
+  _ = drop(d)
+  __borrow_migration_out_4
 }
 def smoke_optim_dparab(x: f32) -> f32 = mul(cast(2.0, f32), sub(x, cast(2.0, f32)))
 def smoke_optim_ddparab(x: f32) -> f32 = cast(2.0, f32)
-
 def smoke_optim() -> f32 = {
-  g = golden_section_search(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(1.0e-8, f32), cast(200, int64))
-  b = brent_minimize(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(1.0e-8, f32), cast(200, int64))
+  g = golden_section_search(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(0.00000001, f32), cast(200, int64))
+  b = brent_minimize(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(0.00000001, f32), cast(200, int64))
   gd = gradient_descent_1d(smoke_optim_parab, smoke_optim_dparab, cast(0.0, f32), cast(0.1, f32), cast(500, int64))
-  nm = newton_minimize_1d(smoke_optim_parab, smoke_optim_dparab, smoke_optim_ddparab, cast(0.0, f32), cast(1.0e-10, f32), cast(50, int64))
+  nm = newton_minimize_1d(smoke_optim_parab, smoke_optim_dparab, smoke_optim_ddparab, cast(0.0, f32), cast(0.0000000001, f32), cast(50, int64))
   add(add(add(g, b), gd), nm)
 }
-
 def smoke_interpolation[n](ys: tensor[n, f32]) -> f32 = {
   lu = linear_interp_uniform(copy(ys), cast(0.0, f32), cast(1.0, f32), cast(0.5, f32))
   ignore_ls = ys
   ch = cubic_hermite(cast(0.0, f32), cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(0.0, f32), cast(0.0, f32), cast(0.5, f32))
-  add(lu, ch)
+  __borrow_migration_out_5 = add(lu, ch)
+  _ = drop(ignore_ls)
+  __borrow_migration_out_5
 }
-
-def smoke_cg_solve[n](
-  a_mat: tensor[n, n, f32],
-  b: tensor[n, f32],
-  x0: tensor[n, f32]
-) -> f32 = {
-  x = cg_solve(a_mat, b, x0, cast(1.0e-10, f32), cast(100, int64))
-  l2_norm_vec(x)
+def smoke_cg_solve[n](a_mat: tensor[n, n, f32], b: tensor[n, f32], x0: tensor[n, f32]) -> f32 = {
+  x = cg_solve(a_mat, b, x0, cast(0.0000000001, f32), cast(100, int64))
+  __borrow_migration_out_1 = l2_norm_vec(x)
+  _ = drop(x)
+  __borrow_migration_out_1
 }
-
-def smoke_lu_solve(
-  a3: tensor[3, 3, f32],
-  b3: tensor[3, f32]
-) -> f32 = {
+def smoke_lu_solve(a3: tensor[3, 3, f32], b3: tensor[3, f32]) -> f32 = {
   x = lu_solve(a3, b3)
-  l2_norm_vec(x)
+  __borrow_migration_out_2 = l2_norm_vec(x)
+  _ = drop(x)
+  __borrow_migration_out_2
 }
-
 def smoke_sde_drift(y: f32, t: f32) -> f32 = neg(y)
 def smoke_sde_diff(y: f32, t: f32) -> f32 = cast(0.1, f32)
 def smoke_sde_dg(y: f32, t: f32) -> f32 = cast(0.0, f32)
-
 def smoke_sde[n](noise: tensor[n, f32]) -> f32 = {
-  em = euler_maruyama_fixed(smoke_sde_drift, smoke_sde_diff,
-    cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), copy(noise))
-  ml = milstein_fixed(smoke_sde_drift, smoke_sde_diff, smoke_sde_dg,
-    cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), noise)
+  em = euler_maruyama_fixed(smoke_sde_drift, smoke_sde_diff, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), copy(noise))
+  ml = milstein_fixed(smoke_sde_drift, smoke_sde_diff, smoke_sde_dg, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), noise)
   add(em, ml)
 }
-
-def smoke_linalg_inv(
-  a2: tensor[2, 2, f32],
-  a3: tensor[3, 3, f32],
-  b2: tensor[2, f32],
-  b3: tensor[3, f32]
-) -> f32 = {
+def smoke_linalg_inv(a2: tensor[2, 2, f32], a3: tensor[3, 3, f32], b2: tensor[2, f32], b3: tensor[3, f32]) -> f32 = {
   inv2 = inv_2x2(copy(a2))
   inv3 = inv_3x3(copy(a3))
   sol2 = solve_2x2(copy(a2), b2)
@@ -287,38 +216,39 @@ def smoke_linalg_inv(
   chn = cholesky_n(copy(a3))
   d_inv2 = det_2x2(inv2)
   d_inv3 = det_3x3(inv3)
-  d_ch2  = det_2x2(ch2)
-  d_chn  = det_3x3(chn)
+  d_ch2 = det_2x2(ch2)
+  d_chn = det_3x3(chn)
   n_sol2 = l2_norm_vec(sol2)
   n_sol3 = l2_norm_vec(sol3)
   eig_sum = add(eigs.0, eigs.1)
-  add(add(add(add(add(add(d_inv2, d_inv3), d_ch2), d_chn), n_sol2), n_sol3), eig_sum)
+  __borrow_migration_out_3 = add(add(add(add(add(add(d_inv2, d_inv3), d_ch2), d_chn), n_sol2), n_sol3), eig_sum)
+  _ = drop(a2)
+  _ = drop(inv2)
+  _ = drop(inv3)
+  _ = drop(ch2)
+  _ = drop(chn)
+  _ = drop(sol2)
+  _ = drop(sol3)
+  __borrow_migration_out_3
 }
-
 def smoke_integrate_adaptive_fn(x: f32) -> f32 = mul(x, x)
-
 def smoke_integrate_adaptive() -> f32 = {
-  a  = adaptive_simpson(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32), cast(1.0e-10, f32), cast(20, int64))
-  r  = romberg_5(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32))
-  g  = gauss_legendre_10(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32))
-  add(add(a, r), g)
+  a = adaptive_simpson(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32), cast(0.0000000001, f32), cast(20, int64))
+  r = romberg_5(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32))
+  g = gauss_legendre_10(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32))
+  __borrow_migration_out_6 = add(add(a, r), g)
+  _ = drop(r)
+  __borrow_migration_out_6
 }
-
 def smoke_hl_one(x: f32) -> f32 = cast(1.0, f32)
-
 def smoke_integrate_hl() -> f32 = {
   gh = gauss_hermite_10(smoke_hl_one)
   gl = gauss_laguerre_10(smoke_hl_one)
   add(gh, gl)
 }
-
 def smoke_cf_model(x: f32, theta: f32) -> f32 = mul(theta, x)
 def smoke_cf_dmodel(x: f32, theta: f32) -> f32 = x
-
-def smoke_curvefit[n](xs: tensor[n, f32], ys: tensor[n, f32]) -> f32 =
-  lm_scalar_1param(smoke_cf_model, smoke_cf_dmodel, xs, ys,
-    cast(0.5, f32), cast(0.001, f32), cast(1.0e-8, f32), cast(50, int64))
-
+def smoke_curvefit[n](xs: tensor[n, f32], ys: tensor[n, f32]) -> f32 = lm_scalar_1param(smoke_cf_model, smoke_cf_dmodel, xs, ys, cast(0.5, f32), cast(0.001, f32), cast(0.00000001, f32), cast(50, int64))
 def smoke_distributions_p4() -> f32 = {
   pp = poisson_pmf(cast(3.0, f32), cast(3.0, f32))
   pc = poisson_cdf(cast(3.0, f32), cast(3.0, f32))
@@ -336,25 +266,24 @@ def smoke_distributions_p4() -> f32 = {
   s3 = add(add(wp, wc), wi)
   add(add(s1, s2), s3)
 }
-
 def smoke_qr(a3: tensor[3, 3, f32]) -> f32 = {
   qr_q = qr_decompose(copy(a3))
   qr_r = qr_decompose(a3)
   q = qr_q.0
   r = qr_r.1
-  add(det_3x3(q), det_3x3(r))
+  __borrow_migration_out_7 = add(det_3x3(q), det_3x3(r))
+  _ = drop(r)
+  __borrow_migration_out_7
 }
-
 def smoke_stats_p4[n](v: tensor[n, f32]) -> f32 = {
   mn = min_vec(copy(v))
   mx = max_vec(copy(v))
   rg = range_vec(copy(v))
-  q  = quantile_vec(copy(v), cast(0.5, f32))
-  p  = percentile_vec(copy(v), cast(75.0, f32))
+  q = quantile_vec(copy(v), cast(0.5, f32))
+  p = percentile_vec(copy(v), cast(75.0, f32))
   tm = trimmed_mean_vec(v, cast(0.1, f32))
   add(add(add(add(add(mn, mx), rg), q), p), tm)
 }
-
 def smoke_svd_n(a3: tensor[3, 3, f32]) -> f32 = {
   svd_u = svd_n(copy(a3))
   svd_s = svd_n(copy(a3))
@@ -362,20 +291,16 @@ def smoke_svd_n(a3: tensor[3, 3, f32]) -> f32 = {
   u = svd_u.0
   sigma = svd_s.1
   vt = svd_vt.2
-  add(add(det_3x3(u), l2_norm_vec(sigma)), det_3x3(vt))
+  __borrow_migration_out_8 = add(add(det_3x3(u), l2_norm_vec(sigma)), det_3x3(vt))
+  _ = drop(u)
+  __borrow_migration_out_8
 }
-
-def smoke_lm_nparam(
-  xs: tensor[3, f32],
-  ys: tensor[3, f32],
-  th0: tensor[2, f32]
-) -> f32 = {
-  theta = lm_scalar_nparam(
-    fn (th: tensor[2, f32], xd: tensor[3, f32]) -> scale_vec(xd, l2_norm_vec(th)),
-    xs, ys, th0, cast(1.0e-4, f32), cast(5, int64))
-  l2_norm_vec(theta)
+def smoke_lm_nparam(xs: tensor[3, f32], ys: tensor[3, f32], th0: tensor[2, f32]) -> f32 = {
+  theta = lm_scalar_nparam(fn (th: &tensor[2, f32], xd: &tensor[3, f32]) -> scale_vec(xd, l2_norm_vec(th)), xs, ys, th0, cast(0.0001, f32), cast(5, int64))
+  __borrow_migration_out_4 = l2_norm_vec(theta)
+  _ = drop(theta)
+  __borrow_migration_out_4
 }
-
 def smoke_eig_n(a3: tensor[3, 3, f32]) -> f32 = {
   r_evals = eig_n(copy(a3))
   r_evecs = eig_n(a3)
@@ -383,26 +308,18 @@ def smoke_eig_n(a3: tensor[3, 3, f32]) -> f32 = {
   evecs = r_evecs.1
   add(l2_norm_vec(evals), frobenius_norm(evecs))
 }
-
 def smoke_ode_grid_f(y: tensor[1, f32], t: f32) -> tensor[1, f32] = neg(y)
-
-def smoke_ode_grid(
-  y0: tensor[1, f32],
-  t_out: tensor[4, f32]
-) -> f32 = {
-  grid = rk45_adaptive_solve_grid(
-    smoke_ode_grid_f,
-    cast(0.0, f32), y0, cast(2.0, f32),
-    cast(1.0e-6, f32), cast(1.0e-8, f32),
-    t_out)
-  frobenius_norm(grid)
+def smoke_ode_grid(y0: tensor[1, f32], t_out: tensor[4, f32]) -> f32 = {
+  grid = rk45_adaptive_solve_grid(smoke_ode_grid_f, cast(0.0, f32), y0, cast(2.0, f32), cast(0.000001, f32), cast(0.00000001, f32), t_out)
+  __borrow_migration_out_7 = frobenius_norm(grid)
+  _ = drop(grid)
+  __borrow_migration_out_7
 }
-
-def smoke_spline(
-  xs: tensor[5, f32],
-  ys: tensor[5, f32]
-) -> f32 = {
+def smoke_spline(xs: tensor[5, f32], ys: tensor[5, f32]) -> f32 = {
   v = spline_eval(copy(xs), copy(ys), cast(2.5, f32))
   m = spline_fit(xs, ys)
-  add(v, l2_norm_vec(m))
+  __borrow_migration_out_9 = add(v, l2_norm_vec(m))
+  _ = drop(v)
+  _ = drop(m)
+  __borrow_migration_out_9
 }

@@ -1,72 +1,45 @@
 module Nautilus.Roots
 export (bisection, newton, brent)
-
 def r_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def r_nan_f32() -> f32 = div(cast(0.0, f32), cast(0.0, f32))
-
-def bisection_rec(
-  f: f32 -> f32,
-  lo: f32,
-  hi: f32,
-  flo: f32,
-  tol: f32,
-  iters: int64
-) -> f32 = {
+def bisection_rec(f: f32 -> f32, lo: f32, hi: f32, flo: f32, tol: f32, iters: int64) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
-  if lte(iters, zero_i) then r_nan_f32()
-  else {
+  if lte(iters, zero_i) then r_nan_f32() else {
     width = sub(hi, lo)
-    if lt(width, tol) then mul(cast(0.5, f32), add(lo, hi))
-    else {
+    if lt(width, tol) then mul(cast(0.5, f32), add(lo, hi)) else {
       mid = mul(cast(0.5, f32), add(lo, hi))
       fmid = f(mid)
       afmid = r_abs_f32(fmid)
-      if lt(afmid, tol) then mid
-      else {
+      if lt(afmid, tol) then mid else {
         same_sign = gt(mul(flo, fmid), cast(0.0, f32))
-        if same_sign then bisection_rec(f, mid, hi, fmid, tol, sub(iters, one_i))
-        else bisection_rec(f, lo, mid, flo, tol, sub(iters, one_i))
+        if same_sign then bisection_rec(f, mid, hi, fmid, tol, sub(iters, one_i)) else bisection_rec(f, lo, mid, flo, tol, sub(iters, one_i))
       }
     }
   }
 }
-
 def bisection(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 = {
   flo = f(lo)
   aflo = r_abs_f32(flo)
-  if lt(aflo, tol) then lo
-  else {
+  if lt(aflo, tol) then lo else {
     fhi = f(hi)
     afhi = r_abs_f32(fhi)
-    if lt(afhi, tol) then hi
-    else {
+    if lt(afhi, tol) then hi else {
       prod = mul(flo, fhi)
-      if gt(prod, cast(0.0, f32)) then r_nan_f32()
-      else bisection_rec(f, lo, hi, flo, tol, max_iters)
+      if gt(prod, cast(0.0, f32)) then r_nan_f32() else bisection_rec(f, lo, hi, flo, tol, max_iters)
     }
   }
 }
-
-def newton_rec(
-  f: f32 -> f32,
-  df: f32 -> f32,
-  x: f32,
-  tol: f32,
-  iters: int64
-) -> f32 = {
+def newton_rec(f: f32 -> f32, df: f32 -> f32, x: f32, tol: f32, iters: int64) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
-  if lte(iters, zero_i) then r_nan_f32()
-  else {
+  if lte(iters, zero_i) then r_nan_f32() else {
     fx = f(x)
     afx = r_abs_f32(fx)
-    if lt(afx, tol) then x
-    else {
+    if lt(afx, tol) then x else {
       dfx = df(x)
       adfx = r_abs_f32(dfx)
-      if lt(adfx, cast(1.0e-30, f32)) then r_nan_f32()
-      else {
+      if lt(adfx, cast(0.000000000000000000000000000001, f32)) then r_nan_f32() else {
         step = div(fx, dfx)
         x_next = sub(x, step)
         newton_rec(f, df, x_next, tol, sub(iters, one_i))
@@ -74,33 +47,17 @@ def newton_rec(
     }
   }
 }
-
 def newton(f: f32 -> f32, df: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32 = {
   fx0 = f(x0)
   afx0 = r_abs_f32(fx0)
-  if lt(afx0, tol) then x0
-  else newton_rec(f, df, x0, tol, max_iters)
+  if lt(afx0, tol) then x0 else newton_rec(f, df, x0, tol, max_iters)
 }
-
-def brent_rec(
-  f: f32 -> f32,
-  a: f32,
-  b: f32,
-  c: f32,
-  d: f32,
-  fa: f32,
-  fb: f32,
-  fc: f32,
-  was_bisect: bool,
-  tol: f32,
-  iters: int64
-) -> f32 = {
+def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, fc: f32, was_bisect: bool, tol: f32, iters: int64) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
   zero_f = cast(0.0, f32)
   half = cast(0.5, f32)
-  if lte(iters, zero_i) then r_nan_f32()
-  else {
+  if lte(iters, zero_i) then r_nan_f32() else {
     afa = r_abs_f32(fa)
     afb = r_abs_f32(fb)
     swap = lt(afa, afb)
@@ -113,9 +70,7 @@ def brent_rec(
     width = sub(b1, a1)
     awidth = r_abs_f32(width)
     afb1 = r_abs_f32(fb1)
-    if lt(afb1, tol) then b1
-    else if lt(awidth, tol) then b1
-    else {
+    __borrow_migration_out_0 = if lt(afb1, tol) then b1 else if lt(awidth, tol) then b1 else {
       use_iqi = and(not(eq(fa1, fc1)), not(eq(fb1, fc1)))
       d_ab = sub(fa1, fb1)
       d_ac = sub(fa1, fc1)
@@ -155,23 +110,23 @@ def brent_rec(
       fa_new = if same_sign then fs else fa1
       b_new = if same_sign then b1 else s
       fb_new = if same_sign then fb1 else fs
-      brent_rec(f, a_new, b_new, c_new, d_new, fa_new, fb_new, fc_new, this_was_bisect, tol, sub(iters, one_i))
+      __borrow_migration_out_0 = brent_rec(f, a_new, b_new, c_new, d_new, fa_new, fb_new, fc_new, this_was_bisect, tol, sub(iters, one_i))
+      _ = drop(m)
+      __borrow_migration_out_0
     }
+    _ = drop(b1)
+    __borrow_migration_out_0
   }
 }
-
 def brent(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 = {
   flo = f(lo)
   aflo = r_abs_f32(flo)
-  if lt(aflo, tol) then lo
-  else {
+  if lt(aflo, tol) then lo else {
     fhi = f(hi)
     afhi = r_abs_f32(fhi)
-    if lt(afhi, tol) then hi
-    else {
+    if lt(afhi, tol) then hi else {
       prod = mul(flo, fhi)
-      if gt(prod, cast(0.0, f32)) then r_nan_f32()
-      else brent_rec(f, lo, hi, hi, lo, flo, fhi, fhi, true, tol, max_iters)
+      if gt(prod, cast(0.0, f32)) then r_nan_f32() else brent_rec(f, lo, hi, hi, lo, flo, fhi, fhi, true, tol, max_iters)
     }
   }
 }

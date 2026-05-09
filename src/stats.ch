@@ -1,21 +1,5 @@
 module Nautilus.Stats
-export (
-  mean_vec,
-  variance_vec,
-  std_vec,
-  skewness_vec,
-  kurtosis_vec,
-  median_vec,
-  covariance_scalar,
-  correlation_scalar,
-  min_vec,
-  max_vec,
-  range_vec,
-  quantile_vec,
-  percentile_vec,
-  trimmed_mean_vec
-)
-
+export (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec)
 def zero_f() -> f32 = cast(0.0, f32)
 def one_f() -> f32 = cast(1.0, f32)
 def two_f() -> f32 = cast(2.0, f32)
@@ -25,43 +9,45 @@ def neg_inf_f() -> f32 = div(cast(-1.0, f32), cast(0.0, f32))
 def zero_i() -> int64 = cast(0, int64)
 def one_i() -> int64 = cast(1, int64)
 def two_i() -> int64 = cast(2, int64)
-
-def mean_vec[n](v: tensor[n, f32]) -> f32 = {
+def mean_vec[n](v: &tensor[n, f32]) -> f32 = {
   n_i = numel(copy(v))
   n_f = cast(n_i, f32)
   s = fold(fn (acc: f32, x: f32) -> add(acc, x), zero_f(), to_list(v))
   div(s, n_f)
 }
-
-def variance_vec[n](v: tensor[n, f32], ddof: int64) -> f32 = {
+def variance_vec[n](v: &tensor[n, f32], ddof: int64) -> f32 = {
   n_i = numel(copy(v))
   n_f = cast(n_i, f32)
   mu = mean_vec(copy(v))
   ss = fold(fn (acc: f32, x: f32) -> {
     d = sub(x, mu)
-    add(acc, mul(d, d))
+    __borrow_migration_out_0 = add(acc, mul(d, d))
+    _ = drop(d)
+    __borrow_migration_out_0
   }, zero_f(), to_list(v))
   denom = sub(n_f, cast(ddof, f32))
   div(ss, denom)
 }
-
-def std_vec[n](v: tensor[n, f32], ddof: int64) -> f32 = {
+def std_vec[n](v: &tensor[n, f32], ddof: int64) -> f32 = {
   vr = variance_vec(v, ddof)
   sqrt(vr)
 }
-
-def skewness_vec[n](v: tensor[n, f32]) -> f32 = {
+def skewness_vec[n](v: &tensor[n, f32]) -> f32 = {
   n_i = numel(copy(v))
   n_f = cast(n_i, f32)
   mu = mean_vec(copy(v))
   ss = fold(fn (acc: f32, x: f32) -> {
     d = sub(x, mu)
-    add(acc, mul(d, d))
+    __borrow_migration_out_1 = add(acc, mul(d, d))
+    _ = drop(d)
+    __borrow_migration_out_1
   }, zero_f(), to_list(copy(v)))
   sc = fold(fn (acc: f32, x: f32) -> {
     d = sub(x, mu)
     d2 = mul(d, d)
-    add(acc, mul(d2, d))
+    __borrow_migration_out_2 = add(acc, mul(d2, d))
+    _ = drop(d)
+    __borrow_migration_out_2
   }, zero_f(), to_list(v))
   m2 = div(ss, n_f)
   m3 = div(sc, n_f)
@@ -69,19 +55,22 @@ def skewness_vec[n](v: tensor[n, f32]) -> f32 = {
   m2_15 = mul(m2, m2_sqrt)
   div(m3, m2_15)
 }
-
-def kurtosis_vec[n](v: tensor[n, f32]) -> f32 = {
+def kurtosis_vec[n](v: &tensor[n, f32]) -> f32 = {
   n_i = numel(copy(v))
   n_f = cast(n_i, f32)
   mu = mean_vec(copy(v))
   ss = fold(fn (acc: f32, x: f32) -> {
     d = sub(x, mu)
-    add(acc, mul(d, d))
+    __borrow_migration_out_3 = add(acc, mul(d, d))
+    _ = drop(d)
+    __borrow_migration_out_3
   }, zero_f(), to_list(copy(v)))
   sq = fold(fn (acc: f32, x: f32) -> {
     d = sub(x, mu)
     d2 = mul(d, d)
-    add(acc, mul(d2, d2))
+    __borrow_migration_out_4 = add(acc, mul(d2, d2))
+    _ = drop(d)
+    __borrow_migration_out_4
   }, zero_f(), to_list(v))
   m2 = div(ss, n_f)
   m4 = div(sq, n_f)
@@ -89,8 +78,7 @@ def kurtosis_vec[n](v: tensor[n, f32]) -> f32 = {
   ratio = div(m4, m2_sq)
   sub(ratio, three_f())
 }
-
-def median_vec[n](v: tensor[n, f32]) -> f32 = {
+def median_vec[n](v: &tensor[n, f32]) -> f32 = {
   n_i = numel(copy(v))
   sorted_pair = sort(v, zero_i())
   sorted_v = sorted_pair.0
@@ -105,14 +93,13 @@ def median_vec[n](v: tensor[n, f32]) -> f32 = {
     x = pair.1
     take_odd = and(is_odd, eq(i, half))
     take_even = and(not(is_odd), or(eq(i, lo_idx), eq(i, hi_idx)))
-    if take_odd then x
-    else if take_even then add(acc, x)
-    else acc
+    __borrow_migration_out_0 = if take_odd then x else if take_even then add(acc, x) else acc
+    _ = drop(x)
+    __borrow_migration_out_0
   }, zero_f(), enum_lst)
   if is_odd then picked else mul(cast(0.5, f32), picked)
 }
-
-def covariance_scalar[n](a: tensor[n, f32], b: tensor[n, f32], ddof: int64) -> f32 = {
+def covariance_scalar[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: int64) -> f32 = {
   n_i = numel(copy(a))
   n_f = cast(n_i, f32)
   mu_a = mean_vec(copy(a))
@@ -123,39 +110,36 @@ def covariance_scalar[n](a: tensor[n, f32], b: tensor[n, f32], ddof: int64) -> f
     y = pair.1
     da = sub(x, mu_a)
     db = sub(y, mu_b)
-    add(acc, mul(da, db))
+    __borrow_migration_out_1 = add(acc, mul(da, db))
+    _ = drop(x)
+    __borrow_migration_out_1
   }, zero_f(), zipped)
   denom = sub(n_f, cast(ddof, f32))
   div(ss, denom)
 }
-
-def correlation_scalar[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32 = {
+def correlation_scalar[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> f32 = {
   cov = covariance_scalar(copy(a), copy(b), zero_i())
   sa = std_vec(a, zero_i())
   sb = std_vec(b, zero_i())
   denom = mul(sa, sb)
   div(cov, denom)
 }
-
-def min_vec[n](v: tensor[n, f32]) -> f32 = {
+def min_vec[n](v: &tensor[n, f32]) -> f32 = {
   lst = to_list(v)
   big = pos_inf_f()
   fold(fn (acc: f32, x: f32) -> if lt(x, acc) then x else acc, big, lst)
 }
-
-def max_vec[n](v: tensor[n, f32]) -> f32 = {
+def max_vec[n](v: &tensor[n, f32]) -> f32 = {
   lst = to_list(v)
   small = neg_inf_f()
   fold(fn (acc: f32, x: f32) -> if gt(x, acc) then x else acc, small, lst)
 }
-
-def range_vec[n](v: tensor[n, f32]) -> f32 = {
+def range_vec[n](v: &tensor[n, f32]) -> f32 = {
   mx = max_vec(copy(v))
   mn = min_vec(v)
   sub(mx, mn)
 }
-
-def quantile_vec[n](v: tensor[n, f32], q: f32) -> f32 = {
+def quantile_vec[n](v: &tensor[n, f32], q: f32) -> f32 = {
   n_i = numel(copy(v))
   n_f = cast(n_i, f32)
   q_clamped = if lt(q, zero_f()) then zero_f() else if gt(q, one_f()) then one_f() else q
@@ -179,21 +163,20 @@ def quantile_vec[n](v: tensor[n, f32], q: f32) -> f32 = {
     take_hi = eq(i, hi_idx_clamped)
     lo_val = if take_lo then x else acc.0
     hi_val = if take_hi then x else acc.1
-    (lo_val, hi_val)
+    __borrow_migration_out_2 = (lo_val, hi_val)
+    _ = drop(x)
+    __borrow_migration_out_2
   }, (zero_f(), zero_f()), enum_lst)
   add(picked.0, mul(frac, sub(picked.1, picked.0)))
 }
-
-def percentile_vec[n](v: tensor[n, f32], p: f32) -> f32 = {
+def percentile_vec[n](v: &tensor[n, f32], p: f32) -> f32 = {
   q = div(p, cast(100.0, f32))
   quantile_vec(v, q)
 }
-
-def trimmed_mean_vec[n](v: tensor[n, f32], proportion: f32) -> f32 = {
+def trimmed_mean_vec[n](v: &tensor[n, f32], proportion: f32) -> f32 = {
   half = cast(0.5, f32)
   bad_prop = or(lt(proportion, zero_f()), gte(proportion, half))
-  if bad_prop then div(zero_f(), zero_f())
-  else {
+  if bad_prop then div(zero_f(), zero_f()) else {
     n_i = numel(copy(v))
     n_f = cast(n_i, f32)
     sorted_pair = sort(v, 0)
@@ -210,7 +193,9 @@ def trimmed_mean_vec[n](v: tensor[n, f32], proportion: f32) -> f32 = {
       within = and(gte(i, lo_bound), lt(i, hi_bound_excl))
       sum_next = if within then add(acc.0, x) else acc.0
       count_next = if within then add(acc.1, one_i()) else acc.1
-      (sum_next, count_next)
+      __borrow_migration_out_3 = (sum_next, count_next)
+      _ = drop(x)
+      __borrow_migration_out_3
     }, (zero_f(), zero_i()), enum_lst)
     count_f = cast(kept_sum_pair.1, f32)
     div(kept_sum_pair.0, count_f)
