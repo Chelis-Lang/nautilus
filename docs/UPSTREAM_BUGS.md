@@ -5,9 +5,31 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-> **Current pin: `chelis 0.5.0`.** Entries below are arranged newest
-> first; everything below the v0.5.0 entry is historical record from
+> **Current pin: `chelis 0.7.6`.** Entries below are arranged newest
+> first; everything below the v0.7.6 entry is historical record from
 > earlier toolchain pins.
+
+## v0.7.6 validation (2026-05-11)
+
+Pin bump plus testing cutover. `reef.toml` advanced to `chelis 0.7.6`
+and the native test CI gate now uses released Chelis binaries with
+`chelis test tests/ --jobs auto` instead of GitHub Actions sharding.
+
+**Nautilus impact: positive.** The release fixes the v0.7.4 compiled
+context lowering regression seen in `tests/curvefit.ch`; no source
+module changes were required.
+
+Validation captured at the time of pin:
+
+* `chelis reef build` — clean.
+* `chelis test tests/ --jobs auto` — **438 / 438** native tests pass
+  in **0:40.06**.
+* `chelis test tests/ --jobs 1` — **438 / 438** native tests pass
+  in **1:12.96**.
+* `parity/run_parity.py --strict` — **216 / 216** scipy-parity
+  samples pass.
+* Machine-readable timing record:
+  `docs/testing_cutover_0.7.6.json`.
 
 ## v0.5.0 validation (2026-05-05)
 

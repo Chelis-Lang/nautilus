@@ -29,17 +29,17 @@ adjoints. Automatic differentiation flows through tensor-op composition.
 ## Getting started
 
 Requires the latest validated Chelis release, currently
-[chelis 0.5.0](https://github.com/Chelis-Lang/chelis/releases/tag/v0.5.0).
+[chelis 0.7.6](https://github.com/Chelis-Lang/chelis/releases/tag/v0.7.6).
 
 ```sh
-gh release download v0.5.0 \
+gh release download v0.7.6 \
   --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.5.0-linux-x86_64.tar.gz'
-tar xzf chelis-v0.5.0-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.5.0-linux-x86_64/bin:$PATH"
+  --pattern 'chelis-v0.7.6-linux-x86_64.tar.gz'
+tar xzf chelis-v0.7.6-linux-x86_64.tar.gz
+export PATH="$PWD/chelis-v0.7.6-linux-x86_64/bin:$PATH"
 
 chelis reef build
-chelis test tests/                     # 438 native identity / structural tests
+chelis test tests/ --jobs auto         # 438 native identity / structural tests
 python parity/run_parity.py --strict   # 216 scipy-parity samples
 ```
 
@@ -51,7 +51,8 @@ under `tests_legacy/goldens/` are reused by both the legacy harness
 (scheduled nightly) and the parity script.
 
 ```sh
-chelis test tests/                          # 438 native identity / structural tests
+chelis test tests/ --jobs auto              # 438 native identity / structural tests
+chelis test tests/ --jobs 1                 # serial fallback for debugging
 python parity/run_parity.py --strict        # scipy oracle (216 samples)
 python scripts/gen_goldens.py --check       # verify checked-in goldens match scipy
 python scripts/extract_stability.py --check # SKILL.md stability column gate

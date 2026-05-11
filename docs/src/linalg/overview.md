@@ -36,9 +36,7 @@ import Nautilus.LinAlg (
 module Nautilus.BookLinAlgResidual
 import Nautilus.LinAlg (matvec, la_vec_sub, l2_norm_vec)
 export (residual_norm)
-
-def residual_norm[n](a: tensor[n, n, f32], x: tensor[n, f32],
-                     b: tensor[n, f32]) -> f32 = {
+def residual_norm[n](a: tensor[n, n, f32], x: tensor[n, f32], b: tensor[n, f32]) -> f32 = {
   ax = matvec(a, x)
   r = la_vec_sub(b, ax)
   l2_norm_vec(r)

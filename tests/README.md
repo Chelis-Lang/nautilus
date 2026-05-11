@@ -10,29 +10,34 @@ is a hard-rule violation (CI Guard 1).
 
 ## How CI runs these
 
-Each `tests/*.ch` file is its own GitHub Actions matrix entry — they run
-in parallel on separate runners. The matrix is generated dynamically
-from `find tests -name '*.ch'` at job time, so adding a new test file
-is reflected automatically. There is no hardcoded list to drift.
+CI runs the whole native suite on one runner:
 
-Wall-clock for the whole gate is `max(per-file-time) + ~40s setup`,
-typically **~90 seconds**.
+```sh
+chelis test tests/ --jobs auto
+```
+
+Use the serial fallback only for debugging order-dependent failures:
+
+```sh
+chelis test tests/ --jobs 1
+```
+
+The workflow downloads the released Chelis binary from GitHub Releases.
+It must not build Chelis from source.
 
 ---
 
 ## Why per-file overhead matters more than per-test count
 
-`chelis test` (v0.2.7) recompiles the dependency graph **per test
-function** and runs each in its own subprocess — there's no `--jobs`
-flag for in-process parallelism. But there's also a fixed ~30-35s
-file-level overhead that dominates over the per-test compile cost on
-all but the heaviest tests. A 102-test file (distributions.ch) runs in
-~41s; a 5-test file (linalg_factor.ch) runs in ~33s.
+`chelis test` supports node-local file parallelism via `--jobs auto`.
+There is still fixed compile/setup cost per file, so file count matters
+for runtime even though CI no longer shards files across separate
+runners.
 
 The practical consequence:
 
-> **Adding tests to an existing file is nearly free. Adding a new file
-> costs a fresh ~35s slot in the matrix.**
+> **Adding tests to an existing file is usually cheaper than adding a new
+> file.**
 
 When you have a new identity to assert, **prefer extending an existing
 test file** unless the imports / dependency surface are materially
@@ -67,14 +72,15 @@ already has 30 tests.
    `test_erf_odd_symmetry` (one setup, one failure mode: oddness
    broken).
 
-5. **Per-file overhead is fixed (~35s).** See the section above. Add
-   tests to existing files unless the import surface materially
-   changes (e.g., bringing in heavy LinAlg factorizations into a
-   currently-cheap file).
+5. **Per-file overhead still matters.** See the section above. Add tests
+   to existing files unless the import surface materially changes
+   (e.g., bringing in heavy LinAlg factorizations into a currently-cheap
+   file).
 
-6. **CI parallelizes at the file boundary.** Don't try to parallelize
-   within a file — `chelis test` won't. Don't structure tests assuming
-   serial execution either.
+6. **CI parallelizes locally at the file boundary.** Do not add custom
+   per-file shell loops or GitHub matrix sharding for speed. Use
+   `chelis test tests/ --jobs auto`; use `--jobs 1` only as a debugging
+   fallback. Don't structure tests assuming serial execution.
 
 7. **Legacy harness has a defined sunset.** `tests_legacy/` runs in
    the scheduled `nightly.yml` workflow as a dual-run safety net. It
@@ -138,21 +144,22 @@ already has 30 tests.
 ## Adding a new test file
 
 Only do this if the dependency surface is materially different from
-existing files. Costs ~35s of CI matrix time per file.
+existing files. Adds another node-local file slot to the native test
+suite.
 
 When you do:
 
 1. Create `tests/<name>.ch` with a `module Nautilus.Tests.<Name>`
    header.
-2. **No CI yaml change needed** — the matrix is generated from
-   `find tests -name '*.ch'`.
+2. **No CI yaml change needed** — CI runs `chelis test tests/ --jobs
+   auto`.
 3. **No README update needed** unless the new file represents a new
    testing pattern worth documenting in the "How to add a test"
    section above.
 
 ---
 
-## Runtime constraints (chelis 0.5.0)
+## Runtime constraints (chelis 0.7.6)
 
 The `chelis test` host runtime supports `matmul`, `permute`, and `sum`
 as of chelis v0.2.5. All `Nautilus.LinAlg` exports are testable
@@ -165,8 +172,8 @@ needed in tests/):
 - The chelis test parser requires `_ = assert_*(...)` for all but the
   last assert in a multi-assert block (see point 2 of "How to add a
   test").
-- `chelis test` recompiles per test function (no `--jobs`). Worked
-  around at the CI layer via per-file matrix parallelism.
+- `chelis test --jobs auto` is the default native-suite gate. Use
+  `--jobs 1` when debugging.
 - `assert_eq` is f32-strict. For int64 comparisons, use
   `assert_true(eq(x, y), "...")`.
 
@@ -183,5 +190,5 @@ will reject:
 - `scipy.foo(...)` / `numpy.linalg.solve(...)` / etc. in any `.ch` file
   (descriptive comments are fine — the grep matches dotted callable
   syntax, not bare-word mentions)
-- An empty `tests/` directory (the matrix generator would otherwise
-  produce zero entries and silently pass)
+- An empty `tests/` directory (the native suite would otherwise have no
+  tests to execute)
