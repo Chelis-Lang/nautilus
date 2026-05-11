@@ -405,7 +405,14 @@ def run_domain(name: str, imports: str, cases: list) -> tuple[int, int]:
         for s in samples:
             flat.append((label, snippet_fn(s), ref_fn(s), tol, s))
 
-    bindings = [f"result_{i} = {expr}" for i, (_, expr, _, _, _) in enumerate(flat)]
+    # `chelis eval` can render some scalar-valued expressions as zero-rank
+    # tensors, or omit them from multi-binding output. Adding scalar zero is a
+    # value-preserving way to force the result line into the numeric scalar
+    # form this harness parses.
+    bindings = [
+        f"result_{i} = add({expr}, cast(0.0, f32))"
+        for i, (_, expr, _, _, _) in enumerate(flat)
+    ]
     print(f"\n=== {name}: {len(bindings)} samples (one batched chelis eval) ===",
           flush=True)
 

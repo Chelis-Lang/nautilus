@@ -11,7 +11,6 @@ Create a file called `src/my_first.ch` in your project:
 module Nautilus.ExampleFirstProgram
 import Nautilus.Distributions (normal_cdf)
 export (main)
-
 def black_scholes_call(spot: f32, strike: f32, rate: f32, vol: f32, t_years: f32) -> f32 = {
   ln_ratio = log(div(spot, strike))
   half_vol_sq = mul(cast(0.5, f32), mul(vol, vol))
@@ -27,7 +26,6 @@ def black_scholes_call(spot: f32, strike: f32, rate: f32, vol: f32, t_years: f32
   discount = exp(neg_rt)
   sub(mul(spot, nd1), mul(mul(strike, discount), nd2))
 }
-
 def main() -> f32 = {
   spot = cast(100.0, f32)
   strike = cast(100.0, f32)

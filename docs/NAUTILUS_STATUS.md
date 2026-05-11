@@ -1,8 +1,8 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the validated `chelis 0.5.0` toolchain
-(Nautilus `0.5.0`).
+repository state on the validated `chelis 0.7.6` toolchain
+(Nautilus `0.7.6`).
 
 ## Scope
 
@@ -50,7 +50,8 @@ Clean `HEAD` is expected to pass these repo-local gates:
 
 ```sh
 chelis reef build
-chelis test tests/
+chelis test tests/ --jobs auto
+chelis test tests/ --jobs 1
 python parity/run_parity.py --strict
 python scripts/gen_goldens.py --check
 python scripts/extract_stability.py --check
@@ -61,15 +62,20 @@ mdbook build docs
 Expected results on a clean run:
 
 ```text
-chelis test tests/         -> 438 passed, 0 failed
-parity/run_parity.py       -> parity totals: 216 passed, 0 failed
+chelis test tests/ --jobs auto -> 438 passed, 0 failed
+chelis test tests/ --jobs 1    -> 438 passed, 0 failed
+parity/run_parity.py           -> parity totals: 216 passed, 0 failed
 ```
+
+The v0.7.6 node-local test timing record is
+`docs/testing_cutover_0.7.6.json`.
 
 What those gates cover:
 
 - `chelis reef build`: reef packaging and import surface
-- `chelis test tests/`: native identity / structural assertions across
-  `tests/*.ch`. This is the internal-correctness gate.
+- `chelis test tests/ --jobs auto`: native identity / structural
+  assertions across `tests/*.ch` with node-local parallelism. This is
+  the internal-correctness gate.
 - `parity/run_parity.py --strict`: scipy/numpy oracle for the
   Nautilus surface (special functions and distributions). External
   drift detector.
