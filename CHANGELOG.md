@@ -6,6 +6,21 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.7] — 2026-05-12
+
+Compiler-pin alignment release for chelis 0.7.7. No source changes —
+only the package version and the `compiler = "=0.7.6"` → `"=0.7.7"`
+pin bump, plus CI/release workflow env updates to track the new
+chelis tag. Required because chelis 0.7.7's reef validator rejects
+any package whose `package.compiler` field is not exactly `=0.7.7`.
+
+chelis 0.7.7 itself closes the implicit-copy fan-out gap (Item 1
+v2), the deep-user-symbol-charset CLOSED_TAGS gap (Item 3), the
+module-pascal-components ecosystem allowlist (Item 4), and the
+Linearity-F3 module-wrapped linearity skip. nautilus's existing
+source passes `chelis check` and `chelis lint --check src/` with
+zero error-severity findings under 0.7.7.
+
 ## [0.6.1] — 2026-05-06
 
 Compiler-pin alignment release. Tracks chelis 0.6.0 → 0.6.1
