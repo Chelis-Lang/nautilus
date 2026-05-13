@@ -21,9 +21,7 @@ def variance_vec[n](v: &tensor[n, f32], ddof: int64) -> f32 = {
   mu = mean_vec(copy(v))
   ss = fold(fn (acc: f32, x: f32) -> {
     d = sub(x, mu)
-    __borrow_migration_out_0 = add(acc, mul(d, d))
-    _ = drop(d)
-    __borrow_migration_out_0
+    add(acc, mul(d, d))
   }, zero_f(), to_list(v))
   denom = sub(n_f, cast(ddof, f32))
   div(ss, denom)
@@ -38,16 +36,12 @@ def skewness_vec[n](v: &tensor[n, f32]) -> f32 = {
   mu = mean_vec(copy(v))
   ss = fold(fn (acc: f32, x: f32) -> {
     d = sub(x, mu)
-    __borrow_migration_out_1 = add(acc, mul(d, d))
-    _ = drop(d)
-    __borrow_migration_out_1
+    add(acc, mul(d, d))
   }, zero_f(), to_list(copy(v)))
   sc = fold(fn (acc: f32, x: f32) -> {
     d = sub(x, mu)
     d2 = mul(d, d)
-    __borrow_migration_out_2 = add(acc, mul(d2, d))
-    _ = drop(d)
-    __borrow_migration_out_2
+    add(acc, mul(d2, d))
   }, zero_f(), to_list(v))
   m2 = div(ss, n_f)
   m3 = div(sc, n_f)
@@ -61,16 +55,12 @@ def kurtosis_vec[n](v: &tensor[n, f32]) -> f32 = {
   mu = mean_vec(copy(v))
   ss = fold(fn (acc: f32, x: f32) -> {
     d = sub(x, mu)
-    __borrow_migration_out_3 = add(acc, mul(d, d))
-    _ = drop(d)
-    __borrow_migration_out_3
+    add(acc, mul(d, d))
   }, zero_f(), to_list(copy(v)))
   sq = fold(fn (acc: f32, x: f32) -> {
     d = sub(x, mu)
     d2 = mul(d, d)
-    __borrow_migration_out_4 = add(acc, mul(d2, d2))
-    _ = drop(d)
-    __borrow_migration_out_4
+    add(acc, mul(d2, d2))
   }, zero_f(), to_list(v))
   m2 = div(ss, n_f)
   m4 = div(sq, n_f)
@@ -93,9 +83,7 @@ def median_vec[n](v: &tensor[n, f32]) -> f32 = {
     x = pair.1
     take_odd = and(is_odd, eq(i, half))
     take_even = and(not(is_odd), or(eq(i, lo_idx), eq(i, hi_idx)))
-    __borrow_migration_out_0 = if take_odd then x else if take_even then add(acc, x) else acc
-    _ = drop(x)
-    __borrow_migration_out_0
+    if take_odd then x else if take_even then add(acc, x) else acc
   }, zero_f(), enum_lst)
   if is_odd then picked else mul(cast(0.5, f32), picked)
 }
@@ -110,9 +98,7 @@ def covariance_scalar[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: int64) ->
     y = pair.1
     da = sub(x, mu_a)
     db = sub(y, mu_b)
-    __borrow_migration_out_1 = add(acc, mul(da, db))
-    _ = drop(x)
-    __borrow_migration_out_1
+    add(acc, mul(da, db))
   }, zero_f(), zipped)
   denom = sub(n_f, cast(ddof, f32))
   div(ss, denom)
@@ -163,9 +149,7 @@ def quantile_vec[n](v: &tensor[n, f32], q: f32) -> f32 = {
     take_hi = eq(i, hi_idx_clamped)
     lo_val = if take_lo then x else acc.0
     hi_val = if take_hi then x else acc.1
-    __borrow_migration_out_2 = (lo_val, hi_val)
-    _ = drop(x)
-    __borrow_migration_out_2
+    (lo_val, hi_val)
   }, (zero_f(), zero_f()), enum_lst)
   add(picked.0, mul(frac, sub(picked.1, picked.0)))
 }
@@ -193,9 +177,7 @@ def trimmed_mean_vec[n](v: &tensor[n, f32], proportion: f32) -> f32 = {
       within = and(gte(i, lo_bound), lt(i, hi_bound_excl))
       sum_next = if within then add(acc.0, x) else acc.0
       count_next = if within then add(acc.1, one_i()) else acc.1
-      __borrow_migration_out_3 = (sum_next, count_next)
-      _ = drop(x)
-      __borrow_migration_out_3
+      (sum_next, count_next)
     }, (zero_f(), zero_i()), enum_lst)
     count_f = cast(kept_sum_pair.1, f32)
     div(kept_sum_pair.0, count_f)

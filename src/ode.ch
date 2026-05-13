@@ -18,11 +18,13 @@ def euler_step(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32 = {
   add(y, mul(dt, k))
 }
 def euler_solve_rec(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32, k: int64) -> f32 = if lte(k, ode_zero_i()) then y else euler_solve_rec(f, euler_step(f, y, t, dt), add(t, dt), dt, sub(k, ode_one_i()))
-def euler_solve(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32 = { if lte(n_steps, cast(0, int64)) then div(cast(0.0, f32), cast(0.0, f32)) else {
-  n_f = cast(n_steps, f32)
-  dt = div(sub(t1, t0), n_f)
-  euler_solve_rec(f, y0, t0, dt, n_steps)
-} }
+def euler_solve(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32 = {
+  if lte(n_steps, cast(0, int64)) then div(cast(0.0, f32), cast(0.0, f32)) else {
+    n_f = cast(n_steps, f32)
+    dt = div(sub(t1, t0), n_f)
+    euler_solve_rec(f, y0, t0, dt, n_steps)
+  }
+}
 def rk4_step(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32 = {
   half_dt = mul(ode_half_f(), dt)
   t_mid = add(t, half_dt)
@@ -40,19 +42,16 @@ def rk4_step(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32 = {
   sum2 = add(two_k3, k4)
   sum_k = add(sum1, sum2)
   scale = div(dt, ode_six_f())
-  __borrow_migration_out_0 = add(y, mul(scale, sum_k))
-  _ = drop(k1)
-  _ = drop(k2)
-  _ = drop(k3)
-  _ = drop(k4)
-  __borrow_migration_out_0
+  add(y, mul(scale, sum_k))
 }
 def rk4_solve_rec(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32, k: int64) -> f32 = if lte(k, ode_zero_i()) then y else rk4_solve_rec(f, rk4_step(f, y, t, dt), add(t, dt), dt, sub(k, ode_one_i()))
-def rk4_solve(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32 = { if lte(n_steps, cast(0, int64)) then div(cast(0.0, f32), cast(0.0, f32)) else {
-  n_f = cast(n_steps, f32)
-  dt = div(sub(t1, t0), n_f)
-  rk4_solve_rec(f, y0, t0, dt, n_steps)
-} }
+def rk4_solve(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32 = {
+  if lte(n_steps, cast(0, int64)) then div(cast(0.0, f32), cast(0.0, f32)) else {
+    n_f = cast(n_steps, f32)
+    dt = div(sub(t1, t0), n_f)
+    rk4_solve_rec(f, y0, t0, dt, n_steps)
+  }
+}
 def rk45_dopri_step(f: f32 -> f32 -> f32, y: f32, t: f32, h: f32) -> (f32, f32) = {
   c2 = cast(0.2, f32)
   c3 = cast(0.3, f32)
@@ -99,17 +98,7 @@ def rk45_dopri_step(f: f32 -> f32 -> f32, y: f32, t: f32, h: f32) -> (f32, f32) 
   k7 = f(y_high, add(t, h))
   y_low = add(y, mul(h, add(add(add(add(add(mul(bs1, k1), mul(bs3, k3)), mul(bs4, k4)), mul(bs5, k5)), mul(bs6, k6)), mul(bs7, k7))))
   err = ode_abs_f(sub(y_high, y_low))
-  __borrow_migration_out_1 = (y_high, err)
-  _ = drop(b1)
-  _ = drop(k1)
-  _ = drop(k2)
-  _ = drop(k3)
-  _ = drop(k4)
-  _ = drop(k5)
-  _ = drop(k6)
-  _ = drop(k7)
-  _ = drop(y_low)
-  __borrow_migration_out_1
+  (y_high, err)
 }
 def rk45_next_step(h: f32, err_ratio: f32) -> f32 = {
   tiny = cast(0.00000001, f32)
@@ -121,26 +110,28 @@ def rk45_next_step(h: f32, err_ratio: f32) -> f32 = {
   factor = if lt(err_ratio, tiny) then grow_max else ode_clamp_f(raw, shrink_min, grow_max)
   mul(h, factor)
 }
-def rk45_adaptive_rec(f: f32 -> f32 -> f32, y: f32, t: f32, t_end: f32, h: f32, rtol: f32, atol: f32, steps_left: int64) -> f32 = { if lte(steps_left, ode_zero_i()) then y else {
-  remaining = sub(t_end, t)
-  abs_remaining = ode_abs_f(remaining)
-  tiny_h = cast(0.000001, f32)
-  if lt(abs_remaining, tiny_h) then rk4_step(f, y, t, remaining) else {
-    abs_h = ode_abs_f(h)
-    h_capped = if gt(abs_h, abs_remaining) then remaining else h
-    step = rk45_dopri_step(f, y, t, h_capped)
-    y_next = step.0
-    err = step.1
-    scale = add(atol, mul(rtol, ode_max_f(ode_abs_f(y), ode_abs_f(y_next))))
-    scale_safe = if lt(scale, cast(0.00000001, f32)) then cast(0.00000001, f32) else scale
-    err_ratio = div(err, scale_safe)
-    next_h = rk45_next_step(h_capped, err_ratio)
-    if lte(err_ratio, ode_one_f()) then {
-      t_next = add(t, h_capped)
-      if lt(ode_abs_f(sub(t_end, t_next)), tiny_h) then y_next else rk45_adaptive_rec(f, y_next, t_next, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()))
-    } else { rk45_adaptive_rec(f, y, t, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i())) }
+def rk45_adaptive_rec(f: f32 -> f32 -> f32, y: f32, t: f32, t_end: f32, h: f32, rtol: f32, atol: f32, steps_left: int64) -> f32 = {
+  if lte(steps_left, ode_zero_i()) then y else {
+    remaining = sub(t_end, t)
+    abs_remaining = ode_abs_f(remaining)
+    tiny_h = cast(0.000001, f32)
+    if lt(abs_remaining, tiny_h) then rk4_step(f, y, t, remaining) else {
+      abs_h = ode_abs_f(h)
+      h_capped = if gt(abs_h, abs_remaining) then remaining else h
+      step = rk45_dopri_step(f, y, t, h_capped)
+      y_next = step.0
+      err = step.1
+      scale = add(atol, mul(rtol, ode_max_f(ode_abs_f(y), ode_abs_f(y_next))))
+      scale_safe = if lt(scale, cast(0.00000001, f32)) then cast(0.00000001, f32) else scale
+      err_ratio = div(err, scale_safe)
+      next_h = rk45_next_step(h_capped, err_ratio)
+      if lte(err_ratio, ode_one_f()) then {
+        t_next = add(t, h_capped)
+        if lt(ode_abs_f(sub(t_end, t_next)), tiny_h) then y_next else rk45_adaptive_rec(f, y_next, t_next, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()))
+      } else { rk45_adaptive_rec(f, y, t, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i())) }
+    }
   }
-} }
+}
 def rk45_adaptive_solve(f: f32 -> f32 -> f32, y0: f32, t0: f32, t_end: f32, rtol: f32, atol: f32) -> f32 = {
   span = sub(t_end, t0)
   abs_span = ode_abs_f(span)
@@ -198,18 +189,7 @@ def rk45_dopri_step_vec_core[n](f: tensor[n, f32] -> f32 -> tensor[n, f32], y: t
   err_sq = inner_product(copy(err_vec), err_vec)
   n_f = cast(len(to_list(to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(y_high)))))), f32)
   err = if gt(n_f, cast(0.0, f32)) then sqrt(div(err_sq, n_f)) else cast(0.0, f32)
-  __borrow_migration_out_2 = (y_high, err)
-  _ = drop(b1)
-  _ = drop(k1)
-  _ = drop(k2)
-  _ = drop(k3)
-  _ = drop(k4)
-  _ = drop(k5)
-  _ = drop(k6)
-  _ = drop(k7)
-  _ = drop(y_low)
-  _ = drop(err_vec)
-  __borrow_migration_out_2
+  (y_high, err)
 }
 def rk45_dopri_step_dense[n](f: tensor[n, f32] -> f32 -> tensor[n, f32], y: tensor[n, f32], t: f32, h: f32) -> tensor[n, f32] = rk45_dopri_step_vec_core(f, y, t, h).0
 def rk45_dopri_step_dense_err[n](f: tensor[n, f32] -> f32 -> tensor[n, f32], y: tensor[n, f32], t: f32, h: f32) -> f32 = rk45_dopri_step_vec_core(f, y, t, h).1
@@ -224,31 +204,23 @@ def rk45_hermite_interp[n](y_n: tensor[n, f32], y_high: tensor[n, f32], k1: tens
   t2 = scale_vec(scale_vec(copy(k1), h), h10)
   t3 = scale_vec(copy(y_high), h01)
   t4 = scale_vec(scale_vec(copy(k7), h), h11)
-  __borrow_migration_out_0 = la_vec_add(la_vec_add(la_vec_add(t1, t2), t3), t4)
-  _ = drop(t1)
-  _ = drop(t2)
-  _ = drop(t3)
-  _ = drop(t4)
-  __borrow_migration_out_0
+  la_vec_add(la_vec_add(la_vec_add(t1, t2), t3), t4)
 }
-def rk45_grid_inner_rec[n, p](t_out: &tensor[p, f32], template_p: &tensor[p, f32], y_n: tensor[n, f32], y_high: tensor[n, f32], k1: tensor[n, f32], k7: tensor[n, f32], t_n: f32, h_accepted: f32, output: tensor[n, p, f32], j: int64, p_len: int64) -> tensor[n, p, f32] = { if gte(j, p_len) then output else {
-  t_j = inner_product(copy(t_out), la_basis_n_f32(j, cast(1.0, f32), copy(template_p)))
-  t_step_end = add(t_n, h_accepted)
-  in_window = if gt(t_j, t_n) then lte(t_j, t_step_end) else cast(0, bool)
-  new_output = if in_window then {
-    theta = div(sub(t_j, t_n), h_accepted)
-    y_interp = rk45_hermite_interp(copy(y_n), copy(y_high), copy(k1), copy(k7), h_accepted, theta)
-    col_basis = la_basis_n_f32(j, cast(1.0, f32), copy(template_p))
-    delta = einsum("i,j->ij", copy(y_interp), col_basis)
-    __borrow_migration_out_3 = add(copy(output), delta)
-    _ = drop(y_interp)
-    _ = drop(col_basis)
-    _ = drop(theta)
-    _ = drop(delta)
-    __borrow_migration_out_3
-  } else copy(output)
-  rk45_grid_inner_rec(t_out, template_p, copy(y_n), copy(y_high), copy(k1), copy(k7), t_n, h_accepted, new_output, add(j, cast(1, int64)), p_len)
-} }
+def rk45_grid_inner_rec[n, p](t_out: &tensor[p, f32], template_p: &tensor[p, f32], y_n: tensor[n, f32], y_high: tensor[n, f32], k1: tensor[n, f32], k7: tensor[n, f32], t_n: f32, h_accepted: f32, output: tensor[n, p, f32], j: int64, p_len: int64) -> tensor[n, p, f32] = {
+  if gte(j, p_len) then output else {
+    t_j = inner_product(copy(t_out), la_basis_n_f32(j, cast(1.0, f32), copy(template_p)))
+    t_step_end = add(t_n, h_accepted)
+    in_window = if gt(t_j, t_n) then lte(t_j, t_step_end) else cast(0, bool)
+    new_output = if in_window then {
+      theta = div(sub(t_j, t_n), h_accepted)
+      y_interp = rk45_hermite_interp(copy(y_n), copy(y_high), copy(k1), copy(k7), h_accepted, theta)
+      col_basis = la_basis_n_f32(j, cast(1.0, f32), copy(template_p))
+      delta = einsum("i,j->ij", copy(y_interp), col_basis)
+      add(copy(output), delta)
+    } else copy(output)
+    rk45_grid_inner_rec(t_out, template_p, copy(y_n), copy(y_high), copy(k1), copy(k7), t_n, h_accepted, new_output, add(j, cast(1, int64)), p_len)
+  }
+}
 def rk45_vec_next_step(h: f32, err_ratio: f32) -> f32 = {
   tiny = cast(0.00000001, f32)
   safety = cast(0.9, f32)
@@ -273,44 +245,40 @@ def rk45_vec_scale_err[n](y: tensor[n, f32], y_next: tensor[n, f32], rtol: f32, 
   n_f = cast(len(to_list(copy(y))), f32)
   if gt(n_f, cast(0.0, f32)) then sqrt(div(sum_sq, n_f)) else cast(1.0, f32)
 }
-def rk45_adaptive_grid_rec[n, p](f: tensor[n, f32] -> f32 -> tensor[n, f32], y: tensor[n, f32], t: f32, t_end: f32, h: f32, rtol: f32, atol: f32, steps_left: int64, output: tensor[n, p, f32], t_out: &tensor[p, f32], template_p: &tensor[p, f32]) -> tensor[n, p, f32] = { if lte(steps_left, ode_zero_i()) then output else {
-  remaining = sub(t_end, t)
-  abs_remaining = ode_abs_f(remaining)
-  tiny_h = cast(0.000001, f32)
-  p_len = cast(len(to_list(copy(template_p))), int64)
-  if lt(abs_remaining, tiny_h) then output else {
-    abs_h = ode_abs_f(h)
-    h_capped = if gt(abs_h, abs_remaining) then remaining else h
-    y_step = copy(y)
-    y_next = rk45_dopri_step_dense(f, copy(y_step), t, h_capped)
-    err = rk45_dopri_step_dense_err(f, copy(y_step), t, h_capped)
-    k1 = f(copy(y_step), t)
-    k7 = f(copy(y_next), add(t, h_capped))
-    scale_f = rk45_vec_scale_err(copy(y_step), copy(y_next), rtol, atol)
-    err_ratio = div(err, scale_f)
-    next_h = rk45_vec_next_step(h_capped, err_ratio)
-    __borrow_migration_out_4 = if lte(err_ratio, ode_one_f()) then {
-      t_next = add(t, h_capped)
-      t_start = sub(t_next, h_capped)
-      new_output = rk45_grid_inner_rec(t_out, template_p, y_step, copy(y_next), copy(k1), copy(k7), t_start, h_capped, copy(output), cast(0, int64), p_len)
-      if lt(ode_abs_f(sub(t_end, t_next)), tiny_h) then new_output else rk45_adaptive_grid_rec(f, y_next, t_next, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()), new_output, t_out, template_p)
-    } else { rk45_adaptive_grid_rec(f, copy(y_step), t, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()), copy(output), t_out, template_p) }
-    _ = drop(k1)
-    _ = drop(k7)
-    __borrow_migration_out_4
+def rk45_adaptive_grid_rec[n, p](f: tensor[n, f32] -> f32 -> tensor[n, f32], y: tensor[n, f32], t: f32, t_end: f32, h: f32, rtol: f32, atol: f32, steps_left: int64, output: tensor[n, p, f32], t_out: &tensor[p, f32], template_p: &tensor[p, f32]) -> tensor[n, p, f32] = {
+  if lte(steps_left, ode_zero_i()) then output else {
+    remaining = sub(t_end, t)
+    abs_remaining = ode_abs_f(remaining)
+    tiny_h = cast(0.000001, f32)
+    p_len = cast(len(to_list(copy(template_p))), int64)
+    if lt(abs_remaining, tiny_h) then output else {
+      abs_h = ode_abs_f(h)
+      h_capped = if gt(abs_h, abs_remaining) then remaining else h
+      y_step = copy(y)
+      y_next = rk45_dopri_step_dense(f, copy(y_step), t, h_capped)
+      err = rk45_dopri_step_dense_err(f, copy(y_step), t, h_capped)
+      k1 = f(copy(y_step), t)
+      k7 = f(copy(y_next), add(t, h_capped))
+      scale_f = rk45_vec_scale_err(copy(y_step), copy(y_next), rtol, atol)
+      err_ratio = div(err, scale_f)
+      next_h = rk45_vec_next_step(h_capped, err_ratio)
+      if lte(err_ratio, ode_one_f()) then {
+        t_next = add(t, h_capped)
+        t_start = sub(t_next, h_capped)
+        new_output = rk45_grid_inner_rec(t_out, template_p, y_step, copy(y_next), copy(k1), copy(k7), t_start, h_capped, copy(output), cast(0, int64), p_len)
+        if lt(ode_abs_f(sub(t_end, t_next)), tiny_h) then new_output else rk45_adaptive_grid_rec(f, y_next, t_next, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()), new_output, t_out, template_p)
+      } else { rk45_adaptive_grid_rec(f, copy(y_step), t, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()), copy(output), t_out, template_p) }
+    }
   }
-} }
+}
 def rk45_adaptive_solve_grid[n, p](f: tensor[n, f32] -> f32 -> tensor[n, f32], t0: f32, y0: tensor[n, f32], t_end: f32, rtol: f32, atol: f32, t_out: &tensor[p, f32]) -> tensor[n, p, f32] = {
   span = sub(t_end, t0)
   abs_span = ode_abs_f(span)
   template_p = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(t_out))))
   template_n = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(y0))))
   zero_output = einsum("i,j->ij", copy(template_n), copy(template_p))
-  __borrow_migration_out_5 = if eq(abs_span, ode_zero_f()) then zero_output else if or(lte(rtol, ode_zero_f()), lte(atol, ode_zero_f())) then zero_output else {
+  if eq(abs_span, ode_zero_f()) then zero_output else if or(lte(rtol, ode_zero_f()), lte(atol, ode_zero_f())) then zero_output else {
     h0 = mul(cast(0.1, f32), span)
     rk45_adaptive_grid_rec(f, copy(y0), t0, t_end, h0, rtol, atol, cast(4096, int64), zero_output, t_out, template_p)
   }
-  _ = drop(template_p)
-  _ = drop(template_n)
-  __borrow_migration_out_5
 }

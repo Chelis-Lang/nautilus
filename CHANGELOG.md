@@ -6,6 +6,42 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.8] — 2026-05-13
+
+Source cleanup pass against the chelis 0.7.7 toolchain pin. No
+behavioral change — `chelis reef build`, all 438 native tests, and
+all 216 scipy-parity samples remain green. The change set strips
+migration scaffolding that the chelis 0.7.6 → 0.7.7 bump made
+formally redundant:
+
+- **Drop strip:** 902 `_ = drop(<expr>)` statement lines removed
+  across `src/` and `tests/`. Under chelis 0.7.7 implicit linearity
+  the compiler inserts the corresponding IR drop node, so the source
+  call is redundant (flagged by `chelis lint --rule
+  redundant-linearity-call`). Drop statements have unit-typed RHS
+  and ignore the result, so removing them is type-preserving.
+- **Borrow-orphan collapse:** 462 `__borrow_migration_out_N = <expr>`
+  / `__borrow_migration_out_N` bind-then-reference pairs collapsed
+  to bare `<expr>`. With the drop statements gone these pairs were
+  pure scaffolding.
+- **Pipe-operator rewrites (conservative subset):** mechanical
+  `f(g(x), …)` → `g(x) |> f(…)` rewrites applied to 21 sites across
+  `src/{distance,integrate,testing}.ch` where every non-first
+  argument is a simple name/literal AND the rewrite survives a
+  whole-package `chelis reef build`. Sites in other modules were
+  attempted by the same rewriter and reverted because they failed
+  `reef build` cross-module type-check; lifting those to named
+  bindings is a separate refactor and left for follow-up. See
+  `docs/UPSTREAM_BUGS.md` for the reasoning.
+- **`chelis fmt --inplace`** on `src/{curvefit,distributions,integrate,
+  interpolation,linalg,ode}.ch`, which were not canonically formatted
+  under 0.7.7's stricter `fmt --check` gate.
+- **`copy()` calls retained as-is.** The `redundant-linearity-call`
+  rule also flags source-level `copy()` calls but the chelis 0.7.7
+  compiler does not auto-insert the borrow→owned conversion they
+  perform; stripping them breaks the type-check. Documented as an
+  upstream issue.
+
 ## [0.7.7] — 2026-05-12
 
 Compiler-pin alignment release for chelis 0.7.7. No source changes —

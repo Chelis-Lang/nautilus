@@ -22,7 +22,7 @@ def erf(x: f32) -> f32 = {
   one = cast(1.0, f32)
   ax = abs_f32(x)
   small = cast(0.00001, f32)
-  __borrow_migration_out_0 = if lt(ax, small) then {
+  if lt(ax, small) then {
     two_over_sqrt_pi = cast(1.1283791670955126, f32)
     mul(x, two_over_sqrt_pi)
   } else {
@@ -34,9 +34,6 @@ def erf(x: f32) -> f32 = {
     y = sub(one, mul(poly, e))
     if lt(x, cast(0.0, f32)) then neg(y) else y
   }
-  _ = drop(a2)
-  _ = drop(a3)
-  __borrow_migration_out_0
 }
 def erfc(x: f32) -> f32 = sub(cast(1.0, f32), erf(x))
 def lanczos_sum(x: f32) -> f32 = {
@@ -58,12 +55,7 @@ def lanczos_sum(x: f32) -> f32 = {
   t6 = div(c6, add(x, cast(6.0, f32)))
   t7 = div(c7, add(x, cast(7.0, f32)))
   t8 = div(c8, add(x, cast(8.0, f32)))
-  __borrow_migration_out_0 = add(add(add(add(add(add(add(add(c0, t1), t2), t3), t4), t5), t6), t7), t8)
-  _ = drop(t1)
-  _ = drop(t2)
-  _ = drop(t3)
-  _ = drop(t4)
-  __borrow_migration_out_0
+  add(add(add(add(add(add(add(add(c0, t1), t2), t3), t4), t5), t6), t7), t8)
 }
 def log_gamma_core(x: f32) -> f32 = {
   half = cast(0.5, f32)
@@ -138,11 +130,7 @@ def acklam_central(q: f32) -> f32 = {
   r = mul(u, u)
   num = mul(add(mul(r, add(mul(r, add(mul(r, add(mul(r, add(mul(r, a1), a2)), a3)), a4)), a5)), a6), u)
   den = add(mul(r, add(mul(r, add(mul(r, add(mul(r, add(mul(r, b1), b2)), b3)), b4)), b5)), one)
-  __borrow_migration_out_1 = div(num, den)
-  _ = drop(a2)
-  _ = drop(b1)
-  _ = drop(a3)
-  __borrow_migration_out_1
+  div(num, den)
 }
 def acklam_tail(u: f32) -> f32 = {
   c1 = cast(-0.007784894002430293, f32)
@@ -216,12 +204,7 @@ def trigamma_asymptotic(x: f32) -> f32 = {
   t3 = mul(c3, inv_x3)
   t4 = mul(c5, inv_x5)
   t5 = mul(c7, inv_x7)
-  __borrow_migration_out_1 = add(sub(add(add(t1, t2), t3), t4), t5)
-  _ = drop(t1)
-  _ = drop(t2)
-  _ = drop(t3)
-  _ = drop(t4)
-  __borrow_migration_out_1
+  add(sub(add(add(t1, t2), t3), t4), t5)
 }
 def trigamma_rec(x: f32, acc: f32) -> f32 = {
   six = cast(6.0, f32)
@@ -246,10 +229,7 @@ def bessel_i0_small(ax: f32) -> f32 = {
   a4 = cast(0.2659732, f32)
   a5 = cast(0.0360768, f32)
   a6 = cast(0.0045813, f32)
-  __borrow_migration_out_2 = add(a0, mul(y, add(a1, mul(y, add(a2, mul(y, add(a3, mul(y, add(a4, mul(y, add(a5, mul(y, a6))))))))))))
-  _ = drop(a2)
-  _ = drop(a3)
-  __borrow_migration_out_2
+  add(a0, mul(y, add(a1, mul(y, add(a2, mul(y, add(a3, mul(y, add(a4, mul(y, add(a5, mul(y, a6))))))))))))
 }
 def bessel_i0_large(ax: f32) -> f32 = {
   t = div(cast(3.75, f32), ax)
@@ -265,10 +245,7 @@ def bessel_i0_large(ax: f32) -> f32 = {
   poly = add(a0, mul(t, add(a1, mul(t, add(a2, mul(t, add(a3, mul(t, add(a4, mul(t, add(a5, mul(t, add(a6, mul(t, add(a7, mul(t, a8))))))))))))))))
   e = exp(ax)
   s = sqrt(ax)
-  __borrow_migration_out_3 = div(mul(e, poly), s)
-  _ = drop(a2)
-  _ = drop(a3)
-  __borrow_migration_out_3
+  div(mul(e, poly), s)
 }
 def bessel_i0(x: f32) -> f32 = {
   ax = abs_f32(x)
@@ -285,10 +262,7 @@ def bessel_i1_small(ax: f32) -> f32 = {
   a5 = cast(0.00301532, f32)
   a6 = cast(0.00032411, f32)
   poly = add(a0, mul(y, add(a1, mul(y, add(a2, mul(y, add(a3, mul(y, add(a4, mul(y, add(a5, mul(y, a6))))))))))))
-  __borrow_migration_out_4 = mul(ax, poly)
-  _ = drop(a2)
-  _ = drop(a3)
-  __borrow_migration_out_4
+  mul(ax, poly)
 }
 def bessel_i1_large(ax: f32) -> f32 = {
   t = div(cast(3.75, f32), ax)
@@ -304,10 +278,7 @@ def bessel_i1_large(ax: f32) -> f32 = {
   poly = add(a0, mul(t, add(a1, mul(t, add(a2, mul(t, add(a3, mul(t, add(a4, mul(t, add(a5, mul(t, add(a6, mul(t, add(a7, mul(t, a8))))))))))))))))
   e = exp(ax)
   s = sqrt(ax)
-  __borrow_migration_out_5 = div(mul(e, poly), s)
-  _ = drop(a2)
-  _ = drop(a3)
-  __borrow_migration_out_5
+  div(mul(e, poly), s)
 }
 def bessel_i1(x: f32) -> f32 = {
   ax = abs_f32(x)
@@ -327,10 +298,7 @@ def bessel_k0_small(x: f32) -> f32 = {
   poly = add(a0, mul(y, add(a1, mul(y, add(a2, mul(y, add(a3, mul(y, add(a4, mul(y, add(a5, mul(y, a6))))))))))))
   lhx = log(half_x)
   i0 = bessel_i0(x)
-  __borrow_migration_out_6 = sub(poly, mul(lhx, i0))
-  _ = drop(a2)
-  _ = drop(a3)
-  __borrow_migration_out_6
+  sub(poly, mul(lhx, i0))
 }
 def bessel_k0_large(x: f32) -> f32 = {
   t = div(cast(2.0, f32), x)
@@ -345,10 +313,7 @@ def bessel_k0_large(x: f32) -> f32 = {
   nx = neg(x)
   e = exp(nx)
   s = sqrt(x)
-  __borrow_migration_out_7 = div(mul(e, poly), s)
-  _ = drop(a2)
-  _ = drop(a3)
-  __borrow_migration_out_7
+  div(mul(e, poly), s)
 }
 def bessel_k0(x: f32) -> f32 = {
   zero = cast(0.0, f32)
@@ -368,10 +333,7 @@ def bessel_k1_small(x: f32) -> f32 = {
   lhx = log(half_x)
   i1 = bessel_i1(x)
   inv_x = div(cast(1.0, f32), x)
-  __borrow_migration_out_8 = add(mul(lhx, i1), mul(inv_x, poly))
-  _ = drop(a2)
-  _ = drop(a3)
-  __borrow_migration_out_8
+  add(mul(lhx, i1), mul(inv_x, poly))
 }
 def bessel_k1_large(x: f32) -> f32 = {
   t = div(cast(2.0, f32), x)
@@ -386,10 +348,7 @@ def bessel_k1_large(x: f32) -> f32 = {
   nx = neg(x)
   e = exp(nx)
   s = sqrt(x)
-  __borrow_migration_out_9 = div(mul(e, poly), s)
-  _ = drop(a2)
-  _ = drop(a3)
-  __borrow_migration_out_9
+  div(mul(e, poly), s)
 }
 def bessel_k1(x: f32) -> f32 = {
   zero = cast(0.0, f32)
@@ -610,9 +569,7 @@ def airy_f_rec(x3: f32, term: f32, acc: f32, k: f32, iters: int64) -> f32 = {
     scale = if gt(abs_acc, floor) then abs_acc else floor
     tol = cast(0.00000001, f32)
     converged = lt(abs_term, mul(tol, scale))
-    __borrow_migration_out_10 = if converged then acc_next else airy_f_rec(x3, term_next, acc_next, add(k, one_f), sub(iters, one_i))
-    _ = drop(k3)
-    __borrow_migration_out_10
+    if converged then acc_next else airy_f_rec(x3, term_next, acc_next, add(k, one_f), sub(iters, one_i))
   }
 }
 def airy_g_rec(x3: f32, term: f32, acc: f32, k: f32, iters: int64) -> f32 = {
@@ -631,9 +588,7 @@ def airy_g_rec(x3: f32, term: f32, acc: f32, k: f32, iters: int64) -> f32 = {
     scale = if gt(abs_acc, floor) then abs_acc else floor
     tol = cast(0.00000001, f32)
     converged = lt(abs_term, mul(tol, scale))
-    __borrow_migration_out_11 = if converged then acc_next else airy_g_rec(x3, term_next, acc_next, add(k, one_f), sub(iters, one_i))
-    _ = drop(k3)
-    __borrow_migration_out_11
+    if converged then acc_next else airy_g_rec(x3, term_next, acc_next, add(k, one_f), sub(iters, one_i))
   }
 }
 def airy_fg(x: f32) -> f32 = {
@@ -725,9 +680,7 @@ def ellipk(m: f32) -> f32 = {
     om = sub(one, m)
     b0 = sqrt(om)
     a_inf = ellip_agm_a_rec(one, b0, cast(50, int64))
-    __borrow_migration_out_12 = div(half_pi, a_inf)
-    _ = drop(b0)
-    __borrow_migration_out_12
+    div(half_pi, a_inf)
   }
 }
 def ellipe(m: f32) -> f32 = {
@@ -743,8 +696,6 @@ def ellipe(m: f32) -> f32 = {
     a_inf = ellip_agm_a_rec(one, b0, cast(50, int64))
     c_sum = ellip_agm_csum_rec(one, b0, init_sum, cast(0.5, f32), cast(50, int64))
     k = div(half_pi, a_inf)
-    __borrow_migration_out_13 = mul(k, sub(one, c_sum))
-    _ = drop(b0)
-    __borrow_migration_out_13
+    mul(k, sub(one, c_sum))
   }
 }

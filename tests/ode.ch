@@ -12,18 +12,12 @@ def harmonic_rhs(y: tensor[2, f32], t: f32) -> tensor[2, f32] = {
   e1 = la_basis_n_f32(cast(1, int64), cast(1.0, f32), copy(template))
   y0 = inner_product(copy(y), e0)
   y1 = inner_product(y, e1)
-  __borrow_migration_out_0 = to_tensor([y1, neg(y0)])
-  _ = drop(template)
-  _ = drop(e1)
-  _ = drop(e0)
-  __borrow_migration_out_0
+  to_tensor([y1, neg(y0)])
 }
 def first_of_1(v: &tensor[1, f32]) -> f32 = inner_product(v, to_tensor([cast(1.0, f32)]))
 def grid_col[n, p](g: &tensor[n, p, f32], template_p: &tensor[p, f32], j: int64) -> tensor[n, f32] = {
   basis = la_basis_n_f32(j, cast(1.0, f32), template_p)
-  __borrow_migration_out_7 = einsum("ij,j->i", g, basis)
-  _ = drop(basis)
-  __borrow_migration_out_7
+  einsum("ij,j->i", g, basis)
 }
 def test_decay_at_zero() -> unit ! { Test } = {
   result = rk45_adaptive_solve(decay_rhs, cast(1.0, f32), cast(0.0, f32), cast(0.0, f32), cast(0.000001, f32), cast(0.00000001, f32))
@@ -48,23 +42,17 @@ def test_decay_rk4_at_t1() -> unit ! { Test } = {
 def test_zero_rhs_preserves_initial_euler() -> unit ! { Test } = {
   c = cast(2.5, f32)
   result = euler_solve(zero_rhs, c, cast(0.0, f32), cast(3.0, f32), cast(50, int64))
-  __borrow_migration_out_1 = assert_close(result, c, cast(0.000001, f32), "y' = 0 preserves initial value (euler)")
-  _ = drop(c)
-  __borrow_migration_out_1
+  assert_close(result, c, cast(0.000001, f32), "y' = 0 preserves initial value (euler)")
 }
 def test_zero_rhs_preserves_initial_rk4() -> unit ! { Test } = {
   c = cast(7.25, f32)
   result = rk4_solve(zero_rhs, c, cast(0.0, f32), cast(4.0, f32), cast(20, int64))
-  __borrow_migration_out_2 = assert_close(result, c, cast(0.000001, f32), "y' = 0 preserves initial value (rk4)")
-  _ = drop(c)
-  __borrow_migration_out_2
+  assert_close(result, c, cast(0.000001, f32), "y' = 0 preserves initial value (rk4)")
 }
 def test_zero_rhs_preserves_initial_rk45() -> unit ! { Test } = {
   c = cast(-1.5, f32)
   result = rk45_adaptive_solve(zero_rhs, c, cast(0.0, f32), cast(2.0, f32), cast(0.000001, f32), cast(0.00000001, f32))
-  __borrow_migration_out_3 = assert_close(result, c, cast(0.000001, f32), "y' = 0 preserves initial value (rk45)")
-  _ = drop(c)
-  __borrow_migration_out_3
+  assert_close(result, c, cast(0.000001, f32), "y' = 0 preserves initial value (rk45)")
 }
 def test_linear_growth_t1_rk4() -> unit ! { Test } = {
   result = rk4_solve(unit_rhs, cast(0.0, f32), cast(0.0, f32), cast(1.0, f32), cast(10, int64))
@@ -89,13 +77,7 @@ def test_harmonic_at_zero() -> unit ! { Test } = {
   grid = rk45_adaptive_solve_grid(harmonic_rhs, cast(0.0, f32), y0, cast(0.001, f32), cast(0.000001, f32), cast(0.00000001, f32), to_tensor([cast(0.001, f32)]))
   col = grid_col(grid, to_tensor([cast(0.0, f32)]), cast(0, int64))
   expected = to_tensor([cast(1.0, f32), cast(-0.001, f32)])
-  __borrow_migration_out_4 = assert_close_tensor(col, expected, cast(0.001, f32), "harmonic y(0.001) ~ [1, -0.001]")
-  _ = drop(template_p)
-  _ = drop(col)
-  _ = drop(t_out)
-  _ = drop(grid)
-  _ = drop(expected)
-  __borrow_migration_out_4
+  assert_close_tensor(col, expected, cast(0.001, f32), "harmonic y(0.001) ~ [1, -0.001]")
 }
 def test_harmonic_quarter_period() -> unit ! { Test } = {
   y0 = to_tensor([cast(1.0, f32), cast(0.0, f32)])
@@ -103,11 +85,7 @@ def test_harmonic_quarter_period() -> unit ! { Test } = {
   grid = rk45_adaptive_solve_grid(harmonic_rhs, cast(0.0, f32), y0, t_end, cast(0.0000001, f32), cast(0.000000001, f32), to_tensor([t_end]))
   col = grid_col(grid, to_tensor([cast(0.0, f32)]), cast(0, int64))
   expected = to_tensor([cast(0.0, f32), cast(-1.0, f32)])
-  __borrow_migration_out_0 = assert_close_tensor(col, expected, cast(0.001, f32), "harmonic y(pi/2) = [0, -1]")
-  _ = drop(col)
-  _ = drop(grid)
-  _ = drop(expected)
-  __borrow_migration_out_0
+  assert_close_tensor(col, expected, cast(0.001, f32), "harmonic y(pi/2) = [0, -1]")
 }
 def test_harmonic_half_period() -> unit ! { Test } = {
   y0 = to_tensor([cast(1.0, f32), cast(0.0, f32)])
@@ -115,11 +93,7 @@ def test_harmonic_half_period() -> unit ! { Test } = {
   grid = rk45_adaptive_solve_grid(harmonic_rhs, cast(0.0, f32), y0, t_end, cast(0.0000001, f32), cast(0.000000001, f32), to_tensor([t_end]))
   col = grid_col(grid, to_tensor([cast(0.0, f32)]), cast(0, int64))
   expected = to_tensor([cast(-1.0, f32), cast(0.0, f32)])
-  __borrow_migration_out_1 = assert_close_tensor(col, expected, cast(0.001, f32), "harmonic y(pi) = [-1, 0]")
-  _ = drop(col)
-  _ = drop(grid)
-  _ = drop(expected)
-  __borrow_migration_out_1
+  assert_close_tensor(col, expected, cast(0.001, f32), "harmonic y(pi) = [-1, 0]")
 }
 def test_harmonic_full_period() -> unit ! { Test } = {
   y0 = to_tensor([cast(1.0, f32), cast(0.0, f32)])
@@ -127,11 +101,7 @@ def test_harmonic_full_period() -> unit ! { Test } = {
   grid = rk45_adaptive_solve_grid(harmonic_rhs, cast(0.0, f32), y0, t_end, cast(0.0000001, f32), cast(0.000000001, f32), to_tensor([t_end]))
   col = grid_col(grid, to_tensor([cast(0.0, f32)]), cast(0, int64))
   expected = to_tensor([cast(1.0, f32), cast(0.0, f32)])
-  __borrow_migration_out_2 = assert_close_tensor(col, expected, cast(0.005, f32), "harmonic y(2*pi) = [1, 0] (full period)")
-  _ = drop(col)
-  _ = drop(grid)
-  _ = drop(expected)
-  __borrow_migration_out_2
+  assert_close_tensor(col, expected, cast(0.005, f32), "harmonic y(2*pi) = [1, 0] (full period)")
 }
 def test_grid_decay_at_t1() -> unit ! { Test } = {
   y0 = to_tensor([cast(1.0, f32)])
@@ -139,12 +109,7 @@ def test_grid_decay_at_t1() -> unit ! { Test } = {
   grid = rk45_adaptive_solve_grid(decay_rhs_vec, cast(0.0, f32), y0, cast(1.0, f32), cast(0.0000001, f32), cast(0.000000001, f32), t_out)
   col = grid_col(grid, to_tensor([cast(0.0, f32)]), cast(0, int64))
   expected = to_tensor([cast(0.3678794, f32)])
-  __borrow_migration_out_3 = assert_close_tensor(col, expected, cast(0.0001, f32), "grid decay y(1) = 1/e")
-  _ = drop(col)
-  _ = drop(t_out)
-  _ = drop(grid)
-  _ = drop(expected)
-  __borrow_migration_out_3
+  assert_close_tensor(col, expected, cast(0.0001, f32), "grid decay y(1) = 1/e")
 }
 def test_grid_decay_at_t2() -> unit ! { Test } = {
   y0 = to_tensor([cast(1.0, f32)])
@@ -152,12 +117,7 @@ def test_grid_decay_at_t2() -> unit ! { Test } = {
   grid = rk45_adaptive_solve_grid(decay_rhs_vec, cast(0.0, f32), y0, cast(2.0, f32), cast(0.0000001, f32), cast(0.000000001, f32), t_out)
   col = grid_col(grid, to_tensor([cast(0.0, f32)]), cast(0, int64))
   expected = to_tensor([cast(0.1353352, f32)])
-  __borrow_migration_out_4 = assert_close_tensor(col, expected, cast(0.0001, f32), "grid decay y(2) = e^{-2}")
-  _ = drop(col)
-  _ = drop(t_out)
-  _ = drop(grid)
-  _ = drop(expected)
-  __borrow_migration_out_4
+  assert_close_tensor(col, expected, cast(0.0001, f32), "grid decay y(2) = e^{-2}")
 }
 def test_grid_matches_scalar_decay() -> unit ! { Test } = {
   scalar_result = rk45_adaptive_solve(decay_rhs, cast(1.0, f32), cast(0.0, f32), cast(2.0, f32), cast(0.0000001, f32), cast(0.000000001, f32))
@@ -166,11 +126,7 @@ def test_grid_matches_scalar_decay() -> unit ! { Test } = {
   grid = rk45_adaptive_solve_grid(decay_rhs_vec, cast(0.0, f32), y0, cast(2.0, f32), cast(0.0000001, f32), cast(0.000000001, f32), t_out)
   col = grid_col(grid, to_tensor([cast(0.0, f32)]), cast(0, int64))
   grid_result = first_of_1(col)
-  __borrow_migration_out_5 = assert_close(grid_result, scalar_result, cast(0.001, f32), "grid decay last value matches scalar rk45")
-  _ = drop(col)
-  _ = drop(t_out)
-  _ = drop(grid)
-  __borrow_migration_out_5
+  assert_close(grid_result, scalar_result, cast(0.001, f32), "grid decay last value matches scalar rk45")
 }
 def test_euler_convergence_n100_bounded() -> unit ! { Test } = {
   exact = cast(0.3678794, f32)
@@ -210,7 +166,5 @@ def test_step_consistency_rk4_vs_euler_small_h() -> unit ! { Test } = {
   y_r = rk4_step(decay_rhs, y, t, h)
   diff = sub(y_r, y_e)
   abs_diff = if lt(diff, cast(0.0, f32)) then neg(diff) else diff
-  __borrow_migration_out_6 = assert_true(lt(abs_diff, cast(0.00001, f32)), "rk4_step - euler_step is O(h^2) for small h")
-  _ = drop(diff)
-  __borrow_migration_out_6
+  assert_true(lt(abs_diff, cast(0.00001, f32)), "rk4_step - euler_step is O(h^2) for small h")
 }

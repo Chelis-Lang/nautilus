@@ -17,9 +17,7 @@ def euler_maruyama_fixed[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, y0: f32,
       diff = mul(gy, mul(sqrt_dt, z))
       y_next = add(y, add(drift, diff))
       t_next = add(t, dt)
-      __borrow_migration_out_0 = (y_next, t_next)
-      _ = drop(diff)
-      __borrow_migration_out_0
+      (y_next, t_next)
     }, (y0, t0), to_list(noise))
     final_state.0
   }
@@ -45,9 +43,7 @@ def milstein_fixed[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, dg_dy: f32 -> 
       correction = mul(half, mul(gy, mul(dgy, correction_term)))
       y_next = add(y, add(add(drift, diff), correction))
       t_next = add(t, dt)
-      __borrow_migration_out_1 = (y_next, t_next)
-      _ = drop(diff)
-      __borrow_migration_out_1
+      (y_next, t_next)
     }, (y0, t0), to_list(noise))
     final_state.0
   }

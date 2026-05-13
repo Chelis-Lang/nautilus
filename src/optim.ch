@@ -16,10 +16,7 @@ def opt_gs_rec(f: f32 -> f32, a: f32, b: f32, tol: f32, iters: int64) -> f32 = {
       d = add(a, gap)
       fc = f(c)
       fd = f(d)
-      __borrow_migration_out_0 = if lt(fc, fd) then opt_gs_rec(f, a, d, tol, sub(iters, one_i)) else opt_gs_rec(f, c, b, tol, sub(iters, one_i))
-      _ = drop(c)
-      _ = drop(d)
-      __borrow_migration_out_0
+      if lt(fc, fd) then opt_gs_rec(f, a, d, tol, sub(iters, one_i)) else opt_gs_rec(f, c, b, tol, sub(iters, one_i))
     }
   }
 }
@@ -42,7 +39,7 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
         d = add(a, gap)
         fc = f(c)
         fd = f(d)
-        __borrow_migration_out_1 = if lt(fc, fd) then {
+        if lt(fc, fd) then {
           new_fu = if lt(fc, fu) then fc else fu
           new_u = if lt(fc, fu) then c else u
           opt_brent_rec(f, a, d, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -51,9 +48,6 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
           new_u = if lt(fd, fu) then d else u
           opt_brent_rec(f, c, b, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
         }
-        _ = drop(c)
-        _ = drop(d)
-        __borrow_migration_out_1
       } else {
         d1 = sub(v, u)
         d2 = sub(w, u)
@@ -74,7 +68,7 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
           d = add(a, gap)
           fc = f(c)
           fd = f(d)
-          __borrow_migration_out_2 = if lt(fc, fd) then {
+          if lt(fc, fd) then {
             new_fu = if lt(fc, fu) then fc else fu
             new_u = if lt(fc, fu) then c else u
             opt_brent_rec(f, a, d, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -83,9 +77,6 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
             new_u = if lt(fd, fu) then d else u
             opt_brent_rec(f, c, b, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
           }
-          _ = drop(c)
-          _ = drop(d)
-          __borrow_migration_out_2
         } else {
           half = cast(0.5, f32)
           offset = mul(half, div(num, den))
@@ -109,7 +100,7 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
             d = add(a, gap)
             fc = f(c)
             fd = f(d)
-            __borrow_migration_out_3 = if lt(fc, fd) then {
+            if lt(fc, fd) then {
               new_fu = if lt(fc, fu) then fc else fu
               new_u = if lt(fc, fu) then c else u
               opt_brent_rec(f, a, d, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -118,9 +109,6 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
               new_u = if lt(fd, fu) then d else u
               opt_brent_rec(f, c, b, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
             }
-            _ = drop(c)
-            _ = drop(d)
-            __borrow_migration_out_3
           }
         }
       }
@@ -148,9 +136,7 @@ def opt_gd_rec(f: f32 -> f32, df: f32 -> f32, x: f32, lr: f32, iters: int64) -> 
       runaway = gt(x_next_abs, cast(1000000000000000.0, f32))
       diff = sub(x_next, x_next)
       nan_produced = not(eq(diff, cast(0.0, f32)))
-      __borrow_migration_out_0 = if or(runaway, nan_produced) then opt_nan_f32() else opt_gd_rec(f, df, x_next, lr, sub(iters, one_i))
-      _ = drop(diff)
-      __borrow_migration_out_0
+      if or(runaway, nan_produced) then opt_nan_f32() else opt_gd_rec(f, df, x_next, lr, sub(iters, one_i))
     }
   }
 }

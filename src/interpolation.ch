@@ -30,9 +30,7 @@ def linear_interp_uniform[n](ys: &tensor[n, f32], x_min: f32, x_max: f32, x_quer
     v = pair.1
     take_lo = eq(i, k_i)
     take_hi = eq(i, kp1_i)
-    __borrow_migration_out_0 = if take_lo then (v, acc.1) else if take_hi then (acc.0, v) else acc
-    _ = drop(v)
-    __borrow_migration_out_0
+    if take_lo then (v, acc.1) else if take_hi then (acc.0, v) else acc
   }, (interp_zero_f(), interp_zero_f()), enum_lst)
   y_lo = picked.0
   y_hi = picked.1
@@ -101,67 +99,68 @@ def cubic_hermite(x0: f32, x1: f32, y0: f32, y1: f32, m0: f32, m1: f32, x_query:
     term1 = mul(h10, mul(h, m0))
     term2 = mul(h01, y1)
     term3 = mul(h11, mul(h, m1))
-    __borrow_migration_out_1 = add(add(term0, term1), add(term2, term3))
-    _ = drop(t2)
-    _ = drop(t3)
-    __borrow_migration_out_1
+    add(add(term0, term1), add(term2, term3))
   }
 }
 def spline_zeros[m](xs: &tensor[m, f32]) -> tensor[m, f32] = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(xs)))
-def spline_fit_h[m](xs: tensor[m, f32], h0: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] = { fold(fn (hacc: tensor[m, f32], i: int64) -> {
-  tpl_loc = spline_zeros(copy(hacc))
-  e_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_loc))
-  e_ip1 = la_basis_n_f32(add(i, cast(1, int64)), cast(1.0, f32), tpl_loc)
-  xi = inner_product(copy(xs), copy(e_i))
-  xip1 = inner_product(copy(xs), e_ip1)
-  hi = sub(xip1, xi)
-  abs_hi = if lt(hi, cast(0.0, f32)) then neg(hi) else hi
-  safe_hi = if lt(abs_hi, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else hi
-  __borrow_migration_out_0 = la_vec_saxpy(safe_hi, hacc, e_i)
-  __borrow_migration_out_0
-}, h0, range(cast(0, int64), n_len_m1)) }
-def spline_fit_lower[m](h: tensor[m, f32], low0: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] = { fold(fn (acc: tensor[m, f32], i: int64) -> {
-  tpl_loc = spline_zeros(copy(acc))
-  e_im1 = la_basis_n_f32(sub(i, cast(1, int64)), cast(1.0, f32), copy(tpl_loc))
-  e_i = la_basis_n_f32(i, cast(1.0, f32), tpl_loc)
-  h_im1 = inner_product(copy(h), e_im1)
-  __borrow_migration_out_1 = la_vec_saxpy(h_im1, acc, e_i)
-  __borrow_migration_out_1
-}, low0, range(cast(1, int64), n_len_m1)) }
-def spline_fit_diag[m](h: tensor[m, f32], d_init: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] = { fold(fn (acc: tensor[m, f32], i: int64) -> {
-  tpl_loc = spline_zeros(copy(acc))
-  e_im1 = la_basis_n_f32(sub(i, cast(1, int64)), cast(1.0, f32), copy(tpl_loc))
-  e_i = la_basis_n_f32(i, cast(1.0, f32), tpl_loc)
-  h_im1 = inner_product(copy(h), e_im1)
-  h_i = inner_product(copy(h), copy(e_i))
-  d_i = mul(cast(2.0, f32), add(h_im1, h_i))
-  __borrow_migration_out_2 = la_vec_saxpy(d_i, acc, e_i)
-  __borrow_migration_out_2
-}, d_init, range(cast(1, int64), n_len_m1)) }
-def spline_fit_upper[m](h: tensor[m, f32], up0: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] = { fold(fn (acc: tensor[m, f32], i: int64) -> {
-  tpl_loc = spline_zeros(copy(acc))
-  e_i = la_basis_n_f32(i, cast(1.0, f32), tpl_loc)
-  h_i = inner_product(copy(h), copy(e_i))
-  __borrow_migration_out_3 = la_vec_saxpy(h_i, acc, e_i)
-  __borrow_migration_out_3
-}, up0, range(cast(1, int64), n_len_m1)) }
-def spline_fit_rhs[m](ys: tensor[m, f32], h: tensor[m, f32], rhs0: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] = { fold(fn (acc: tensor[m, f32], i: int64) -> {
-  tpl_loc = spline_zeros(copy(acc))
-  e_im1 = la_basis_n_f32(sub(i, cast(1, int64)), cast(1.0, f32), copy(tpl_loc))
-  e_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_loc))
-  e_ip1 = la_basis_n_f32(add(i, cast(1, int64)), cast(1.0, f32), tpl_loc)
-  h_im1 = inner_product(copy(h), copy(e_im1))
-  h_i = inner_product(copy(h), copy(e_i))
-  y_im1 = inner_product(copy(ys), copy(e_im1))
-  y_i = inner_product(copy(ys), copy(e_i))
-  y_ip1 = inner_product(copy(ys), e_ip1)
-  safe_him1 = if lt(h_im1, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else h_im1
-  safe_hi = if lt(h_i, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else h_i
-  rhs_i = mul(cast(6.0, f32), sub(div(sub(y_ip1, y_i), safe_hi), div(sub(y_i, y_im1), safe_him1)))
-  __borrow_migration_out_4 = la_vec_saxpy(rhs_i, acc, e_i)
-  _ = drop(e_im1)
-  __borrow_migration_out_4
-}, rhs0, range(cast(1, int64), n_len_m1)) }
+def spline_fit_h[m](xs: tensor[m, f32], h0: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] = {
+  fold(fn (hacc: tensor[m, f32], i: int64) -> {
+    tpl_loc = spline_zeros(copy(hacc))
+    e_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_loc))
+    e_ip1 = la_basis_n_f32(add(i, cast(1, int64)), cast(1.0, f32), tpl_loc)
+    xi = inner_product(copy(xs), copy(e_i))
+    xip1 = inner_product(copy(xs), e_ip1)
+    hi = sub(xip1, xi)
+    abs_hi = if lt(hi, cast(0.0, f32)) then neg(hi) else hi
+    safe_hi = if lt(abs_hi, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else hi
+    la_vec_saxpy(safe_hi, hacc, e_i)
+  }, h0, range(cast(0, int64), n_len_m1))
+}
+def spline_fit_lower[m](h: tensor[m, f32], low0: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] = {
+  fold(fn (acc: tensor[m, f32], i: int64) -> {
+    tpl_loc = spline_zeros(copy(acc))
+    e_im1 = la_basis_n_f32(sub(i, cast(1, int64)), cast(1.0, f32), copy(tpl_loc))
+    e_i = la_basis_n_f32(i, cast(1.0, f32), tpl_loc)
+    h_im1 = inner_product(copy(h), e_im1)
+    la_vec_saxpy(h_im1, acc, e_i)
+  }, low0, range(cast(1, int64), n_len_m1))
+}
+def spline_fit_diag[m](h: tensor[m, f32], d_init: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] = {
+  fold(fn (acc: tensor[m, f32], i: int64) -> {
+    tpl_loc = spline_zeros(copy(acc))
+    e_im1 = la_basis_n_f32(sub(i, cast(1, int64)), cast(1.0, f32), copy(tpl_loc))
+    e_i = la_basis_n_f32(i, cast(1.0, f32), tpl_loc)
+    h_im1 = inner_product(copy(h), e_im1)
+    h_i = inner_product(copy(h), copy(e_i))
+    d_i = mul(cast(2.0, f32), add(h_im1, h_i))
+    la_vec_saxpy(d_i, acc, e_i)
+  }, d_init, range(cast(1, int64), n_len_m1))
+}
+def spline_fit_upper[m](h: tensor[m, f32], up0: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] = {
+  fold(fn (acc: tensor[m, f32], i: int64) -> {
+    tpl_loc = spline_zeros(copy(acc))
+    e_i = la_basis_n_f32(i, cast(1.0, f32), tpl_loc)
+    h_i = inner_product(copy(h), copy(e_i))
+    la_vec_saxpy(h_i, acc, e_i)
+  }, up0, range(cast(1, int64), n_len_m1))
+}
+def spline_fit_rhs[m](ys: tensor[m, f32], h: tensor[m, f32], rhs0: tensor[m, f32], n_len_m1: int64) -> tensor[m, f32] = {
+  fold(fn (acc: tensor[m, f32], i: int64) -> {
+    tpl_loc = spline_zeros(copy(acc))
+    e_im1 = la_basis_n_f32(sub(i, cast(1, int64)), cast(1.0, f32), copy(tpl_loc))
+    e_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_loc))
+    e_ip1 = la_basis_n_f32(add(i, cast(1, int64)), cast(1.0, f32), tpl_loc)
+    h_im1 = inner_product(copy(h), copy(e_im1))
+    h_i = inner_product(copy(h), copy(e_i))
+    y_im1 = inner_product(copy(ys), copy(e_im1))
+    y_i = inner_product(copy(ys), copy(e_i))
+    y_ip1 = inner_product(copy(ys), e_ip1)
+    safe_him1 = if lt(h_im1, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else h_im1
+    safe_hi = if lt(h_i, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else h_i
+    rhs_i = mul(cast(6.0, f32), sub(div(sub(y_ip1, y_i), safe_hi), div(sub(y_i, y_im1), safe_him1)))
+    la_vec_saxpy(rhs_i, acc, e_i)
+  }, rhs0, range(cast(1, int64), n_len_m1))
+}
 def spline_fit[m](xs: &tensor[m, f32], ys: &tensor[m, f32]) -> tensor[m, f32] = {
   n_len = len(to_list(copy(xs)))
   n_len_m1 = sub(n_len, cast(1, int64))
@@ -218,10 +217,7 @@ def spline_eval[m](xs: &tensor[m, f32], ys: &tensor[m, f32], x_query: f32) -> f3
     seg_val = add(add(a_c, mul(b_c, t)), add(mul(c_c, t2), mul(d_c, t3)))
     new_found = if bracket_hit then true else found
     new_result = if bracket_hit then seg_val else result_prev
-    __borrow_migration_out_2 = (new_found, new_result, xi, yi, mi_val)
-    _ = drop(t2)
-    _ = drop(t3)
-    __borrow_migration_out_2
+    (new_found, new_result, xi, yi, mi_val)
   }, init, enum_zipped)
   found = acc_final.0
   result = acc_final.1

@@ -5,9 +5,65 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-> **Current pin: `chelis 0.7.6`.** Entries below are arranged newest
-> first; everything below the v0.7.6 entry is historical record from
+> **Current pin: `chelis 0.7.7`.** Entries below are arranged newest
+> first; everything below the v0.7.7 entry is historical record from
 > earlier toolchain pins.
+
+## v0.7.7 lint regression — `redundant-linearity-call` over-flags `copy()` (2026-05-13)
+
+The new `redundant-linearity-call` warning-severity rule (advertised
+under the `implicit-linearity` tag) advertises that source-level
+`copy()` is redundant under implicit linearity, but in `0.7.7` the
+compiler does **not** auto-insert `copy()` when an owned `tensor[…]`
+is required from a borrowed `&tensor[…]` argument. The rule has no
+working `--fix` (the CLI accepts `chelis lint --fix --rule
+redundant-linearity-call` and exits 0, but produces zero edits).
+Stripping the flagged `copy()` calls in bulk across `src/linalg.ch`
+causes `chelis reef build` to fail with cascading
+`TypeMismatch: tensor[…] vs &tensor[…]` errors.
+
+**Minimal repro** (a user-defined callee that requires owned form):
+
+```chelis
+def needs_owned[m, n](a: tensor[m, n, f32]) -> tensor[n, m, f32] =
+  permute(a, 1, 0)
+
+def caller[m, n](a: &tensor[m, n, f32]) -> tensor[n, m, f32] = {
+  -- chelis lint flags `copy(a)` as redundant-linearity-call,
+  -- but removing it produces TypeMismatch in `chelis reef build`.
+  needs_owned(copy(a))
+}
+```
+
+Note: the stdlib `permute(&tensor, …)` actually accepts a borrow, so
+`permute(copy(a), 1, 0)` → `permute(a, 1, 0)` builds fine on its own.
+The breakage shows up on callees that take owned tensors — e.g. when
+`copy()` feeds a downstream call site that consumes the result.
+
+**Workaround applied in nautilus 0.7.8:** retain every `copy()` call
+as written. The companion `_ = drop(<expr>)` half of the same
+migration scaffolding (902 occurrences across `src/` + `tests/`) **is**
+safe to strip — drop statements have unit-typed RHS, ignore the
+result, and removing them does not change borrow/owned typing.
+`chelis reef build` stays clean and all 438 tests + 216 parity samples
+still pass after the strip. The `__borrow_migration_out_N = expr;
+__borrow_migration_out_N` orphan binding pairs left behind by the
+strip (462 occurrences in `src/` + `tests/`) are also collapsed in
+the same change-set.
+
+The `prefer-pipe-operator` warning is also new in 0.7.7 and similarly
+ships without a working `--fix`. Hand-mechanical rewrites of the form
+`f(g(x), …)` → `g(x) |> f(…)` build and test clean for the subset of
+sites where the rest arguments are simple names/literals (red-team
+confirmed 2026-05-13 that the rule does NOT trigger recursively on the
+rewritten form, contrary to a fear documented in an earlier draft of
+this entry). A first pass at mechanical rewriting in the 0.7.8 release
+applied the conservative subset across `src/{distance,integrate,
+testing}.ch`. Mechanical rewrites in other modules surfaced cross-
+module `ArityMismatch` / `CastNonTensor` failures at `chelis reef build`
+time that did not surface at single-file `chelis check` time; those
+sites were reverted and the remaining advisory warnings are left for a
+follow-up refactor that lifts inner calls to named bindings.
 
 ## v0.7.6 validation (2026-05-11)
 

@@ -4,9 +4,7 @@ export (example_min_parabola_gss, example_min_parabola_brent, example_min_rosenb
 def eop_parabola(x: f32) -> f32 = {
   d = sub(x, cast(3.0, f32))
   d2 = mul(d, d)
-  __borrow_migration_out_0 = add(d2, cast(7.0, f32))
-  _ = drop(d)
-  __borrow_migration_out_0
+  add(d2, cast(7.0, f32))
 }
 def eop_dparabola(x: f32) -> f32 = mul(cast(2.0, f32), sub(x, cast(3.0, f32)))
 def eop_ddparabola(x: f32) -> f32 = cast(2.0, f32)

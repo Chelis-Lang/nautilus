@@ -10,18 +10,20 @@ def trap_rec(f: f32 -> f32, x: f32, h: f32, k: int64, acc: f32) -> f32 = {
     trap_rec(f, x_next, h, sub(k, one_i), acc_next)
   }
 }
-def trapezoidal(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = { if lte(n_steps, cast(0, int64)) then div(cast(0.0, f32), cast(0.0, f32)) else {
-  n_f = cast(n_steps, f32)
-  h = div(sub(b, a), n_f)
-  fa = f(a)
-  fb = f(b)
-  endpoint_sum = mul(cast(0.5, f32), add(fa, fb))
-  x1 = add(a, h)
-  inner_count = sub(n_steps, cast(1, int64))
-  inner_sum = trap_rec(f, x1, h, inner_count, cast(0.0, f32))
-  total = add(endpoint_sum, inner_sum)
-  mul(h, total)
-} }
+def trapezoidal(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = {
+  if lte(n_steps, cast(0, int64)) then div(cast(0.0, f32), cast(0.0, f32)) else {
+    n_f = cast(n_steps, f32)
+    h = sub(b, a) |> div(n_f)
+    fa = f(a)
+    fb = f(b)
+    endpoint_sum = mul(cast(0.5, f32), add(fa, fb))
+    x1 = add(a, h)
+    inner_count = sub(n_steps, cast(1, int64))
+    inner_sum = trap_rec(f, x1, h, inner_count, cast(0.0, f32))
+    total = add(endpoint_sum, inner_sum)
+    mul(h, total)
+  }
+}
 def simpson_rec(f: f32 -> f32, x: f32, h: f32, k: int64, is_odd_step: bool, acc: f32) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
@@ -41,7 +43,7 @@ def simpsons(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = {
     parity = mod(n_steps, two_i)
     if neq(parity, zero_i) then div(cast(0.0, f32), cast(0.0, f32)) else {
       n_f = cast(n_steps, f32)
-      h = div(sub(b, a), n_f)
+      h = sub(b, a) |> div(n_f)
       fa = f(a)
       fb = f(b)
       endpoint_sum = add(fa, fb)
@@ -49,14 +51,14 @@ def simpsons(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = {
       inner_count = sub(n_steps, cast(1, int64))
       inner_sum = simpson_rec(f, x1, h, inner_count, true, cast(0.0, f32))
       total = add(endpoint_sum, inner_sum)
-      mul(div(h, cast(3.0, f32)), total)
+      div(h, cast(3.0, f32)) |> mul(total)
     }
   }
 }
 def int_simpson_small(h: f32, fa: f32, fm: f32, fb: f32) -> f32 = {
-  four_fm = mul(cast(4.0, f32), fm)
-  inner = add(add(fa, four_fm), fb)
-  mul(div(h, cast(6.0, f32)), inner)
+  four_fm = cast(4.0, f32) |> mul(fm)
+  inner = add(fa, four_fm) |> add(fb)
+  div(h, cast(6.0, f32)) |> mul(inner)
 }
 def int_abs(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def adaptive_simpson_rec(f: f32 -> f32, a: f32, b: f32, fa: f32, fb: f32, fm: f32, whole: f32, tol: f32, depth: int64) -> f32 = {
@@ -75,10 +77,10 @@ def adaptive_simpson_rec(f: f32 -> f32, a: f32, b: f32, fa: f32, fb: f32, fm: f3
   sum_lr = add(left_s, right_s)
   diff = sub(sum_lr, whole)
   abs_diff = int_abs(diff)
-  fifteen_tol = mul(cast(15.0, f32), tol)
+  fifteen_tol = cast(15.0, f32) |> mul(tol)
   converged = lt(abs_diff, fifteen_tol)
   exhausted = lte(depth, zero_i)
-  __borrow_migration_out_0 = if or(converged, exhausted) then {
+  if or(converged, exhausted) then {
     correction = div(diff, cast(15.0, f32))
     add(sum_lr, correction)
   } else {
@@ -90,9 +92,6 @@ def adaptive_simpson_rec(f: f32 -> f32, a: f32, b: f32, fa: f32, fb: f32, fm: f3
     right = adaptive_simpson_rec(f, m, b, fm, fb, frm, right_s, half_tol, depth_next)
     add(left, right)
   }
-  _ = drop(m)
-  _ = drop(diff)
-  __borrow_migration_out_0
 }
 def adaptive_simpson(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: int64) -> f32 = {
   depth_cap = cast(30, int64)
@@ -103,9 +102,7 @@ def adaptive_simpson(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: int64) 
   fm = f(m)
   h = sub(b, a)
   whole = int_simpson_small(h, fa, fm, fb)
-  __borrow_migration_out_1 = adaptive_simpson_rec(f, a, b, fa, fb, fm, whole, tol, capped_depth)
-  _ = drop(m)
-  __borrow_migration_out_1
+  adaptive_simpson_rec(f, a, b, fa, fb, fm, whole, tol, capped_depth)
 }
 def romberg_5(f: f32 -> f32, a: f32, b: f32) -> f32 = {
   t_1 = trapezoidal(f, a, b, cast(1, int64))
@@ -169,7 +166,7 @@ def gauss_legendre_10(f: f32 -> f32, a: f32, b: f32) -> f32 = {
   sum_a = add(add(s1, s2), add(s3, s4))
   sum_b = add(add(s5, s6), add(s7, s8))
   sum_c = add(s9, s10)
-  total = add(add(sum_a, sum_b), sum_c)
+  total = add(sum_a, sum_b) |> add(sum_c)
   mul(half_range, total)
 }
 def gauss_hermite_10(f: f32 -> f32) -> f32 = {
@@ -206,7 +203,7 @@ def gauss_hermite_10(f: f32 -> f32) -> f32 = {
   sum_a = add(add(s1, s2), add(s3, s4))
   sum_b = add(add(s5, s6), add(s7, s8))
   sum_c = add(s9, s10)
-  add(add(sum_a, sum_b), sum_c)
+  add(sum_a, sum_b) |> add(sum_c)
 }
 def gauss_laguerre_10(f: f32 -> f32) -> f32 = {
   x1 = cast(0.13779347054049243, f32)
@@ -242,7 +239,7 @@ def gauss_laguerre_10(f: f32 -> f32) -> f32 = {
   sum_a = add(add(s1, s2), add(s3, s4))
   sum_b = add(add(s5, s6), add(s7, s8))
   sum_c = add(s9, s10)
-  add(add(sum_a, sum_b), sum_c)
+  add(sum_a, sum_b) |> add(sum_c)
 }
 def gauss_legendre_5(f: f32 -> f32, a: f32, b: f32, n_points: int64) -> f32 = {
   ignore_n = n_points

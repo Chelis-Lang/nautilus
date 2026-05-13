@@ -3,25 +3,19 @@ import Nautilus.Optim (golden_section_search, brent_minimize, gradient_descent_1
 import Std.Test (assert_close, assert_true)
 def opt_parab_3(x: f32) -> f32 = {
   d = sub(x, cast(3.0, f32))
-  __borrow_migration_out_0 = mul(d, d)
-  _ = drop(d)
-  __borrow_migration_out_0
+  mul(d, d)
 }
 def opt_dparab_3(x: f32) -> f32 = mul(cast(2.0, f32), sub(x, cast(3.0, f32)))
 def opt_ddparab_3(x: f32) -> f32 = cast(2.0, f32)
 def opt_parab_neg2(x: f32) -> f32 = {
   d = add(x, cast(2.0, f32))
-  __borrow_migration_out_1 = mul(d, d)
-  _ = drop(d)
-  __borrow_migration_out_1
+  mul(d, d)
 }
 def opt_dparab_neg2(x: f32) -> f32 = mul(cast(2.0, f32), add(x, cast(2.0, f32)))
 def opt_ddparab_neg2(x: f32) -> f32 = cast(2.0, f32)
 def opt_quartic_sqrt2(x: f32) -> f32 = {
   d = sub(mul(x, x), cast(2.0, f32))
-  __borrow_migration_out_2 = mul(d, d)
-  _ = drop(d)
-  __borrow_migration_out_2
+  mul(d, d)
 }
 def opt_dquartic_sqrt2(x: f32) -> f32 = {
   inner = sub(mul(x, x), cast(2.0, f32))

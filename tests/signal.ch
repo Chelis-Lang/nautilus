@@ -7,88 +7,61 @@ def is_nan(x: f32) -> bool = neq(x, x)
 def sample4() -> tensor[4, f32] = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32)])
 def test_fft_magnitude_stub_preserves_length() -> unit ! { Test } = {
   y = fft_magnitude_stub(sample4())
-  __borrow_migration_out_0 = assert_true(eq(numel(y), cast(4, int64)), "fft_magnitude_stub: numel preserved")
-  _ = drop(y)
-  __borrow_migration_out_0
+  assert_true(eq(numel(y), cast(4, int64)), "fft_magnitude_stub: numel preserved")
 }
 def test_ifft_magnitude_stub_preserves_length() -> unit ! { Test } = {
   y = ifft_magnitude_stub(sample4())
-  __borrow_migration_out_1 = assert_true(eq(numel(y), cast(4, int64)), "ifft_magnitude_stub: numel preserved")
-  _ = drop(y)
-  __borrow_migration_out_1
+  assert_true(eq(numel(y), cast(4, int64)), "ifft_magnitude_stub: numel preserved")
 }
 def test_stft_magnitude_stub_preserves_length() -> unit ! { Test } = {
   y = stft_magnitude_stub(sample4(), cast(2, int64), cast(1, int64))
-  __borrow_migration_out_2 = assert_true(eq(numel(y), cast(4, int64)), "stft_magnitude_stub: numel preserved")
-  _ = drop(y)
-  __borrow_migration_out_2
+  assert_true(eq(numel(y), cast(4, int64)), "stft_magnitude_stub: numel preserved")
 }
 def test_lowpass_stub_preserves_length() -> unit ! { Test } = {
   y = lowpass_stub(sample4(), cast(0.25, f32), cast(1.0, f32))
-  __borrow_migration_out_3 = assert_true(eq(numel(y), cast(4, int64)), "lowpass_stub: numel preserved")
-  _ = drop(y)
-  __borrow_migration_out_3
+  assert_true(eq(numel(y), cast(4, int64)), "lowpass_stub: numel preserved")
 }
 def test_highpass_stub_preserves_length() -> unit ! { Test } = {
   y = highpass_stub(sample4(), cast(0.25, f32), cast(1.0, f32))
-  __borrow_migration_out_4 = assert_true(eq(numel(y), cast(4, int64)), "highpass_stub: numel preserved")
-  _ = drop(y)
-  __borrow_migration_out_4
+  assert_true(eq(numel(y), cast(4, int64)), "highpass_stub: numel preserved")
 }
 def test_bandpass_stub_preserves_length() -> unit ! { Test } = {
   y = bandpass_stub(sample4(), cast(0.1, f32), cast(0.4, f32), cast(1.0, f32))
-  __borrow_migration_out_5 = assert_true(eq(numel(y), cast(4, int64)), "bandpass_stub: numel preserved")
-  _ = drop(y)
-  __borrow_migration_out_5
+  assert_true(eq(numel(y), cast(4, int64)), "bandpass_stub: numel preserved")
 }
 def test_fft_magnitude_stub_emits_nan() -> unit ! { Test } = {
   y = fft_magnitude_stub(sample4())
   v0 = inner_product(y, basis4(cast(0, int64)))
-  __borrow_migration_out_6 = assert_true(is_nan(v0), "fft_magnitude_stub element is NaN (placeholder)")
-  _ = drop(y)
-  __borrow_migration_out_6
+  assert_true(is_nan(v0), "fft_magnitude_stub element is NaN (placeholder)")
 }
 def test_lowpass_stub_emits_nan() -> unit ! { Test } = {
   y = lowpass_stub(sample4(), cast(0.25, f32), cast(1.0, f32))
   v0 = inner_product(y, basis4(cast(0, int64)))
-  __borrow_migration_out_7 = assert_true(is_nan(v0), "lowpass_stub element is NaN (placeholder)")
-  _ = drop(y)
-  __borrow_migration_out_7
+  assert_true(is_nan(v0), "lowpass_stub element is NaN (placeholder)")
 }
 def test_fftfreq_preserves_length() -> unit ! { Test } = {
   freqs = fftfreq(sample4(), cast(1.0, f32))
-  __borrow_migration_out_8 = assert_true(eq(numel(freqs), cast(4, int64)), "fftfreq: length matches input")
-  _ = drop(freqs)
-  __borrow_migration_out_8
+  assert_true(eq(numel(freqs), cast(4, int64)), "fftfreq: length matches input")
 }
 def test_fftfreq_dc_bin_zero() -> unit ! { Test } = {
   freqs = fftfreq(sample4(), cast(8.0, f32))
   f0 = inner_product(freqs, basis4(cast(0, int64)))
-  __borrow_migration_out_9 = assert_close(f0, cast(0.0, f32), cast(0.0000001, f32), "fftfreq[0] = 0 (DC bin)")
-  _ = drop(freqs)
-  __borrow_migration_out_9
+  assert_close(f0, cast(0.0, f32), cast(0.0000001, f32), "fftfreq[0] = 0 (DC bin)")
 }
 def test_fftfreq_first_positive_bin() -> unit ! { Test } = {
   freqs = fftfreq(sample4(), cast(8.0, f32))
   f1 = inner_product(freqs, basis4(cast(1, int64)))
-  __borrow_migration_out_10 = assert_close(f1, cast(2.0, f32), cast(0.000001, f32), "fftfreq[1] = fs/N = 2.0")
-  _ = drop(freqs)
-  __borrow_migration_out_10
+  assert_close(f1, cast(2.0, f32), cast(0.000001, f32), "fftfreq[1] = fs/N = 2.0")
 }
 def test_fftfreq_last_bin_negative() -> unit ! { Test } = {
   freqs = fftfreq(sample4(), cast(8.0, f32))
   f3 = inner_product(freqs, basis4(cast(3, int64)))
-  __borrow_migration_out_11 = assert_close(f3, cast(-2.0, f32), cast(0.000001, f32), "fftfreq[N-1] = -fs/N = -2.0 (negative wrap)")
-  _ = drop(freqs)
-  __borrow_migration_out_11
+  assert_close(f3, cast(-2.0, f32), cast(0.000001, f32), "fftfreq[N-1] = -fs/N = -2.0 (negative wrap)")
 }
 def test_fftfreq_scales_with_sample_rate() -> unit ! { Test } = {
   f_a = fftfreq(sample4(), cast(2.0, f32))
   f_b = fftfreq(sample4(), cast(4.0, f32))
   v_a = inner_product(f_a, basis4(cast(1, int64)))
   v_b = inner_product(f_b, basis4(cast(1, int64)))
-  __borrow_migration_out_12 = assert_close(mul(cast(2.0, f32), v_a), v_b, cast(0.000001, f32), "fftfreq scales linearly with sample_rate")
-  _ = drop(f_a)
-  _ = drop(f_b)
-  __borrow_migration_out_12
+  assert_close(mul(cast(2.0, f32), v_a), v_b, cast(0.000001, f32), "fftfreq scales linearly with sample_rate")
 }

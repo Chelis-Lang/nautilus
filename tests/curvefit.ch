@@ -12,18 +12,13 @@ def cf_exp_dmodel(x: f32, theta: f32) -> f32 = {
 def cf_get[n](theta: &tensor[n, f32], k: int64) -> f32 = {
   tpl = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(theta))))
   e_k = la_basis_n_f32(k, cast(1.0, f32), tpl)
-  __borrow_migration_out_0 = inner_product(theta, e_k)
-  _ = drop(tpl)
-  _ = drop(e_k)
-  __borrow_migration_out_0
+  inner_product(theta, e_k)
 }
 def cf_nparam_linear2(theta: &tensor[2, f32], x_data: &tensor[6, f32]) -> tensor[6, f32] = {
   a = cf_get(copy(theta), cast(0, int64))
   b = cf_get(theta, cast(1, int64))
   ones = to_tensor(map(fn (v: f32) -> cast(1.0, f32), to_list(copy(x_data))))
-  __borrow_migration_out_0 = la_vec_add(scale_vec(x_data, a), scale_vec(ones, b))
-  _ = drop(ones)
-  __borrow_migration_out_0
+  la_vec_add(scale_vec(x_data, a), scale_vec(ones, b))
 }
 def cf_nparam_lin1(theta: &tensor[1, f32], x_data: &tensor[4, f32]) -> tensor[4, f32] = {
   a = cf_get(theta, cast(0, int64))
@@ -34,39 +29,25 @@ def cf_nparam_exp2(theta: &tensor[2, f32], x_data: &tensor[6, f32]) -> tensor[6,
   b = cf_get(theta, cast(1, int64))
   bx = scale_vec(x_data, b)
   exp_bx = to_tensor(map(fn (v: f32) -> exp(v), to_list(bx)))
-  __borrow_migration_out_1 = scale_vec(exp_bx, a)
-  _ = drop(bx)
-  _ = drop(exp_bx)
-  __borrow_migration_out_1
+  scale_vec(exp_bx, a)
 }
 def cf_ssr_2param(model: &tensor[2, f32] -> &tensor[6, f32] -> tensor[6, f32], theta: &tensor[2, f32], xs: &tensor[6, f32], ys: &tensor[6, f32]) -> f32 = {
   pred = model(theta, xs)
   r = la_vec_sub(ys, pred)
-  __borrow_migration_out_2 = inner_product(copy(r), r)
-  _ = drop(pred)
-  _ = drop(r)
-  __borrow_migration_out_2
+  inner_product(copy(r), r)
 }
 def cf_abs(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def test_lm1_linear_recovers_truth() -> unit ! { Test } = {
   xs = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32)])
   ys = to_tensor([cast(2.0, f32), cast(4.0, f32), cast(6.0, f32), cast(8.0, f32)])
   theta_hat = lm_scalar_1param(cf_lin_model, cf_lin_dmodel, xs, ys, cast(0.5, f32), cast(0.01, f32), cast(0.00000001, f32), cast(100, int64))
-  __borrow_migration_out_3 = assert_close(theta_hat, cast(2.0, f32), cast(0.0001, f32), "lm_scalar_1param: y = theta*x recovers theta = 2 from noiseless data")
-  _ = drop(xs)
-  _ = drop(ys)
-  _ = drop(theta_hat)
-  __borrow_migration_out_3
+  assert_close(theta_hat, cast(2.0, f32), cast(0.0001, f32), "lm_scalar_1param: y = theta*x recovers theta = 2 from noiseless data")
 }
 def test_lm1_linear_trivial_fit() -> unit ! { Test } = {
   xs = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32)])
   ys = to_tensor([cast(2.0, f32), cast(4.0, f32), cast(6.0, f32), cast(8.0, f32)])
   theta_hat = lm_scalar_1param(cf_lin_model, cf_lin_dmodel, xs, ys, cast(2.0, f32), cast(0.01, f32), cast(0.00000001, f32), cast(50, int64))
-  __borrow_migration_out_4 = assert_close(theta_hat, cast(2.0, f32), cast(0.000001, f32), "lm_scalar_1param: trivial fit (theta0 = truth) does not move")
-  _ = drop(xs)
-  _ = drop(ys)
-  _ = drop(theta_hat)
-  __borrow_migration_out_4
+  assert_close(theta_hat, cast(2.0, f32), cast(0.000001, f32), "lm_scalar_1param: trivial fit (theta0 = truth) does not move")
 }
 def test_lm1_linear_residual_zero() -> unit ! { Test } = {
   xs = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32)])
@@ -75,23 +56,13 @@ def test_lm1_linear_residual_zero() -> unit ! { Test } = {
   pred = to_tensor(map(fn (x: f32) -> cf_lin_model(x, theta_hat), to_list(xs)))
   r = la_vec_sub(ys, pred)
   ssr = inner_product(copy(r), r)
-  __borrow_migration_out_5 = assert_close(ssr, cast(0.0, f32), cast(0.0001, f32), "lm_scalar_1param: SSR at recovered theta ~ 0 on noiseless linear data")
-  _ = drop(xs)
-  _ = drop(ys)
-  _ = drop(theta_hat)
-  _ = drop(pred)
-  _ = drop(r)
-  __borrow_migration_out_5
+  assert_close(ssr, cast(0.0, f32), cast(0.0001, f32), "lm_scalar_1param: SSR at recovered theta ~ 0 on noiseless linear data")
 }
 def test_lm1_exp_recovers_truth() -> unit ! { Test } = {
   xs = to_tensor([cast(0.0, f32), cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)])
   ys = to_tensor([cast(1.0, f32), cast(0.6065307, f32), cast(0.3678794, f32), cast(0.2231302, f32)])
   theta_hat = lm_scalar_1param(cf_exp_model, cf_exp_dmodel, xs, ys, cast(1.0, f32), cast(0.01, f32), cast(0.000001, f32), cast(200, int64))
-  __borrow_migration_out_6 = assert_close(theta_hat, cast(0.5, f32), cast(0.001, f32), "lm_scalar_1param: y = exp(-theta*x) recovers theta = 0.5")
-  _ = drop(xs)
-  _ = drop(ys)
-  _ = drop(theta_hat)
-  __borrow_migration_out_6
+  assert_close(theta_hat, cast(0.5, f32), cast(0.001, f32), "lm_scalar_1param: y = exp(-theta*x) recovers theta = 0.5")
 }
 def test_lm_nparam_linear_recovers_truth() -> unit ! { Test } = {
   xs = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32), cast(5.0, f32), cast(6.0, f32)])
@@ -99,12 +70,7 @@ def test_lm_nparam_linear_recovers_truth() -> unit ! { Test } = {
   theta0 = to_tensor([cast(0.0, f32), cast(0.0, f32)])
   theta_hat = lm_scalar_nparam(cf_nparam_linear2, xs, ys, theta0, cast(0.00001, f32), cast(100, int64))
   expected = to_tensor([cast(2.0, f32), cast(0.5, f32)])
-  __borrow_migration_out_7 = assert_close_tensor(theta_hat, expected, cast(0.01, f32), "lm_scalar_nparam (2-param linear) recovers theta = [2, 0.5]")
-  _ = drop(xs)
-  _ = drop(ys)
-  _ = drop(theta_hat)
-  _ = drop(expected)
-  __borrow_migration_out_7
+  assert_close_tensor(theta_hat, expected, cast(0.01, f32), "lm_scalar_nparam (2-param linear) recovers theta = [2, 0.5]")
 }
 def test_lm_nparam_linear_trivial_fit() -> unit ! { Test } = {
   xs = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32), cast(5.0, f32), cast(6.0, f32)])
@@ -112,12 +78,7 @@ def test_lm_nparam_linear_trivial_fit() -> unit ! { Test } = {
   theta0 = to_tensor([cast(2.0, f32), cast(0.5, f32)])
   theta_hat = lm_scalar_nparam(cf_nparam_linear2, xs, ys, theta0, cast(0.00001, f32), cast(50, int64))
   expected = to_tensor([cast(2.0, f32), cast(0.5, f32)])
-  __borrow_migration_out_8 = assert_close_tensor(theta_hat, expected, cast(0.01, f32), "lm_scalar_nparam: trivial fit (theta0 = truth) stays at truth")
-  _ = drop(xs)
-  _ = drop(ys)
-  _ = drop(theta_hat)
-  _ = drop(expected)
-  __borrow_migration_out_8
+  assert_close_tensor(theta_hat, expected, cast(0.01, f32), "lm_scalar_nparam: trivial fit (theta0 = truth) stays at truth")
 }
 def test_lm_nparam_linear_residual_zero() -> unit ! { Test } = {
   xs = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32), cast(5.0, f32), cast(6.0, f32)])
@@ -125,11 +86,7 @@ def test_lm_nparam_linear_residual_zero() -> unit ! { Test } = {
   theta0 = to_tensor([cast(0.0, f32), cast(0.0, f32)])
   theta_hat = lm_scalar_nparam(cf_nparam_linear2, copy(xs), copy(ys), theta0, cast(0.00001, f32), cast(100, int64))
   ssr = cf_ssr_2param(cf_nparam_linear2, theta_hat, xs, ys)
-  __borrow_migration_out_9 = assert_true(lt(ssr, cast(0.01, f32)), "lm_scalar_nparam: SSR at recovered theta < 1e-2 on noiseless linear data")
-  _ = drop(xs)
-  _ = drop(ys)
-  _ = drop(theta_hat)
-  __borrow_migration_out_9
+  assert_true(lt(ssr, cast(0.01, f32)), "lm_scalar_nparam: SSR at recovered theta < 1e-2 on noiseless linear data")
 }
 def test_lm_nparam_exp_recovers_truth() -> unit ! { Test } = {
   xs = to_tensor([cast(0.0, f32), cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32), cast(5.0, f32)])
@@ -137,12 +94,7 @@ def test_lm_nparam_exp_recovers_truth() -> unit ! { Test } = {
   theta0 = to_tensor([cast(2.5, f32), cast(-0.5, f32)])
   theta_hat = lm_scalar_nparam(cf_nparam_exp2, xs, ys, theta0, cast(0.000001, f32), cast(200, int64))
   expected = to_tensor([cast(3.0, f32), cast(-1.0, f32)])
-  __borrow_migration_out_10 = assert_close_tensor(theta_hat, expected, cast(0.05, f32), "lm_scalar_nparam (2-param exp) recovers theta = [3, -1]")
-  _ = drop(xs)
-  _ = drop(ys)
-  _ = drop(theta_hat)
-  _ = drop(expected)
-  __borrow_migration_out_10
+  assert_close_tensor(theta_hat, expected, cast(0.05, f32), "lm_scalar_nparam (2-param exp) recovers theta = [3, -1]")
 }
 def test_lm_nparam_exp_trivial_fit() -> unit ! { Test } = {
   xs = to_tensor([cast(0.0, f32), cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32), cast(5.0, f32)])
@@ -150,12 +102,7 @@ def test_lm_nparam_exp_trivial_fit() -> unit ! { Test } = {
   theta0 = to_tensor([cast(3.0, f32), cast(-1.0, f32)])
   theta_hat = lm_scalar_nparam(cf_nparam_exp2, xs, ys, theta0, cast(0.000001, f32), cast(50, int64))
   expected = to_tensor([cast(3.0, f32), cast(-1.0, f32)])
-  __borrow_migration_out_11 = assert_close_tensor(theta_hat, expected, cast(0.01, f32), "lm_scalar_nparam (exp): trivial fit stays at truth")
-  _ = drop(xs)
-  _ = drop(ys)
-  _ = drop(theta_hat)
-  _ = drop(expected)
-  __borrow_migration_out_11
+  assert_close_tensor(theta_hat, expected, cast(0.01, f32), "lm_scalar_nparam (exp): trivial fit stays at truth")
 }
 def test_lm_nparam_n1_matches_scalar() -> unit ! { Test } = {
   xs_s = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32)])
@@ -168,11 +115,5 @@ def test_lm_nparam_n1_matches_scalar() -> unit ! { Test } = {
   diff = cf_abs(sub(vec_scalar, scalar_hat))
   _ = assert_close(scalar_hat, cast(3.0, f32), cast(0.001, f32), "lm_scalar_1param recovers theta = 3 on y = 3x")
   _ = assert_close_tensor(vec_hat, vec_expected, cast(0.01, f32), "lm_scalar_nparam (n=1) recovers theta = [3] on y = 3x")
-  __borrow_migration_out_1 = assert_true(lt(diff, cast(0.01, f32)), "lm_scalar_nparam (n=1) and lm_scalar_1param agree within 1e-2")
-  _ = drop(diff)
-  _ = drop(vec_hat)
-  _ = drop(vec_expected)
-  _ = drop(xs_s)
-  _ = drop(ys_s)
-  __borrow_migration_out_1
+  assert_true(lt(diff, cast(0.01, f32)), "lm_scalar_nparam (n=1) and lm_scalar_1param agree within 1e-2")
 }

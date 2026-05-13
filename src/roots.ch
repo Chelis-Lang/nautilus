@@ -70,7 +70,7 @@ def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, f
     width = sub(b1, a1)
     awidth = r_abs_f32(width)
     afb1 = r_abs_f32(fb1)
-    __borrow_migration_out_0 = if lt(afb1, tol) then b1 else if lt(awidth, tol) then b1 else {
+    if lt(afb1, tol) then b1 else if lt(awidth, tol) then b1 else {
       use_iqi = and(not(eq(fa1, fc1)), not(eq(fb1, fc1)))
       d_ab = sub(fa1, fb1)
       d_ac = sub(fa1, fc1)
@@ -110,12 +110,8 @@ def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, f
       fa_new = if same_sign then fs else fa1
       b_new = if same_sign then b1 else s
       fb_new = if same_sign then fb1 else fs
-      __borrow_migration_out_0 = brent_rec(f, a_new, b_new, c_new, d_new, fa_new, fb_new, fc_new, this_was_bisect, tol, sub(iters, one_i))
-      _ = drop(m)
-      __borrow_migration_out_0
+      brent_rec(f, a_new, b_new, c_new, d_new, fa_new, fb_new, fc_new, this_was_bisect, tol, sub(iters, one_i))
     }
-    _ = drop(b1)
-    __borrow_migration_out_0
   }
 }
 def brent(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 = {
