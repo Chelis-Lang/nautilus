@@ -6,6 +6,16 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.9] — 2026-05-13
+
+Compiler-pin alignment release for chelis 0.7.8. No source changes
+from 0.7.8 — only the `compiler = "=0.7.7"` → `"=0.7.8"` pin bump,
+package version bump to 0.7.9, and CI/release workflow env vars
+updated to track v0.7.8. Required because chelis 0.7.8's reef
+validator rejects any package whose `package.compiler` is not exactly
+`=0.7.8`. The 0.7.8 source cleanup re-verified under 0.7.8 with
+zero failures (438/438 native tests, 216/216 scipy-parity samples).
+
 ## [0.7.8] — 2026-05-13
 
 Source cleanup pass against the chelis 0.7.7 toolchain pin. No
