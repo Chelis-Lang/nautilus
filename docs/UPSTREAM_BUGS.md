@@ -5,9 +5,26 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-> **Current pin: `chelis 0.7.7`.** Entries below are arranged newest
-> first; everything below the v0.7.7 entry is historical record from
+> **Current pin: `chelis 0.7.8`.** Entries below are arranged newest
+> first; everything below the v0.7.8 entry is historical record from
 > earlier toolchain pins.
+
+## v0.7.8 validation (2026-05-13)
+
+Compiler-pin alignment release from `0.7.7` to `0.7.8`. No new lint
+rules and no new errors: `chelis lint --list` returns the same 16
+rules as `0.7.7`, `chelis fmt --check` is clean across `src/` and
+`tests/`, `chelis reef build` is clean (`dist/nautilus-0.7.9.{chb,
+tar.zst}` produced), **438/438** native tests pass, **216/216**
+scipy-parity samples pass.
+
+The `redundant-linearity-call` over-flag on `copy()` (documented
+below for `0.7.7`) **still reproduces in `0.7.8`** — `chelis check
+src/linalg.ch` emits 319 `redundant-linearity-call` warnings and 194
+`prefer-pipe-operator` warnings (`chelis lint src/linalg.ch` emits
+319 / 165 — pipe is type-aware and only `chelis check` runs the
+inference that surfaces all 194 sites). The workaround posture from
+`0.7.7` carries forward unchanged for `0.7.8`.
 
 ## v0.7.7 lint regression — `redundant-linearity-call` over-flags `copy()` (2026-05-13)
 
