@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  CHELIS_TAG: v0.7.8
-  CHELIS_VERSION: 0.7.8
+  CHELIS_TAG: v0.7.10
+  CHELIS_VERSION: 0.7.10
 
 jobs:
   hard-rule-guard:
@@ -246,7 +246,7 @@ jobs:
   # Darwin chelis toolchain. NOT a duplicate test suite — the full
   # tests/ run lives on Linux. This job exists so a Darwin chelis
   # regression that breaks Nautilus surfaces in CI instead of in a
-  # Mac user's bug report. See docs/RELEASES.md for the artifact-
+  # Mac user's bug report. See docs/releases.md for the artifact-
   # platform policy.
   mac-smoke:
     runs-on: macos-latest

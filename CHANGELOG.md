@@ -6,6 +6,74 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.10] — 2026-05-15
+
+Compiler-pin alignment for chelis 0.7.10 (skipping the 0.7.9 pin at
+the consumer level — chelis 0.7.9 shipped a `chelis test` lowering
+blocker that 0.7.10 fixed). `compiler = "=0.7.8"` → `"=0.7.10"`,
+CI/release workflow env vars updated to track v0.7.10. This release
+also pays down the latent unsoundness that chelis 0.7.9's tightened
+checks surfaced, plus f32 numeric hardening exposed by 0.7.10's
+evaluator.
+
+### Fixed — dim-parameter rigidity violation (chelis 0.7.9 `check_declared_dvars_rigid`)
+
+`apismoke.ch`'s `smoke_linalg[m, k, n]` fed `at: tensor[k, m, f32]`
+(a rectangular transpose) into `trace_scalar[n](&tensor[n, n, f32])`,
+which unified the declared-distinct dims `k` and `m`. chelis 0.7.9
+made declared dim parameters rigid within a def body and correctly
+rejects this. Routed the trace through the square
+`aat_mat: tensor[m, m, f32]`; `at` still exercises `transpose`. No
+test depended on the unsound path.
+
+### Fixed — linearity violations in linalg SVD/eig (chelis 0.7.9 stricter linearity)
+
+`linalg.ch`'s `la_svd_rot_g`, `la_svd_rot_v`, `svd_n`,
+`la_eig_rot_a`, `la_eig_rot_q`, and `eig_n` had 17 `UseAfterConsume`
+errors under chelis 0.7.9 — values consumed by closure capture or by
+the by-value `tpl` parameters of `la_svd_g_sw` / `la_eig_a_sw`, then
+reused. These six functions are reverted to their pristine pre-0.7.8
+form, which carries the explicit `copy()` calls the consume sites
+require. (Those `copy()` calls now show as advisory
+`redundant-linearity-call` warnings — see lint note below.)
+
+### Fixed — f32 optimizer and elliptic-integral recurrences (chelis 0.7.10 evaluator)
+
+chelis 0.7.10's f32-preserving evaluator exposed unit-roundoff stalls
+in scalar numeric code that the prior double-promoting evaluator
+masked. `optim.ch`: golden-section and Brent now stop on equal
+objective samples; gradient descent and Newton stop when the iterate
+no longer changes. `special.ch`: the elliptic AGM helpers stop when
+`a`/`b` plateau before the weight term can explode. With these,
+`newton_minimize_1d` converges (it was reaching `NaN`) and
+`golden_section_search` lands inside tolerance.
+
+### Changed — lint cleanup + doc renames
+
+`chelis lint --fix` auto-fixes (`redundant-linearity-call`,
+`prefer-pipe-operator`) applied across `src/` and `tests/`. Final
+state under chelis 0.7.10: `chelis lint --check .` → **0 errors, 272
+advisory warnings** (all `redundant-linearity-call` /
+`prefer-pipe-operator`, concentrated in the six reverted linalg
+functions and in `optim.ch` / `special.ch`, where the f32 hardening
+took priority over cosmetic pipe rewrites). Five `docs/` files
+renamed from SCREAMING_SNAKE_CASE to kebab-case to satisfy
+`doc-filename-convention §8.5`; em-dash fixes in `scripts/`.
+
+### Verified
+
+`chelis reef build` clean; `chelis check` clean across all 21
+`src/*.ch`; `chelis test tests/ --jobs auto` → 438 passed, 0 failed;
+`python3 parity/run_parity.py --strict` → 216 passed, 0 failed.
+
+### Tracked upstream (not blocking)
+
+chelis 0.7.10's scalar-f32 evaluator behavior now differs from the C
+host backend, which still emits host scalar floats as `double`. The
+f32 hardening above makes nautilus robust either way, but the
+evaluator/backend divergence is a chelis soundness item worth
+tracking upstream.
+
 ## [0.7.9] — 2026-05-13
 
 Compiler-pin alignment release for chelis 0.7.8. No source changes
@@ -42,7 +110,7 @@ formally redundant:
   attempted by the same rewriter and reverted because they failed
   `reef build` cross-module type-check; lifting those to named
   bindings is a separate refactor and left for follow-up. See
-  `docs/UPSTREAM_BUGS.md` for the reasoning.
+  `docs/upstream-bugs.md` for the reasoning.
 - **`chelis fmt --inplace`** on `src/{curvefit,distributions,integrate,
   interpolation,linalg,ode}.ch`, which were not canonically formatted
   under 0.7.7's stricter `fmt --check` gate.

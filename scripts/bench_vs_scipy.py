@@ -96,7 +96,7 @@ double beta_cdf(double, double, double);
 double weibull_cdf(double, double, double);
 double poisson_cdf(double, double);
 
-/* Nautilus.Ode + Nautilus.Roots — take function pointers. Signatures
+/* Nautilus.Ode + Nautilus.Roots - take function pointers. Signatures
  * from the chelis v0.1.7 C backend (tests/run_numeric_tests.py
  * documents these):
  *   double rk4_solve(double (*f)(double, double),
@@ -167,7 +167,7 @@ EXPORT void b_compound_two_sided_pval(const double* zs, double* out, size_t n) {
     }
 }
 
-/* Gamma log-density — three log_gamma calls fused into a single loop,
+/* Gamma log-density - three log_gamma calls fused into a single loop,
  * whereas numpy equivalent allocates three intermediate arrays. */
 EXPORT void b_compound_log_gamma_chain(const double* xs, double* out, size_t n) {
     for (size_t i = 0; i < n; i++) {
@@ -176,7 +176,7 @@ EXPORT void b_compound_log_gamma_chain(const double* xs, double* out, size_t n) 
     }
 }
 
-/* Normal PDF computed from primitives — exp(-x²/2) / sqrt(2π). Contrasts
+/* Normal PDF computed from primitives - exp(-x²/2) / sqrt(2π). Contrasts
  * against scipy.stats.norm.pdf, which is a closed-form reference. This
  * shows that the pure-Chelis Special surface (exp + scale) is competitive
  * with scipy's hand-tuned PDF path at medium n. */

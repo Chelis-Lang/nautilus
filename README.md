@@ -60,7 +60,7 @@ python scripts/extract_stability.py --check # SKILL.md stability column gate
 
 ## Benchmarks
 
-See [docs/BENCHMARK_FINDINGS.md](docs/BENCHMARK_FINDINGS.md). Highlights
+See [docs/benchmark-findings.md](docs/benchmark-findings.md). Highlights
 at n=100k on a single core:
 
 | Kernel | vs scipy | Throughput |
@@ -73,8 +73,8 @@ at n=100k on a single core:
 
 - [spec/phase3j.md](spec/phase3j.md) for scope and acceptance criteria
 - [spec/next_up.md](spec/next_up.md) for the post-v0.1.0 roadmap
-- [docs/NAUTILUS_STATUS.md](docs/NAUTILUS_STATUS.md) for the full status report
-- [docs/UPSTREAM_BUGS.md](docs/UPSTREAM_BUGS.md) for upstream compiler bug history
+- [docs/nautilus-status.md](docs/nautilus-status.md) for the full status report
+- [docs/upstream-bugs.md](docs/upstream-bugs.md) for upstream compiler bug history
 
 ## License
 

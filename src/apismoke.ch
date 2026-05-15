@@ -77,14 +77,14 @@ def smoke_distributions() -> f32 = {
 }
 def smoke_linalg[m, k, n](a: tensor[m, k, f32], b: tensor[k, n, f32], v: tensor[k, f32], w: tensor[k, f32], s: tensor[2, 2, f32], t3: tensor[3, 3, f32]) -> f32 = {
   at = transpose(copy(a))
+  ignore_at = at
   ab = matmul_wrap(copy(a), b)
   ignore_ab = ab
   g_mat = gram(copy(a))
   ignore_g = g_mat
-  tr_val = trace_scalar(at)
-  ignore_tr = tr_val
   aat_mat = aat(a)
-  ignore_aat = aat_mat
+  tr_val = trace_scalar(aat_mat)
+  ignore_tr = tr_val
   inner = inner_product(copy(v), w)
   n2 = l2_norm_vec(v)
   d2 = det_2x2(s)

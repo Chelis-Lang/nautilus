@@ -13,7 +13,7 @@ Pre-v0.3.0 history: this script used to hand-roll the install by
 copying files into ~/.chelis/reef/packages/<name>/<version>/ and
 writing the index.json by hand, because chelis v0.2.x had no
 `reef install` subcommand. v0.3.0 shipped the proper command — see
-`chelis reef install --help` and docs/UPSTREAM_BUGS.md
+`chelis reef install --help` and docs/upstream-bugs.md
 ("v0.2.4 chelis-std bootstrap" — now resolved).
 
 Usage:

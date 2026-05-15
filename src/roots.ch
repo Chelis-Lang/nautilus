@@ -1,18 +1,18 @@
 module Nautilus.Roots
 export (bisection, newton, brent)
 def r_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
-def r_nan_f32() -> f32 = div(cast(0.0, f32), cast(0.0, f32))
+def r_nan_f32() -> f32 = 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
 def bisection_rec(f: f32 -> f32, lo: f32, hi: f32, flo: f32, tol: f32, iters: int64) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
   if lte(iters, zero_i) then r_nan_f32() else {
     width = sub(hi, lo)
-    if lt(width, tol) then mul(cast(0.5, f32), add(lo, hi)) else {
-      mid = mul(cast(0.5, f32), add(lo, hi))
+    if lt(width, tol) then 0.5 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(add(lo, hi)) else {
+      mid = 0.5 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(add(lo, hi))
       fmid = f(mid)
       afmid = r_abs_f32(fmid)
       if lt(afmid, tol) then mid else {
-        same_sign = gt(mul(flo, fmid), cast(0.0, f32))
+        same_sign = flo |> mul(fmid) |> gt(cast(0.0, f32))
         if same_sign then bisection_rec(f, mid, hi, fmid, tol, sub(iters, one_i)) else bisection_rec(f, lo, mid, flo, tol, sub(iters, one_i))
       }
     }
@@ -78,26 +78,27 @@ def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, f
       nd_ab = neg(d_ab)
       nd_ac = neg(d_ac)
       nd_bc = neg(d_bc)
-      iqi_t1 = div(mul(a1, mul(fb1, fc1)), mul(d_ab, d_ac))
-      iqi_t2 = div(mul(b1, mul(fa1, fc1)), mul(nd_ab, d_bc))
-      iqi_t3 = div(mul(c1, mul(fa1, fb1)), mul(nd_ac, nd_bc))
-      s_iqi = add(add(iqi_t1, iqi_t2), iqi_t3)
+      iqi_t1 = a1 |> mul(mul(fb1, fc1)) |> div(mul(d_ab, d_ac))
+      iqi_t2 = b1 |> mul(mul(fa1, fc1)) |> div(mul(nd_ab, d_bc))
+      iqi_t3 = c1 |> mul(mul(fa1, fb1)) |> div(mul(nd_ac, nd_bc))
+      s_iqi = iqi_t1 |> add(iqi_t2) |> add(iqi_t3)
       sec_denom = sub(fb1, fa1)
-      sec_step = div(mul(fb1, sub(b1, a1)), sec_denom)
+      sec_step = fb1 |> mul(sub(b1, a1)) |> div(sec_denom)
       s_sec = sub(b1, sec_step)
       s_try = if use_iqi then s_iqi else s_sec
-      three_a = mul(cast(3.0, f32), a1)
-      m = mul(cast(0.25, f32), add(three_a, b1))
+      three_a = 3.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(a1)
+      m = 0.25
+        |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(add(three_a, b1))
       cond_range = gt(mul(sub(s_try, m), sub(s_try, b1)), zero_f)
-      diff_bc = r_abs_f32(sub(b1, c1))
-      diff_cd = r_abs_f32(sub(c1, d))
-      diff_sb = r_abs_f32(sub(s_try, b1))
+      diff_bc = b1 |> sub(c1) |> r_abs_f32
+      diff_cd = c1 |> sub(d) |> r_abs_f32
+      diff_sb = s_try |> sub(b1) |> r_abs_f32
       half_bc = mul(half, diff_bc)
       half_cd = mul(half, diff_cd)
       cond_step_bisect = and(was_bisect, gte(diff_sb, half_bc))
-      cond_step_interp = and(not(was_bisect), gte(diff_sb, half_cd))
+      cond_step_interp = was_bisect |> not |> and(gte(diff_sb, half_cd))
       cond_small_bc = and(was_bisect, lt(diff_bc, tol))
-      cond_small_cd = and(not(was_bisect), lt(diff_cd, tol))
+      cond_small_cd = was_bisect |> not |> and(lt(diff_cd, tol))
       force_bisect = or(or(or(or(cond_range, cond_step_bisect), cond_step_interp), cond_small_bc), cond_small_cd)
       s = if force_bisect then mul(half, add(a1, b1)) else s_try
       this_was_bisect = force_bisect
@@ -105,7 +106,7 @@ def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, f
       d_new = c1
       c_new = b1
       fc_new = fb1
-      same_sign = gt(mul(fa1, fs), zero_f)
+      same_sign = fa1 |> mul(fs) |> gt(zero_f)
       a_new = if same_sign then s else a1
       fa_new = if same_sign then fs else fa1
       b_new = if same_sign then b1 else s

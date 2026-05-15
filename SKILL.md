@@ -1242,7 +1242,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
 | `lm_scalar_1param` | `[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs: tensor[n, f32], ys: tensor[n, f32], theta0: f32, lambda0: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Levenberg-Marquardt for single-parameter models; `model(x, theta)` and `dmodel(x, theta)` are function-typed |
-| `lm_scalar_nparam` | `[n, m](model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32], x: tensor[m, f32], y: tensor[m, f32], theta0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32]` | `alpha` | Multi-parameter LM via finite-difference Jacobian (eps=1e-5); `tol` accepted but unused (runs full `max_iters`); lambda fixed at 0.01; grad-based Jacobian blocked by upstream compiler bug (tracked in `docs/UPSTREAM_BUGS.md`) |
+| `lm_scalar_nparam` | `[n, m](model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32], x: tensor[m, f32], y: tensor[m, f32], theta0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32]` | `alpha` | Multi-parameter LM via finite-difference Jacobian (eps=1e-5); `tol` accepted but unused (runs full `max_iters`); lambda fixed at 0.01; grad-based Jacobian blocked by upstream compiler bug (tracked in `docs/upstream-bugs.md`) |
 
 ### Nautilus.Signal (7 exports -- stubs)
 

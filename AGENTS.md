@@ -54,7 +54,7 @@ diverges upstream, update this repo in the same change set.
 
 ## Upstream Chelis Bugs
 
-Upstream bugs tracked in [`UPSTREAM_BUGS.md`](docs/UPSTREAM_BUGS.md) —
+Upstream bugs tracked in [`upstream-bugs.md`](docs/upstream-bugs.md) —
 originally found against v0.1.3, with per-bug status notes for each
 subsequent release. The historically tracked bugs that blocked the
 shipped Nautilus surface have all been fixed in releases up through
@@ -68,7 +68,7 @@ verification is no longer upstream-blocked. The remaining open
 blocker — tensor-valued `grad` at the C-backend lowering level
 (multi-parameter LM) — was last verified against `v0.1.21` and has
 not been re-probed against the current `0.7.6` pin; see
-`docs/UPSTREAM_BUGS.md` for details.
+`docs/upstream-bugs.md` for details.
 
 ## Authorship Policy
 

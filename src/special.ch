@@ -652,7 +652,8 @@ def ellip_agm_a_rec(a: f32, b: f32, iters: int64) -> f32 = {
     b_next = sqrt(mul(a, b))
     c_next = div(sub(a, b), two)
     tol = cast(0.00000001, f32)
-    converged = lt(abs_f32(c_next), mul(tol, a_next))
+    stalled = or(eq(a_next, a), eq(b_next, b))
+    converged = or(lt(abs_f32(c_next), mul(tol, a_next)), stalled)
     if converged then a_next else ellip_agm_a_rec(a_next, b_next, sub(iters, one_i))
   }
 }
@@ -668,7 +669,8 @@ def ellip_agm_csum_rec(a: f32, b: f32, c_sum: f32, weight: f32, iters: int64) ->
     c2 = mul(c_next, c_next)
     c_sum_next = add(c_sum, mul(w_next, c2))
     tol = cast(0.00000001, f32)
-    converged = lt(abs_f32(c_next), mul(tol, a_next))
+    stalled = or(eq(a_next, a), eq(b_next, b))
+    converged = or(lt(abs_f32(c_next), mul(tol, a_next)), stalled)
     if converged then c_sum_next else ellip_agm_csum_rec(a_next, b_next, c_sum_next, w_next, sub(iters, one_i))
   }
 }

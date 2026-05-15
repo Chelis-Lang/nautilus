@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-REPORT = REPO / "docs" / "EVAL_STARTUP_FINDINGS.md"
+REPORT = REPO / "docs" / "eval-startup-findings.md"
 sys.path.insert(0, str(REPO))
 
 from scripts.chelis_toolchain import resolve_chelis_bin

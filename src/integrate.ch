@@ -11,12 +11,13 @@ def trap_rec(f: f32 -> f32, x: f32, h: f32, k: int64, acc: f32) -> f32 = {
   }
 }
 def trapezoidal(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = {
-  if lte(n_steps, cast(0, int64)) then div(cast(0.0, f32), cast(0.0, f32)) else {
+  if lte(n_steps, cast(0, int64)) then 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32)) else {
     n_f = cast(n_steps, f32)
     h = sub(b, a) |> div(n_f)
     fa = f(a)
     fb = f(b)
-    endpoint_sum = mul(cast(0.5, f32), add(fa, fb))
+    endpoint_sum = 0.5
+      |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(add(fa, fb))
     x1 = add(a, h)
     inner_count = sub(n_steps, cast(1, int64))
     inner_sum = trap_rec(f, x1, h, inner_count, cast(0.0, f32))
@@ -39,9 +40,9 @@ def simpson_rec(f: f32 -> f32, x: f32, h: f32, k: int64, is_odd_step: bool, acc:
 def simpsons(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = {
   zero_i = cast(0, int64)
   two_i = cast(2, int64)
-  if lte(n_steps, zero_i) then div(cast(0.0, f32), cast(0.0, f32)) else {
+  if lte(n_steps, zero_i) then 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32)) else {
     parity = mod(n_steps, two_i)
-    if neq(parity, zero_i) then div(cast(0.0, f32), cast(0.0, f32)) else {
+    if neq(parity, zero_i) then 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32)) else {
       n_f = cast(n_steps, f32)
       h = sub(b, a) |> div(n_f)
       fa = f(a)
@@ -98,7 +99,7 @@ def adaptive_simpson(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: int64) 
   capped_depth = if gt(max_depth, depth_cap) then depth_cap else max_depth
   fa = f(a)
   fb = f(b)
-  m = mul(cast(0.5, f32), add(a, b))
+  m = 0.5 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(add(a, b))
   fm = f(m)
   h = sub(b, a)
   whole = int_simpson_small(h, fa, fm, fb)
@@ -131,8 +132,9 @@ def romberg_5(f: f32 -> f32, a: f32, b: f32) -> f32 = {
   r_4_4
 }
 def gauss_legendre_10(f: f32 -> f32, a: f32, b: f32) -> f32 = {
-  half_range = mul(cast(0.5, f32), sub(b, a))
-  mid = mul(cast(0.5, f32), add(a, b))
+  half_range = 0.5
+    |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(sub(b, a))
+  mid = 0.5 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(add(a, b))
   x1 = add(mid, mul(half_range, cast(-0.9739065285171717, f32)))
   x2 = add(mid, mul(half_range, cast(-0.8650633666889845, f32)))
   x3 = add(mid, mul(half_range, cast(-0.6794095682990244, f32)))
@@ -163,8 +165,8 @@ def gauss_legendre_10(f: f32 -> f32, a: f32, b: f32) -> f32 = {
   s8 = mul(w8, f(x8))
   s9 = mul(w9, f(x9))
   s10 = mul(w10, f(x10))
-  sum_a = add(add(s1, s2), add(s3, s4))
-  sum_b = add(add(s5, s6), add(s7, s8))
+  sum_a = s1 |> add(s2) |> add(add(s3, s4))
+  sum_b = s5 |> add(s6) |> add(add(s7, s8))
   sum_c = add(s9, s10)
   total = add(sum_a, sum_b) |> add(sum_c)
   mul(half_range, total)
@@ -200,8 +202,8 @@ def gauss_hermite_10(f: f32 -> f32) -> f32 = {
   s8 = mul(w8, f(x8))
   s9 = mul(w9, f(x9))
   s10 = mul(w10, f(x10))
-  sum_a = add(add(s1, s2), add(s3, s4))
-  sum_b = add(add(s5, s6), add(s7, s8))
+  sum_a = s1 |> add(s2) |> add(add(s3, s4))
+  sum_b = s5 |> add(s6) |> add(add(s7, s8))
   sum_c = add(s9, s10)
   add(sum_a, sum_b) |> add(sum_c)
 }
@@ -236,15 +238,16 @@ def gauss_laguerre_10(f: f32 -> f32) -> f32 = {
   s8 = mul(w8, f(x8))
   s9 = mul(w9, f(x9))
   s10 = mul(w10, f(x10))
-  sum_a = add(add(s1, s2), add(s3, s4))
-  sum_b = add(add(s5, s6), add(s7, s8))
+  sum_a = s1 |> add(s2) |> add(add(s3, s4))
+  sum_b = s5 |> add(s6) |> add(add(s7, s8))
   sum_c = add(s9, s10)
   add(sum_a, sum_b) |> add(sum_c)
 }
 def gauss_legendre_5(f: f32 -> f32, a: f32, b: f32, n_points: int64) -> f32 = {
   ignore_n = n_points
-  half_range = mul(cast(0.5, f32), sub(b, a))
-  mid = mul(cast(0.5, f32), add(a, b))
+  half_range = 0.5
+    |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(sub(b, a))
+  mid = 0.5 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(add(a, b))
   x1_t = mul(half_range, cast(-0.906179845938664, f32))
   x1 = add(mid, x1_t)
   x2_t = mul(half_range, cast(-0.5384693101056831, f32))

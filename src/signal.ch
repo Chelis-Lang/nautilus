@@ -1,6 +1,6 @@
 module Nautilus.Signal
 export (fft_magnitude_stub, ifft_magnitude_stub, stft_magnitude_stub, lowpass_stub, highpass_stub, bandpass_stub, fftfreq)
-def signal_stub_nan() -> f32 = div(cast(0.0, f32), cast(0.0, f32))
+def signal_stub_nan() -> f32 = 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
 def fft_magnitude_stub[n](x: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
 def ifft_magnitude_stub[n](x: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
 def stft_magnitude_stub[n](x: &tensor[n, f32], window_size: int64, hop_size: int64) -> tensor[n, f32] = {
@@ -25,13 +25,13 @@ def bandpass_stub[n](x: &tensor[n, f32], low_hz: f32, high_hz: f32, sample_rate:
   to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
 }
 def fftfreq[n](x: &tensor[n, f32], sample_rate: f32) -> tensor[n, f32] = {
-  n_i = numel(copy(x))
+  n_i = numel(x)
   n_f = cast(n_i, f32)
-  half = mul(cast(0.5, f32), n_f)
-  indexed = enumerate(to_list(x))
+  half = 0.5 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(n_f)
+  indexed = x |> to_list |> enumerate
   to_tensor(map(fn (pair: (int64, f32)) -> {
     i_f = cast(pair.0, f32)
     shifted = if lt(i_f, half) then i_f else sub(i_f, n_f)
-    mul(div(shifted, n_f), sample_rate)
+    shifted |> div(n_f) |> mul(sample_rate)
   }, indexed))
 }

@@ -16,7 +16,7 @@ def opt_gs_rec(f: f32 -> f32, a: f32, b: f32, tol: f32, iters: int64) -> f32 = {
       d = add(a, gap)
       fc = f(c)
       fd = f(d)
-      if lt(fc, fd) then opt_gs_rec(f, a, d, tol, sub(iters, one_i)) else opt_gs_rec(f, c, b, tol, sub(iters, one_i))
+      if eq(fc, fd) then mul(cast(0.5, f32), add(c, d)) else if lt(fc, fd) then opt_gs_rec(f, a, d, tol, sub(iters, one_i)) else opt_gs_rec(f, c, b, tol, sub(iters, one_i))
     }
   }
 }
@@ -25,10 +25,12 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
   two_i = cast(2, int64)
+  tol_floor = cast(0.000001, f32)
+  tol_eff = if lt(tol, tol_floor) then tol_floor else tol
   if lte(iters, zero_i) then u else {
     width = sub(b, a)
     awidth = opt_abs_f32(width)
-    if lt(awidth, tol) then u else {
+    if lt(awidth, tol_eff) then u else {
       done_iters = sub(total_iters, iters)
       parity = mod(done_iters, two_i)
       use_golden = eq(parity, zero_i)
@@ -39,7 +41,7 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
         d = add(a, gap)
         fc = f(c)
         fd = f(d)
-        if lt(fc, fd) then {
+        if eq(fc, fd) then mul(cast(0.5, f32), add(c, d)) else if lt(fc, fd) then {
           new_fu = if lt(fc, fu) then fc else fu
           new_u = if lt(fc, fu) then c else u
           opt_brent_rec(f, a, d, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -68,7 +70,7 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
           d = add(a, gap)
           fc = f(c)
           fd = f(d)
-          if lt(fc, fd) then {
+          if eq(fc, fd) then mul(cast(0.5, f32), add(c, d)) else if lt(fc, fd) then {
             new_fu = if lt(fc, fu) then fc else fu
             new_u = if lt(fc, fu) then c else u
             opt_brent_rec(f, a, d, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -82,7 +84,7 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
           offset = mul(half, div(num, den))
           cand = sub(u, offset)
           inside = and(gt(cand, a), lt(cand, b))
-          if inside then {
+          if eq(cand, u) then u else if inside then {
             fcand = f(cand)
             if lt(fcand, fu) then {
               new_a = if lt(cand, u) then a else u
@@ -100,7 +102,7 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
             d = add(a, gap)
             fc = f(c)
             fd = f(d)
-            if lt(fc, fd) then {
+            if eq(fc, fd) then mul(cast(0.5, f32), add(c, d)) else if lt(fc, fd) then {
               new_fu = if lt(fc, fu) then fc else fu
               new_u = if lt(fc, fu) then c else u
               opt_brent_rec(f, a, d, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -136,7 +138,7 @@ def opt_gd_rec(f: f32 -> f32, df: f32 -> f32, x: f32, lr: f32, iters: int64) -> 
       runaway = gt(x_next_abs, cast(1000000000000000.0, f32))
       diff = sub(x_next, x_next)
       nan_produced = not(eq(diff, cast(0.0, f32)))
-      if or(runaway, nan_produced) then opt_nan_f32() else opt_gd_rec(f, df, x_next, lr, sub(iters, one_i))
+      if or(runaway, nan_produced) then opt_nan_f32() else if eq(x_next, x) then x_next else opt_gd_rec(f, df, x_next, lr, sub(iters, one_i))
     }
   }
 }
@@ -158,7 +160,7 @@ def opt_nmin_rec(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x: f32, tol: f3
       if lt(ah, cast(0.000000000000000000000000000001, f32)) then opt_nan_f32() else {
         step = div(g, h)
         x_next = sub(x, step)
-        opt_nmin_rec(f, df, ddf, x_next, tol, sub(iters, one_i))
+        if eq(x_next, x) then x_next else opt_nmin_rec(f, df, ddf, x_next, tol, sub(iters, one_i))
       }
     }
   }

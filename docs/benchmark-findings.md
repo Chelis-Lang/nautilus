@@ -190,7 +190,7 @@ flip to wins. See Upstream asks below.
   runtime gate — need `uniform_like` and tensor allocation. Future P6.
 
 - **Grad-through-rk4 neural-ODE demo** — blocked on the same tensor
-  runtime. Tracked in `UPSTREAM_BUGS.md`.
+  runtime. Tracked in `upstream-bugs.md`.
 
 ## How to run
 
