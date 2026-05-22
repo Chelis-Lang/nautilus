@@ -202,3 +202,7 @@ def test_laguerre_xsq_identity() -> unit ! { Test } = {
   v = gauss_laguerre_10(f_xsq)
   assert_close(v, cast(2.0, f32), cast(0.0001, f32), "gauss_laguerre_10(x^2) = gamma(3) = 2! = 2")
 }
+def test_adapt_sub_ulp_tol_plateau_terminates_sum() -> unit ! { Test } = {
+  v = adaptive_simpson(f_one, cast(0.0, f32), cast(1.0, f32), cast(0.0, f32), cast(30, int64))
+  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "adaptive_simpson: plateau-stop terminates accumulated sum when sum_lr == whole bit-exact under zero tol (sub-f32-ULP regime)")
+}

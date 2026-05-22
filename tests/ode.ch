@@ -168,3 +168,7 @@ def test_step_consistency_rk4_vs_euler_small_h() -> unit ! { Test } = {
   abs_diff = if lt(diff, cast(0.0, f32)) then neg(diff) else diff
   assert_true(lt(abs_diff, cast(0.00001, f32)), "rk4_step - euler_step is O(h^2) for small h")
 }
+def test_rk45_sub_ulp_step_plateau_locks_iterate() -> unit ! { Test } = {
+  result = rk45_adaptive_solve(zero_rhs, cast(1.5, f32), cast(0.0, f32), cast(0.0000000001, f32), cast(0.000000001, f32), cast(0.0000000001, f32))
+  assert_close(result, cast(1.5, f32), cast(0.000001, f32), "rk45_adaptive_rec: plateau-stop holds iterate when sub-f32-ULP step yields y_next == y bit-exact")
+}

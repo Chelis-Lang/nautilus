@@ -31,7 +31,7 @@ def lm1_rec[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs: &tensor[
     theta_next = lm1_step(model, dmodel, copy(xs), copy(ys), theta, lambda)
     delta = sub(theta_next, theta)
     abs_delta = cf_abs(delta)
-    if lt(abs_delta, tol) then theta_next else lm1_rec(model, dmodel, xs, ys, theta_next, lambda, tol, sub(iters, one_i))
+    if eq(theta_next, theta) then theta_next else if lt(abs_delta, tol) then theta_next else lm1_rec(model, dmodel, xs, ys, theta_next, lambda, tol, sub(iters, one_i))
   }
 }
 def lm_scalar_1param[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs: &tensor[n, f32], ys: &tensor[n, f32], theta0: f32, lambda0: f32, tol: f32, max_iters: int64) -> f32 = {

@@ -6,6 +6,64 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed — structural f32-plateau-stop hardening for three iterative modules
+
+Extends the `Nautilus.Roots` plateau-stop discipline (shipped in 0.7.11)
+to the three other recursive numeric kernels surfaced by the WS-B audit:
+
+- `Nautilus.CurveFit` `lm1_rec`: adds `eq(theta_next, theta)` plateau
+  check ahead of the existing `lt(abs_delta, tol)` convergence test.
+- `Nautilus.Ode` `rk45_adaptive_rec`: adds `eq(y_next, y)` plateau
+  check in the accepted-step branch, after the existing
+  `lt(|t_end - t_next|, tiny_h)` terminal-step short-circuit.
+- `Nautilus.Integrate` `adaptive_simpson_rec`: adds
+  `plateau = eq(sum_lr, whole)` to the existing
+  `or(converged, exhausted)` exit condition. The pre-existing
+  `tol_floor = cast(0.0000001, f32)` (L88) on the recursed half-tol is
+  retained.
+
+Unlike `Nautilus.Roots`'s iter-exhaustion which returns `r_nan_f32()`
+(making the plateau-stop a true correctness fix under sub-ULP tol),
+these three modules' iter/depth-exhaustion fallbacks already return
+the current iterate (`theta` for lm1, `y` for rk45, `sum_lr +
+correction` for adaptive Simpson). Because the iterate at the f32
+fixed point is stable, exhaustion returns the same value the plateau
+short-circuit would. The hardening is therefore structural
+defense-in-depth: it aligns these modules with the `roots.ch` style,
+short-circuits unnecessary iterations once the iterate plateaus at
+f32 resolution, and provides a regression hook against future
+weakening of the iter-exhaust semantics.
+
+Per-module sub-ULP regression tests added (passing) that exercise
+the hardened path under adversarial (NaN/zero) tolerances:
+
+- `tests/curvefit.ch::test_lm1_sub_ulp_tol_plateau_locks_fixed_point`
+- `tests/ode.ch::test_rk45_sub_ulp_step_plateau_locks_iterate`
+- `tests/integrate.ch::test_adapt_sub_ulp_tol_plateau_terminates_sum`
+
+These tests pass with the hardening in place; they also pass without
+it, because in these three modules iter/depth-exhaustion already
+returns the f32-plateau iterate. They function as regression
+guards rather than differential-failure tests. See the WS-B report
+for the full analysis.
+
+`tol_floor` literal source: `src/roots.ch:62-63` —
+`tol_floor = cast(0.000001, f32)` / `tol_eff = if lt(tol, tol_floor)
+then tol_floor else tol`. Not introduced into curvefit or ode this
+wave (their convergence checks compare iterate-deltas, which the
+plateau check subsumes for positive tol); integrate.ch retains its
+pre-existing distinct `tol_floor = cast(0.0000001, f32)` at L88,
+which guards the recursed half-tol rather than the top-level
+convergence check.
+
+### Verified
+
+`chelis test tests/ --jobs auto` → 441 passed (was 438; +3 new
+sub-ULP tests), 0 failed; `python3 parity/run_parity.py --strict` →
+216 passed, 0 failed; `chelis lint --check .` → 274 advisory
+warnings (unchanged from main; all `prefer-pipe-operator`, none
+introduced by this wave).
+
 ## [0.7.11] — 2026-05-22
 
 f32-plateau hardening for `Nautilus.Roots` — the structurally-identical
