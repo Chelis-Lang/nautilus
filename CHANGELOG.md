@@ -199,11 +199,26 @@ renamed from SCREAMING_SNAKE_CASE to kebab-case to satisfy
 
 ### Tracked upstream (not blocking)
 
-chelis 0.7.10's scalar-f32 evaluator behavior now differs from the C
-host backend, which still emits host scalar floats as `double`. The
-f32 hardening above makes nautilus robust either way, but the
-evaluator/backend divergence is a chelis soundness item worth
-tracking upstream.
+chelis 0.7.10's scalar-f32 evaluator preserves the source f64 value
+verbatim (its internal `TensorValue.data` is `Vec<f64>`), while the C
+backend quantizes scalar-f32 constants via an `as f32` cast composed
+with a `%.8` format string in `emit_const`, dropping precision before
+the C compiler ever sees the literal. The two paths therefore disagree
+on small-magnitude f32 constants (e.g., `1.23456789e-7` becomes
+`1.19999996e-7` on the C side, a ~3% drift). The f32 hardening above
+makes nautilus robust either way, but the divergence is a chelis
+soundness item filed at
+[Chelis-Lang/chelis#189](https://github.com/Chelis-Lang/chelis/issues/189).
+
+Separately, the `doc-filename-convention` lint rule's §8.3 vs §8.5
+dichotomy retroactively flips every `docs/*.md` correctness verdict
+when a `book.toml` is added or removed in any ancestor directory.
+nautilus's 0.7.10 SCREAMING_SNAKE→kebab rename was a direct
+consequence of this footgun. Filed for design discussion at
+[Chelis-Lang/chelis#190](https://github.com/Chelis-Lang/chelis/issues/190).
+
+Drafts and full reasoning for both filings live under
+`docs/upstream-issues-drafts/`.
 
 ## [0.7.9] — 2026-05-13
 
