@@ -127,7 +127,7 @@ def rk45_adaptive_rec(f: f32 -> f32 -> f32, y: f32, t: f32, t_end: f32, h: f32, 
       next_h = rk45_next_step(h_capped, err_ratio)
       if lte(err_ratio, ode_one_f()) then {
         t_next = add(t, h_capped)
-        if lt(ode_abs_f(sub(t_end, t_next)), tiny_h) then y_next else rk45_adaptive_rec(f, y_next, t_next, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()))
+        if lt(ode_abs_f(sub(t_end, t_next)), tiny_h) then y_next else if eq(y_next, y) then y_next else rk45_adaptive_rec(f, y_next, t_next, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()))
       } else { rk45_adaptive_rec(f, y, t, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i())) }
     }
   }

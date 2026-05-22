@@ -79,9 +79,10 @@ def adaptive_simpson_rec(f: f32 -> f32, a: f32, b: f32, fa: f32, fb: f32, fm: f3
   diff = sub(sum_lr, whole)
   abs_diff = int_abs(diff)
   fifteen_tol = cast(15.0, f32) |> mul(tol)
+  plateau = eq(sum_lr, whole)
   converged = lt(abs_diff, fifteen_tol)
   exhausted = lte(depth, zero_i)
-  if or(converged, exhausted) then {
+  if or(or(converged, plateau), exhausted) then {
     correction = div(diff, cast(15.0, f32))
     add(sum_lr, correction)
   } else {

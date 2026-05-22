@@ -117,3 +117,10 @@ def test_lm_nparam_n1_matches_scalar() -> unit ! { Test } = {
   _ = assert_close_tensor(vec_hat, vec_expected, cast(0.01, f32), "lm_scalar_nparam (n=1) recovers theta = [3] on y = 3x")
   assert_true(lt(diff, cast(0.01, f32)), "lm_scalar_nparam (n=1) and lm_scalar_1param agree within 1e-2")
 }
+def test_lm1_sub_ulp_tol_plateau_locks_fixed_point() -> unit ! { Test } = {
+  xs = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32)])
+  ys = to_tensor([cast(2.0, f32), cast(4.0, f32), cast(6.0, f32), cast(8.0, f32)])
+  nan_tol = div(cast(0.0, f32), cast(0.0, f32))
+  theta_hat = lm_scalar_1param(cf_lin_model, cf_lin_dmodel, xs, ys, cast(0.5, f32), cast(0.01, f32), nan_tol, cast(50, int64))
+  assert_close(theta_hat, cast(2.0, f32), cast(0.0001, f32), "lm_scalar_1param: plateau-stop locks bit-exact fixed point under NaN tol (sub-f32-ULP regime)")
+}
