@@ -6,7 +6,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Changed — structural f32-plateau-stop hardening for three iterative modules
+### Changed: structural f32-plateau-stop hardening for three iterative modules
 
 Extends the `Nautilus.Roots` plateau-stop discipline (shipped in 0.7.11)
 to the three other recursive numeric kernels surfaced by the WS-B audit:
@@ -47,7 +47,7 @@ returns the f32-plateau iterate. They function as regression
 guards rather than differential-failure tests. See the WS-B report
 for the full analysis.
 
-`tol_floor` literal source: `src/roots.ch:62-63` —
+`tol_floor` literal source: `src/roots.ch:62-63`,
 `tol_floor = cast(0.000001, f32)` / `tol_eff = if lt(tol, tol_floor)
 then tol_floor else tol`. Not introduced into curvefit or ode this
 wave (their convergence checks compare iterate-deltas, which the
