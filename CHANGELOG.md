@@ -6,6 +6,18 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.12] — 2026-05-22
+
+Cleanup-wave release. No compiler-pin change (still `=0.7.10`).
+Closes the warning regression from the 0.7.10 lint-fix that was lost
+during pristine-source verification, extends the `Nautilus.Roots`
+plateau-stop discipline (shipped in 0.7.11) to three more iterative
+modules as defense-in-depth, replaces the 0.7.10 CHANGELOG's
+"tracked upstream" placeholder with concrete chelis-repo issue
+references for the f32 evaluator/C-backend divergence and the
+`doc-filename-convention` design wart, and adds a CI maintenance
+schedule for the Node 20 → Node 24 GitHub Actions migration.
+
 ### Changed: re-applied lost `chelis lint --fix` cleanup on `optim.ch` / `special.ch`
 
 The 0.7.10 release shipped with the `chelis lint --fix` cleanup applied
