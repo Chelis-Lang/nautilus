@@ -6,7 +6,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Changed — re-applied lost `chelis lint --fix` cleanup on `optim.ch` / `special.ch`
+### Changed: re-applied lost `chelis lint --fix` cleanup on `optim.ch` / `special.ch`
 
 The 0.7.10 release shipped with the `chelis lint --fix` cleanup applied
 across most of `src/`, but during pristine-source verification of the
@@ -16,7 +16,7 @@ extra advisory warnings (14 in `optim.ch` + 71 in `special.ch`, all
 `prefer-pipe-operator`) on top of the warning floor the 0.7.10 release
 notes implied.
 
-Re-applied `chelis lint --fix` to those two files only — under the
+Re-applied `chelis lint --fix` to those two files only, under the
 strict discipline that **no f32-hardening / NaN-handling / plateau-stop
 / tolerance-floor line may change byte-for-byte**. Where `chelis lint
 --fix` semantically rewrote a function containing a plateau-stop site
@@ -29,7 +29,7 @@ warnings retained. The NaN-producing primitives `opt_nan_f32()`,
 Final state: `chelis lint --check src/` → **214 advisory warnings**
 (down from 273; expected drop ≈80, actual drop 59, the gap being the
 26 warnings stuck inside the seven plateau-stop-containing functions
-that had to be reverted whole — `opt_gs_rec`, `opt_brent_rec`,
+that had to be reverted whole: `opt_gs_rec`, `opt_brent_rec`,
 `opt_gd_rec`, `airy_f_rec`, `airy_g_rec`, `ellip_agm_a_rec`,
 `ellip_agm_csum_rec`). All 438 tests + 216 parity samples remain
 green. The 0.7.10 release notes (line 98 above) overstated the
