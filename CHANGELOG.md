@@ -6,6 +6,36 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed: re-applied lost `chelis lint --fix` cleanup on `optim.ch` / `special.ch`
+
+The 0.7.10 release shipped with the `chelis lint --fix` cleanup applied
+across most of `src/`, but during pristine-source verification of the
+0.7.10 f32-hardening bug, `src/optim.ch` and `src/special.ch` were
+reverted to HEAD and never re-lint-fixed. 0.7.10 therefore carried 85
+extra advisory warnings (14 in `optim.ch` + 71 in `special.ch`, all
+`prefer-pipe-operator`) on top of the warning floor the 0.7.10 release
+notes implied.
+
+Re-applied `chelis lint --fix` to those two files only, under the
+strict discipline that **no f32-hardening / NaN-handling / plateau-stop
+/ tolerance-floor line may change byte-for-byte**. Where `chelis lint
+--fix` semantically rewrote a function containing a plateau-stop site
+(per the WS-A do-not-touch inventory: `optim.ch` lines 19, 28–29, 44,
+73, 87, 105, 141, 149, 156, 163; `special.ch` lines 556–573, 575–592,
+655–656, 672–673), that function was reverted whole and its advisory
+warnings retained. The NaN-producing primitives `opt_nan_f32()`,
+`pos_inf()`, `neg_inf()`, `nan_f32()` were likewise preserved verbatim.
+
+Final state: `chelis lint --check src/` → **214 advisory warnings**
+(down from 273; expected drop ≈80, actual drop 59, the gap being the
+26 warnings stuck inside the seven plateau-stop-containing functions
+that had to be reverted whole: `opt_gs_rec`, `opt_brent_rec`,
+`opt_gd_rec`, `airy_f_rec`, `airy_g_rec`, `ellip_agm_a_rec`,
+`ellip_agm_csum_rec`). All 438 tests + 216 parity samples remain
+green. The 0.7.10 release notes (line 98 above) overstated the
+cleanup state by 1 (273 actual vs 272 claimed) in addition to the
+85-warning regression now closed here.
+
 ## [0.7.11] — 2026-05-22
 
 f32-plateau hardening for `Nautilus.Roots` — the structurally-identical

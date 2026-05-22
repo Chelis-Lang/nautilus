@@ -35,7 +35,7 @@ def erf(x: f32) -> f32 = {
     if lt(x, cast(0.0, f32)) then neg(y) else y
   }
 }
-def erfc(x: f32) -> f32 = sub(cast(1.0, f32), erf(x))
+def erfc(x: f32) -> f32 = 1.0 |> cast(f32) |> sub(erf(x))
 def lanczos_sum(x: f32) -> f32 = {
   c0 = cast(0.9999999999998099, f32)
   c1 = cast(676.5203681218851, f32)
@@ -66,7 +66,7 @@ def log_gamma_core(x: f32) -> f32 = {
   t = add(xm1, g_plus_half)
   log_t = log(t)
   log_a = log(a)
-  add(add(log_sqrt_2pi, mul(add(xm1, half), log_t)), sub(log_a, t))
+  log_sqrt_2pi |> add(mul(add(xm1, half), log_t)) |> add(sub(log_a, t))
 }
 def log_gamma(x: f32) -> f32 = {
   half = cast(0.5, f32)
@@ -77,9 +77,9 @@ def log_gamma(x: f32) -> f32 = {
     spix = sin(pix)
     aspix = abs_f32(spix)
     log_aspix = log(aspix)
-    one_minus_x = sub(cast(1.0, f32), x)
+    one_minus_x = 1.0 |> cast(f32) |> sub(x)
     lgc = log_gamma_core(one_minus_x)
-    sub(sub(log_pi, log_aspix), lgc)
+    log_pi |> sub(log_aspix) |> sub(lgc)
   } else log_gamma_core(x)
 }
 def gamma(x: f32) -> f32 = {
@@ -88,10 +88,10 @@ def gamma(x: f32) -> f32 = {
   if is_nonpositive_integer(x) then pos_inf() else if lt(x, half) then {
     pix = mul(pi, x)
     spix = sin(pix)
-    one_minus_x = sub(cast(1.0, f32), x)
-    g1 = exp(log_gamma_core(one_minus_x))
+    one_minus_x = 1.0 |> cast(f32) |> sub(x)
+    g1 = one_minus_x |> log_gamma_core |> exp
     div(pi, mul(spix, g1))
-  } else exp(log_gamma_core(x))
+  } else x |> log_gamma_core |> exp
 }
 def digamma_asymptotic(x: f32) -> f32 = {
   one = cast(1.0, f32)
@@ -109,7 +109,7 @@ def digamma_asymptotic(x: f32) -> f32 = {
 def digamma_rec(x: f32, acc: f32) -> f32 = {
   six = cast(6.0, f32)
   one = cast(1.0, f32)
-  if gte(x, six) then add(digamma_asymptotic(x), acc) else digamma_rec(add(x, one), sub(acc, div(one, x)))
+  if gte(x, six) then x |> digamma_asymptotic |> add(acc) else x |> add(one) |> digamma_rec(sub(acc, div(one, x)))
 }
 def digamma(x: f32) -> f32 = { if is_nonpositive_integer(x) then nan_f32() else digamma_rec(x, cast(0.0, f32)) }
 def acklam_central(q: f32) -> f32 = {
@@ -145,7 +145,7 @@ def acklam_tail(u: f32) -> f32 = {
   d4 = cast(3.754408661907416, f32)
   one = cast(1.0, f32)
   num = add(mul(u, add(mul(u, add(mul(u, add(mul(u, add(mul(u, c1), c2)), c3)), c4)), c5)), c6)
-  den = add(mul(u, add(mul(u, add(mul(u, add(mul(u, d1), d2)), d3)), d4)), one)
+  den = u |> mul(add(mul(u, add(mul(u, add(mul(u, d1), d2)), d3)), d4)) |> add(one)
   div(num, den)
 }
 def norminv(q: f32) -> f32 = {
@@ -155,35 +155,35 @@ def norminv(q: f32) -> f32 = {
   two = cast(2.0, f32)
   if lt(q, plow) then {
     lq = log(q)
-    mlq = neg(mul(two, lq))
+    mlq = two |> mul(lq) |> neg
     u = sqrt(mlq)
     acklam_tail(u)
   } else if lte(q, phigh) then acklam_central(q) else {
     omq = sub(one, q)
     lomq = log(omq)
-    mlomq = neg(mul(two, lomq))
+    mlomq = two |> mul(lomq) |> neg
     u = sqrt(mlomq)
-    neg(acklam_tail(u))
+    u |> acklam_tail |> neg
   }
 }
 def erfinv(x: f32) -> f32 = {
   half = cast(0.5, f32)
   sqrt_half = cast(0.7071067811865476, f32)
-  q = mul(add(x, cast(1.0, f32)), half)
-  mul(norminv(q), sqrt_half)
+  q = x |> add(cast(1.0, f32)) |> mul(half)
+  q |> norminv |> mul(sqrt_half)
 }
 def lbeta(a: f32, b: f32) -> f32 = {
   zero = cast(0.0, f32)
-  if or(lte(a, zero), lte(b, zero)) then nan_f32() else {
+  if a |> lte(zero) |> or(lte(b, zero)) then nan_f32() else {
     la = log_gamma(a)
     lb = log_gamma(b)
-    lab = log_gamma(add(a, b))
-    sub(add(la, lb), lab)
+    lab = a |> add(b) |> log_gamma
+    la |> add(lb) |> sub(lab)
   }
 }
 def beta(a: f32, b: f32) -> f32 = {
   zero = cast(0.0, f32)
-  if or(lte(a, zero), lte(b, zero)) then nan_f32() else {
+  if a |> lte(zero) |> or(lte(b, zero)) then nan_f32() else {
     lb = lbeta(a, b)
     exp(lb)
   }
@@ -209,10 +209,10 @@ def trigamma_asymptotic(x: f32) -> f32 = {
 def trigamma_rec(x: f32, acc: f32) -> f32 = {
   six = cast(6.0, f32)
   one = cast(1.0, f32)
-  if gte(x, six) then add(trigamma_asymptotic(x), acc) else {
+  if gte(x, six) then x |> trigamma_asymptotic |> add(acc) else {
     inv_x = div(one, x)
     inv_x2 = mul(inv_x, inv_x)
-    trigamma_rec(add(x, one), add(acc, inv_x2))
+    x |> add(one) |> trigamma_rec(add(acc, inv_x2))
   }
 }
 def trigamma(x: f32) -> f32 = {
@@ -232,7 +232,7 @@ def bessel_i0_small(ax: f32) -> f32 = {
   add(a0, mul(y, add(a1, mul(y, add(a2, mul(y, add(a3, mul(y, add(a4, mul(y, add(a5, mul(y, a6))))))))))))
 }
 def bessel_i0_large(ax: f32) -> f32 = {
-  t = div(cast(3.75, f32), ax)
+  t = 3.75 |> cast(f32) |> div(ax)
   a0 = cast(0.39894228, f32)
   a1 = cast(0.01328592, f32)
   a2 = cast(0.00225319, f32)
@@ -245,7 +245,7 @@ def bessel_i0_large(ax: f32) -> f32 = {
   poly = add(a0, mul(t, add(a1, mul(t, add(a2, mul(t, add(a3, mul(t, add(a4, mul(t, add(a5, mul(t, add(a6, mul(t, add(a7, mul(t, a8))))))))))))))))
   e = exp(ax)
   s = sqrt(ax)
-  div(mul(e, poly), s)
+  e |> mul(poly) |> div(s)
 }
 def bessel_i0(x: f32) -> f32 = {
   ax = abs_f32(x)
@@ -265,7 +265,7 @@ def bessel_i1_small(ax: f32) -> f32 = {
   mul(ax, poly)
 }
 def bessel_i1_large(ax: f32) -> f32 = {
-  t = div(cast(3.75, f32), ax)
+  t = 3.75 |> cast(f32) |> div(ax)
   a0 = cast(0.39894228, f32)
   a1 = cast(-0.03988024, f32)
   a2 = cast(-0.00362018, f32)
@@ -278,7 +278,7 @@ def bessel_i1_large(ax: f32) -> f32 = {
   poly = add(a0, mul(t, add(a1, mul(t, add(a2, mul(t, add(a3, mul(t, add(a4, mul(t, add(a5, mul(t, add(a6, mul(t, add(a7, mul(t, a8))))))))))))))))
   e = exp(ax)
   s = sqrt(ax)
-  div(mul(e, poly), s)
+  e |> mul(poly) |> div(s)
 }
 def bessel_i1(x: f32) -> f32 = {
   ax = abs_f32(x)
@@ -301,7 +301,7 @@ def bessel_k0_small(x: f32) -> f32 = {
   sub(poly, mul(lhx, i0))
 }
 def bessel_k0_large(x: f32) -> f32 = {
-  t = div(cast(2.0, f32), x)
+  t = 2.0 |> cast(f32) |> div(x)
   a0 = cast(1.25331414, f32)
   a1 = cast(-0.07832358, f32)
   a2 = cast(0.02189568, f32)
@@ -313,7 +313,7 @@ def bessel_k0_large(x: f32) -> f32 = {
   nx = neg(x)
   e = exp(nx)
   s = sqrt(x)
-  div(mul(e, poly), s)
+  e |> mul(poly) |> div(s)
 }
 def bessel_k0(x: f32) -> f32 = {
   zero = cast(0.0, f32)
@@ -332,11 +332,11 @@ def bessel_k1_small(x: f32) -> f32 = {
   poly = add(a0, mul(y, add(a1, mul(y, add(a2, mul(y, add(a3, mul(y, add(a4, mul(y, add(a5, mul(y, a6))))))))))))
   lhx = log(half_x)
   i1 = bessel_i1(x)
-  inv_x = div(cast(1.0, f32), x)
-  add(mul(lhx, i1), mul(inv_x, poly))
+  inv_x = 1.0 |> cast(f32) |> div(x)
+  lhx |> mul(i1) |> add(mul(inv_x, poly))
 }
 def bessel_k1_large(x: f32) -> f32 = {
-  t = div(cast(2.0, f32), x)
+  t = 2.0 |> cast(f32) |> div(x)
   a0 = cast(1.25331414, f32)
   a1 = cast(0.23498619, f32)
   a2 = cast(-0.0365562, f32)
@@ -348,7 +348,7 @@ def bessel_k1_large(x: f32) -> f32 = {
   nx = neg(x)
   e = exp(nx)
   s = sqrt(x)
-  div(mul(e, poly), s)
+  e |> mul(poly) |> div(s)
 }
 def bessel_k1(x: f32) -> f32 = {
   zero = cast(0.0, f32)
@@ -373,7 +373,7 @@ def bessel_j0_small(ax: f32) -> f32 = {
   div(num, den)
 }
 def bessel_j0_large(ax: f32) -> f32 = {
-  z = div(cast(8.0, f32), ax)
+  z = 8.0 |> cast(f32) |> div(ax)
   y = mul(z, z)
   p0 = cast(1.0, f32)
   p1 = cast(-0.001098628627, f32)
@@ -390,11 +390,11 @@ def bessel_j0_large(ax: f32) -> f32 = {
   phi = cast(0.785398163397448, f32)
   xx = sub(ax, phi)
   half_pi = cast(1.5707963267948966, f32)
-  cos_xx = sin(add(xx, half_pi))
+  cos_xx = xx |> add(half_pi) |> sin
   sin_xx = sin(xx)
   two_over_pi = cast(0.6366197723675814, f32)
-  pre = sqrt(div(two_over_pi, ax))
-  body = sub(mul(cos_xx, pp), mul(mul(z, sin_xx), qq))
+  pre = two_over_pi |> div(ax) |> sqrt
+  body = cos_xx |> mul(pp) |> sub(mul(mul(z, sin_xx), qq))
   mul(pre, body)
 }
 def bessel_j0(x: f32) -> f32 = {
@@ -420,7 +420,7 @@ def bessel_j1_small(ax: f32) -> f32 = {
   mul(ax, div(num, den))
 }
 def bessel_j1_large(ax: f32) -> f32 = {
-  z = div(cast(8.0, f32), ax)
+  z = 8.0 |> cast(f32) |> div(ax)
   y = mul(z, z)
   p0 = cast(1.0, f32)
   p1 = cast(0.00183105, f32)
@@ -437,11 +437,11 @@ def bessel_j1_large(ax: f32) -> f32 = {
   phi = cast(2.356194490192345, f32)
   xx = sub(ax, phi)
   half_pi = cast(1.5707963267948966, f32)
-  cos_xx = sin(add(xx, half_pi))
+  cos_xx = xx |> add(half_pi) |> sin
   sin_xx = sin(xx)
   two_over_pi = cast(0.6366197723675814, f32)
-  pre = sqrt(div(two_over_pi, ax))
-  body = sub(mul(cos_xx, pp), mul(mul(z, sin_xx), qq))
+  pre = two_over_pi |> div(ax) |> sqrt
+  body = cos_xx |> mul(pp) |> sub(mul(mul(z, sin_xx), qq))
   mul(pre, body)
 }
 def bessel_j1(x: f32) -> f32 = {
@@ -472,7 +472,7 @@ def bessel_y0_small(x: f32) -> f32 = {
   add(rat, mul(two_over_pi, mul(j0v, lx)))
 }
 def bessel_y0_large(x: f32) -> f32 = {
-  z = div(cast(8.0, f32), x)
+  z = 8.0 |> cast(f32) |> div(x)
   y = mul(z, z)
   p0 = cast(1.0, f32)
   p1 = cast(-0.001098628627, f32)
@@ -489,11 +489,11 @@ def bessel_y0_large(x: f32) -> f32 = {
   phi = cast(0.785398163397448, f32)
   xx = sub(x, phi)
   half_pi = cast(1.5707963267948966, f32)
-  cos_xx = sin(add(xx, half_pi))
+  cos_xx = xx |> add(half_pi) |> sin
   sin_xx = sin(xx)
   two_over_pi = cast(0.6366197723675814, f32)
-  pre = sqrt(div(two_over_pi, x))
-  body = add(mul(sin_xx, pp), mul(mul(z, cos_xx), qq))
+  pre = two_over_pi |> div(x) |> sqrt
+  body = sin_xx |> mul(pp) |> add(mul(mul(z, cos_xx), qq))
   mul(pre, body)
 }
 def bessel_y0(x: f32) -> f32 = {
@@ -521,11 +521,11 @@ def bessel_y1_small(x: f32) -> f32 = {
   two_over_pi = cast(0.6366197723675814, f32)
   j1v = bessel_j1(x)
   lx = log(x)
-  inv_x = div(cast(1.0, f32), x)
-  add(rat, mul(two_over_pi, sub(mul(j1v, lx), inv_x)))
+  inv_x = 1.0 |> cast(f32) |> div(x)
+  add(rat, mul(two_over_pi, j1v |> mul(lx) |> sub(inv_x)))
 }
 def bessel_y1_large(x: f32) -> f32 = {
-  z = div(cast(8.0, f32), x)
+  z = 8.0 |> cast(f32) |> div(x)
   y = mul(z, z)
   p0 = cast(1.0, f32)
   p1 = cast(0.00183105, f32)
@@ -542,11 +542,11 @@ def bessel_y1_large(x: f32) -> f32 = {
   phi = cast(2.356194490192345, f32)
   xx = sub(x, phi)
   half_pi = cast(1.5707963267948966, f32)
-  cos_xx = sin(add(xx, half_pi))
+  cos_xx = xx |> add(half_pi) |> sin
   sin_xx = sin(xx)
   two_over_pi = cast(0.6366197723675814, f32)
-  pre = sqrt(div(two_over_pi, x))
-  body = add(mul(sin_xx, pp), mul(mul(z, cos_xx), qq))
+  pre = two_over_pi |> div(x) |> sqrt
+  body = sin_xx |> mul(pp) |> add(mul(mul(z, cos_xx), qq))
   mul(pre, body)
 }
 def bessel_y1(x: f32) -> f32 = {
@@ -604,11 +604,11 @@ def airy_gg(x: f32) -> f32 = {
 def airy_ai_asymptotic_pos(x: f32) -> f32 = {
   sqrt_x = sqrt(x)
   x_to_1_5 = mul(x, sqrt_x)
-  xi = mul(cast(0.6666666666666666, f32), x_to_1_5)
+  xi = 0.6666666666666666 |> cast(f32) |> mul(x_to_1_5)
   neg_xi = neg(xi)
   exp_neg_xi = exp(neg_xi)
   x_to_0_25 = sqrt(sqrt_x)
-  inv_x_0_25 = div(cast(1.0, f32), x_to_0_25)
+  inv_x_0_25 = 1.0 |> cast(f32) |> div(x_to_0_25)
   two_sqrt_pi = cast(3.5449077018110318, f32)
   pre = div(inv_x_0_25, two_sqrt_pi)
   mul(pre, exp_neg_xi)
@@ -616,10 +616,10 @@ def airy_ai_asymptotic_pos(x: f32) -> f32 = {
 def airy_bi_asymptotic_pos(x: f32) -> f32 = {
   sqrt_x = sqrt(x)
   x_to_1_5 = mul(x, sqrt_x)
-  xi = mul(cast(0.6666666666666666, f32), x_to_1_5)
+  xi = 0.6666666666666666 |> cast(f32) |> mul(x_to_1_5)
   exp_xi = exp(xi)
   x_to_0_25 = sqrt(sqrt_x)
-  inv_x_0_25 = div(cast(1.0, f32), x_to_0_25)
+  inv_x_0_25 = 1.0 |> cast(f32) |> div(x_to_0_25)
   sqrt_pi = cast(1.7724538509055159, f32)
   pre = div(inv_x_0_25, sqrt_pi)
   mul(pre, exp_xi)
@@ -630,7 +630,7 @@ def airy_ai(x: f32) -> f32 = {
   if gt(x, cast(5.0, f32)) then airy_ai_asymptotic_pos(x) else {
     f = airy_fg(x)
     g = airy_gg(x)
-    sub(mul(c1, f), mul(c2, g))
+    c1 |> mul(f) |> sub(mul(c2, g))
   }
 }
 def airy_bi(x: f32) -> f32 = {
@@ -640,7 +640,7 @@ def airy_bi(x: f32) -> f32 = {
   if gt(x, cast(5.0, f32)) then airy_bi_asymptotic_pos(x) else {
     f = airy_fg(x)
     g = airy_gg(x)
-    mul(sqrt3, add(mul(c1, f), mul(c2, g)))
+    mul(sqrt3, c1 |> mul(f) |> add(mul(c2, g)))
   }
 }
 def ellip_agm_a_rec(a: f32, b: f32, iters: int64) -> f32 = {
@@ -694,7 +694,7 @@ def ellipe(m: f32) -> f32 = {
     b0 = sqrt(om)
     c0 = sqrt(m)
     c0_sq = mul(c0, c0)
-    init_sum = mul(cast(0.5, f32), c0_sq)
+    init_sum = 0.5 |> cast(f32) |> mul(c0_sq)
     a_inf = ellip_agm_a_rec(one, b0, cast(50, int64))
     c_sum = ellip_agm_csum_rec(one, b0, init_sum, cast(0.5, f32), cast(50, int64))
     k = div(half_pi, a_inf)
