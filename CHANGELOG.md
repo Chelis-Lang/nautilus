@@ -6,6 +6,24 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.13] - 2026-05-22
+
+Toolchain pin bump from `=0.7.10` to `=0.7.11`. No source changes;
+0.7.12 already carried the cleanup-wave and structural plateau-stop
+hardening. This release closes the upstream toolchain gap so that
+downstream shells (Coral, Calcify) can pin `=0.7.11` consistently.
+
+### Changed
+
+- `reef.toml`: `compiler = "=0.7.10"` -> `compiler = "=0.7.11"`;
+  `version = "0.7.12"` -> `version = "0.7.13"`.
+- `.github/workflows/{ci,release,nightly}.yml`: `CHELIS_TAG` /
+  `CHELIS_VERSION` env vars bumped to `v0.7.11` / `0.7.11`;
+  `PACKAGE_VERSION` in release.yml bumped to `0.7.13`.
+
+Verified under chelis 0.7.11: `chelis check src/*.ch` -> score 1.0
+across modules; `chelis reef build` -> `dist/nautilus-0.7.13.{chb,tar.zst}`.
+
 ## [0.7.12] — 2026-05-22
 
 Cleanup-wave release. No compiler-pin change (still `=0.7.10`).
