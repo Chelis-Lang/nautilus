@@ -9,11 +9,13 @@ def bisection_rec(f: f32 -> f32, lo: f32, hi: f32, flo: f32, tol: f32, iters: in
     width = sub(hi, lo)
     if lt(width, tol) then 0.5 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(add(lo, hi)) else {
       mid = 0.5 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(add(lo, hi))
-      fmid = f(mid)
-      afmid = r_abs_f32(fmid)
-      if lt(afmid, tol) then mid else {
-        same_sign = flo |> mul(fmid) |> gt(cast(0.0, f32))
-        if same_sign then bisection_rec(f, mid, hi, fmid, tol, sub(iters, one_i)) else bisection_rec(f, lo, mid, flo, tol, sub(iters, one_i))
+      if or(eq(mid, lo), eq(mid, hi)) then mid else {
+        fmid = f(mid)
+        afmid = r_abs_f32(fmid)
+        if lt(afmid, tol) then mid else {
+          same_sign = flo |> mul(fmid) |> gt(cast(0.0, f32))
+          if same_sign then bisection_rec(f, mid, hi, fmid, tol, sub(iters, one_i)) else bisection_rec(f, lo, mid, flo, tol, sub(iters, one_i))
+        }
       }
     }
   }
@@ -42,7 +44,7 @@ def newton_rec(f: f32 -> f32, df: f32 -> f32, x: f32, tol: f32, iters: int64) ->
       if lt(adfx, cast(0.000000000000000000000000000001, f32)) then r_nan_f32() else {
         step = div(fx, dfx)
         x_next = sub(x, step)
-        newton_rec(f, df, x_next, tol, sub(iters, one_i))
+        if eq(x_next, x) then x_next else newton_rec(f, df, x_next, tol, sub(iters, one_i))
       }
     }
   }
@@ -57,6 +59,8 @@ def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, f
   one_i = cast(1, int64)
   zero_f = cast(0.0, f32)
   half = cast(0.5, f32)
+  tol_floor = cast(0.000001, f32)
+  tol_eff = if lt(tol, tol_floor) then tol_floor else tol
   if lte(iters, zero_i) then r_nan_f32() else {
     afa = r_abs_f32(fa)
     afb = r_abs_f32(fb)
@@ -70,7 +74,7 @@ def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, f
     width = sub(b1, a1)
     awidth = r_abs_f32(width)
     afb1 = r_abs_f32(fb1)
-    if lt(afb1, tol) then b1 else if lt(awidth, tol) then b1 else {
+    if lt(afb1, tol_eff) then b1 else if lt(awidth, tol_eff) then b1 else {
       use_iqi = and(not(eq(fa1, fc1)), not(eq(fb1, fc1)))
       d_ab = sub(fa1, fb1)
       d_ac = sub(fa1, fc1)
@@ -97,21 +101,23 @@ def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, f
       half_cd = mul(half, diff_cd)
       cond_step_bisect = and(was_bisect, gte(diff_sb, half_bc))
       cond_step_interp = was_bisect |> not |> and(gte(diff_sb, half_cd))
-      cond_small_bc = and(was_bisect, lt(diff_bc, tol))
-      cond_small_cd = was_bisect |> not |> and(lt(diff_cd, tol))
+      cond_small_bc = and(was_bisect, lt(diff_bc, tol_eff))
+      cond_small_cd = was_bisect |> not |> and(lt(diff_cd, tol_eff))
       force_bisect = or(or(or(or(cond_range, cond_step_bisect), cond_step_interp), cond_small_bc), cond_small_cd)
       s = if force_bisect then mul(half, add(a1, b1)) else s_try
       this_was_bisect = force_bisect
-      fs = f(s)
-      d_new = c1
-      c_new = b1
-      fc_new = fb1
-      same_sign = fa1 |> mul(fs) |> gt(zero_f)
-      a_new = if same_sign then s else a1
-      fa_new = if same_sign then fs else fa1
-      b_new = if same_sign then b1 else s
-      fb_new = if same_sign then fb1 else fs
-      brent_rec(f, a_new, b_new, c_new, d_new, fa_new, fb_new, fc_new, this_was_bisect, tol, sub(iters, one_i))
+      if eq(s, b1) then b1 else {
+        fs = f(s)
+        d_new = c1
+        c_new = b1
+        fc_new = fb1
+        same_sign = fa1 |> mul(fs) |> gt(zero_f)
+        a_new = if same_sign then s else a1
+        fa_new = if same_sign then fs else fa1
+        b_new = if same_sign then b1 else s
+        fb_new = if same_sign then fb1 else fs
+        brent_rec(f, a_new, b_new, c_new, d_new, fa_new, fb_new, fc_new, this_was_bisect, tol, sub(iters, one_i))
+      }
     }
   }
 }

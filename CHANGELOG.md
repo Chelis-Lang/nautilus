@@ -6,6 +6,49 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.11] — 2026-05-22
+
+f32-plateau hardening for `Nautilus.Roots` — the structurally-identical
+robustness fix the 0.7.10 cleanup applied to `Nautilus.Optim` and
+`Nautilus.Special` but missed for `Nautilus.Roots`. No compiler-pin
+change (still `=0.7.10`).
+
+### Fixed — `bisection`/`newton`/`brent` could return `NaN` on valid brackets under sub-ULP tolerances
+
+`Nautilus.Roots`'s three root-finders previously had only
+`lt(width, tol)` / `lt(afx, tol)` convergence checks plus an
+iters-exhausted `r_nan_f32()` fallback. With a tolerance below the
+f32 ULP near the root (e.g. `tol = 1e-8` near √2, where the f32
+gap is ~1.2e-7), neither convergence check can ever fire — the
+iteration plateaus above `tol`, exhausts its iteration budget, and
+returns `NaN`. A correct bisection should never `NaN` on a valid
+bracket; this is a real robustness bug. Hardened:
+
+- `bisection_rec`: stops when the midpoint coincides with either
+  bracket endpoint in f32 (`eq(mid, lo)` or `eq(mid, hi)`) — the
+  f32-plateau signal that no further bisection is possible — and
+  returns `mid` as the best estimate.
+- `newton_rec`: stops when the Newton step produces no change in
+  f32 (`eq(x_next, x)`), returning `x_next`.
+- `brent_rec`: adds a `tol_floor = 1e-6` (the smallest realistic
+  f32 tolerance) so the existing `lt(awidth, tol_eff)` /
+  `lt(afb1, tol_eff)` checks always reach a representable bound,
+  plus an `eq(s, b1)` plateau check after candidate selection.
+
+The 0.7.10 release shipped with these unhardened. The new
+`Nautilus.Roots` returns f32-plateau-best estimates accurate to
+~1 ULP (≈ 1e-7 near typical roots) — well within any realistic
+test tolerance.
+
+### Verified
+
+Pinned still at chelis `=0.7.10`. `chelis reef build` clean;
+`chelis check src/roots.ch` → score 1, 0 errors; `chelis test
+tests/roots.ch` → 13 passed, 0 failed (unchanged from 0.7.10);
+`chelis test tests/ --jobs auto` → 438 passed, 0 failed (full
+suite); `python3 parity/run_parity.py --strict` → 216 passed, 0
+failed.
+
 ## [0.7.10] — 2026-05-15
 
 Compiler-pin alignment for chelis 0.7.10 (skipping the 0.7.9 pin at
