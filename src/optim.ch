@@ -118,9 +118,9 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
   }
 }
 def brent_minimize(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 = {
-  mid = mul(cast(0.5, f32), add(lo, hi))
-  quarter = add(lo, mul(cast(0.25, f32), sub(hi, lo)))
-  three_q = add(lo, mul(cast(0.75, f32), sub(hi, lo)))
+  mid = 0.5 |> cast(f32) |> mul(add(lo, hi))
+  quarter = add(lo, 0.25 |> cast(f32) |> mul(sub(hi, lo)))
+  three_q = add(lo, 0.75 |> cast(f32) |> mul(sub(hi, lo)))
   fm = f(mid)
   fq = f(quarter)
   ft = f(three_q)
