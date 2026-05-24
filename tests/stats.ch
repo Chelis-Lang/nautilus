@@ -1,5 +1,6 @@
 module Nautilus.Tests.Stats
-import Nautilus.Stats (mean_vec, variance_vec, std_vec, median_vec, min_vec, max_vec, range_vec, skewness_vec, kurtosis_vec, covariance_scalar, correlation_scalar, quantile_vec, percentile_vec, trimmed_mean_vec)
+import Nautilus.Stats (mean_vec, variance_vec, std_vec, median_vec, min_vec, max_vec, range_vec, skewness_vec, kurtosis_vec, covariance_scalar, correlation_scalar, quantile_vec, percentile_vec, trimmed_mean_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, covariance_2x2, correlation_2x2)
+import Nautilus.LinAlg (matvec, inner_product)
 import Std.Test (assert_close, assert_true)
 def test_mean_constant() -> unit ! { Test } = {
   v = to_tensor([cast(7.0, f32), cast(7.0, f32), cast(7.0, f32), cast(7.0, f32), cast(7.0, f32)])
@@ -134,4 +135,40 @@ def test_trimmed_mean_zero_proportion_is_mean() -> unit ! { Test } = {
   t = trimmed_mean_vec(copy(v), cast(0.0, f32))
   m = mean_vec(v)
   assert_close(t, m, cast(0.00001, f32), "trimmed_mean(v, 0) = mean(v)")
+}
+def test_bonferroni_adjust_caps_at_one() -> unit ! { Test } = {
+  p = to_tensor([cast(0.01, f32), cast(0.5, f32)])
+  adjusted = bonferroni_adjust(p)
+  _ = assert_close(index(to_list(adjusted), cast(0, int64)), cast(0.02, f32), cast(0.000001, f32), "Bonferroni multiplies by m")
+  assert_close(index(to_list(adjusted), cast(1, int64)), cast(1.0, f32), cast(0.000001, f32), "Bonferroni caps at 1")
+}
+def test_holm_adjust_monotone_example() -> unit ! { Test } = {
+  p = to_tensor([cast(0.01, f32), cast(0.04, f32), cast(0.03, f32)])
+  adjusted = stat_holm_adjust(p)
+  _ = assert_close(index(to_list(adjusted), cast(0, int64)), cast(0.03, f32), cast(0.000001, f32), "Holm first sorted p uses multiplier m")
+  assert_close(index(to_list(adjusted), cast(1, int64)), cast(0.06, f32), cast(0.000001, f32), "Holm adjusted p-values are step-down monotone")
+}
+def test_bh_and_fdr_alias() -> unit ! { Test } = {
+  p = to_tensor([cast(0.01, f32), cast(0.04, f32), cast(0.03, f32)])
+  bh = benjamini_hochberg_adjust(copy(p))
+  fdr = fdr_adjust(p)
+  _ = assert_close(index(to_list(bh), cast(0, int64)), cast(0.03, f32), cast(0.000001, f32), "BH adjusts smallest p by m/rank")
+  assert_close(index(to_list(bh), cast(1, int64)), index(to_list(fdr), cast(1, int64)), cast(0.000001, f32), "fdr_adjust aliases BH")
+}
+def test_likelihood_ratio_stat() -> unit ! { Test } = assert_close(likelihood_ratio_stat(cast(-12.0, f32), cast(-10.0, f32)), cast(4.0, f32), cast(0.000001, f32), "LR statistic is 2*(alt-null)")
+def basis2(idx: int64, value: f32) -> tensor[2, f32] = {
+  zero_i = cast(0, int64)
+  if eq(idx, zero_i) then to_tensor([value, cast(0.0, f32)]) else to_tensor([cast(0.0, f32), value])
+}
+def mat2_get(m: &tensor[2, 2, f32], i: int64, j: int64) -> f32 = {
+  col = matvec(m, basis2(j, cast(1.0, f32)))
+  inner_product(col, basis2(i, cast(1.0, f32)))
+}
+def test_covariance_2x2_diagonal_matches_variance() -> unit ! { Test } = {
+  x = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)])
+  y = to_tensor([cast(2.0, f32), cast(4.0, f32), cast(6.0, f32)])
+  cov = covariance_2x2(copy(x), copy(y), cast(0, int64))
+  corr = correlation_2x2(x, y)
+  _ = assert_close(mat2_get(copy(cov), cast(0, int64), cast(0, int64)), cast(0.6666667, f32), cast(0.000001, f32), "covariance_2x2[0,0] is var(x)")
+  assert_close(mat2_get(corr, cast(0, int64), cast(1, int64)), cast(1.0, f32), cast(0.0001, f32), "correlation_2x2 off diagonal for y=2x is 1")
 }

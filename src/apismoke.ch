@@ -4,17 +4,21 @@ import Nautilus.Distributions (normal_pdf, normal_cdf, normal_inv_cdf, uniform_p
 import Nautilus.LinAlg (transpose, matmul_wrap, gram, aat, diag, trace_mat, trace_scalar, l2_norm_vec, inner_product, frobenius_sq, frobenius_norm, scale_vec, matvec, vecmat, det_2x2, det_3x3, la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve, inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2, cholesky_n, lu_solve, qr_decompose, svd_n, eig_n)
 import Nautilus.Roots (bisection, newton, brent)
 import Nautilus.Ode (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve, rk45_adaptive_solve_grid)
-import Nautilus.Stats (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec)
+import Nautilus.Stats (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, likelihood_ratio_p_value, covariance_2x2, correlation_2x2, covariance_matrix_2, correlation_matrix_2)
+import Nautilus.Info (entropy, cross_entropy, kl_divergence)
 import Nautilus.Integrate (trapezoidal, simpsons, gauss_legendre_5)
 import Nautilus.Testing (z_statistic, z_p_value_two_sided, z_p_value_upper, z_p_value_lower, normal_ci_half_width, chi_squared_p_value)
 import Nautilus.Distance (squared_euclidean, euclidean, manhattan, chebyshev, cosine_similarity, cosine_distance, mahalanobis_squared, mahalanobis)
 import Nautilus.Signal (fft_magnitude_stub, ifft_magnitude_stub, stft_magnitude_stub, lowpass_stub, highpass_stub, bandpass_stub, fftfreq)
 import Nautilus.Optim (golden_section_search, brent_minimize, gradient_descent_1d, newton_minimize_1d)
+import Nautilus.Optimize (minimize, root, optimize_ad_smoke)
 import Nautilus.Interpolation (linear_interp_uniform, linear_interp_sorted, cubic_hermite, spline_fit, spline_eval)
 import Nautilus.Sde (euler_maruyama_fixed, milstein_fixed)
 import Nautilus.Integrate (trapezoidal, simpsons, gauss_legendre_5, adaptive_simpson, romberg_5, gauss_legendre_10, gauss_hermite_10, gauss_laguerre_10)
 import Nautilus.CurveFit (lm_scalar_1param, lm_scalar_nparam)
-export (smoke_special, smoke_distributions, smoke_linalg, smoke_roots, smoke_ode, smoke_stats, smoke_integrate, smoke_testing, smoke_distance, smoke_signal, smoke_optim, smoke_interpolation, smoke_cg_solve, smoke_sde, smoke_linalg_inv, smoke_integrate_adaptive, smoke_integrate_hl, smoke_curvefit, smoke_distributions_p4, smoke_stats_p4, smoke_qr, smoke_svd_n, smoke_lm_nparam, smoke_eig_n, smoke_ode_grid, smoke_spline)
+import Nautilus.StateSpace (kalman_predict_scalar, kalman_update_scalar, kalman_step_scalar, local_level_predict, local_level_update, local_level_step)
+import Nautilus.TimeSeries (ts_ewma_next, ts_ewma_series, exponential_smoothing_next, exponential_smoothing_series, ar1_predict_next, arma11_predict_next, arima110_predict_next)
+export (smoke_special, smoke_distributions, smoke_linalg, smoke_roots, smoke_ode, smoke_stats, smoke_integrate, smoke_testing, smoke_distance, smoke_signal, smoke_optim, smoke_interpolation, smoke_cg_solve, smoke_sde, smoke_linalg_inv, smoke_integrate_adaptive, smoke_integrate_hl, smoke_curvefit, smoke_distributions_p4, smoke_stats_p4, smoke_qr, smoke_svd_n, smoke_lm_nparam, smoke_eig_n, smoke_ode_grid, smoke_spline, smoke_optimize, smoke_info, smoke_stats_inference, smoke_statespace, smoke_timeseries)
 def smoke_poly(x: f32) -> f32 = {
   x2 = mul(x, x)
   sub(x2, cast(2.0, f32))
@@ -276,4 +280,48 @@ def smoke_spline(xs: tensor[5, f32], ys: tensor[5, f32]) -> f32 = {
   v = spline_eval(copy(xs), copy(ys), cast(2.5, f32))
   m = spline_fit(xs, ys)
   add(v, l2_norm_vec(m))
+}
+def smoke_optimize() -> f32 = {
+  mn = minimize(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(0.00000001, f32), cast(200, int64))
+  rt = root(smoke_poly, cast(1.0, f32), cast(2.0, f32), cast(0.0000001, f32), cast(100, int64))
+  ad = optimize_ad_smoke(cast(2.5, f32))
+  add(add(mn, rt), ad)
+}
+def smoke_info[n](p: tensor[n, f32], q: tensor[n, f32]) -> f32 = {
+  h = entropy(copy(p))
+  ce = cross_entropy(copy(p), copy(q))
+  kl = kl_divergence(p, q)
+  add(add(h, ce), kl)
+}
+def smoke_stats_inference[n](p: tensor[n, f32], a: tensor[n, f32], b: tensor[n, f32]) -> f32 = {
+  bf = bonferroni_adjust(copy(p))
+  hm = stat_holm_adjust(copy(p))
+  bh = benjamini_hochberg_adjust(copy(p))
+  fd = fdr_adjust(p)
+  lr = likelihood_ratio_stat(cast(-12.0, f32), cast(-10.0, f32))
+  lp = likelihood_ratio_p_value(cast(-12.0, f32), cast(-10.0, f32), cast(1.0, f32))
+  cv = covariance_2x2(copy(a), copy(b), cast(1, int64))
+  cr = correlation_2x2(copy(a), copy(b))
+  cva = covariance_matrix_2(copy(a), copy(b), cast(1, int64))
+  cra = correlation_matrix_2(a, b)
+  add(add(add(add(l2_norm_vec(bf), l2_norm_vec(hm)), add(l2_norm_vec(bh), l2_norm_vec(fd))), add(lr, lp)), add(add(frobenius_norm(cv), frobenius_norm(cr)), add(frobenius_norm(cva), frobenius_norm(cra))))
+}
+def smoke_statespace() -> f32 = {
+  pred = kalman_predict_scalar(cast(10.0, f32), cast(4.0, f32), cast(1.0, f32), cast(1.0, f32), cast(0.0, f32), cast(0.0, f32))
+  upd = kalman_update_scalar(pred.0, pred.1, cast(12.0, f32), cast(1.0, f32), cast(3.0, f32))
+  step = kalman_step_scalar(cast(10.0, f32), cast(4.0, f32), cast(12.0, f32), cast(1.0, f32), cast(1.0, f32), cast(1.0, f32), cast(3.0, f32))
+  lp = local_level_predict(cast(10.0, f32), cast(4.0, f32), cast(1.0, f32))
+  lu = local_level_update(lp.0, lp.1, cast(12.0, f32), cast(3.0, f32))
+  ls = local_level_step(cast(10.0, f32), cast(4.0, f32), cast(12.0, f32), cast(1.0, f32), cast(3.0, f32))
+  add(add(add(pred.0, upd.0), add(step.0, lp.0)), add(lu.0, ls.0))
+}
+def smoke_timeseries[n](values: tensor[n, f32]) -> f32 = {
+  a = ts_ewma_next(copy(values), cast(0.5, f32), cast(0.0, f32))
+  s = ts_ewma_series(copy(values), cast(0.5, f32), cast(0.0, f32))
+  e = exponential_smoothing_next(copy(values), cast(0.5, f32), cast(0.0, f32))
+  es = exponential_smoothing_series(copy(values), cast(0.5, f32), cast(0.0, f32))
+  ar = ar1_predict_next(copy(values), cast(0.1, f32), cast(0.9, f32))
+  arma = arma11_predict_next(copy(values), cast(0.1, f32), cast(0.9, f32), cast(0.2, f32), cast(0.3, f32))
+  arima = arima110_predict_next(values, cast(0.1, f32), cast(0.9, f32), cast(0.2, f32), cast(0.3, f32))
+  add(add(add(a, l2_norm_vec(s)), add(e, l2_norm_vec(es))), add(add(ar, arma), arima))
 }

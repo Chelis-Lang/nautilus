@@ -1,5 +1,6 @@
 module Nautilus.Stats
-export (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec)
+import Nautilus.Distributions (chi_squared_cdf)
+export (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, likelihood_ratio_p_value, covariance_2x2, correlation_2x2, covariance_matrix_2, correlation_matrix_2)
 def zero_f() -> f32 = cast(0.0, f32)
 def one_f() -> f32 = cast(1.0, f32)
 def two_f() -> f32 = cast(2.0, f32)
@@ -183,3 +184,59 @@ def trimmed_mean_vec[n](v: &tensor[n, f32], proportion: f32) -> f32 = {
     div(kept_sum_pair.0, count_f)
   }
 }
+def stats_min_one(x: f32) -> f32 = if gt(x, one_f()) then one_f() else x
+def bonferroni_adjust[n](p_values: &tensor[n, f32]) -> tensor[n, f32] = {
+  m = cast(numel(p_values), f32)
+  to_tensor(map(fn (p: f32) -> stats_min_one(mul(p, m)), to_list(p_values)))
+}
+def stat_holm_adjust_one[n](sorted_p: &tensor[n, f32], p: f32, m: f32) -> f32 = {
+  pairs = enumerate(to_list(sorted_p))
+  raw = fold(fn (acc: f32, pair: (int64, f32)) -> {
+    rank0 = pair.0
+    sp = pair.1
+    multiplier = sub(m, cast(rank0, f32))
+    adj = mul(multiplier, sp)
+    if lte(sp, p) then if gt(adj, acc) then adj else acc else acc
+  }, zero_f(), pairs)
+  stats_min_one(raw)
+}
+def stat_holm_adjust[n](p_values: &tensor[n, f32]) -> tensor[n, f32] = {
+  sorted_pair = sort(p_values, zero_i())
+  sorted_p = sorted_pair.0
+  m = cast(numel(p_values), f32)
+  to_tensor(map(fn (p: f32) -> stat_holm_adjust_one(sorted_p, p, m), to_list(p_values)))
+}
+def bh_adjust_one[n](sorted_p: &tensor[n, f32], p: f32, m: f32) -> f32 = {
+  pairs = enumerate(to_list(sorted_p))
+  raw = fold(fn (acc: f32, pair: (int64, f32)) -> {
+    rank = add(pair.0, one_i())
+    sp = pair.1
+    adj = div(mul(m, sp), cast(rank, f32))
+    if gte(sp, p) then if lt(adj, acc) then adj else acc else acc
+  }, one_f(), pairs)
+  stats_min_one(raw)
+}
+def benjamini_hochberg_adjust[n](p_values: &tensor[n, f32]) -> tensor[n, f32] = {
+  sorted_pair = sort(p_values, zero_i())
+  sorted_p = sorted_pair.0
+  m = cast(numel(p_values), f32)
+  to_tensor(map(fn (p: f32) -> bh_adjust_one(sorted_p, p, m), to_list(p_values)))
+}
+def fdr_adjust[n](p_values: &tensor[n, f32]) -> tensor[n, f32] = benjamini_hochberg_adjust(p_values)
+def likelihood_ratio_stat(log_likelihood_null: f32, log_likelihood_alt: f32) -> f32 = mul(two_f(), sub(log_likelihood_alt, log_likelihood_null))
+def likelihood_ratio_p_value(log_likelihood_null: f32, log_likelihood_alt: f32, df: f32) -> f32 = {
+  stat = likelihood_ratio_stat(log_likelihood_null, log_likelihood_alt)
+  sub(one_f(), chi_squared_cdf(stat, df))
+}
+def covariance_2x2[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: int64) -> tensor[2, 2, f32] = {
+  va = covariance_scalar(a, a, ddof)
+  vb = covariance_scalar(b, b, ddof)
+  cab = covariance_scalar(a, b, ddof)
+  to_tensor([[va, cab], [cab, vb]])
+}
+def correlation_2x2[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[2, 2, f32] = {
+  rab = correlation_scalar(a, b)
+  to_tensor([[one_f(), rab], [rab, one_f()]])
+}
+def covariance_matrix_2[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: int64) -> tensor[2, 2, f32] = covariance_2x2(a, b, ddof)
+def correlation_matrix_2[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[2, 2, f32] = correlation_2x2(a, b)
