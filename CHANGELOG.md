@@ -6,6 +6,66 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.14] — 2026-05-24
+
+Compiler-pin alignment for chelis 0.7.14 (skipping the 0.7.11 and
+0.7.12 pins at the consumer level: both were nautilus cleanup
+releases that intentionally kept the chelis pin at `=0.7.10`, so this
+is a single four-version catch-up jump mirroring the 0.7.8 → 0.7.10
+release pattern). `compiler = "=0.7.10"` → `"=0.7.14"`; CI/release
+workflow env vars updated to track `v0.7.14`. Package version bumped
+0.7.13 → 0.7.14 because the `v0.7.13` nautilus GH release artifact
+already exists (built against chelis 0.7.10), so the new tag cannot
+reuse `0.7.13`.
+
+chelis 0.7.14 is chelis 0.7.13 + chelis#226 hotfix only (spurious
+`UseAfterConsume` in `Std.Nn.Embedding.forward` linearity analysis
+during reef-resolve). All other behavior identical to 0.7.13; the
+fix-set below is the chelis 0.7.13 surface preserved through 0.7.14.
+
+### chelis 0.7.13 / 0.7.14 fixes pulled in
+
+- chelis#186 / chelis PR #205: `conv2d` validator was rejecting every
+  well-formed call. Not a current nautilus consumer, but unblocks
+  future shells that route through nautilus's signal/filtering surface.
+- chelis#187 / chelis PR #214: `shrink`, `stride`, and `pad` are now
+  callable from Surf. Frees nautilus's signal-processing roadmap from
+  hand-rolled slicing helpers.
+- chelis#199 Part 1 / chelis PR #211: `BlasMatmul` gradient rule.
+  Part 2 (`to_tensor` inside differentiable bodies) deferred to
+  chelis#218; nautilus does not currently call `to_tensor` from a
+  `grad(...)` body, so Part 2 is non-blocking for this release.
+- chelis#206 / chelis PR #213: runtime-dim `reshape` now preserves
+  the declared symbolic shape on its output. Tightens type information
+  for any nautilus path that reshapes a runtime-dim tensor; no current
+  consumer was relying on the prior weakening.
+- chelis#209 / chelis PR #210: lint em-dash UTF-8 boundary panic is
+  fixed. nautilus's `chelis lint --check .` no longer crashes when
+  CHANGELOG.md em-dashes are processed at certain byte boundaries.
+- chelis#185 / chelis PR #217: host-runtime arms wired up for 14
+  builtins plus an invariant lock. Closes a class of "compiles but
+  panics at runtime" gaps in the host backend.
+- chelis#226: spurious `UseAfterConsume` in `Std.Nn.Embedding.forward`
+  during reef-resolve linearity analysis. Surfaced by a sibling shell's
+  cascade attempt and rolled into 0.7.14 as a point hotfix on top of
+  0.7.13. Not a current nautilus consumer (no `Std.Nn.Embedding` use
+  in src/), included here for completeness of the upstream surface.
+- chelis PR #221: end-to-end Hydronnx H3 acceptance shapes are locked
+  in chelis CI. Not nautilus-facing, but the locked oracle is durable
+  evidence the 0.7.13/0.7.14 surface is stable end-to-end.
+
+### Verified
+
+`chelis reef build` clean; `chelis check` clean on all `src/` files;
+`chelis test tests/ --jobs auto` → 441 passed, 0 failed;
+`python3 parity/run_parity.py --strict` → 216 passed, 0 failed;
+`chelis lint --check .` → 0 errors, advisory warnings unchanged from
+0.7.12 (`prefer-pipe-operator` / `redundant-linearity-call` retained
+inside plateau-stop-containing functions per the 0.7.12 WS-A
+discipline). Local verification was performed against the chelis
+0.7.13 binary; chelis 0.7.14 differs only by the chelis#226 hotfix,
+which is not exercised by any nautilus source file.
+
 ## [0.7.12] — 2026-05-22
 
 Cleanup-wave release. No compiler-pin change (still `=0.7.10`).
