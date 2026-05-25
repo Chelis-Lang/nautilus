@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  CHELIS_TAG: v0.7.16
-  CHELIS_VERSION: 0.7.16
+  CHELIS_TAG: v0.7.18
+  CHELIS_VERSION: 0.7.18
 
 jobs:
   hard-rule-guard:
