@@ -8,22 +8,22 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.7.14] — 2026-05-24
 
-Compiler-pin alignment for chelis 0.7.14 (skipping the 0.7.11 and
+Compiler-pin alignment for chelis 0.7.15 (skipping the 0.7.11 and
 0.7.12 pins at the consumer level: both were nautilus cleanup
 releases that intentionally kept the chelis pin at `=0.7.10`, so this
-is a single four-version catch-up jump mirroring the 0.7.8 → 0.7.10
-release pattern). `compiler = "=0.7.10"` → `"=0.7.14"`; CI/release
-workflow env vars updated to track `v0.7.14`. Package version bumped
+is a single five-version catch-up jump mirroring the 0.7.8 → 0.7.10
+release pattern). `compiler = "=0.7.10"` → `"=0.7.15"`; CI/release
+workflow env vars updated to track `v0.7.15`. Package version bumped
 0.7.13 → 0.7.14 because the `v0.7.13` nautilus GH release artifact
 already exists (built against chelis 0.7.10), so the new tag cannot
 reuse `0.7.13`.
 
-chelis 0.7.14 is chelis 0.7.13 + chelis#226 hotfix only (spurious
-`UseAfterConsume` in `Std.Nn.Embedding.forward` linearity analysis
-during reef-resolve). All other behavior identical to 0.7.13; the
-fix-set below is the chelis 0.7.13 surface preserved through 0.7.14.
+chelis 0.7.15 is chelis 0.7.13 + chelis#226 hotfix + chelis#230
+argmax_reduce output-dtype hotfix. All other behavior identical to
+0.7.13; the fix-set below is the chelis 0.7.13 surface preserved
+through 0.7.14/0.7.15.
 
-### chelis 0.7.13 / 0.7.14 fixes pulled in
+### chelis 0.7.13 / 0.7.14 / 0.7.15 fixes pulled in
 
 - chelis#186 / chelis PR #205: `conv2d` validator was rejecting every
   well-formed call. Not a current nautilus consumer, but unblocks
@@ -50,6 +50,11 @@ fix-set below is the chelis 0.7.13 surface preserved through 0.7.14.
   cascade attempt and rolled into 0.7.14 as a point hotfix on top of
   0.7.13. Not a current nautilus consumer (no `Std.Nn.Embedding` use
   in src/), included here for completeness of the upstream surface.
+- chelis#230: `argmax_reduce` output dtype regression — fixed in
+  chelis 0.7.15 as a surgical hotfix on top of 0.7.14. Surfaced by
+  the hydronnx PR #2 ArgMax compile-run-parity test. Not a current
+  nautilus consumer; included for completeness of the upstream
+  surface.
 - chelis PR #221: end-to-end Hydronnx H3 acceptance shapes are locked
   in chelis CI. Not nautilus-facing, but the locked oracle is durable
   evidence the 0.7.13/0.7.14 surface is stable end-to-end.
@@ -63,8 +68,9 @@ fix-set below is the chelis 0.7.13 surface preserved through 0.7.14.
 0.7.12 (`prefer-pipe-operator` / `redundant-linearity-call` retained
 inside plateau-stop-containing functions per the 0.7.12 WS-A
 discipline). Local verification was performed against the chelis
-0.7.13 binary; chelis 0.7.14 differs only by the chelis#226 hotfix,
-which is not exercised by any nautilus source file.
+0.7.13 binary; chelis 0.7.15 differs only by the chelis#226 and
+chelis#230 hotfixes, neither of which is exercised by any nautilus
+source file.
 
 ## [0.7.12] — 2026-05-22
 
