@@ -6,6 +6,54 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.17] - 2026-05-25
+
+Compiler-pin alignment for chelis 0.7.18. `compiler = "=0.7.16"` to
+`"=0.7.18"`; CI / release / nightly workflow env vars updated to track
+`v0.7.18`. Package version bumped 0.7.16 to 0.7.17. No nautilus source
+changes; this release exists to publish nautilus artifacts built
+against the latest chelis hotfix line.
+
+chelis 0.7.18 is chelis 0.7.16 plus two stacked releases:
+
+- chelis 0.7.17 (PRs #234, #236, #238): final removal of the
+  `module-pascal-components` lint rule (already advisory-only since
+  0.7.16), `chelis prove` lowered-root-count mismatch fix
+  (chelis#232 / PR #236), and `argmax_reduce` / `argmin_reduce`
+  host-runtime storage widened to `int64` (chelis#233 / PR #238).
+- chelis 0.7.18 (PR #239): zero-offset spurious-consume linearity
+  sweep across consumer classes (chelis#237 + chelis#229). Closes the
+  remaining class of `UseAfterConsume` false positives that the
+  chelis#226 hotfix in nautilus 0.7.14 addressed for `Std.Nn.Embedding`
+  specifically.
+
+### chelis 0.7.17 / 0.7.18 fixes pulled in
+
+- chelis#232 / chelis PR #236: `chelis prove` was reporting a lowered
+  root count that did not match the prover's actual roots. Fixed.
+- chelis#233 / chelis PR #238: `argmax_reduce` and `argmin_reduce`
+  output dtype on the host runtime was narrower than the IR-declared
+  `int64`. Widened to match. Builds on the chelis#230 hotfix from
+  nautilus 0.7.14 (which closed the same gap for `argmax_reduce`
+  specifically); 0.7.17 generalizes the fix and adds `argmin_reduce`
+  coverage.
+- chelis#237 + chelis#229 / chelis PR #239: zero-offset accesses into
+  a consumed tensor were producing spurious `UseAfterConsume`
+  diagnostics across multiple consumer classes (not just
+  `Std.Nn.Embedding`, which chelis#226 had patched at v0.7.14).
+  Sweep-fix in 0.7.18. Not a current nautilus consumer pattern, but
+  unblocks future shells that route through the affected primitives.
+- chelis PR #234: removed the `module-pascal-components` lint rule
+  entirely. Advisory-only since 0.7.16; full deletion in 0.7.17
+  closes the rule lifecycle.
+
+### Verified
+
+`chelis reef build` clean; `chelis check` clean on all `src/` files;
+`chelis test tests/ --jobs auto` results recorded in the PR;
+`python3 parity/run_parity.py --strict` results recorded in the PR;
+`chelis lint --check .` results recorded in the PR.
+
 ## [0.7.16] - 2026-05-25
 
 Formatter follow-up for chelis 0.7.16. Canonicalizes the remaining
