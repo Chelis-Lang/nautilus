@@ -6,6 +6,12 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.16] - 2026-05-25
+
+Formatter follow-up for chelis 0.7.16. Canonicalizes the remaining
+`Nautilus.Optim` and `Nautilus.Special` files that the stricter
+`chelis check` gate now rejects when they are not exactly formatted.
+
 ## [0.7.15] - 2026-05-25
 
 FlukeBall support release. Adds the minimal analytics surface needed by
