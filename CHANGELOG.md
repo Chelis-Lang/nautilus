@@ -6,6 +6,87 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.18] - 2026-05-26
+
+Compiler-pin alignment for chelis 0.7.19. `compiler = "=0.7.18"` to
+`"=0.7.19"`; CI / release / nightly workflow env vars updated to track
+`v0.7.19`. Package version bumped 0.7.17 to 0.7.18. No nautilus source
+changes; this release exists to publish nautilus artifacts built
+against the latest chelis hotfix line.
+
+chelis 0.7.19 is a six-fix release (all bug fixes, no API breakage):
+
+- chelis#188 / chelis PR #241: bump GitHub Actions to Node-24-compatible
+  versions. Pure CI hygiene; no behavior change for downstream
+  consumers.
+- chelis#189 / chelis PR #243: backend-c emits f32 / f64 constants via
+  bit pattern instead of a lossy format string. Closes a silent
+  precision-loss path in generated C code.
+- chelis#190 / chelis PR #244: `doc-filename-convention` lint switches
+  from `book.toml`-ancestor-walk to a path-based opt-in (a path is
+  mdBook content iff one of its components is the literal name
+  `book/`). Removes the retroactive-flip footgun where dropping or
+  removing `book.toml` flipped every `docs/*.md` between snake_case
+  and kebab-case. See "Known regression" below.
+- chelis#197 / chelis PR #245: AD CLI routes `grad` through
+  `grad_dag_checked`; `Floor`, `Ceil`, `Argmax`, `Argmin` emit
+  `AdError::NotSupported` instead of silently returning zero gradients.
+- chelis#207 / chelis PR #246: `chelis check` exits non-zero when
+  errors are present (previously exit 0 with errors reported on
+  stderr).
+- chelis#208 / chelis PR #242: runtime shape semantics §4.7 documented.
+  Spec-only; no code change.
+
+### Known regression: doc-filename-convention path-based opt-in
+
+chelis 0.7.19's #190 fix changes which files are linted as mdBook
+content. Before: any `*.md` under a directory tree containing a
+`book.toml` (nautilus has `docs/book.toml`) was treated as mdBook
+content and allowed kebab-case. After: only paths with a literal
+`book/` component are mdBook content.
+
+Effect on this repo: 14 kebab-case markdown files under `docs/` are now
+flagged by `chelis lint --check .`:
+
+- `docs/{benchmark-findings,eval-startup-findings,maintenance-schedule,nautilus-status,upstream-bugs}.md`
+- `docs/src/distributions/{gamma-family,other-continuous}.md`
+- `docs/src/finance/{black-scholes,monte-carlo}.md`
+- `docs/src/getting-started/first-program.md`
+- `docs/src/linalg/{cg-solve,small-n}.md`
+- `docs/upstream-issues-drafts/issue-01-scalar-f32-evaluator-vs-c-backend.md`
+- `docs/upstream-issues-drafts/issue-02-doc-filename-convention-8-3-vs-8-5.md`
+
+`chelis lint --check .` exits non-zero on this repo at chelis 0.7.19.
+Nautilus CI does not gate on `chelis lint --check`, so the release
+workflow is not blocked. Resolution path is one of: (a) move
+`docs/src/` to `docs/book/src/` (and `docs/book.toml` to
+`docs/book/book.toml`) so the mdBook tree is path-based opt-in; (b)
+rename each kebab `*.md` to snake_case and update `docs/src/SUMMARY.md`
+cross-references; (c) excise the top-level kebab docs that are not
+mdBook content. Deferred to a follow-up PR; tracked separately from
+this release-alignment PR.
+
+### chelis 0.7.19 fixes pulled in
+
+- chelis#188: GitHub Actions Node-24 bump.
+- chelis#189: backend-c f32 / f64 bit-pattern emission.
+- chelis#190: `doc-filename-convention` path-based opt-in (see Known
+  regression).
+- chelis#197: AD CLI grad checked; Floor/Ceil/Argmax/Argmin emit
+  NotSupported.
+- chelis#207: `chelis check` exits non-zero on errors.
+- chelis#208: runtime shape semantics docs.
+
+### Verified
+
+`chelis reef build` clean against chelis 0.7.19. `chelis check` on all
+25 `src/*.ch` files: score=1, errors=[] on every file. `chelis test
+tests/ --jobs auto`: 459 passed, 0 failed (unchanged from 0.7.17).
+`python3 parity/run_parity.py --strict`: 216 passed, 0 failed
+(unchanged from 0.7.17). `chelis lint --check .`: exit 1, 14 blocking
+`doc-filename-convention` errors (see Known regression above), 172
+advisory warnings (unchanged from 0.7.17).
+
 ## [0.7.17] - 2026-05-25
 
 Compiler-pin alignment for chelis 0.7.18. `compiler = "=0.7.16"` to
