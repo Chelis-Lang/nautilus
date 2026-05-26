@@ -10,10 +10,10 @@ permissions:
   contents: write
 
 env:
-  CHELIS_TAG: v0.7.18
-  CHELIS_VERSION: 0.7.18
+  CHELIS_TAG: v0.7.19
+  CHELIS_VERSION: 0.7.19
   PACKAGE_NAME: nautilus
-  PACKAGE_VERSION: 0.7.17
+  PACKAGE_VERSION: 0.7.18
 
 jobs:
   build-reef-assets:
