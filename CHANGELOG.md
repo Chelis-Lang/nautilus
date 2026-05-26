@@ -6,6 +6,34 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Migrated the mdBook source tree from `docs/src/` to `docs/book/src/`
+  (and `docs/book.toml` to `docs/book/book.toml`) to satisfy the
+  path-based `doc-filename-convention` opt-in shipped in chelis 0.7.19
+  (chelis PR #244 / chelis#190). Under the new rule, §8.5 (kebab-case)
+  applies only to paths whose components literally include `book`; the
+  previous `docs/src/` location was reclassified as §8.3 (snake_case),
+  flagging the 7 kebab-cased chapter filenames under `docs/src/`. The
+  one-time migration restores §8.5 classification for the mdBook tree
+  without renaming chapter files. Updates: `book.toml`
+  `edit-url-template` repointed to `docs/book/src/{path}`,
+  `scripts/validate_book_examples.py` walks the new path, `.gitignore`
+  now excludes only the build output `docs/book/book/` rather than
+  the whole `docs/book/` tree. No URL change for the published
+  mdBook: relative paths inside the book are unchanged, so chapter
+  URL slugs (e.g., `/getting-started/first-program.html`) remain
+  stable.
+
+  Note: the 5 top-level kebab-cased `docs/*.md` files
+  (`benchmark-findings.md`, `eval-startup-findings.md`,
+  `maintenance-schedule.md`, `nautilus-status.md`, `upstream-bugs.md`)
+  and the 2 `docs/upstream-issues-drafts/issue-*.md` files remain
+  §8.3 violations under chelis 0.7.19. Those are intentionally out of
+  scope for this migration (resolution path (a) per the 0.7.18
+  release note); a follow-up PR can rename them to snake_case
+  (resolution (b)) or excise them (resolution (c)).
+
 ## [0.7.18] - 2026-05-26
 
 Compiler-pin alignment for chelis 0.7.19. `compiler = "=0.7.18"` to

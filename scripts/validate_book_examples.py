@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate all compile-checked code examples in the mdBook.
 
-Walks docs/src/**/*.md, extracts code blocks tagged with ```chelis
+Walks docs/book/src/**/*.md, extracts code blocks tagged with ```chelis
 (not ```chelis-fragment), writes each as a temporary file inside
 src/ so reef imports resolve, and runs `chelis check`.
 
@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-DOCS_SRC = REPO / "docs" / "src"
+DOCS_SRC = REPO / "docs" / "book" / "src"
 SRC = REPO / "src"
 sys.path.insert(0, str(REPO))
 
@@ -67,7 +67,7 @@ def validate_block(code: str, source_file: str, index: int) -> bool:
 
 def main() -> int:
     if not DOCS_SRC.exists():
-        print("docs/src/ not found, skipping book validation")
+        print("docs/book/src/ not found, skipping book validation")
         return 0
 
     failures = 0
