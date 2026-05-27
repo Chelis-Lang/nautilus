@@ -53,6 +53,11 @@
     "weibull_inv_cdf": "stable",
     "weibull_pdf": "stable"
   },
+  "Nautilus.Info": {
+    "cross_entropy": "alpha",
+    "entropy": "alpha",
+    "kl_divergence": "alpha"
+  },
   "Nautilus.Integrate": {
     "adaptive_simpson": "stable",
     "gauss_hermite_10": "stable",
@@ -117,6 +122,11 @@
     "gradient_descent_1d": "stable",
     "newton_minimize_1d": "alpha"
   },
+  "Nautilus.Optimize": {
+    "minimize": "alpha",
+    "optimize_ad_smoke": "alpha",
+    "root": "alpha"
+  },
   "Nautilus.Roots": {
     "bisection": "stable",
     "brent": "stable",
@@ -158,10 +168,27 @@
     "log_gamma": "stable",
     "trigamma": "stable"
   },
+  "Nautilus.StateSpace": {
+    "kalman_predict_scalar": "alpha",
+    "kalman_step_scalar": "alpha",
+    "kalman_update_scalar": "alpha",
+    "local_level_predict": "alpha",
+    "local_level_step": "alpha",
+    "local_level_update": "alpha"
+  },
   "Nautilus.Stats": {
+    "benjamini_hochberg_adjust": "alpha",
+    "bonferroni_adjust": "alpha",
+    "correlation_2x2": "alpha",
+    "correlation_matrix_2": "alpha",
     "correlation_scalar": "stable",
+    "covariance_2x2": "alpha",
+    "covariance_matrix_2": "alpha",
     "covariance_scalar": "stable",
+    "fdr_adjust": "alpha",
     "kurtosis_vec": "stable",
+    "likelihood_ratio_p_value": "alpha",
+    "likelihood_ratio_stat": "alpha",
     "max_vec": "stable",
     "mean_vec": "stable",
     "median_vec": "stable",
@@ -170,6 +197,7 @@
     "quantile_vec": "stable",
     "range_vec": "stable",
     "skewness_vec": "stable",
+    "stat_holm_adjust": "alpha",
     "std_vec": "stable",
     "trimmed_mean_vec": "stable",
     "variance_vec": "stable"
@@ -188,5 +216,14 @@
     "z_p_value_two_sided": "stable",
     "z_p_value_upper": "stable",
     "z_statistic": "stable"
+  },
+  "Nautilus.TimeSeries": {
+    "ar1_predict_next": "alpha",
+    "arima110_predict_next": "alpha",
+    "arma11_predict_next": "alpha",
+    "exponential_smoothing_next": "alpha",
+    "exponential_smoothing_series": "alpha",
+    "ts_ewma_next": "alpha",
+    "ts_ewma_series": "alpha"
   }
 }

@@ -45,6 +45,10 @@ MODULES = {
     "Nautilus.Interpolation": SRC / "interpolation.ch",
     "Nautilus.Sde":           SRC / "sde.ch",
     "Nautilus.CurveFit":      SRC / "curvefit.ch",
+    "Nautilus.Info":          SRC / "info.ch",
+    "Nautilus.Optimize":      SRC / "optimize.ch",
+    "Nautilus.StateSpace":    SRC / "statespace.ch",
+    "Nautilus.TimeSeries":    SRC / "timeseries.ch",
 }
 
 
