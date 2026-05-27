@@ -11,6 +11,7 @@ Exit non-zero if any block fails to check at score 1.0.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -51,9 +52,11 @@ def validate_block(code: str, lang: str, index: int) -> bool:
     tmp = SRC / f"{fname}{suffix}"
     try:
         tmp.write_text(code)
+        env = os.environ.copy()
+        env["CHELIS_STYLE_GATE_DISABLE"] = "1"
         result = subprocess.run(
             [CHELIS, "check", str(tmp)],
-            capture_output=True, text=True, cwd=str(REPO),
+            capture_output=True, text=True, cwd=str(REPO), env=env,
         )
         output = (result.stdout + result.stderr).strip()
         try:

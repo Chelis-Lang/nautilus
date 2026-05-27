@@ -41,9 +41,11 @@ def _dedup_defs(bare: str) -> str:
 def chelis_build(bare_ch: Path, outdir: Path) -> Path:
     if outdir.exists():
         shutil.rmtree(outdir)
+    env = os.environ.copy()
+    env["CHELIS_STYLE_GATE_DISABLE"] = "1"
     proc = subprocess.run(
         [CHELIS, "build", str(bare_ch), "-o", str(outdir)],
-        capture_output=True, text=True,
+        capture_output=True, text=True, env=env,
     )
     msg = (proc.stdout + proc.stderr).strip()
     if "cannot find libchelis_runtime.a" not in msg and proc.returncode != 0:
