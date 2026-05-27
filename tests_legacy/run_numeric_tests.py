@@ -95,9 +95,16 @@ def strip_module(src: str) -> str:
 def chelis_build(bare_ch: Path, outdir: Path) -> Path:
     if outdir.exists():
         shutil.rmtree(outdir)
+    # The synthesized `_bare.ch` is ad-hoc Surf for the legacy harness;
+    # disable the style gate so chelis fmt drift in the synthesized
+    # source does not fail the build (chelis 0.7.19 documents
+    # CHELIS_STYLE_GATE_DISABLE as the test-only override for exactly
+    # this case).
+    env = os.environ.copy()
+    env["CHELIS_STYLE_GATE_DISABLE"] = "1"
     proc = subprocess.run(
         [CHELIS, "build", str(bare_ch), "-o", str(outdir)],
-        capture_output=True, text=True,
+        capture_output=True, text=True, env=env,
     )
     msg = (proc.stdout + proc.stderr).strip()
     if "cannot find libchelis_runtime.a" not in msg and proc.returncode != 0:
