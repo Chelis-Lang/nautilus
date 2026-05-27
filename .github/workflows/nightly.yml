@@ -23,6 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install C dependencies (openblas for emitted BLAS calls)
+        run: sudo apt-get update && sudo apt-get install -y libopenblas-dev
+
       - name: Download validated chelis toolchain
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
