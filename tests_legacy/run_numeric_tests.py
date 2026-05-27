@@ -80,6 +80,12 @@ def native_link_cmd(binary: Path, sources: list[Path], out_dir: Path) -> list[st
         "-lm",
         "-lpthread",
     ]
+    # chelis 0.7.19 emits BLAS calls (cblas_sgemm/dgemm) for matmul; on
+    # Linux, link against the system openblas. On macOS, the
+    # Accelerate framework provides CBLAS and -framework Accelerate is
+    # baked in via the Apple-toolchain path.
+    if sys.platform == "linux":
+        cmd.append("-lopenblas")
     if sys.platform == "darwin" and Path("/opt/homebrew/opt/libomp").exists() and "clang" in prefix[0]:
         cmd.append("-lomp")
     return cmd
