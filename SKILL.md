@@ -1129,7 +1129,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `svd_n` | `[n](a: tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor[n, n, f32])` | `alpha` | General-n square Jacobi SVD. Returns (U, sigma, Vt). Fixed 30n sweeps; poorly-separated singular values may not fully converge. U is orthogonal only for full-rank A. AD: singular-vector bases are discontinuous at repeated singular values. |
 | `eig_n` | `[n](a: tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32])` | `alpha` | Symmetric Jacobi eigendecomposition. Returns (eigenvalues, Q) where Q[:,i] is eigenvector for eigenvalue i. Fixed 30n sweeps. Requires symmetric input — non-symmetric matrices produce wrong results silently. No sorting of eigenvalues guaranteed. |
 
-### Nautilus.Stats (14 exports)
+### Nautilus.Stats (24 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
@@ -1147,6 +1147,16 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `quantile_vec` | `[n](v: tensor[n, f32], q: f32) -> f32` | `stable` | q in [0,1], linear interpolation, sorts internally |
 | `percentile_vec` | `[n](v: tensor[n, f32], p: f32) -> f32` | `stable` | p in [0,100], delegates to quantile_vec |
 | `trimmed_mean_vec` | `[n](v: tensor[n, f32], proportion: f32) -> f32` | `stable` | Trims proportion from each tail, NaN if proportion >= 0.5 |
+| `bonferroni_adjust` | `[n](p_values: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Multiplies each p-value by m (number of tests), clamped to 1 |
+| `stat_holm_adjust` | `[n](p_values: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Holm step-down adjustment over sorted p-values |
+| `benjamini_hochberg_adjust` | `[n](p_values: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Benjamini-Hochberg FDR adjustment |
+| `fdr_adjust` | `[n](p_values: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Alias for benjamini_hochberg_adjust |
+| `likelihood_ratio_stat` | `(log_likelihood_null: f32, log_likelihood_alt: f32) -> f32` | `alpha` | 2 * (log L_alt - log L_null) |
+| `likelihood_ratio_p_value` | `(log_likelihood_null: f32, log_likelihood_alt: f32, df: f32) -> f32` | `alpha` | Upper-tail chi-squared p-value of LR statistic |
+| `covariance_2x2` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: int64) -> tensor[2, 2, f32]` | `alpha` | 2x2 covariance matrix for (a, b) |
+| `correlation_2x2` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[2, 2, f32]` | `alpha` | 2x2 Pearson correlation matrix for (a, b) |
+| `covariance_matrix_2` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: int64) -> tensor[2, 2, f32]` | `alpha` | Alias for covariance_2x2 |
+| `correlation_matrix_2` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[2, 2, f32]` | `alpha` | Alias for correlation_2x2 |
 
 ### Nautilus.Distance (8 exports)
 
@@ -1255,3 +1265,42 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `highpass_stub` | `[n](x: tensor[n, f32], cutoff_hz: f32, sample_rate: f32) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
 | `bandpass_stub` | `[n](x: tensor[n, f32], low_hz: f32, high_hz: f32, sample_rate: f32) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
 | `fftfreq` | `[n](x: tensor[n, f32], sample_rate: f32) -> tensor[n, f32]` | `alpha` | Functional: computes FFT frequency bins (no complex math needed) |
+
+### Nautilus.Info (3 exports)
+
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `entropy` | `[n](p: tensor[n, f32]) -> f32` | `alpha` | Shannon entropy of a probability vector; zero-probability terms contribute 0 |
+| `cross_entropy` | `[n](p: tensor[n, f32], q: tensor[n, f32]) -> f32` | `alpha` | Cross-entropy H(p, q); zero-probability terms in p contribute 0 |
+| `kl_divergence` | `[n](p: tensor[n, f32], q: tensor[n, f32]) -> f32` | `alpha` | Kullback-Leibler divergence KL(p || q); zero-probability terms in p contribute 0 |
+
+### Nautilus.Optimize (3 exports)
+
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `minimize` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Bracketed 1D minimizer; delegates to brent_minimize |
+| `root` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Bracketed 1D root finder; delegates to brent |
+| `optimize_ad_smoke` | `(x: f32) -> f32` | `alpha` | Smoke target (x - 2)^2 used to exercise AD through Nautilus.Optimize |
+
+### Nautilus.StateSpace (6 exports)
+
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `kalman_predict_scalar` | `(mean: f32, covariance: f32, transition: f32, process_var: f32, control: f32, control_input: f32) -> (f32, f32)` | `alpha` | Scalar Kalman predict step; returns (predicted_mean, predicted_covariance) |
+| `kalman_update_scalar` | `(predicted_mean: f32, predicted_covariance: f32, observation: f32, observation_matrix: f32, observation_var: f32) -> (f32, f32, f32)` | `alpha` | Scalar Kalman update; returns (updated_mean, updated_covariance, gain) |
+| `kalman_step_scalar` | `(mean: f32, covariance: f32, observation: f32, transition: f32, process_var: f32, observation_matrix: f32, observation_var: f32) -> (f32, f32, f32)` | `alpha` | Predict + update fused into one scalar step |
+| `local_level_predict` | `(mean: f32, covariance: f32, process_var: f32) -> (f32, f32)` | `alpha` | Local-level model predict (transition=1, no control) |
+| `local_level_update` | `(predicted_mean: f32, predicted_covariance: f32, observation: f32, observation_var: f32) -> (f32, f32, f32)` | `alpha` | Local-level model update (observation_matrix=1) |
+| `local_level_step` | `(mean: f32, covariance: f32, observation: f32, process_var: f32, observation_var: f32) -> (f32, f32, f32)` | `alpha` | Local-level predict+update step |
+
+### Nautilus.TimeSeries (7 exports)
+
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `ts_ewma_next` | `[n](values: tensor[n, f32], alpha: f32, initial: f32) -> f32` | `alpha` | Exponentially weighted moving average; returns final level |
+| `ts_ewma_series` | `[n](values: tensor[n, f32], alpha: f32, initial: f32) -> tensor[n, f32]` | `alpha` | EWMA over the full series; returns per-step levels |
+| `exponential_smoothing_next` | `[n](values: tensor[n, f32], alpha: f32, initial_level: f32) -> f32` | `alpha` | Simple exponential smoothing; delegates to ts_ewma_next |
+| `exponential_smoothing_series` | `[n](values: tensor[n, f32], alpha: f32, initial_level: f32) -> tensor[n, f32]` | `alpha` | Simple exponential smoothing series; delegates to ts_ewma_series |
+| `ar1_predict_next` | `[n](values: tensor[n, f32], intercept: f32, phi: f32) -> f32` | `alpha` | AR(1) one-step-ahead point forecast |
+| `arma11_predict_next` | `[n](values: tensor[n, f32], intercept: f32, phi: f32, theta: f32, last_error: f32) -> f32` | `alpha` | ARMA(1,1) one-step-ahead point forecast |
+| `arima110_predict_next` | `[n](values: tensor[n, f32], drift: f32, phi: f32, theta: f32, last_error: f32) -> f32` | `alpha` | ARIMA(1,1,0) one-step-ahead point forecast on first-differenced series |

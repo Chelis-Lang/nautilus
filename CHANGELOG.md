@@ -6,6 +6,28 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Closed five static-check drift items that were turning the nightly
+  `tests_legacy/run_static_checks.py` job red since 2026-05-18.
+  `src/apismoke.ch` was importing four modules (`Nautilus.Info`,
+  `Nautilus.Optimize`, `Nautilus.StateSpace`, `Nautilus.TimeSeries`)
+  that exist as `src/info.ch`, `src/optimize.ch`, `src/statespace.ch`,
+  and `src/timeseries.ch` but were never registered in the
+  `MODULES` table in `tests_legacy/run_static_checks.py` or the
+  `exported_surface()` table in `scripts/extract_stability.py`. The
+  fifth item was the `Nautilus.Stats` API table in SKILL.md
+  documenting only 14 of the module's 24 exports
+  (missing: `benjamini_hochberg_adjust`, `bonferroni_adjust`,
+  `correlation_2x2`, `correlation_matrix_2`, `covariance_2x2`,
+  `covariance_matrix_2`, `fdr_adjust`, `likelihood_ratio_p_value`,
+  `likelihood_ratio_stat`, `stat_holm_adjust`). Added the four
+  missing module dict entries, added four new SKILL.md §6 tables for
+  the new modules, appended the ten missing Stats rows (and bumped
+  the section header from `(14 exports)` to `(24 exports)`), and
+  regenerated `dist/stability.json`. All new entries are marked
+  `alpha`. No source or runtime behavior changes.
+
 ### Changed
 
 - Migrated the mdBook source tree from `docs/src/` to `docs/book/src/`
