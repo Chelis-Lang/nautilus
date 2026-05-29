@@ -6,6 +6,19 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.19] - 2026-05-29
+
+Compiler-pin alignment for chelis 0.7.20. `compiler = "=0.7.19"` to
+`"=0.7.20"`; CI / release / nightly workflow env vars updated to track
+`v0.7.20`. Package version bumped 0.7.18 to 0.7.19. No Nautilus API
+changes; this release exists to publish artifacts built against the
+Chelis test batching release.
+
+chelis 0.7.20 adds default `chelis test` suite batching for eligible
+test files. Nautilus keeps invoking `chelis test tests/ --jobs auto`;
+the compiler now amortizes module-graph compilation inside that
+default path instead of requiring shell-local batching workarounds.
+
 ### Fixed
 
 - Closed five static-check drift items that were turning the nightly
