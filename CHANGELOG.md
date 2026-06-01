@@ -6,6 +6,15 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.20] - 2026-06-01
+
+Compiler-pin alignment for chelis 0.7.21. `compiler = "=0.7.20"` to
+`"=0.7.21"`; CI / release / nightly workflow env vars updated to track
+`v0.7.21`. Package version bumped 0.7.19 to 0.7.20. No Nautilus API
+changes; this release publishes artifacts built against chelis 0.7.21
+(459 `chelis test` cases pass unchanged). Part of the coordinated chelis
+0.7.21 release cascade.
+
 ## [0.7.19] - 2026-05-29
 
 Compiler-pin alignment for chelis 0.7.20. `compiler = "=0.7.19"` to
