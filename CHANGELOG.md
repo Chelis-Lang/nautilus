@@ -6,6 +6,19 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.25] - 2026-06-16
+
+Compiler-pin alignment for chelis 0.7.26. `compiler = "=0.7.21"` to
+`"=0.7.26"` and `chelis-std` 0.3.0 to 0.4.0; CI / release / nightly
+workflow env vars updated to track `v0.7.26`. Package version bumped
+0.7.20 to 0.7.25, catching up across the chelis 0.7.22 through 0.7.25
+releases Nautilus had skipped while pinned at chelis 0.7.21. No Nautilus
+API changes; this release publishes artifacts built against chelis
+0.7.26 (459 `chelis test` cases pass unchanged). chelis-std 0.4.0 moved
+the ML modules out to the `school` package; Nautilus imports only the
+core surface (`Std.Test`), so the move is transparent here. Part of the
+coordinated chelis 0.7.26 release cascade.
+
 ## [0.7.20] - 2026-06-01
 
 Compiler-pin alignment for chelis 0.7.21. `compiler = "=0.7.20"` to
