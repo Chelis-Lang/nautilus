@@ -14,8 +14,8 @@ on:
   workflow_dispatch:
 
 env:
-  CHELIS_TAG: v0.7.26
-  CHELIS_VERSION: 0.7.26
+  CHELIS_TAG: v0.7.27
+  CHELIS_VERSION: 0.7.27
 
 jobs:
   legacy-harness:

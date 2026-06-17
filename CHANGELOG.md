@@ -6,6 +6,21 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.26] - 2026-06-17
+
+Compiler-pin alignment for chelis 0.7.27. `compiler = "=0.7.26"` to
+`"=0.7.27"`; CI / release / nightly workflow env vars updated to track
+`v0.7.27`. Package version bumped 0.7.25 to 0.7.26. chelis-std stays
+`0.4.0`. No Nautilus API changes; this release publishes artifacts built
+against chelis 0.7.27 (459 `chelis test` cases pass unchanged).
+
+chelis 0.7.27 is chelis 0.7.26 plus a single fix (chelis#399): the eval
+renderer now de-mangles ADT constructor names. Nautilus imports only the
+core chelis-std surface (`Std.Test`) — no ML, no `prove`, no cross-module
+ADT evaluation — so the #399 fix does not change anything Nautilus relies
+on. Mechanical bump. Part of the coordinated chelis 0.7.27 release
+cascade.
+
 ## [0.7.25] - 2026-06-16
 
 Compiler-pin alignment for chelis 0.7.26. `compiler = "=0.7.21"` to
