@@ -17,17 +17,17 @@ writing the index.json by hand, because chelis v0.2.x had no
 ("v0.2.4 chelis-std bootstrap" — now resolved).
 
 Usage:
-    GH_TOKEN=...  CHELIS_TAG=v0.7.27  python3 scripts/install_chelis_std.py
+    GH_TOKEN=...  CHELIS_TAG=v0.8.0  python3 scripts/install_chelis_std.py
 
 Env:
     GH_TOKEN    PAT with `contents: read` on Chelis-Lang/chelis. Read
                 by `gh repo clone`; this script does not read it
                 directly.
     CHELIS_TAG  Tag of the chelis monorepo to fetch chelis-std from
-                (defaults to v0.7.27).
+                (defaults to v0.8.0).
     CHELIS_BIN  Chelis binary to use for `reef install`. Defaults to
                 whichever `chelis` is on PATH; CI sets this to the
-                v0.7.27 toolchain it just downloaded.
+                v0.8.0 toolchain it just downloaded.
     WORK_DIR    Scratch directory for the monorepo clone (defaults to
                 /tmp/chelis-monorepo-for-std).
 """
@@ -40,7 +40,7 @@ import sys
 from pathlib import Path
 
 
-DEFAULT_CHELIS_TAG = "v0.7.27"
+DEFAULT_CHELIS_TAG = "v0.8.0"
 DEFAULT_CHELIS_BIN = "chelis"
 DEFAULT_WORK_DIR = "/tmp/chelis-monorepo-for-std"
 

@@ -3,18 +3,18 @@
 ## Prerequisites
 
 Nautilus requires:
-- the latest validated Chelis release, currently [Chelis 0.7.6](https://github.com/Chelis-Lang/chelis/releases/tag/v0.7.6)
+- the latest validated Chelis release, currently [Chelis 0.8.0](https://github.com/Chelis-Lang/chelis/releases/tag/v0.8.0)
 - GCC (for compiling generated C code)
 - Python 3.10+ with numpy and scipy (for the scipy-parity oracle in `parity/`)
 
 ## Download the Chelis toolchain
 
 ```sh
-gh release download v0.7.6 \
+gh release download v0.8.0 \
   --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.7.6-linux-x86_64.tar.gz'
-tar xzf chelis-v0.7.6-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.7.6-linux-x86_64/bin:$PATH"
+  --pattern 'chelis-v0.8.0-linux-x86_64.tar.gz'
+tar xzf chelis-v0.8.0-linux-x86_64.tar.gz
+export PATH="$PWD/chelis-v0.8.0-linux-x86_64/bin:$PATH"
 ```
 
 The tarball contains `bin/chelis`, `lib/libchelis_runtime.a`, and
@@ -28,7 +28,7 @@ cd nautilus
 chelis reef build
 ```
 
-This produces `dist/nautilus-0.7.6.chb`, the reef package that other
+This produces `dist/nautilus-0.7.27.chb`, the reef package that other
 Chelis projects can depend on.
 
 ## Verify the installation
@@ -37,7 +37,7 @@ Chelis projects can depend on.
 # Type-check all modules
 for f in src/*.ch; do chelis check "$f"; done
 
-# Run the native identity / structural test gate (438 tests)
+# Run the native identity / structural test gate (459 tests)
 chelis test tests/ --jobs auto
 
 # Serial fallback for debugging
@@ -48,7 +48,7 @@ pip install numpy scipy
 python parity/run_parity.py --strict
 ```
 
-You should see `438 passed, 0 failed` from `chelis test`, and
+You should see `459 passed, 0 failed` from `chelis test`, and
 `parity totals: 216 passed, 0 failed` from the parity oracle.
 
 If your `chelis` binary is not on `PATH`, set `CHELIS_BIN=/abs/path/to/chelis`

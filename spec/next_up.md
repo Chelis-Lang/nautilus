@@ -10,17 +10,17 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Status snapshot (2026-05-05, `chelis 0.5.0`).**
+**Status snapshot (2026-06-19, `chelis 0.8.0`).**
 
-- Current pin is `chelis 0.5.0` (Nautilus `0.5.0`). LU / QR / SVD shipped
+- Current pin is `chelis 0.8.0` (Nautilus `0.7.27`). LU / QR / SVD shipped
   alongside Cholesky on the `v0.2.0` compiler surface; the `v0.4.0` Nautilus
   release added `erfc` and unary `gamma` to `Nautilus.Special`. Parity is
   216/216 against scipy.
-- The `v0.4.0` → `v0.5.0` Nautilus bumps were maintenance / pin-tracking; no
+- The `v0.4.0` → `v0.7.27` Nautilus bumps were maintenance / pin-tracking; no
   feature work has landed since the last roadmap snapshot.
 - Multi-parameter Levenberg-Marquardt remains blocked on tensor-valued `grad`
   at the C-backend lowering level. The blocker was last verified against
-  `chelis v0.1.21`; the `0.2.x` → `0.5.0` toolchain bumps have not been
+  `chelis v0.1.21`; the `0.2.x` → `0.8.0` toolchain bumps have not been
   re-probed against this specific issue. Re-probe before assuming state.
 
 Historical snapshot (2026-04-22, `chelis v0.1.18`):
@@ -182,7 +182,7 @@ typechecker, specific module) the upstream team can target.
 ## Blocked: P1 Multi-Parameter Levenberg-Marquardt
 
 **Current blocker (last full re-check 2026-04-22 on `chelis v0.1.18`; not
-re-probed against the `0.2.x` → `0.5.0` toolchain bumps as of 2026-05-05).**
+re-probed against the `0.2.x` → `0.8.0` toolchain bumps as of 2026-06-19).**
 The blocker remains at the semantic level. Real progress on the DX side: the bad call
 patterns (inline `grad(f)(x)` and local binding `g = grad(f); g(x)`) are now
 both rejected at build time with a detailed diagnostic listing a specific
