@@ -104,22 +104,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download validated chelis toolchain
-        env:
-          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: |
-          gh release download "$CHELIS_TAG" \
-            --repo Chelis-Lang/chelis \
-            --pattern "chelis-${CHELIS_TAG}-linux-x86_64.tar.gz" \
-            --dir /tmp/chelis-toolchain
-          tar -xzf "/tmp/chelis-toolchain/chelis-${CHELIS_TAG}-linux-x86_64.tar.gz" \
-            -C /tmp/chelis-toolchain
-          echo "/tmp/chelis-toolchain/chelis-${CHELIS_TAG}-linux-x86_64/bin" >> "$GITHUB_PATH"
-
-      - name: Verify toolchain version
-        run: test "$(chelis --version)" = "chelis ${CHELIS_VERSION}"
+      - name: Install chelis toolchain (cached)
+        id: chelis
+        uses: ./.github/actions/install-chelis
+        with:
+          chelis-tag: ${{ env.CHELIS_TAG }}
+          chelis-version: ${{ env.CHELIS_VERSION }}
+          gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+          reef-cache-key: std-${{ env.CHELIS_TAG }}
 
       - name: Install chelis-std into local registry
+        if: steps.chelis.outputs.reef-cache-hit != 'true'
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
           CHELIS_TAG: ${{ env.CHELIS_TAG }}
@@ -184,22 +179,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download validated chelis toolchain
-        env:
-          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: |
-          gh release download "$CHELIS_TAG" \
-            --repo Chelis-Lang/chelis \
-            --pattern "chelis-${CHELIS_TAG}-linux-x86_64.tar.gz" \
-            --dir /tmp/chelis-toolchain
-          tar -xzf "/tmp/chelis-toolchain/chelis-${CHELIS_TAG}-linux-x86_64.tar.gz" \
-            -C /tmp/chelis-toolchain
-          echo "/tmp/chelis-toolchain/chelis-${CHELIS_TAG}-linux-x86_64/bin" >> "$GITHUB_PATH"
-
-      - name: Verify toolchain version
-        run: test "$(chelis --version)" = "chelis ${CHELIS_VERSION}"
+      - name: Install chelis toolchain (cached)
+        id: chelis
+        uses: ./.github/actions/install-chelis
+        with:
+          chelis-tag: ${{ env.CHELIS_TAG }}
+          chelis-version: ${{ env.CHELIS_VERSION }}
+          gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+          reef-cache-key: std-${{ env.CHELIS_TAG }}
 
       - name: Install chelis-std into local registry
+        if: steps.chelis.outputs.reef-cache-hit != 'true'
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
           CHELIS_TAG: ${{ env.CHELIS_TAG }}
@@ -214,22 +204,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download validated chelis toolchain
-        env:
-          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: |
-          gh release download "$CHELIS_TAG" \
-            --repo Chelis-Lang/chelis \
-            --pattern "chelis-${CHELIS_TAG}-linux-x86_64.tar.gz" \
-            --dir /tmp/chelis-toolchain
-          tar -xzf "/tmp/chelis-toolchain/chelis-${CHELIS_TAG}-linux-x86_64.tar.gz" \
-            -C /tmp/chelis-toolchain
-          echo "/tmp/chelis-toolchain/chelis-${CHELIS_TAG}-linux-x86_64/bin" >> "$GITHUB_PATH"
-
-      - name: Verify toolchain version
-        run: test "$(chelis --version)" = "chelis ${CHELIS_VERSION}"
+      - name: Install chelis toolchain (cached)
+        id: chelis
+        uses: ./.github/actions/install-chelis
+        with:
+          chelis-tag: ${{ env.CHELIS_TAG }}
+          chelis-version: ${{ env.CHELIS_VERSION }}
+          gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+          reef-cache-key: std-${{ env.CHELIS_TAG }}
 
       - name: Install chelis-std into local registry
+        if: steps.chelis.outputs.reef-cache-hit != 'true'
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
           CHELIS_TAG: ${{ env.CHELIS_TAG }}
@@ -262,22 +247,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download chelis-darwin-arm64 toolchain
-        env:
-          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: |
-          gh release download "$CHELIS_TAG" \
-            --repo Chelis-Lang/chelis \
-            --pattern "chelis-${CHELIS_TAG}-darwin-arm64.tar.gz" \
-            --dir /tmp/chelis-toolchain
-          tar -xzf "/tmp/chelis-toolchain/chelis-${CHELIS_TAG}-darwin-arm64.tar.gz" \
-            -C /tmp/chelis-toolchain
-          echo "/tmp/chelis-toolchain/chelis-${CHELIS_TAG}-darwin-arm64/bin" >> "$GITHUB_PATH"
-
-      - name: Verify toolchain version
-        run: test "$(chelis --version)" = "chelis ${CHELIS_VERSION}"
+      - name: Install chelis toolchain (cached)
+        id: chelis
+        uses: ./.github/actions/install-chelis
+        with:
+          chelis-tag: ${{ env.CHELIS_TAG }}
+          chelis-version: ${{ env.CHELIS_VERSION }}
+          platform: darwin-arm64
+          gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+          reef-cache-key: std-${{ env.CHELIS_TAG }}
 
       - name: Install chelis-std into local registry
+        if: steps.chelis.outputs.reef-cache-hit != 'true'
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
           CHELIS_TAG: ${{ env.CHELIS_TAG }}
