@@ -1,17 +1,25 @@
 name: nightly
 
-# The legacy Python harness is the dual-run safety net while the new
-# `chelis test tests/` + `parity/run_parity.py` gates accumulate
-# confidence. It runs on a schedule (daily at 06:00 UTC) and on demand,
-# but NOT on every PR — its 9-min wall-clock would dominate the PR
-# gate. Once the new gates have full coverage parity (Phase 4 of the
-# cutover plan), this whole workflow is deleted along with
-# `tests_legacy/` itself.
+# Slimmed nightly: the per-PR ci.yml already runs `chelis test tests/`
+# (the native roots/optim/etc suite) and a strict `parity/run_parity.py`
+# scipy-parity job, so the legacy numeric harness and the scipy goldens
+# drift check it used to run here are redundant. What remains is the
+# nightly's unique value, none of which fits the PR latency budget:
+#   * the exhaustive per-file `chelis check` score=1 sweep over all
+#     src/*.ch (~9 min — too slow for the PR gate, which runs a whole
+#     -package `chelis reef build` plus a one-file rotating smoke), and
+#   * SKILL.md + mdBook example validation (compile every documented
+#     ```chelis block at score 1 against the pinned toolchain).
+# Runs on a schedule (daily at 06:00 UTC) and on demand, NOT per-PR.
 
 on:
   schedule:
     - cron: '0 6 * * *'   # 06:00 UTC daily
   workflow_dispatch:
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CHELIS_TAG: v0.7.27
@@ -47,14 +55,6 @@ jobs:
           CHELIS_TAG: ${{ env.CHELIS_TAG }}
         run: python3 scripts/install_chelis_std.py
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install scipy + numpy
-        run: pip install --no-cache-dir 'numpy>=1.26' 'scipy>=1.14'
-
       # Per-file chelis check with score=1 enforcement. Removed from
       # the PR gate (ci.yml) because each invocation costs ~25s on a
       # GitHub Actions runner (1000× slower than local). 21 files ×
@@ -71,17 +71,6 @@ jobs:
             echo "$out" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); sys.exit(0 if d['score']==1 and not d['errors'] else 1)"
           done
 
-      - name: Static API cross-checks (legacy)
-        run: python3 tests_legacy/run_static_checks.py
-
-      - name: Goldens drift check (scipy parity, legacy)
-        run: python3 scripts/gen_goldens.py --check
-
-      - name: End-to-end numerical tests (legacy harness)
-        env:
-          CHELIS_BIN: chelis
-        run: python3 tests_legacy/run_numeric_tests.py
-
       - name: Validate SKILL.md examples (legacy)
         env:
           CHELIS_BIN: chelis
@@ -91,3 +80,47 @@ jobs:
         env:
           CHELIS_BIN: chelis
         run: python3 scripts/validate_book_examples.py
+
+  # Surface a nightly failure as a tracking issue (opens on failure, closes on
+  # green) so a red nightly is impossible to miss — scheduled-run failures do
+  # not show a red status on main, which is how this nightly stayed red for
+  # weeks unnoticed (nautilus#11).
+  report:
+    name: Surface nightly status
+    needs: legacy-harness
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open/close nightly-failure tracking issue
+        uses: actions/github-script@v7
+        env:
+          RESULT: ${{ needs.legacy-harness.result }}
+        with:
+          script: |
+            const title = 'Nightly failing: nautilus';
+            const { owner, repo } = context.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const q = `repo:${owner}/${repo} is:issue is:open in:title "${title}"`;
+            const found = await github.rest.search.issuesAndPullRequests({ q });
+            const existing = found.data.items.find(i => i.title === title);
+            if (process.env.RESULT === 'failure') {
+              if (existing) {
+                core.info(`Tracking issue #${existing.number} already open.`);
+              } else {
+                const issue = await github.rest.issues.create({
+                  owner, repo, title,
+                  body: `The **nautilus** nightly failed.\n\nRun: ${runUrl}\nCommit: \`${context.sha}\`\n\nAuto-opened on failure; auto-closes when the nightly next passes.`,
+                  labels: ['nightly-failure'],
+                });
+                core.info(`Opened tracking issue #${issue.data.number}.`);
+              }
+            } else if (process.env.RESULT === 'success' && existing) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: existing.number,
+                body: `Nightly green again — ${runUrl}. Closing.`,
+              });
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed' });
+              core.info(`Closed tracking issue #${existing.number}.`);
+            }
