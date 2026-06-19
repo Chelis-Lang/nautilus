@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CHELIS_TAG: v0.7.27
   CHELIS_VERSION: 0.7.27
@@ -250,6 +254,10 @@ jobs:
   # platform policy.
   mac-smoke:
     runs-on: macos-latest
+    # Demoted off the per-PR path: macOS minutes bill ~10x Linux. This is a
+    # proof-of-life smoke, not a coverage gate, so it runs on push-to-main and
+    # workflow_dispatch but not on every PR iteration.
+    if: ${{ github.event_name != 'pull_request' }}
     needs: hard-rule-guard
     steps:
       - uses: actions/checkout@v4
