@@ -1,8 +1,8 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the validated `chelis 0.7.6` toolchain
-(Nautilus `0.7.6`).
+repository state on the validated `chelis 0.8.0` toolchain
+(Nautilus `0.7.27`).
 
 ## Scope
 
@@ -62,13 +62,13 @@ mdbook build docs
 Expected results on a clean run:
 
 ```text
-chelis test tests/ --jobs auto -> 438 passed, 0 failed
-chelis test tests/ --jobs 1    -> 438 passed, 0 failed
+chelis test tests/ --jobs auto -> 459 passed, 0 failed
+chelis test tests/ --jobs 1    -> 459 passed, 0 failed
 parity/run_parity.py           -> parity totals: 216 passed, 0 failed
 ```
 
-The v0.7.6 node-local test timing record is
-`docs/testing_cutover_0.7.6.json`.
+The v0.7.6 node-local test timing record remains archived at
+`docs/testing_cutover_0.7.6.json`; it is not the current pin record.
 
 What those gates cover:
 
@@ -109,29 +109,29 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to `chelis 0.5.0` exactly via `reef.toml`. Historical
+Nautilus is pinned to `chelis 0.8.0` exactly via `reef.toml`. Historical
 compiler/runtime bugs discovered during Nautilus P0-P3 are documented in
 `docs/upstream-bugs.md`.
 
 For the pinned toolchain:
 
 - The shipped Nautilus surface is no longer upstream-blocked. The
-  native `chelis test tests/` gate runs `438 / 438` clean on
-  `chelis 0.5.0`, and `parity/run_parity.py --strict` is `216 / 216`
-  against scipy (both verified 2026-05-05).
-- The post-`v0.1.21` toolchain bumps (`v0.2.x` → `0.5.0`) were
+  native `chelis test tests/` gate runs `459 / 459` clean on
+  `chelis 0.8.0`, and `parity/run_parity.py --strict` is `216 / 216`
+  against scipy.
+- The post-`v0.1.21` toolchain bumps (`v0.2.x` → `0.8.0`) were
   consumed as maintenance / pin-tracking releases. None changed the
   Nautilus blocker set materially.
 - Tensor-valued `grad` at the C-backend lowering level was last
   verified blocked on `v0.1.21` and has not been re-probed against
-  `0.5.0`. Multi-parameter Levenberg-Marquardt (`lm_scalar_nparam`)
+  `0.8.0`. Multi-parameter Levenberg-Marquardt (`lm_scalar_nparam`)
   ships using a finite-difference Jacobian as a workaround.
 
 ### Historical upstream blocker analysis through v0.1.21
 
 The summary below is preserved as historical context for the
 post-`v0.1.7` blocker work. It is not a fresh restatement of the
-`0.5.0` state; for that, see the section above.
+`0.8.0` state; for that, see the section above.
 
 For the v0.1.21 toolchain (the last pin against which the historical
 analysis was captured):
@@ -192,8 +192,8 @@ On upstream releases through `v0.1.21`:
 
 ## Recent Review Outcome
 
-The most recent repo sweep (2026-05-05, against `chelis 0.5.0`) refreshed
-the documentation surface to the current implementation state:
+The most recent repo sweep (2026-06-19, against `chelis 0.8.0`) refreshed
+the release and documentation surface to the current pin state:
 
 - docs/spec text now reflects the 163-export library surface (155
   numerical/library + 1 metadata helper + 7 Signal stubs), the
@@ -201,7 +201,7 @@ the documentation surface to the current implementation state:
   harness as the internal-correctness gate.
 - README, mdBook, and SKILL.md list the v0.4.0 additions (`erfc`,
   unary `gamma`).
-- `docs/upstream-bugs.md` carries an explicit `v0.5.0 validation`
+- `docs/upstream-bugs.md` carries an explicit `v0.8.0 validation`
   block at the top so the historical body below is unambiguously
   archival.
 - the ODE docs continue to document the shipped adaptive RK45

@@ -6,6 +6,18 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.27] - 2026-06-19
+
+Compiler-pin alignment for chelis 0.8.0. `compiler = "=0.7.27"` to
+`"=0.8.0"`; CI / release / nightly workflow env vars updated to track
+`v0.8.0`. Package version bumped 0.7.26 to 0.7.27. chelis-std stays
+`0.4.0`. No Nautilus API changes; this release publishes artifacts built
+against chelis 0.8.0. Validation: `chelis reef build`, rotating
+`chelis check` on `src/special.ch`, `chelis test tests/ --timeout 600
+--jobs auto` (459 passed, 0 failed), and `parity/run_parity.py
+--strict` (216 passed, 0 failed), all after an immediate `chelis
+--version` check reporting `chelis 0.8.0`.
+
 ## [0.7.26] - 2026-06-17
 
 Compiler-pin alignment for chelis 0.7.27. `compiler = "=0.7.26"` to

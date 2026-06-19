@@ -5,9 +5,26 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-> **Current pin: `chelis 0.7.8`.** Entries below are arranged newest
-> first; everything below the v0.7.8 entry is historical record from
+> **Current pin: `chelis 0.8.0`.** Entries below are arranged newest
+> first; everything below the v0.8.0 entry is historical record from
 > earlier toolchain pins.
+
+## v0.8.0 validation (2026-06-19)
+
+Compiler-pin alignment release from `0.7.27` to `0.8.0`; package
+version advanced from `0.7.26` to `0.7.27`. No Nautilus source/API
+changes were needed. `chelis reef build` is clean and produces
+`dist/nautilus-0.7.27.{chb,tar.zst}`; rotating `chelis check` selected
+`src/special.ch` and returned score 1 with no errors; `chelis test
+tests/ --timeout 600 --jobs auto` passed **459/459** native tests; and
+`parity/run_parity.py --strict` passed **216/216** scipy-parity
+samples.
+
+Validation was run with
+`/home/jeff/Documents/scratch/chelis-prove-pipeline/target/release`
+first on `PATH`, with `chelis --version` verified as `chelis 0.8.0`
+immediately before each Chelis gate. No new upstream blockers were
+found for the shipped Nautilus surface.
 
 ## v0.7.8 validation (2026-05-13)
 

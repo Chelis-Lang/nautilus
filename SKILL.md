@@ -7,7 +7,7 @@ numpy.linalg + numpy.random distributions + scipy.* (special, stats,
 optimize, integrate, interpolate, spatial). 163 library exports
 (155 numerical/library + 1 `Nautilus.Core.version` metadata helper +
 7 `Nautilus.Signal` stubs); native gate `chelis test tests/` is
-438/438 clean and `parity/run_parity.py --strict` is 216/216 against
+459/459 clean and `parity/run_parity.py --strict` is 216/216 against
 scipy. Pure Chelis throughout. AD works through all functions
 automatically.
 

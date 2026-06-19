@@ -28,7 +28,7 @@ every function in the library.
 
 ## Verification
 
-Nautilus has two test gates. `chelis test tests/` runs 438 native
+Nautilus has two test gates. `chelis test tests/` runs 459 native
 identity and structural tests across the library; `parity/run_parity.py`
 runs a scipy-oracle pass that compares Nautilus output to scipy/numpy at
 documented tolerances and currently passes 216/216 samples. Every
