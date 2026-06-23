@@ -5,9 +5,47 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-> **Current pin: `chelis 0.8.0`.** Entries below are arranged newest
-> first; everything below the v0.8.0 entry is historical record from
+> **Current pin: `chelis 0.9.0`.** Entries below are arranged newest
+> first; everything below the v0.9.0 entry is historical record from
 > earlier toolchain pins.
+
+## v0.9.0 validation (2026-06-23)
+
+Compiler-pin alignment release from `0.8.0` to `0.9.0`; package
+version advanced from `0.7.27` to `0.7.28`. No Nautilus source/API
+changes were needed. `chelis-std` stays `0.4.0`. `chelis reef build`
+is clean and produces `dist/nautilus-0.7.28.{chb,tar.zst}`; per-file
+`chelis check` over `src/*.ch` returns score 1 with no errors;
+`chelis fmt --check` is clean across `src/`, `tests/`, and `parity/`;
+`chelis test tests/ --timeout 600 --jobs auto` passed **459/459**
+native tests; and `parity/run_parity.py --strict` passed **216/216**
+scipy-parity samples. Validation was run with the released
+`chelis 0.9.0` toolchain first on `PATH`, with `chelis --version`
+verified as `chelis 0.9.0` immediately before each Chelis gate.
+
+The 0.9.0 bump has one observable consequence for Nautilus, and it is
+in `chelis lint --check .` only (a command Nautilus does **not** gate
+on in CI — the gate is `chelis reef build` + `chelis check` score=1 +
+`chelis test` + scipy parity):
+
+- **`doc-filename-convention` (§8.3) now flags the kebab-case
+  `docs/*.md` filenames (chelis#190 fixed).** 0.9.0 reworked the rule
+  from `book.toml`-ancestor detection to path-based detection: the
+  §8.5 (kebab-case) mdBook slot now applies only to paths whose
+  components include the `book/src` layout, so `docs/*.md` files
+  outside `docs/book/src/` are now classified §8.3 (`Slot::Docs`,
+  snake_case required) instead of §8.5. This is the exact behavior
+  Nautilus filed as `docs/upstream-issues-drafts/issue-02-...md`
+  (chelis#190). `chelis lint --check .` now exits 1 with seven
+  `doc-filename-convention` blocking errors over the pre-existing
+  kebab-case docs (`benchmark-findings.md`, `eval-startup-findings.md`,
+  `maintenance-schedule.md`, `nautilus-status.md`, `upstream-bugs.md`,
+  and the two `upstream-issues-drafts/issue-*.md` drafts). These are
+  filename-only lints on documents that long predate this bump; none
+  affect `chelis check`, `chelis reef build`, the test suite, or the
+  parity gate, all of which are green. Renaming the docs is deferred as
+  a separate documentation-hygiene change so the toolchain bump stays a
+  mechanical pin alignment; tracked against chelis#190.
 
 ## v0.8.0 validation (2026-06-19)
 

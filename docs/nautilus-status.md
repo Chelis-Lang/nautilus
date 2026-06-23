@@ -1,8 +1,8 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the validated `chelis 0.8.0` toolchain
-(Nautilus `0.7.27`).
+repository state on the validated `chelis 0.9.0` toolchain
+(Nautilus `0.7.28`).
 
 ## Scope
 
@@ -109,7 +109,7 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to `chelis 0.8.0` exactly via `reef.toml`. Historical
+Nautilus is pinned to `chelis 0.9.0` exactly via `reef.toml`. Historical
 compiler/runtime bugs discovered during Nautilus P0-P3 are documented in
 `docs/upstream-bugs.md`.
 
@@ -117,21 +117,21 @@ For the pinned toolchain:
 
 - The shipped Nautilus surface is no longer upstream-blocked. The
   native `chelis test tests/` gate runs `459 / 459` clean on
-  `chelis 0.8.0`, and `parity/run_parity.py --strict` is `216 / 216`
+  `chelis 0.9.0`, and `parity/run_parity.py --strict` is `216 / 216`
   against scipy.
-- The post-`v0.1.21` toolchain bumps (`v0.2.x` → `0.8.0`) were
+- The post-`v0.1.21` toolchain bumps (`v0.2.x` → `0.9.0`) were
   consumed as maintenance / pin-tracking releases. None changed the
   Nautilus blocker set materially.
 - Tensor-valued `grad` at the C-backend lowering level was last
   verified blocked on `v0.1.21` and has not been re-probed against
-  `0.8.0`. Multi-parameter Levenberg-Marquardt (`lm_scalar_nparam`)
+  `0.9.0`. Multi-parameter Levenberg-Marquardt (`lm_scalar_nparam`)
   ships using a finite-difference Jacobian as a workaround.
 
 ### Historical upstream blocker analysis through v0.1.21
 
 The summary below is preserved as historical context for the
 post-`v0.1.7` blocker work. It is not a fresh restatement of the
-`0.8.0` state; for that, see the section above.
+`0.9.0` state; for that, see the section above.
 
 For the v0.1.21 toolchain (the last pin against which the historical
 analysis was captured):
@@ -192,7 +192,7 @@ On upstream releases through `v0.1.21`:
 
 ## Recent Review Outcome
 
-The most recent repo sweep (2026-06-19, against `chelis 0.8.0`) refreshed
+The most recent repo sweep (2026-06-23, against `chelis 0.9.0`) refreshed
 the release and documentation surface to the current pin state:
 
 - docs/spec text now reflects the 163-export library surface (155
@@ -201,7 +201,7 @@ the release and documentation surface to the current pin state:
   harness as the internal-correctness gate.
 - README, mdBook, and SKILL.md list the v0.4.0 additions (`erfc`,
   unary `gamma`).
-- `docs/upstream-bugs.md` carries an explicit `v0.8.0 validation`
+- `docs/upstream-bugs.md` carries an explicit `v0.9.0 validation`
   block at the top so the historical body below is unambiguously
   archival.
 - the ODE docs continue to document the shipped adaptive RK45

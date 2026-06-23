@@ -29,14 +29,14 @@ adjoints. Automatic differentiation flows through tensor-op composition.
 ## Getting started
 
 Requires the latest validated Chelis release, currently
-[chelis 0.8.0](https://github.com/Chelis-Lang/chelis/releases/tag/v0.8.0).
+[chelis 0.9.0](https://github.com/Chelis-Lang/chelis/releases/tag/v0.9.0).
 
 ```sh
-gh release download v0.8.0 \
+gh release download v0.9.0 \
   --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.8.0-linux-x86_64.tar.gz'
-tar xzf chelis-v0.8.0-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.8.0-linux-x86_64/bin:$PATH"
+  --pattern 'chelis-v0.9.0-linux-x86_64.tar.gz'
+tar xzf chelis-v0.9.0-linux-x86_64.tar.gz
+export PATH="$PWD/chelis-v0.9.0-linux-x86_64/bin:$PATH"
 
 chelis reef build
 chelis test tests/ --jobs auto         # 459 native identity / structural tests
