@@ -6,6 +6,34 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.28] - 2026-06-23
+
+Compiler-pin alignment for chelis 0.9.0. `compiler = "=0.8.0"` to
+`"=0.9.0"`; CI / release / nightly workflow env vars (and the
+`install-chelis` action defaults plus `scripts/install_chelis_std.py`
+default tag) updated to track `v0.9.0`. Package version bumped 0.7.27
+to 0.7.28. chelis-std stays `0.4.0`. No Nautilus API changes; this
+release publishes artifacts built against chelis 0.9.0. Validation:
+`chelis reef build` (clean, `dist/nautilus-0.7.28.{chb,tar.zst}`),
+per-file `chelis check` over `src/*.ch` (score 1, no errors),
+`chelis fmt --check` (clean across `src/`, `tests/`, `parity/`),
+`chelis test tests/ --timeout 600 --jobs auto` (459 passed, 0 failed),
+and `parity/run_parity.py --strict` (216 passed, 0 failed), all after
+an immediate `chelis --version` check reporting `chelis 0.9.0`.
+
+chelis 0.9.0 ships the verification-stack Phase 1/2 substrate, the
+honest-verdict `chelis prove` taxonomy, and Deep authoring L0. Nautilus
+imports only the core chelis-std surface (`Std.Test`) and uses neither
+`chelis prove` nor Deep authoring, so none of the 0.9.0 feature surface
+touches anything Nautilus relies on. The one observable 0.9.0 change
+for this repo is the chelis#190 fix to `doc-filename-convention`
+(§8.3/§8.5 now path-based, not `book.toml`-ancestor-based): the
+pre-existing kebab-case `docs/*.md` filenames are now flagged by
+`chelis lint --check .` — a command Nautilus does not gate on in CI.
+See `docs/upstream-bugs.md` (v0.9.0 validation block) for detail; the
+docs rename is deferred as a separate documentation-hygiene change.
+Part of the coordinated chelis 0.9.0 release cascade.
+
 ## [0.7.27] - 2026-06-19
 
 Compiler-pin alignment for chelis 0.8.0. `compiler = "=0.7.27"` to

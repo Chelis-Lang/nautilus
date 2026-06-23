@@ -50,7 +50,7 @@ The `Random` effect requires a handler that provides the underlying
 uniform random source. In the current Chelis runtime, the bare-build C
 backend uses a deterministic hash-based PRNG seeded at 0 (this matched
 the v0.1.4 runtime where the seam was first documented and has not
-changed through the 0.8.0 pin). For production Monte Carlo, a
+changed through the 0.9.0 pin). For production Monte Carlo, a
 user-configurable seed handler is needed.
 
 ## Computing the price
