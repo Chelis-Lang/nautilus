@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CHELIS_TAG: v0.9.0
-  CHELIS_VERSION: 0.9.0
+  CHELIS_TAG: v0.10.0
+  CHELIS_VERSION: 0.10.0
 
 jobs:
   hard-rule-guard:

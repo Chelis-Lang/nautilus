@@ -6,6 +6,17 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.29] - 2026-06-24
+
+Compiler-pin alignment for chelis 0.10.0. `compiler = "=0.9.0"` to
+`"=0.10.0"`; CI / release / nightly workflow env vars (and the
+`install-chelis` action defaults plus `scripts/install_chelis_std.py`
+default tag) updated to track `v0.10.0`. Package version bumped 0.7.28 →
+0.7.29. chelis-std stays 0.4.0 (bundled in the 0.10.0 compiler). No source
+or API changes: `chelis reef build` succeeds at `=0.10.0` and all 459 tests
+pass unchanged. `reef.lock` regenerated against the 0.10.0 toolchain. README
+/ docs / upstream-bugs current-pin references updated to chelis 0.10.0.
+
 ## [0.7.28] - 2026-06-23
 
 Compiler-pin alignment for chelis 0.9.0. `compiler = "=0.8.0"` to
