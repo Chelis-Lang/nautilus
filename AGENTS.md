@@ -21,7 +21,7 @@ to this file so Claude-style and Codex-style entry points do not drift.
   Chelis release by default. Treat stale pins as drift, not as a reason
   to stay on an older compiler.
 - `reef.toml` should pin the currently validated release exactly. As of
-  this repo state, that is `chelis 0.10.0`.
+  this repo state, that is `chelis 0.10.1`.
 - If the latest published Chelis release fails Nautilus validation,
   document the blocker clearly and pin the newest known-good release
   until the blocker is resolved.
@@ -67,7 +67,7 @@ Distance / SDE / Stats / Interpolation tensor-path runtime
 verification is no longer upstream-blocked. The remaining open
 blocker — tensor-valued `grad` at the C-backend lowering level
 (multi-parameter LM) — was last verified against `v0.1.21` and has
-not been re-probed specifically against the current `0.10.0` pin; see
+not been re-probed specifically against the current `0.10.1` pin; see
 `docs/upstream-bugs.md` for details.
 
 ## Authorship Policy

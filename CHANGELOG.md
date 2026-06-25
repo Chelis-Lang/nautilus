@@ -6,6 +6,12 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.30] - 2026-06-25
+
+Cascade to chelis v0.10.1. `compiler = "=0.10.0"` → `"=0.10.1"`; CI /
+release workflow env vars updated to track `v0.10.1`. Package version bumped
+0.7.29 → 0.7.30. No source or API changes.
+
 ## [0.7.29] - 2026-06-24
 
 Compiler-pin alignment for chelis 0.10.0. `compiler = "=0.9.0"` to

@@ -1,8 +1,8 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the validated `chelis 0.10.0` toolchain
-(Nautilus `0.7.28`).
+repository state on the validated `chelis 0.10.1` toolchain
+(Nautilus `0.7.30`).
 
 ## Scope
 
@@ -109,7 +109,7 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to `chelis 0.10.0` exactly via `reef.toml`. Historical
+Nautilus is pinned to `chelis 0.10.1` exactly via `reef.toml`. Historical
 compiler/runtime bugs discovered during Nautilus P0-P3 are documented in
 `docs/upstream-bugs.md`.
 
@@ -117,7 +117,7 @@ For the pinned toolchain:
 
 - The shipped Nautilus surface is no longer upstream-blocked. The
   native `chelis test tests/` gate runs `459 / 459` clean on
-  `chelis 0.10.0`, and `parity/run_parity.py --strict` is `216 / 216`
+  `chelis 0.10.1`, and `parity/run_parity.py --strict` is `216 / 216`
   against scipy.
 - The post-`v0.1.21` toolchain bumps (`v0.2.x` → `0.9.0`) were
   consumed as maintenance / pin-tracking releases. None changed the
@@ -192,7 +192,7 @@ On upstream releases through `v0.1.21`:
 
 ## Recent Review Outcome
 
-The most recent repo sweep (2026-06-23, against `chelis 0.10.0`) refreshed
+The most recent repo sweep (2026-06-25, against `chelis 0.10.1`) refreshed
 the release and documentation surface to the current pin state:
 
 - docs/spec text now reflects the 163-export library surface (155

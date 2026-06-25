@@ -5,7 +5,7 @@ rounds across Nautilus Phases P0–P3. Each entry includes a minimal
 reproduction, the workaround currently in use downstream, and a
 per-release **status** line recording what changed.
 
-> **Current pin: `chelis 0.10.0`.** Entries below are arranged newest
+> **Current pin: `chelis 0.10.1`.** Entries below are arranged newest
 > first; everything below the v0.9.0 entry is historical record from
 > earlier toolchain pins.
 
