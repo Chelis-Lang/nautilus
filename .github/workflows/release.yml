@@ -10,8 +10,8 @@ permissions:
   contents: write
 
 env:
-  CHELIS_TAG: v0.10.1
-  CHELIS_VERSION: 0.10.1
+  CHELIS_TAG: v0.11.1
+  CHELIS_VERSION: 0.11.1
   PACKAGE_NAME: nautilus
   PACKAGE_VERSION: 0.7.30
 
