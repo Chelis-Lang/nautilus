@@ -30,10 +30,10 @@ need that split.
 ### Linux (x86_64)
 
 ```sh
-gh release download v0.10.1 --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.10.1-linux-x86_64.tar.gz'
-tar xzf chelis-v0.10.1-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.10.1-linux-x86_64/bin:$PATH"
+gh release download v0.11.1 --repo Chelis-Lang/chelis \
+  --pattern 'chelis-v0.11.1-linux-x86_64.tar.gz'
+tar xzf chelis-v0.11.1-linux-x86_64.tar.gz
+export PATH="$PWD/chelis-v0.11.1-linux-x86_64/bin:$PATH"
 
 # In your Chelis project's reef.toml:
 #   nautilus = "0.7.28"
@@ -46,10 +46,10 @@ chelis reef build
 Identical except for the toolchain download:
 
 ```sh
-gh release download v0.10.1 --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.10.1-darwin-arm64.tar.gz'
-tar xzf chelis-v0.10.1-darwin-arm64.tar.gz
-export PATH="$PWD/chelis-v0.10.1-darwin-arm64/bin:$PATH"
+gh release download v0.11.1 --repo Chelis-Lang/chelis \
+  --pattern 'chelis-v0.11.1-darwin-arm64.tar.gz'
+tar xzf chelis-v0.11.1-darwin-arm64.tar.gz
+export PATH="$PWD/chelis-v0.11.1-darwin-arm64/bin:$PATH"
 
 # Same steps from here on. The Nautilus .chb + .tar.zst are
 # the same files used on Linux. The Darwin chelis compiler

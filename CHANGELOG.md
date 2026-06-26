@@ -6,6 +6,13 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.31] - 2026-06-26
+
+Cascade to chelis v0.11.1. `compiler = "=0.10.1"` → `"=0.11.1"`; CI /
+release workflow env vars updated to track `v0.11.1`. Package version bumped
+0.7.30 → 0.7.31. Breaking: Std.Tensor.Reduce removed in 0.11.0 (not used by
+nautilus).
+
 ## [0.7.30] - 2026-06-25
 
 Cascade to chelis v0.10.1. `compiler = "=0.10.0"` → `"=0.10.1"`; CI /
