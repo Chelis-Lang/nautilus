@@ -6,6 +6,17 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.32] - 2026-07-01
+
+Cascade to chelis v0.12.0. `compiler = "=0.11.1"` → `"=0.12.0"`; CI /
+nightly / release workflow env vars updated to track `v0.12.0`. Package
+version bumped 0.7.31 → 0.7.32. Breaking upstream: chelis 0.12.0 restricts
+`div` to float operands (#511). Fixed `Nautilus.Stats.median_vec`, which
+computed the median split index with `div(numel, 2)` on two `int64`
+operands — now `floor_div(numel, 2)` (numerically identical for the
+non-negative count; median floor index). Full suite green on 0.12.0:
+`chelis test` 459/0, scipy-parity 216/0.
+
 ## [0.7.31] - 2026-06-26
 
 Cascade to chelis v0.11.1. `compiler = "=0.10.1"` → `"=0.11.1"`; CI /
