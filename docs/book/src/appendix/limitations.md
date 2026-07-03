@@ -1,7 +1,7 @@
 # Known Limitations
 
 This page summarizes the functional limitations of Nautilus as documented
-in `nautilus-status.md` Section 6.1.
+in `nautilus_status.md` Section 6.1.
 
 ## Precision
 

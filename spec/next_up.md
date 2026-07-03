@@ -131,7 +131,7 @@ not.
 ## Completed: P1 Upstream the Fast-`chelis eval` Dependency Surface
 
 Landed in commit `084f0ed`. `scripts/bench_eval_startup.py` measures the
-startup path, and `docs/eval-startup-findings.md` records the actionable
+startup path, and `docs/eval_startup_findings.md` records the actionable
 compiler-side recommendations. The findings doc is the handoff: Nautilus
 measures, Chelis core owns the fix.
 
@@ -160,7 +160,7 @@ several scenarios:
 **Implementation.** New file `scripts/bench_eval_startup.py`. Uses
 `subprocess.run` with wall-clock timing, 20 trials per scenario, f32
 target. Output is a markdown table dumped to stdout and written to
-`docs/eval-startup-findings.md`. If the target is already met, the
+`docs/eval_startup_findings.md`. If the target is already met, the
 finding becomes evidence in the main chelis repo that no pre-Phase 4
 work is needed. If missed, the per-module breakdown tells the chelis
 compiler team where the seconds are going.
@@ -200,7 +200,7 @@ placeholder returns `x` verbatim instead of `∇f(x)`. LM implementation
 therefore stays blocked until the workaround actually computes a gradient.
 
 **Driven by:** residual v0.1.0 limitation
-(`docs/nautilus-status.md` § 6.1) — `Nautilus.CurveFit` currently
+(`docs/nautilus_status.md` § 6.1) — `Nautilus.CurveFit` currently
 only exposes `lm_scalar_1param`. Every real curve-fitting workload
 (Shoals SABR calibration, Octant LaTeX→Chelis calibration paths) needs
 ≥ 2-parameter fitting.
@@ -257,7 +257,7 @@ in `tests/run_numeric_tests.py` against the decay golden in
 Original planning note:
 
 **Driven by:** residual v0.1.0 limitation
-(`docs/nautilus-status.md` § 6.1) — `Nautilus.Ode` ships fixed-step
+(`docs/nautilus_status.md` § 6.1) — `Nautilus.Ode` ships fixed-step
 only. Scipy's `solve_ivp(method="RK45")` is the workhorse; real
 consumers (Shoals SDE discretization with adaptive time steps) need
 it.
@@ -293,7 +293,7 @@ non-trivial) + one golden.
 
 **Acceptance oracle:** `python tests/run_numeric_tests.py` passes
 with added `rk45_adaptive` assertions; benchmark table in
-`benchmark-findings.md` updated to show adaptive vs fixed on a stiff
+`benchmark_findings.md` updated to show adaptive vs fixed on a stiff
 test case.
 
 ---
@@ -307,7 +307,7 @@ new `(7.5, 8)` goldens were added, and the `bessel_y1` stability row in
 Original planning note:
 
 **Driven by:** residual v0.1.0 limitation
-(`docs/nautilus-status.md` § 6.1) — `bessel_y1` has ~1e-3 relative
+(`docs/nautilus_status.md` § 6.1) — `bessel_y1` has ~1e-3 relative
 error in `(7.5, 8)` near the rational/asymptotic seam. Currently
 tagged as a known limitation and avoided in golden test points.
 

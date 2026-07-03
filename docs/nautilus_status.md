@@ -111,7 +111,7 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 Nautilus is pinned to `chelis 0.11.1` exactly via `reef.toml`. Historical
 compiler/runtime bugs discovered during Nautilus P0-P3 are documented in
-`docs/upstream-bugs.md`.
+`docs/upstream_bugs.md`.
 
 For the pinned toolchain:
 
@@ -201,7 +201,7 @@ the release and documentation surface to the current pin state:
   harness as the internal-correctness gate.
 - README, mdBook, and SKILL.md list the v0.4.0 additions (`erfc`,
   unary `gamma`).
-- `docs/upstream-bugs.md` carries an explicit `v0.9.0 validation`
+- `docs/upstream_bugs.md` carries an explicit `v0.9.0 validation`
   block at the top so the historical body below is unambiguously
   archival.
 - the ODE docs continue to document the shipped adaptive RK45

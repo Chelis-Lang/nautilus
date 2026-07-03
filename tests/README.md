@@ -164,7 +164,7 @@ When you do:
 The `chelis test` host runtime supports `matmul`, `permute`, and `sum`
 as of chelis v0.2.5. All `Nautilus.LinAlg` exports are testable
 natively. Earlier upstream limitations and their fix history are in
-`docs/upstream-bugs.md`.
+`docs/upstream_bugs.md`.
 
 Known quirks (still observed under the current pin; no workaround
 needed in tests/):

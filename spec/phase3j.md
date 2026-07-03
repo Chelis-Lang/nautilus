@@ -89,13 +89,13 @@ RISC primitives already carry adjoints.
   and zero errors. v0.1.7 emits `DimensionMismatch: Lit(2) vs Lit(3)`
   at `chelis check` time (score drops to ~0.86). The "negative tests:
   wrong input shapes" acceptance bullet is now satisfied at compile
-  time, not deferred. Tracked upstream as `docs/upstream-bugs.md` Bug 2,
+  time, not deferred. Tracked upstream as `docs/upstream_bugs.md` Bug 2,
   re-verified against v0.1.7.
 - **LinAlg / Distance / SDE tensor-path runtime verification: UNBLOCKED in v0.1.7.**
   v0.1.5 shipped `lib/libchelis_runtime.a` in the release tarball
-  (fixing the link failure from v0.1.4 — `docs/upstream-bugs.md` Bug 3b).
+  (fixing the link failure from v0.1.4 — `docs/upstream_bugs.md` Bug 3b).
   v0.1.7 fixed the main-entry wrapper emission symptom
-  (`docs/upstream-bugs.md` Bug 3c) — a minimal
+  (`docs/upstream_bugs.md` Bug 3c) — a minimal
   `def main(x, y: tensor[4, f32]) -> ... = combine(x, y)` now emits
   an entry point with `n_in == 2`, correctly-labeled slots, and a
   full OpenMP elementwise-add loop. Tensor-on-tensor `add`/`sub`/`mul`

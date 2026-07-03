@@ -38,8 +38,8 @@ on in CI — the gate is `chelis reef build` + `chelis check` score=1 +
   Nautilus filed as `docs/upstream-issues-drafts/issue-02-...md`
   (chelis#190). `chelis lint --check .` now exits 1 with seven
   `doc-filename-convention` blocking errors over the pre-existing
-  kebab-case docs (`benchmark-findings.md`, `eval-startup-findings.md`,
-  `maintenance-schedule.md`, `nautilus-status.md`, `upstream-bugs.md`,
+  kebab-case docs (`benchmark_findings.md`, `eval_startup_findings.md`,
+  `maintenance_schedule.md`, `nautilus_status.md`, `upstream-bugs.md`,
   and the two `upstream-issues-drafts/issue-*.md` drafts). These are
   filename-only lints on documents that long predate this bump; none
   affect `chelis check`, `chelis reef build`, the test suite, or the
