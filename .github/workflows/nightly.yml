@@ -22,8 +22,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CHELIS_TAG: v0.12.0
-  CHELIS_VERSION: 0.12.0
+  CHELIS_TAG: v0.14.0
+  CHELIS_VERSION: 0.14.0
 
 jobs:
   legacy-harness:
