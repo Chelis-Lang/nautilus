@@ -10,10 +10,7 @@ permissions:
   contents: write
 
 env:
-  CHELIS_TAG: v0.14.0
-  CHELIS_VERSION: 0.14.0
   PACKAGE_NAME: nautilus
-  PACKAGE_VERSION: 0.7.33
 
 jobs:
   build-reef-assets:
@@ -21,6 +18,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Detect versions from reef.toml
+        run: |
+          set -euo pipefail
+          CHELIS_VERSION=$(grep -oP '^compiler\s*=\s*"=\K[0-9]+\.[0-9]+\.[0-9]+' reef.toml)
+          PACKAGE_VERSION=$(grep -oP '^version\s*=\s*"\K[0-9]+\.[0-9]+\.[0-9]+' reef.toml | head -1)
+          if [ -z "$CHELIS_VERSION" ] || [ -z "$PACKAGE_VERSION" ]; then
+            echo "Failed to parse versions from reef.toml" >&2
+            cat reef.toml >&2
+            exit 1
+          fi
+          echo "CHELIS_TAG=v$CHELIS_VERSION" >> "$GITHUB_ENV"
+          echo "CHELIS_VERSION=$CHELIS_VERSION" >> "$GITHUB_ENV"
+          echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> "$GITHUB_ENV"
+          echo "Detected: chelis=$CHELIS_VERSION nautilus=$PACKAGE_VERSION"
 
       - name: Download chelis toolchain
         env:
@@ -40,7 +52,6 @@ jobs:
       - name: Install chelis-std into local registry
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-          CHELIS_TAG: ${{ env.CHELIS_TAG }}
         run: python3 scripts/install_chelis_std.py
 
       - name: Build reef assets

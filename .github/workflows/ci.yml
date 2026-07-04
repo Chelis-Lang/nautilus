@@ -12,10 +12,27 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # AUTO-SYNC: must match `compiler = "=X.Y.Z"` in reef.toml.
+  # If this drifts, the pin-consistency-guard job below fails immediately
+  # with a clear diagnostic. Update both together.
   CHELIS_TAG: v0.14.0
   CHELIS_VERSION: 0.14.0
 
 jobs:
+  pin-consistency-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert CI chelis pin matches reef.toml
+        run: |
+          set -euo pipefail
+          REEF_PIN=$(grep -oP '^compiler\s*=\s*"=\K[0-9]+\.[0-9]+\.[0-9]+' reef.toml)
+          if [ "v${REEF_PIN}" != "${{ env.CHELIS_TAG }}" ]; then
+            echo "::error::CI pin drift: env.CHELIS_TAG=${{ env.CHELIS_TAG }} but reef.toml has compiler=\"=${REEF_PIN}\". Update the workflow env block."
+            exit 1
+          fi
+          echo "✓ CI pin v${REEF_PIN} matches reef.toml"
+
   hard-rule-guard:
     runs-on: ubuntu-latest
     steps:
