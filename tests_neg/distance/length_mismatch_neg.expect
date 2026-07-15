@@ -1,0 +1,7 @@
+dimension mismatch
+
+Assumption: Nautilus.Distance.euclidean requires both input tensors to share
+the same static length parameter `n`. Literal tensors of lengths 3 and 2 must
+be rejected during checking. If the checker ever accepts this program, the
+negative suite should report an unexpected pass rather than silently allowing
+zip-based truncation inside the distance implementation.

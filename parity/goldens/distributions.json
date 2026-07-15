@@ -1,0 +1,885 @@
+{
+  "cases": [
+    {
+      "expected": 0.06475879783294587,
+      "expression": "normal_pdf(cast(-2.0, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_pdf(.,1,2)",
+      "sample": -2.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.17603266338214976,
+      "expression": "normal_pdf(cast(0.0, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_pdf(.,1,2)",
+      "sample": 0.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.19947114020071635,
+      "expression": "normal_pdf(cast(1.0, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_pdf(.,1,2)",
+      "sample": 1.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.12098536225957168,
+      "expression": "normal_pdf(cast(3.0, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_pdf(.,1,2)",
+      "sample": 3.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.02699548325659403,
+      "expression": "normal_pdf(cast(5.0, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_pdf(.,1,2)",
+      "sample": 5.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.06680720126885806,
+      "expression": "normal_cdf(cast(-2.0, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_cdf(.,1,2)",
+      "sample": -2.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.3085375387259869,
+      "expression": "normal_cdf(cast(0.0, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_cdf(.,1,2)",
+      "sample": 0.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.5,
+      "expression": "normal_cdf(cast(1.0, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_cdf(.,1,2)",
+      "sample": 1.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.8413447460685429,
+      "expression": "normal_cdf(cast(3.0, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_cdf(.,1,2)",
+      "sample": 3.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.9772498680518208,
+      "expression": "normal_cdf(cast(5.0, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_cdf(.,1,2)",
+      "sample": 5.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": -2.2897072539029457,
+      "expression": "normal_inv_cdf(cast(0.05, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_inv_cdf(.,1,2)",
+      "sample": 0.05,
+      "tolerance": 0.005
+    },
+    {
+      "expected": -0.3489795003921634,
+      "expression": "normal_inv_cdf(cast(0.25, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_inv_cdf(.,1,2)",
+      "sample": 0.25,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.0,
+      "expression": "normal_inv_cdf(cast(0.5, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_inv_cdf(.,1,2)",
+      "sample": 0.5,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 2.348979500392163,
+      "expression": "normal_inv_cdf(cast(0.75, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_inv_cdf(.,1,2)",
+      "sample": 0.75,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 4.289707253902944,
+      "expression": "normal_inv_cdf(cast(0.95, f32), cast(1.0, f32), cast(2.0, f32))",
+      "label": "normal_inv_cdf(.,1,2)",
+      "sample": 0.95,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.0,
+      "expression": "uniform_pdf(cast(-1.0, f32), cast(0.0, f32), cast(2.0, f32))",
+      "label": "uniform_pdf(.,0,2)",
+      "sample": -1.0,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 0.5,
+      "expression": "uniform_pdf(cast(0.5, f32), cast(0.0, f32), cast(2.0, f32))",
+      "label": "uniform_pdf(.,0,2)",
+      "sample": 0.5,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 0.5,
+      "expression": "uniform_pdf(cast(1.0, f32), cast(0.0, f32), cast(2.0, f32))",
+      "label": "uniform_pdf(.,0,2)",
+      "sample": 1.0,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 0.5,
+      "expression": "uniform_pdf(cast(1.5, f32), cast(0.0, f32), cast(2.0, f32))",
+      "label": "uniform_pdf(.,0,2)",
+      "sample": 1.5,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 0.0,
+      "expression": "uniform_pdf(cast(3.0, f32), cast(0.0, f32), cast(2.0, f32))",
+      "label": "uniform_pdf(.,0,2)",
+      "sample": 3.0,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 0.0,
+      "expression": "uniform_cdf(cast(-1.0, f32), cast(0.0, f32), cast(2.0, f32))",
+      "label": "uniform_cdf(.,0,2)",
+      "sample": -1.0,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 0.25,
+      "expression": "uniform_cdf(cast(0.5, f32), cast(0.0, f32), cast(2.0, f32))",
+      "label": "uniform_cdf(.,0,2)",
+      "sample": 0.5,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 0.5,
+      "expression": "uniform_cdf(cast(1.0, f32), cast(0.0, f32), cast(2.0, f32))",
+      "label": "uniform_cdf(.,0,2)",
+      "sample": 1.0,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 0.75,
+      "expression": "uniform_cdf(cast(1.5, f32), cast(0.0, f32), cast(2.0, f32))",
+      "label": "uniform_cdf(.,0,2)",
+      "sample": 1.5,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 1.0,
+      "expression": "uniform_cdf(cast(3.0, f32), cast(0.0, f32), cast(2.0, f32))",
+      "label": "uniform_cdf(.,0,2)",
+      "sample": 3.0,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 1.5,
+      "expression": "exponential_pdf(cast(0.0, f32), cast(1.5, f32))",
+      "label": "exponential_pdf(.,1.5)",
+      "sample": 0.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.7085498291115221,
+      "expression": "exponential_pdf(cast(0.5, f32), cast(1.5, f32))",
+      "label": "exponential_pdf(.,1.5)",
+      "sample": 0.5,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.33469524022264474,
+      "expression": "exponential_pdf(cast(1.0, f32), cast(1.5, f32))",
+      "label": "exponential_pdf(.,1.5)",
+      "sample": 1.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.07468060255179593,
+      "expression": "exponential_pdf(cast(2.0, f32), cast(1.5, f32))",
+      "label": "exponential_pdf(.,1.5)",
+      "sample": 2.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.0037181282649995377,
+      "expression": "exponential_pdf(cast(4.0, f32), cast(1.5, f32))",
+      "label": "exponential_pdf(.,1.5)",
+      "sample": 4.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.0,
+      "expression": "exponential_cdf(cast(0.0, f32), cast(1.5, f32))",
+      "label": "exponential_cdf(.,1.5)",
+      "sample": 0.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.5276334472589853,
+      "expression": "exponential_cdf(cast(0.5, f32), cast(1.5, f32))",
+      "label": "exponential_cdf(.,1.5)",
+      "sample": 0.5,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.7768698398515702,
+      "expression": "exponential_cdf(cast(1.0, f32), cast(1.5, f32))",
+      "label": "exponential_cdf(.,1.5)",
+      "sample": 1.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.950212931632136,
+      "expression": "exponential_cdf(cast(2.0, f32), cast(1.5, f32))",
+      "label": "exponential_cdf(.,1.5)",
+      "sample": 2.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.9975212478233336,
+      "expression": "exponential_cdf(cast(4.0, f32), cast(1.5, f32))",
+      "label": "exponential_cdf(.,1.5)",
+      "sample": 4.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.6274960771159245,
+      "expression": "lognormal_pdf(cast(0.5, f32), cast(0.0, f32), cast(1.0, f32))",
+      "label": "lognormal_pdf(.,0,1)",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.3989422804014327,
+      "expression": "lognormal_pdf(cast(1.0, f32), cast(0.0, f32), cast(1.0, f32))",
+      "label": "lognormal_pdf(.,0,1)",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.24497365171050992,
+      "expression": "lognormal_pdf(cast(1.5, f32), cast(0.0, f32), cast(1.0, f32))",
+      "label": "lognormal_pdf(.,0,1)",
+      "sample": 1.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.15687401927898112,
+      "expression": "lognormal_pdf(cast(2.0, f32), cast(0.0, f32), cast(1.0, f32))",
+      "label": "lognormal_pdf(.,0,1)",
+      "sample": 2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.07272825613999473,
+      "expression": "lognormal_pdf(cast(3.0, f32), cast(0.0, f32), cast(1.0, f32))",
+      "label": "lognormal_pdf(.,0,1)",
+      "sample": 3.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.24410859578558275,
+      "expression": "lognormal_cdf(cast(0.5, f32), cast(0.0, f32), cast(1.0, f32))",
+      "label": "lognormal_cdf(.,0,1)",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.5,
+      "expression": "lognormal_cdf(cast(1.0, f32), cast(0.0, f32), cast(1.0, f32))",
+      "label": "lognormal_cdf(.,0,1)",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.6574321694851541,
+      "expression": "lognormal_cdf(cast(1.5, f32), cast(0.0, f32), cast(1.0, f32))",
+      "label": "lognormal_cdf(.,0,1)",
+      "sample": 1.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.7558914042144173,
+      "expression": "lognormal_cdf(cast(2.0, f32), cast(0.0, f32), cast(1.0, f32))",
+      "label": "lognormal_cdf(.,0,1)",
+      "sample": 2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.8640313923585756,
+      "expression": "lognormal_cdf(cast(3.0, f32), cast(0.0, f32), cast(1.0, f32))",
+      "label": "lognormal_cdf(.,0,1)",
+      "sample": 3.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.15922918012750872,
+      "expression": "gamma_pdf(cast(0.5, f32), cast(2.0, f32), cast(1.5, f32))",
+      "label": "gamma_pdf(.,2,1.5)",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.22818538623670756,
+      "expression": "gamma_pdf(cast(1.0, f32), cast(2.0, f32), cast(1.5, f32))",
+      "label": "gamma_pdf(.,2,1.5)",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.23430856721397933,
+      "expression": "gamma_pdf(cast(2.0, f32), cast(2.0, f32), cast(1.5, f32))",
+      "label": "gamma_pdf(.,2,1.5)",
+      "sample": 2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.12352613550720275,
+      "expression": "gamma_pdf(cast(4.0, f32), cast(2.0, f32), cast(1.5, f32))",
+      "label": "gamma_pdf(.,2,1.5)",
+      "sample": 4.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.01716604442251179,
+      "expression": "gamma_pdf(cast(8.0, f32), cast(2.0, f32), cast(1.5, f32))",
+      "label": "gamma_pdf(.,2,1.5)",
+      "sample": 8.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.04462491923494765,
+      "expression": "gamma_cdf(cast(0.5, f32), cast(2.0, f32), cast(1.5, f32))",
+      "label": "gamma_cdf(.,2,1.5)",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.14430480161234657,
+      "expression": "gamma_cdf(cast(1.0, f32), cast(2.0, f32), cast(1.5, f32))",
+      "label": "gamma_cdf(.,2,1.5)",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.38494001106330406,
+      "expression": "gamma_cdf(cast(2.0, f32), cast(2.0, f32), cast(1.5, f32))",
+      "label": "gamma_cdf(.,2,1.5)",
+      "sample": 2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.7452273455163944,
+      "expression": "gamma_cdf(cast(4.0, f32), cast(2.0, f32), cast(1.5, f32))",
+      "label": "gamma_cdf(.,2,1.5)",
+      "sample": 4.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.9694229833724008,
+      "expression": "gamma_cdf(cast(8.0, f32), cast(2.0, f32), cast(1.5, f32))",
+      "label": "gamma_cdf(.,2,1.5)",
+      "sample": 8.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.09735009788392562,
+      "expression": "chi_squared_pdf(cast(0.5, f32), cast(4.0, f32))",
+      "label": "chi_squared_pdf(.,4)",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.15163266492815836,
+      "expression": "chi_squared_pdf(cast(1.0, f32), cast(4.0, f32))",
+      "label": "chi_squared_pdf(.,4)",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.18393972058572114,
+      "expression": "chi_squared_pdf(cast(2.0, f32), cast(4.0, f32))",
+      "label": "chi_squared_pdf(.,4)",
+      "sample": 2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.1353352832366127,
+      "expression": "chi_squared_pdf(cast(4.0, f32), cast(4.0, f32))",
+      "label": "chi_squared_pdf(.,4)",
+      "sample": 4.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.036631277777468364,
+      "expression": "chi_squared_pdf(cast(8.0, f32), cast(4.0, f32))",
+      "label": "chi_squared_pdf(.,4)",
+      "sample": 8.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.026499021160743912,
+      "expression": "chi_squared_cdf(cast(0.5, f32), cast(4.0, f32))",
+      "label": "chi_squared_cdf(.,4)",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.09020401043104986,
+      "expression": "chi_squared_cdf(cast(1.0, f32), cast(4.0, f32))",
+      "label": "chi_squared_cdf(.,4)",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.2642411176571153,
+      "expression": "chi_squared_cdf(cast(2.0, f32), cast(4.0, f32))",
+      "label": "chi_squared_cdf(.,4)",
+      "sample": 2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.5939941502901616,
+      "expression": "chi_squared_cdf(cast(4.0, f32), cast(4.0, f32))",
+      "label": "chi_squared_cdf(.,4)",
+      "sample": 4.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.9084218055563291,
+      "expression": "chi_squared_cdf(cast(8.0, f32), cast(4.0, f32))",
+      "label": "chi_squared_cdf(.,4)",
+      "sample": 8.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.06509031032621647,
+      "expression": "student_t_pdf(cast(-2.0, f32), cast(5.0, f32))",
+      "label": "student_t_pdf(.,5)",
+      "sample": -2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.32791853132274645,
+      "expression": "student_t_pdf(cast(-0.5, f32), cast(5.0, f32))",
+      "label": "student_t_pdf(.,5)",
+      "sample": -0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.3796066898224944,
+      "expression": "student_t_pdf(cast(0.0, f32), cast(5.0, f32))",
+      "label": "student_t_pdf(.,5)",
+      "sample": 0.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.2196797973509805,
+      "expression": "student_t_pdf(cast(1.0, f32), cast(5.0, f32))",
+      "label": "student_t_pdf(.,5)",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.01729257880022295,
+      "expression": "student_t_pdf(cast(3.0, f32), cast(5.0, f32))",
+      "label": "student_t_pdf(.,5)",
+      "sample": 3.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.05096973941492916,
+      "expression": "student_t_cdf(cast(-2.0, f32), cast(5.0, f32))",
+      "label": "student_t_cdf(.,5)",
+      "sample": -2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.31914943582046457,
+      "expression": "student_t_cdf(cast(-0.5, f32), cast(5.0, f32))",
+      "label": "student_t_cdf(.,5)",
+      "sample": -0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.5,
+      "expression": "student_t_cdf(cast(0.0, f32), cast(5.0, f32))",
+      "label": "student_t_cdf(.,5)",
+      "sample": 0.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.8183912661754387,
+      "expression": "student_t_cdf(cast(1.0, f32), cast(5.0, f32))",
+      "label": "student_t_cdf(.,5)",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.9849503760512687,
+      "expression": "student_t_cdf(cast(3.0, f32), cast(5.0, f32))",
+      "label": "student_t_cdf(.,5)",
+      "sample": 3.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.0820849986238988,
+      "expression": "poisson_pmf(cast(0.0, f32), cast(2.5, f32))",
+      "label": "poisson_pmf(.,2.5)",
+      "sample": 0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.205212496559747,
+      "expression": "poisson_pmf(cast(1.0, f32), cast(2.5, f32))",
+      "label": "poisson_pmf(.,2.5)",
+      "sample": 1,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.25651562069968376,
+      "expression": "poisson_pmf(cast(2.0, f32), cast(2.5, f32))",
+      "label": "poisson_pmf(.,2.5)",
+      "sample": 2,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.21376301724973648,
+      "expression": "poisson_pmf(cast(3.0, f32), cast(2.5, f32))",
+      "label": "poisson_pmf(.,2.5)",
+      "sample": 3,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.06680094289054267,
+      "expression": "poisson_pmf(cast(5.0, f32), cast(2.5, f32))",
+      "label": "poisson_pmf(.,2.5)",
+      "sample": 5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.0820849986238988,
+      "expression": "poisson_cdf(cast(0.0, f32), cast(2.5, f32))",
+      "label": "poisson_cdf(.,2.5)",
+      "sample": 0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.2872974951836458,
+      "expression": "poisson_cdf(cast(1.0, f32), cast(2.5, f32))",
+      "label": "poisson_cdf(.,2.5)",
+      "sample": 1,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.5438131158833297,
+      "expression": "poisson_cdf(cast(2.0, f32), cast(2.5, f32))",
+      "label": "poisson_cdf(.,2.5)",
+      "sample": 2,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.7575761331330662,
+      "expression": "poisson_cdf(cast(3.0, f32), cast(2.5, f32))",
+      "label": "poisson_cdf(.,2.5)",
+      "sample": 3,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.9579789618046939,
+      "expression": "poisson_cdf(cast(5.0, f32), cast(2.5, f32))",
+      "label": "poisson_cdf(.,2.5)",
+      "sample": 5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.02824752490000001,
+      "expression": "binomial_pmf(cast(0.0, f32), cast(10.0, f32), cast(0.3, f32))",
+      "label": "binomial_pmf(.,10,0.3)",
+      "sample": 0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.23347444050000024,
+      "expression": "binomial_pmf(cast(2.0, f32), cast(10.0, f32), cast(0.3, f32))",
+      "label": "binomial_pmf(.,10,0.3)",
+      "sample": 2,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.2668279319999998,
+      "expression": "binomial_pmf(cast(3.0, f32), cast(10.0, f32), cast(0.3, f32))",
+      "label": "binomial_pmf(.,10,0.3)",
+      "sample": 3,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.10291934519999994,
+      "expression": "binomial_pmf(cast(5.0, f32), cast(10.0, f32), cast(0.3, f32))",
+      "label": "binomial_pmf(.,10,0.3)",
+      "sample": 5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.001446700499999999,
+      "expression": "binomial_pmf(cast(8.0, f32), cast(10.0, f32), cast(0.3, f32))",
+      "label": "binomial_pmf(.,10,0.3)",
+      "sample": 8,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.028247524900000005,
+      "expression": "binomial_cdf(cast(0.0, f32), cast(10.0, f32), cast(0.3, f32))",
+      "label": "binomial_cdf(.,10,0.3)",
+      "sample": 0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.38278278639999974,
+      "expression": "binomial_cdf(cast(2.0, f32), cast(10.0, f32), cast(0.3, f32))",
+      "label": "binomial_cdf(.,10,0.3)",
+      "sample": 2,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.6496107184000002,
+      "expression": "binomial_cdf(cast(3.0, f32), cast(10.0, f32), cast(0.3, f32))",
+      "label": "binomial_cdf(.,10,0.3)",
+      "sample": 3,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.9526510126000001,
+      "expression": "binomial_cdf(cast(5.0, f32), cast(10.0, f32), cast(0.3, f32))",
+      "label": "binomial_cdf(.,10,0.3)",
+      "sample": 5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.9998563141,
+      "expression": "binomial_cdf(cast(8.0, f32), cast(10.0, f32), cast(0.3, f32))",
+      "label": "binomial_cdf(.,10,0.3)",
+      "sample": 8,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 1.2217593750000009,
+      "expression": "beta_pdf(cast(0.05, f32), cast(2.0, f32), cast(5.0, f32))",
+      "label": "beta_pdf(.,2,5)",
+      "sample": 0.05,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 2.4576,
+      "expression": "beta_pdf(cast(0.2, f32), cast(2.0, f32), cast(5.0, f32))",
+      "label": "beta_pdf(.,2,5)",
+      "sample": 0.2,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 1.5552000000000006,
+      "expression": "beta_pdf(cast(0.4, f32), cast(2.0, f32), cast(5.0, f32))",
+      "label": "beta_pdf(.,2,5)",
+      "sample": 0.4,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.46079999999999993,
+      "expression": "beta_pdf(cast(0.6, f32), cast(2.0, f32), cast(5.0, f32))",
+      "label": "beta_pdf(.,2,5)",
+      "sample": 0.6,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.03839999999999999,
+      "expression": "beta_pdf(cast(0.8, f32), cast(2.0, f32), cast(5.0, f32))",
+      "label": "beta_pdf(.,2,5)",
+      "sample": 0.8,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.032773828124999994,
+      "expression": "beta_cdf(cast(0.05, f32), cast(2.0, f32), cast(5.0, f32))",
+      "label": "beta_cdf(.,2,5)",
+      "sample": 0.05,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.3446400000000002,
+      "expression": "beta_cdf(cast(0.2, f32), cast(2.0, f32), cast(5.0, f32))",
+      "label": "beta_cdf(.,2,5)",
+      "sample": 0.2,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.7667200000000001,
+      "expression": "beta_cdf(cast(0.4, f32), cast(2.0, f32), cast(5.0, f32))",
+      "label": "beta_cdf(.,2,5)",
+      "sample": 0.4,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.95904,
+      "expression": "beta_cdf(cast(0.6, f32), cast(2.0, f32), cast(5.0, f32))",
+      "label": "beta_cdf(.,2,5)",
+      "sample": 0.6,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.9984,
+      "expression": "beta_cdf(cast(0.8, f32), cast(2.0, f32), cast(5.0, f32))",
+      "label": "beta_cdf(.,2,5)",
+      "sample": 0.8,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.6697959533607707,
+      "expression": "f_pdf(cast(0.5, f32), cast(4.0, f32), cast(10.0, f32))",
+      "label": "f_pdf(.,4,10)",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.4553496295882568,
+      "expression": "f_pdf(cast(1.0, f32), cast(4.0, f32), cast(10.0, f32))",
+      "label": "f_pdf(.,4,10)",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.15680636859657723,
+      "expression": "f_pdf(cast(2.0, f32), cast(4.0, f32), cast(10.0, f32))",
+      "label": "f_pdf(.,4,10)",
+      "sample": 2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.02390494742688505,
+      "expression": "f_pdf(cast(4.0, f32), cast(4.0, f32), cast(10.0, f32))",
+      "label": "f_pdf(.,4,10)",
+      "sample": 4.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.0016656593674924728,
+      "expression": "f_pdf(cast(8.0, f32), cast(4.0, f32), cast(10.0, f32))",
+      "label": "f_pdf(.,4,10)",
+      "sample": 8.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.26322445130315497,
+      "expression": "f_cdf(cast(0.5, f32), cast(4.0, f32), cast(10.0, f32))",
+      "label": "f_cdf(.,4,10)",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.548444950658314,
+      "expression": "f_cdf(cast(1.0, f32), cast(4.0, f32), cast(10.0, f32))",
+      "label": "f_cdf(.,4,10)",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.8294730741512227,
+      "expression": "f_cdf(cast(2.0, f32), cast(4.0, f32), cast(10.0, f32))",
+      "label": "f_cdf(.,4,10)",
+      "sample": 2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.9656864400476588,
+      "expression": "f_cdf(cast(4.0, f32), cast(4.0, f32), cast(10.0, f32))",
+      "label": "f_cdf(.,4,10)",
+      "sample": 4.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.9963199338349463,
+      "expression": "f_cdf(cast(8.0, f32), cast(4.0, f32), cast(10.0, f32))",
+      "label": "f_cdf(.,4,10)",
+      "sample": 8.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.3309363384692233,
+      "expression": "weibull_pdf(cast(0.5, f32), cast(1.5, f32), cast(2.0, f32))",
+      "label": "weibull_pdf(.,1.5,2)",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.37239168821942203,
+      "expression": "weibull_pdf(cast(1.0, f32), cast(1.5, f32), cast(2.0, f32))",
+      "label": "weibull_pdf(.,1.5,2)",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.27590958087858175,
+      "expression": "weibull_pdf(cast(2.0, f32), cast(1.5, f32), cast(2.0, f32))",
+      "label": "weibull_pdf(.,1.5,2)",
+      "sample": 2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.14630426404454228,
+      "expression": "weibull_pdf(cast(3.0, f32), cast(1.5, f32), cast(2.0, f32))",
+      "label": "weibull_pdf(.,1.5,2)",
+      "sample": 3.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.02276835190286614,
+      "expression": "weibull_pdf(cast(5.0, f32), cast(1.5, f32), cast(2.0, f32))",
+      "label": "weibull_pdf(.,1.5,2)",
+      "sample": 5.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.1175030974154046,
+      "expression": "weibull_cdf(cast(0.5, f32), cast(1.5, f32), cast(2.0, f32))",
+      "label": "weibull_cdf(.,1.5,2)",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.29781149867344037,
+      "expression": "weibull_cdf(cast(1.0, f32), cast(1.5, f32), cast(2.0, f32))",
+      "label": "weibull_cdf(.,1.5,2)",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.6321205588285577,
+      "expression": "weibull_cdf(cast(2.0, f32), cast(1.5, f32), cast(2.0, f32))",
+      "label": "weibull_cdf(.,1.5,2)",
+      "sample": 2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.8407240915099786,
+      "expression": "weibull_cdf(cast(3.0, f32), cast(1.5, f32), cast(2.0, f32))",
+      "label": "weibull_cdf(.,1.5,2)",
+      "sample": 3.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.9808000398449904,
+      "expression": "weibull_cdf(cast(5.0, f32), cast(1.5, f32), cast(2.0, f32))",
+      "label": "weibull_cdf(.,1.5,2)",
+      "sample": 5.0,
+      "tolerance": 0.0005
+    }
+  ],
+  "domain": "distributions",
+  "oracle": {
+    "numpy": "2.5.1",
+    "scipy": "1.18.0"
+  },
+  "schema": "nautilus-parity-goldens/1"
+}

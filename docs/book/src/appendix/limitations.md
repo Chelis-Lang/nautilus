@@ -54,10 +54,12 @@ includes a curvature check that can false-positive on very flat minima
 
 ## Signal processing
 
-**Signal module is mostly stubs.** The transform/filter helpers return
-NaN sentinels; `fftfreq` is a real-valued utility that ships today.
-The blocked pieces still depend on upstream complex-number support
-(Phase 5f). See the [Signal chapter](../other/signal.md).
+**Signal module retains six stubs.** The transform/filter helpers return NaN
+sentinels under the dated
+[Phase 3j explicit deferral](https://github.com/Chelis-Lang/nautilus/blob/main/spec/phase3j.md#explicit-deferrals);
+`fftfreq` is a real-valued utility that ships today. The deferred pieces still
+depend on upstream complex-number support (Phase 5f). See the
+[Signal chapter](../other/signal.md).
 
 ## Airy function coverage
 

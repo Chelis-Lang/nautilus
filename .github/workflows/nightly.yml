@@ -2,8 +2,8 @@ name: nightly
 
 # Slimmed nightly: the per-PR ci.yml already runs `chelis test tests/`
 # (the native roots/optim/etc suite) and a strict `parity/run_parity.py`
-# scipy-parity job, so the legacy numeric harness and the scipy goldens
-# drift check it used to run here are redundant. What remains is the
+# job against reviewed, checked-in SciPy goldens. Golden regeneration is an
+# explicit local operation and never runs in CI. What remains is the
 # nightly's unique value, none of which fits the PR latency budget:
 #   * the exhaustive per-file `chelis check` score=1 sweep over all
 #     src/*.ch (~9 min — too slow for the PR gate, which runs a whole
@@ -22,11 +22,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CHELIS_TAG: v0.14.0
-  CHELIS_VERSION: 0.14.0
+  CHELIS_TAG: v0.16.1
+  CHELIS_VERSION: 0.16.1
 
 jobs:
-  legacy-harness:
+  documentation-gates:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,10 +66,10 @@ jobs:
             echo "$out" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); sys.exit(0 if d['score']==1 and not d['errors'] else 1)"
           done
 
-      - name: Validate SKILL.md examples (legacy)
+      - name: Validate SKILL.md examples
         env:
           CHELIS_BIN: chelis
-        run: python3 tests_legacy/run_skill_checks.py
+        run: python3 scripts/validate_skill_examples.py
 
       - name: Validate mdBook examples
         env:
@@ -82,7 +82,7 @@ jobs:
   # weeks unnoticed (nautilus#11).
   report:
     name: Surface nightly status
-    needs: legacy-harness
+    needs: documentation-gates
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -91,7 +91,7 @@ jobs:
       - name: Open/close nightly-failure tracking issue
         uses: actions/github-script@v7
         env:
-          RESULT: ${{ needs.legacy-harness.result }}
+          RESULT: ${{ needs.documentation-gates.result }}
         with:
           script: |
             const title = 'Nightly failing: nautilus';

@@ -1,0 +1,6 @@
+tensor precision mismatch: f32 vs int64
+
+Assumption: Nautilus.LinAlg.det_2x2 accepts only tensor[2, 2, f32]. Passing
+an int64 matrix must remain a compile-time PrecisionMismatch rather than being
+implicitly converted or accepted. If mixed-precision policy changes, review the
+public LinAlg contract before updating this diagnostic.

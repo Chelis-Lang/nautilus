@@ -184,3 +184,9 @@ def test_trace_arbitrary_3x3() -> unit ! { Test } = {
   t = trace_scalar(a)
   assert_close(t, cast(15.0, f32), cast(0.00001, f32), "trace = sum of diagonal")
 }
+def linearity_owned_norm[n](v: tensor[n, f32]) -> f32 = l2_norm_vec(v)
+def linearity_copy_from_borrow[n](v: &tensor[n, f32]) -> f32 = linearity_owned_norm(copy(v))
+def test_linearity_required_owned_from_borrowed_copy() -> unit ! { Test } = {
+  v = to_tensor([cast(3.0, f32), cast(4.0, f32)])
+  assert_close(linearity_copy_from_borrow(v), cast(5.0, f32), cast(0.00001, f32), "copy converts a borrowed tensor to the required fresh owner")
+}

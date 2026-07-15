@@ -1,8 +1,10 @@
 # Signal Processing
 
-The `Nautilus.Signal` module is **stub-only**. All functions except
-`fftfreq` return NaN tensors. The module exists to reserve the API
-surface for when upstream Chelis adds complex-number support (Phase 5f).
+The `Nautilus.Signal` module currently has six stubs: all functions except
+`fftfreq` return NaN tensors. The dated
+[Phase 3j explicit deferral](https://github.com/Chelis-Lang/nautilus/blob/main/spec/phase3j.md#explicit-deferrals)
+reserves those names until upstream Chelis adds complex-number support in
+Phase 5f; `fftfreq` is functional today.
 
 ## Current status
 

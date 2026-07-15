@@ -1,5 +1,5 @@
 module Nautilus.Tests.LinAlgMatmul
-import Std.Test (assert_close)
+import Std.Test (assert_close, assert_true)
 import Nautilus.LinAlg (matvec, inner_product, l2_norm_vec, la_vec_sub, transpose, matmul_wrap, gram, aat, frobenius_norm, frobenius_sq, det_2x2, det_3x3, inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2, svd_n)
 def basis2(k: int64) -> tensor[2, f32] = to_tensor(map(fn (i: int64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, int64), cast(2, int64))))
 def basis3(k: int64) -> tensor[3, f32] = to_tensor(map(fn (i: int64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, int64), cast(3, int64))))
@@ -123,4 +123,23 @@ def test_svd_n_singular_value_sum_diagonal() -> unit ! { Test } = {
   ones2 = to_tensor([cast(1.0, f32), cast(1.0, f32)])
   s = inner_product(triple.1, ones2)
   assert_close(s, cast(4.0, f32), cast(0.001, f32), "svd_n: sum(sigma) for diag(3,1) = 4")
+}
+def test_inv_2x2_singular_returns_nan() -> unit ! { Test } = {
+  singular = mk_2x2(cast(1.0, f32), cast(2.0, f32), cast(2.0, f32), cast(4.0, f32))
+  inv = inv_2x2(singular)
+  first = inner_product(matvec(inv, basis2(cast(0, int64))), basis2(cast(0, int64)))
+  assert_true(neq(first, first), "inv_2x2: singular matrix returns NaN entries")
+}
+def test_solve_2x2_singular_returns_nan() -> unit ! { Test } = {
+  singular = mk_2x2(cast(1.0, f32), cast(2.0, f32), cast(2.0, f32), cast(4.0, f32))
+  b = to_tensor([cast(1.0, f32), cast(2.0, f32)])
+  x = solve_2x2(singular, b)
+  first = inner_product(x, basis2(cast(0, int64)))
+  assert_true(neq(first, first), "solve_2x2: singular matrix returns NaN entries")
+}
+def test_cholesky_2x2_non_spd_returns_nan() -> unit ! { Test } = {
+  non_spd = mk_2x2(cast(1.0, f32), cast(2.0, f32), cast(2.0, f32), cast(1.0, f32))
+  l = cholesky_2x2(non_spd)
+  first = inner_product(matvec(l, basis2(cast(0, int64))), basis2(cast(0, int64)))
+  assert_true(neq(first, first), "cholesky_2x2: non-SPD matrix returns NaN entries")
 }

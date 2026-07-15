@@ -1,5 +1,8 @@
 module Nautilus.Signal
 export (fft_magnitude_stub, ifft_magnitude_stub, stft_magnitude_stub, lowpass_stub, highpass_stub, bandpass_stub, fftfreq)
+-- Dated deferral accepted 2026-07-14: spec/phase3j.md § Explicit Deferrals.
+-- Applies to all six exported *_stub definitions below; each remains a NaN
+-- sentinel until Phase 5f complex-number support. fftfreq is functional.
 def signal_stub_nan() -> f32 = 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
 def fft_magnitude_stub[n](x: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
 def ifft_magnitude_stub[n](x: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))

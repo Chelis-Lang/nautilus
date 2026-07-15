@@ -15,14 +15,17 @@ env:
   # AUTO-SYNC: must match `compiler = "=X.Y.Z"` in reef.toml.
   # If this drifts, the pin-consistency-guard job below fails immediately
   # with a clear diagnostic. Update both together.
-  CHELIS_TAG: v0.14.0
-  CHELIS_VERSION: 0.14.0
+  CHELIS_TAG: v0.16.1
+  CHELIS_VERSION: 0.16.1
 
 jobs:
   pin-consistency-guard:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Assert CI chelis pin matches reef.toml
         run: |
           set -euo pipefail
@@ -33,7 +36,23 @@ jobs:
           fi
           echo "✓ CI pin v${REEF_PIN} matches reef.toml"
 
+      - name: Install reef-pinned Chelis
+        uses: ./.github/actions/install-chelis
+        with:
+          chelis-tag: ${{ env.CHELIS_TAG }}
+          chelis-version: ${{ env.CHELIS_VERSION }}
+          gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+
+      - name: Audit shell conformance
+        run: chelis reef conform audit
+
+      - name: Enforce the pin-bump contract
+        run: chelis reef conform bump-check --base origin/main
+
   hard-rule-guard:
+    # Every numerical/documentation job depends on this job, so a failed pin
+    # audit or bump-check prevents the rest of CI from reporting green.
+    needs: pin-consistency-guard
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -70,34 +89,13 @@ jobs:
           fi
           echo "OK: tests/ is Python-free (.py / .pyc / .pyi)"
 
-      # Guard 2: no oracle-library imports (scipy/numpy/pandas/sympy/quantlib)
-      # in any .py file under tests/ or src/.
-      - name: Hard rule — no oracle import in src/ or tests/ .py files
-        run: |
-          hits=$(grep -rEln '^[[:space:]]*(import|from)[[:space:]]+(scipy|numpy|pandas|sympy|quantlib)\b' \
-                   --include='*.py' src tests 2>/dev/null || true)
-          if [ -n "$hits" ]; then
-            echo "Hard rule violation: oracle import in .py under src/ or tests/:" >&2
-            echo "$hits" >&2
-            exit 1
-          fi
-          echo "OK: no oracle imports in src/ or tests/ .py files"
+      # Guard 2: external-oracle imports are confined to parity/, and no
+      # tracked or untracked Chelis source may call an oracle library.
+      - name: Hard rule — external oracle isolation
+        run: python3 scripts/check_oracle_isolation.py
 
-      # Guard 3: no oracle-callable sites inside Chelis source.
-      - name: Hard rule — no oracle callable in .ch sources
-        run: |
-          tmp=$(mktemp)
-          for f in $(find src tests -name '*.ch' 2>/dev/null); do
-            sed -E 's/--.*$//' "$f" > "$tmp"
-            if grep -EHn '\b(scipy|numpy|pandas|sympy|quantlib)\.[a-zA-Z_][a-zA-Z_0-9.]*[[:space:]]*\(' \
-                 --label="$f" "$tmp"; then
-              echo "Hard rule violation: oracle callable in $f (above)" >&2
-              rm -f "$tmp"
-              exit 1
-            fi
-          done
-          rm -f "$tmp"
-          echo "OK: no oracle callables in src/ or tests/ .ch source code"
+      - name: Hard rule — reviewed parity corpus matches its frozen recipe
+        run: python3 -m unittest scripts/test_parity_contract.py
 
       # Guard 4: at least one tests/*.ch exists. The chelis-tests matrix
       # used to be generated dynamically from `find tests -name '*.ch'`;
@@ -215,6 +213,16 @@ jobs:
       - name: chelis test (node-local parallel)
         run: chelis test tests/ --timeout 600 --jobs auto
 
+      # Shell contract §6: every case must fail with the diagnostic substring
+      # pinned on line 1 of its paired .expect sidecar.
+      - name: chelis test (negative contracts)
+        run: chelis test tests_neg/ --expect neg
+
+      # Shell contract §5: blockers must keep failing with their pinned
+      # diagnostic. A pass is FIX-DETECTED and fails until de-narrowed.
+      - name: chelis test (upstream-blocker probes)
+        run: chelis test tests_blocked/ --expect blocked
+
   scipy-parity:
     runs-on: ubuntu-latest
     needs: hard-rule-guard
@@ -237,16 +245,14 @@ jobs:
           CHELIS_TAG: ${{ env.CHELIS_TAG }}
         run: python3 scripts/install_chelis_std.py
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
 
-      - name: Install scipy + numpy
-        run: pip install --no-cache-dir 'numpy>=1.26' 'scipy>=1.14'
+      - name: Install locked parity environment
+        run: uv sync --project parity --frozen
 
-      - name: scipy parity (Chelis output vs scipy.* references)
-        run: python3 -u parity/run_parity.py --strict
+      - name: SciPy parity (validate reviewed goldens; never regenerate in CI)
+        run: uv run --project parity --frozen python parity/run_parity.py --strict
 
   # Mac proof-of-life: the Nautilus reef package builds under the
   # Darwin chelis toolchain. NOT a duplicate test suite — the full

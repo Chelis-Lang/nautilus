@@ -10,18 +10,21 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Status snapshot (2026-06-23, `chelis 0.9.0`).**
+**Status snapshot (2026-07-14, `chelis 0.16.1`).**
 
-- Current pin is `chelis 0.9.0` (Nautilus `0.7.28`). LU / QR / SVD shipped
-  alongside Cholesky on the `v0.2.0` compiler surface; the `v0.4.0` Nautilus
-  release added `erfc` and unary `gamma` to `Nautilus.Special`. Parity is
-  216/216 against scipy.
-- The `v0.4.0` → `v0.7.28` Nautilus bumps were maintenance / pin-tracking; no
-  feature work has landed since the last roadmap snapshot.
-- Multi-parameter Levenberg-Marquardt remains blocked on tensor-valued `grad`
-  at the C-backend lowering level. The blocker was last verified against
-  `chelis v0.1.21`; the `0.2.x` → `0.9.0` toolchain bumps have not been
-  re-probed against this specific issue. Re-probe before assuming state.
+- Current pin is `chelis 0.16.1` (Nautilus `0.7.33`). The current acceptance
+  gate passes 463 native tests in parallel and serial modes, 3 negative
+  contracts, 2 expected-failure blocker probes, and 216/216 reviewed scipy
+  parity samples.
+- The canonical Phase 3j architecture now describes the shipped package:
+  pure-Chelis composition throughout, including LinAlg, with no nalgebra FFI or
+  hand-written adjoint registry. Broad solver AD and QP/SOCP/LP remain explicit
+  later scope rather than hidden completion requirements.
+- Multi-parameter Levenberg-Marquardt's exact AD replacement was re-probed on
+  0.16.1 and narrowed to two live layers: generic `n`/`m` dimension collapse
+  and malformed backward-DAG lowering for the arbitrary vector-model wrapper.
+  Both are pinned under `tests_blocked/curvefit/`; tensor-wrt and direct
+  capture-free multi-argument grad controls pass.
 
 Historical snapshot (2026-04-22, `chelis v0.1.18`):
 
@@ -40,7 +43,7 @@ Historical snapshot (2026-04-22, `chelis v0.1.18`):
 ## Completed: P0 Per-Row Stability Column in SKILL.md
 
 Landed in commit `084f0ed`. `SKILL.md` now carries a per-row `Stability`
-column, `tests/run_static_checks.py` validates the tables, and
+column, `scripts/validate_surface.py` validates the tables, and
 `scripts/extract_stability.py` emits `dist/stability.json` for downstream
 consumers.
 
@@ -96,15 +99,16 @@ different):**
 - `Nautilus.Sde` — `euler_maruyama_fixed` and `milstein_fixed`
   `alpha` (APIs may shift when autonomous `Random` sampling lands).
 - `Nautilus.CurveFit` — `lm_scalar_1param` `alpha`.
-- `Nautilus.Signal` — all 7 stubs `alpha` (blocked on Phase 5f
-  complex numbers).
+- `Nautilus.Signal` — all 7 exports `alpha`: six NaN-returning stubs remain
+  under the dated `spec/phase3j.md` § Explicit Deferrals citation pending Phase
+  5f complex numbers, while `fftfreq` is functional.
 
 **Validation.**
 
-1. `python tests/run_skill_checks.py` continues to pass — existing
+1. `python scripts/validate_skill_examples.py` continues to pass — existing
    check only parses `chelis` / `deep` fenced blocks; the table edit
    does not touch those.
-2. Add a new gate in `tests/run_static_checks.py` that parses each
+2. Add a new gate in `scripts/validate_surface.py` that parses each
    API surface table and asserts (a) every row has a `Stability`
    cell, (b) the value is exactly `stable` or `alpha`, (c) the set
    of documented functions in the tables matches the set of exports
@@ -120,7 +124,7 @@ different):**
 **Size:** Small. Pure documentation edit + one new test gate + one
 Python script. No Chelis source changes.
 
-**Acceptance oracle:** `python tests/run_static_checks.py` passes
+**Acceptance oracle:** `python scripts/validate_surface.py` passes
 with the new stability-column gate enabled, `stability.json` is
 generated and committed to `dist/`, and `wc -l SKILL.md` stays within
 ~10% of current (1241 lines) — the column is wide but the tables are
@@ -179,80 +183,66 @@ typechecker, specific module) the upstream team can target.
 
 ---
 
-## Blocked: P1 Multi-Parameter Levenberg-Marquardt
+## Tracking: replace the multi-parameter LM finite-difference Jacobian
 
-**Current blocker (last full re-check 2026-04-22 on `chelis v0.1.18`; not
-re-probed against the `0.2.x` → `0.9.0` toolchain bumps as of 2026-06-23).**
-The blocker remains at the semantic level. Real progress on the DX side: the bad call
-patterns (inline `grad(f)(x)` and local binding `g = grad(f); g(x)`) are now
-both rejected at build time with a detailed diagnostic listing a specific
-"compiling workaround" — pass the fn-to-differentiate as a parameter of the
-enclosing def, locally bind a wrapper, call `grad(local, wrt=(arg))(arg)`,
-and reduce via `tensor_to_scalar(sum(mul(v, v), 0))` or `einsum` rather than
-host-lane `fold`/`map`. But the suggested workaround does not actually
-produce a gradient: the emitted helper C body is
-`outputs[0] = chelis_contiguous(inputs[0])` — a copy of the input, not its
-gradient. Concrete call sites still fail the same build-time diagnostic. So
-we can define `lm_scalar_nparam(model, ...)` as a helper with a function
-parameter, but (a) we can't call it from any real user program without also
-building the user program through the same placeholder path, and (b) the
-placeholder returns `x` verbatim instead of `∇f(x)`. LM implementation
-therefore stays blocked until the workaround actually computes a gradient.
-
-**Driven by:** residual v0.1.0 limitation
-(`docs/nautilus_status.md` § 6.1) — `Nautilus.CurveFit` currently
-only exposes `lm_scalar_1param`. Every real curve-fitting workload
-(Shoals SABR calibration, Octant LaTeX→Chelis calibration paths) needs
-≥ 2-parameter fitting.
-
-**Deliverable.** Add `lm_scalar_nparam` with a general-n parameter
-vector. Signature:
+`Nautilus.CurveFit.lm_scalar_nparam` is shipped and runtime-tested for general
+parameter length `n` and observation length `m`:
 
 ```chelis
 def lm_scalar_nparam[n, m](
-  model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32],
-  x: tensor[m, f32],
-  y: tensor[m, f32],
+  model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32],
+  x: &tensor[m, f32],
+  y: &tensor[m, f32],
   theta0: tensor[n, f32],
   tol: f32,
   max_iters: int64,
 ) -> tensor[n, f32]
 ```
 
-Where `n` is the parameter count, `m` is the data-point count, and
-`model(theta, x)` predicts `y`. Jacobian via `grad(model, wrt=theta)`.
-Uses existing `Nautilus.LinAlg` solvers — `cg_solve` for SPD
-`J^T J + lambda I`, `inv_2x2`/`inv_3x3` for small `n`.
+The implementation currently assembles Jacobian columns with forward finite
+differences (`eps=1e-5`) and solves the damped normal equations with
+`cg_solve`. This is an `alpha` implementation, not the permanent AD design:
+`tol` is accepted but the current routine executes exactly `max_iters`, and
+lambda is fixed at `0.01`.
 
-**Do not do instead.** Do not replace the missing Jacobian path with
-finite-difference columns and then present that as the permanent Nautilus API.
-If the core surface cannot provide the Jacobian cleanly on the native path, keep
-this item blocked and hand the requirement back upstream.
+**Current 0.16.1 blocker chain, re-probed 2026-07-14:**
 
-**Stability.** Ship as `stable` in the SKILL.md Stability column once
-runtime-tested; demote the existing `lm_scalar_1param` to `alpha` and
-document it as a convenience wrapper over `lm_scalar_nparam`.
+1. The exact generic wrapper collapses independently declared `n` and `m` at
+   check time. Citation and reproducer:
+   `docs/issue_drafts/grad_generic_vector_model_dims.md` and
+   `tests_blocked/curvefit/lm_jacobian_generic_dims.ch`.
+2. With dimensions concretized to `n=2`, `m=6`, the same arbitrary-model
+   wrapper checks at score 1 but eval and C build reject its malformed backward
+   DAG (`mismatched dimension count: 0 vs 1`). Citation and reproducer:
+   `docs/issue_drafts/grad_vector_model_wrapper_backward_dag.md` and
+   `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`; this is the same
+   verifier class as chelis#676 pending upstream scope confirmation.
 
-**Test coverage.** Golden: fit a 3-parameter exponential model
-`y = a * exp(b * x) + c` to noisy data, verify `theta` recovers true
-values within 5%. Add `tests/goldens/curvefit/lm_nparam_expfit.json`
-generated from scipy `curve_fit`.
+A capture-free direct multi-argument tensor objective is the positive control:
+it checks, evaluates to the correct gradient, C-builds, and compiles. The
+narrowing is therefore the function-valued vector-model Jacobian boundary, not
+a claim that tensor-wrt grad is generally unavailable.
 
-**Size:** Medium. ~100 lines of Chelis + one golden fixture + one
-new runtime-test block.
+**De-narrowing instructions.** When both probes clear, promote their exact-value
+witnesses, replace `lm_jcol` with AD Jacobian assembly, compare linear and
+exponential recovery trajectories against the current implementation, remove
+the finite-difference scaling caveat, and archive both upstream entries in the
+same pin-bump change. Do not remove the workaround on a checker-only fix that
+merely exposes the backend layer.
 
-**Acceptance oracle:** `python tests/run_numeric_tests.py` reports
-895 + N assertions (probably +5 to +10 for multi-parameter LM), all
-passing.
+**Acceptance oracle:** `chelis test tests/curvefit.ch` retains the scalar and
+multi-parameter recovery cases; the promoted Jacobian tests prove exact rows;
+and any external-reference expansion adds at least two reviewed configurations
+under `parity/goldens/`.
 
 ---
 
 ## Completed: P2 Adaptive-Step ODE Integrator
 
 Landed in commit `ce613f7`. `Nautilus.Ode.rk45_adaptive_solve` now ships as an
-`alpha` endpoint solver, is wired into `src/apismoke.ch`, and is runtime-tested
-in `tests/run_numeric_tests.py` against the decay golden in
-`tests/goldens/ode/scalar.json`.
+`alpha` endpoint solver, is wired into `src/apismoke.ch`, and is covered by the
+native decay and convergence cases in `tests/ode.ch`. The retired Python golden
+and harness remain available in Git history.
 
 Original planning note:
 
@@ -291,10 +281,9 @@ step-size-sensitive (e.g., stiff regions, sharp transitions).
 **Size:** Medium. ~150 lines of Chelis (step-size controller is
 non-trivial) + one golden.
 
-**Acceptance oracle:** `python tests/run_numeric_tests.py` passes
-with added `rk45_adaptive` assertions; benchmark table in
-`benchmark_findings.md` updated to show adaptive vs fixed on a stiff
-test case.
+**Acceptance oracle:** `chelis test tests/ode.ch` passes the adaptive decay,
+convergence, and fixed-step comparison cases. Any external SciPy comparison is
+added to the reviewed `parity/goldens/` corpus rather than a second harness.
 
 ---
 
@@ -327,9 +316,10 @@ to `stable` in the SKILL.md Stability column (P0 work item above).
 **Size:** Small. ~30 lines of Chelis (new coefficients) + 4 new
 golden points.
 
-**Acceptance oracle:** `python tests/run_numeric_tests.py` passes
-with `bessel_y1` at < 1e-5 across `(7.5, 8)`; row in SKILL.md Stability
-column flips `alpha` → `stable`.
+**Acceptance oracle:** `chelis test tests/special.ch` covers the corrected
+`bessel_y1` behavior; reviewed seam values belong in `parity/goldens/special.json`
+with at least two configurations before the stability row flips `alpha` →
+`stable`.
 
 ---
 
@@ -396,9 +386,9 @@ conventions mature.
 **Size:** Large. ~400 lines of Chelis + several goldens + AD
 verification. Probably a dedicated sub-release (v0.2.0).
 
-**Acceptance oracle:** `python tests/run_numeric_tests.py` passes
-with ≥ 40 new assertions across the four additions; `scripts/bench_vs_scipy.py`
-updated with a general-n LinAlg benchmark table.
+**Acceptance oracle:** the native LinAlg suite gains at least 40 assertions
+across the four additions, and the checked-golden `parity/` corpus gains at
+least two structured matrix configurations for each promoted public verb.
 
 ---
 
@@ -407,7 +397,8 @@ updated with a general-n LinAlg benchmark table.
 - **Sparse matrix support** — blocked on core sparse-tensor types
   (Phase 5).
 - **Complex-number functions** (FFT, STFT, `erfi`, complex Bessel) —
-  blocked on Phase 5f complex numbers in chelis core.
+  deferred by `spec/phase3j.md` § Explicit Deferrals until Phase 5f complex
+  numbers land in Chelis core.
 - **GPU benchmark** — requires ROCm-enabled bench harness; deferred
   until the chelis HIP backend's Nautilus codegen is validated
   end-to-end.
@@ -418,12 +409,11 @@ updated with a general-n LinAlg benchmark table.
 
 ## Remaining Execution Order
 
-1. **Upstream Chelis: make the "compiling today" grad workaround actually
-   compute a gradient at runtime**, or ship a separately-namespaced real
-   Jacobian surface. Without that, `lm_scalar_nparam` stays blocked even
-   though the error reporting is now excellent.
-2. **Nautilus-side: implement LU / QR / SVD** on the same compiler
-   surface that Cholesky validated — fold with tensor accumulator +
-   control flow on tensor results. Ship as `alpha` with documented AD
-   caveats.
-3. **Then resume the LM work once (1) lands.**
+1. **Upstream Chelis:** clear or deduplicate the two exact vector-model
+   Jacobian blockers pinned under `tests_blocked/curvefit/`.
+2. **Nautilus-side de-narrowing:** replace finite differences only after both
+   generic and concrete probes pass, then promote exact Jacobian-row and LM
+   trajectory coverage in the same pin-bump change.
+3. **LinAlg follow-through:** retain the shipped pure-Chelis LU / QR / SVD /
+   symmetric-eig implementations as `alpha` while expanding distinct-shape
+   identity/oracle coverage under the accepted Phase 3j contract.

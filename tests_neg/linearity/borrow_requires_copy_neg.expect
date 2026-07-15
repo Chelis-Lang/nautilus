@@ -1,0 +1,6 @@
+type mismatch: tensor[
+Assumption: a borrowed &tensor cannot flow into an owned tensor parameter
+without copy(). This is the negative half of the archived 0.16.1
+redundant-linearity-call de-narrowing in docs/UPSTREAM_BUGS.md. If ownership
+inference changes, review the positive copy witness in tests/linalg.ch before
+updating this diagnostic.

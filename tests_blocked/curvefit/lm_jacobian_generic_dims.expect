@@ -1,0 +1,7 @@
+distinct declared dim parameters
+Blocker: docs/issue_drafts/grad_generic_vector_model_dims.md.
+On diagnostic drift to backward-DAG verification, the generic checker layer
+has moved: investigate and re-pin only if the concrete model-wrapper blocker
+still reproduces. On pass, promote a generic Jacobian-row positive test, then
+remove the finite-difference Jacobian only after the concrete eval/C probe also
+passes and numerical parity is reviewed.

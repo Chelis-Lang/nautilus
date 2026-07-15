@@ -10,11 +10,17 @@ is a hard-rule violation (CI Guard 1).
 
 ## How CI runs these
 
-CI runs the whole native suite on one runner:
+CI runs the positive and expected-failure suites on one runner:
 
-```sh
+```text
 chelis test tests/ --jobs auto
+chelis test tests_neg/ --expect neg
+chelis test tests_blocked/ --expect blocked
 ```
+
+The blocked suite must continue to fail with its pinned diagnostics. A
+FIX-DETECTED or DRIFTED verdict fails CI and requires immediate triage; see
+[`tests_blocked/README.md`](../tests_blocked/README.md).
 
 Use the serial fallback only for debugging order-dependent failures:
 
@@ -82,10 +88,10 @@ already has 30 tests.
    `chelis test tests/ --jobs auto`; use `--jobs 1` only as a debugging
    fallback. Don't structure tests assuming serial execution.
 
-7. **Legacy harness has a defined sunset.** `tests_legacy/` runs in
-   the scheduled `nightly.yml` workflow as a dual-run safety net. It
-   is deleted in Phase 4 of the cutover plan once the native gates
-   have full coverage parity. No clinging.
+7. **The legacy-harness sunset is complete.** Native `tests/*.ch`,
+   `tests_neg/`, and the single checked-golden `parity/` project are the
+   correctness gates. Do not recreate a second Python numerical harness or
+   duplicate golden corpus.
 
 8. **Trivial tests are deleted on sight.** `assert_true(true, ...)`,
    `assert_close(x, x, tol)`, `assert_eq(constant, constant, label)`,
@@ -159,12 +165,12 @@ When you do:
 
 ---
 
-## Runtime constraints (chelis 0.11.1)
+## Runtime constraints (chelis 0.16.1)
 
 The `chelis test` host runtime supports `matmul`, `permute`, and `sum`
 as of chelis v0.2.5. All `Nautilus.LinAlg` exports are testable
 natively. Earlier upstream limitations and their fix history are in
-`docs/upstream_bugs.md`.
+`docs/UPSTREAM_BUGS.md`.
 
 Known quirks (still observed under the current pin; no workaround
 needed in tests/):
