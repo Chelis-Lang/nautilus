@@ -1,18 +1,18 @@
 # Phase 3j — Nautilus
 
-Source of truth for the Nautilus shell implementation. Extracted verbatim
+Downstream release contract for the Nautilus shell implementation. Derived
 from `spec/design/chelis_phase3_plan.md` §3j in the
-[`Chelis-Lang/chelis`](https://github.com/Chelis-Lang/chelis) monorepo.
-Keep this file in sync with the monorepo section — any change to scope,
-module list, test plan, or acceptance oracle lands in both places in the
-same change set.
+[`Chelis-Lang/chelis`](https://github.com/Chelis-Lang/chelis) monorepo and
+updated to describe the accepted downstream implementation and release oracle.
+Coordinate future scope, module-list, test-plan, and acceptance-oracle changes
+with the monorepo section.
 
 ---
 
 ## 3j: Nautilus — Numerical Methods, Statistics, and Optimization
 
-**Status:** shipped in the downstream Nautilus repo. `Nautilus v0.7.33` is the
-current published shell release as of 2026-07-14; the downstream `reef.toml` and
+**Status:** shipped in the downstream Nautilus repo. `Nautilus v0.7.34` is the
+current published shell release as of 2026-07-15; the downstream `reef.toml` and
 release gate remain authoritative for its compiler pin and validation state.
 
 **Goal:** A Reef package providing the numerical methods between raw tensor
@@ -29,6 +29,10 @@ stats), and 3j-pre (compiler release and package infrastructure).
   compiler special-casing, and no nalgebra backend. Scalar routines, tensor
   algorithms, decompositions, and iterative solvers compose Chelis primitives,
   collections, recursion, and folds.
+- **Precision scope is intentionally f32.** Phase 3j's public numerical APIs use
+  `f32`; iteration/count parameters use `int64`, and predicates use `bool`.
+  Chelis supports `f64`, but broad public `f64` overloads are later package
+  scope rather than a compiler limitation.
 - **LinAlg is downstream composition.** Fixed-size formulas and general square
   LU, QR, Cholesky, Jacobi SVD/eigendecomposition, and conjugate-gradient
   routines are implemented in Chelis. The general decompositions remain

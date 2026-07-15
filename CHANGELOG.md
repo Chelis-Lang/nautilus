@@ -6,6 +6,13 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Made `reef.toml` the runtime source of truth for CI toolchain and registry
+  installation. The shared installer now resolves and verifies the exact
+  compiler pin itself; workflow pin variables remain audit-only mirrors as
+  required by the shell contract.
+
 ## [0.7.34] - 2026-07-15
 
 Compiler and shell-conformance release for chelis v0.16.1. The compiler pin
@@ -89,7 +96,7 @@ for this repo is the chelis#190 fix to `doc-filename-convention`
 (§8.3/§8.5 now path-based, not `book.toml`-ancestor-based): the
 pre-existing kebab-case `docs/*.md` filenames are now flagged by
 `chelis lint --check .` — a command Nautilus does not gate on in CI.
-See `docs/upstream-bugs.md` (v0.9.0 validation block) for detail; the
+See `docs/UPSTREAM_BUGS.md` (v0.9.0 validation block) for detail; the
 docs rename is deferred as a separate documentation-hygiene change.
 Part of the coordinated chelis 0.9.0 release cascade.
 
@@ -677,7 +684,7 @@ formally redundant:
   attempted by the same rewriter and reverted because they failed
   `reef build` cross-module type-check; lifting those to named
   bindings is a separate refactor and left for follow-up. See
-  `docs/upstream-bugs.md` for the reasoning.
+  `docs/UPSTREAM_BUGS.md` for the reasoning.
 - **`chelis fmt --inplace`** on `src/{curvefit,distributions,integrate,
   interpolation,linalg,ode}.ch`, which were not canonically formatted
   under 0.7.7's stricter `fmt --check` gate.

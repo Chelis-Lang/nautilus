@@ -7,7 +7,12 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import install_chelis_std as installer
+from scripts import install_chelis_std as installer
+
+
+# Parser fixtures intentionally do not mirror the repository's live Chelis pin.
+FIXTURE_VERSION = "1.2.3"
+FIXTURE_TAG = f"v{FIXTURE_VERSION}"
 
 
 class InstallChelisStdPinTests(unittest.TestCase):
@@ -18,20 +23,19 @@ class InstallChelisStdPinTests(unittest.TestCase):
         path.write_text(f'[package]\nname = "fixture"\ncompiler = "{compiler}"\n')
         return path
 
-    def test_absent_override_resolves_exact_reef_pin(self) -> None:
-        reef = self.write_reef("=0.16.1")
-        with mock.patch.dict("os.environ", {}, clear=True):
-            self.assertEqual(installer.selected_chelis_tag(reef_path=reef), "v0.16.1")
+    def test_resolves_exact_reef_pin(self) -> None:
+        reef = self.write_reef(f"={FIXTURE_VERSION}")
+        self.assertEqual(installer.reef_chelis_tag(reef_path=reef), FIXTURE_TAG)
 
     def test_non_exact_reef_constraint_fails_loudly(self) -> None:
-        reef = self.write_reef("^0.16.1")
-        with self.assertRaisesRegex(RuntimeError, "expected '=X.Y.Z'"):
+        reef = self.write_reef(f"^{FIXTURE_VERSION}")
+        with self.assertRaisesRegex(RuntimeError, "expected package.compiler"):
             installer.reef_chelis_tag(reef)
 
-    def test_environment_tag_precedes_reef(self) -> None:
-        reef = self.write_reef("=0.16.1")
-        with mock.patch.dict("os.environ", {"CHELIS_TAG": "v0.17.0"}, clear=True):
-            self.assertEqual(installer.selected_chelis_tag(reef_path=reef), "v0.17.0")
+    def test_workflow_pin_mirror_cannot_override_reef(self) -> None:
+        reef = self.write_reef(f"={FIXTURE_VERSION}")
+        with mock.patch.dict("os.environ", {"CHELIS_TAG": "v9.8.7"}, clear=True):
+            self.assertEqual(installer.reef_chelis_tag(reef_path=reef), FIXTURE_TAG)
 
 
 if __name__ == "__main__":

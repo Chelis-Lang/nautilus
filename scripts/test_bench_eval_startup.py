@@ -6,7 +6,7 @@ import subprocess
 import unittest
 from unittest import mock
 
-import bench_eval_startup as benchmark
+from scripts import bench_eval_startup as benchmark
 
 
 class EvalStartupBenchmarkTests(unittest.TestCase):
@@ -18,10 +18,11 @@ class EvalStartupBenchmarkTests(unittest.TestCase):
     def test_toolchain_description_uses_version_output(
         self, run: mock.Mock
     ) -> None:
+        reported_version = "chelis 9.8.7"
         run.return_value = subprocess.CompletedProcess(
-            ["chelis", "--version"], 0, stdout="chelis 0.16.1\n", stderr=""
+            ["chelis", "--version"], 0, stdout=f"{reported_version}\n", stderr=""
         )
-        self.assertEqual(benchmark.toolchain_description(), "chelis 0.16.1")
+        self.assertEqual(benchmark.toolchain_description("chelis"), reported_version)
 
     def test_symbolic_input_residue_is_not_reported_as_hang(self) -> None:
         baseline = benchmark.ScenarioResult(

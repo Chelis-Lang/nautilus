@@ -45,7 +45,8 @@ at tag `v0.16.1` and to the executable 0.16.1 probes cited in
 | Borrowing and implicit linearity | Read-only `&tensor` parameters auto-borrow owned arguments. The compiler inserts ordinary fan-out copies and end-of-scope drops; explicit `copy(x)` is still required to turn a borrow into a fresh owner and at other real ownership boundaries. Obsolete defensive copies are not a language requirement. | `@pin` |
 
 The f32-only package contract is a Phase 3j scope decision, not evidence that
-the compiler lacks f64. See [`spec/phase3j.md`](../spec/phase3j.md) §Architecture.
+the compiler lacks f64. See the
+[accepted implementation strategy](../spec/phase3j.md#accepted-implementation-strategy).
 
 ### Primitive and builtin families used by Nautilus
 
@@ -98,7 +99,7 @@ specified in the two ready-to-file drafts linked from
 |---|---|---|
 | `Random` | `uniform_like` introduces `Random`; all sampling exports declare it. `with seed(N) { ... }` is the handler. | `@pin` |
 | `Io`, `Test`, and resources | Library `src/` introduces no I/O or device-resource effect. `Std.Test` assertions in `tests/` introduce the test effect. | `@pin` |
-| Package-aware `eval --file` | Real imported Nautilus calls pass and strict parity batches 216 reviewed samples through this route. The separate import-only/symbolic-input startup shape can still report `missing runtime input 'x'`; it is a tracked benchmark residue, not a reason to avoid real package-aware eval. | `@pin` |
+| Package-aware `eval --file` | Real imported Nautilus calls pass and strict parity batches 216 reviewed samples through this route. The separate import-only/symbolic-input startup shape can still report “missing required input `a` for symbolic dimension `k`”; it is a tracked benchmark residue, not a reason to avoid real package-aware eval. | `@pin` |
 | C/package build | `chelis reef build` packages the full pure-Chelis surface successfully. Host-lane list/tensor operations are supported by the C host emitter. | `@pin` |
 | HIP/Metal | Upstream DAG subsets exist, but Nautilus's host-lane algorithms and lack of a package-level GPU oracle mean no Nautilus GPU support claim is made. | `@pin` |
 | Complex numbers | Complex scalar/tensor precision is not in the active type set. Six `Nautilus.Signal` transform/filter names therefore remain explicit NaN-returning stubs under the dated Phase 5f deferral; `fftfreq` is functional. | `@pin` |
