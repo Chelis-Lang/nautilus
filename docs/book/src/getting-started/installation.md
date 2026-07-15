@@ -26,7 +26,7 @@ chelis reef setup
 chelis reef build
 ```
 
-This produces `dist/nautilus-0.7.33.chb`, the reef package that other
+This produces `dist/nautilus-0.7.34.chb`, the reef package that other
 Chelis projects can depend on.
 
 ## Verify the installation

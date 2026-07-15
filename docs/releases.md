@@ -36,7 +36,7 @@ tar xzf chelis-v0.16.1-linux-x86_64.tar.gz
 export PATH="$PWD/chelis-v0.16.1-linux-x86_64/bin:$PATH"
 
 # In your Chelis project's reef.toml:
-#   nautilus = "0.7.33"
+#   nautilus = "0.7.34"
 chelis reef install --from-monorepo /path/to/nautilus-checkout nautilus
 chelis reef build
 ```

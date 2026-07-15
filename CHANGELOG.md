@@ -6,6 +6,12 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.34] - 2026-07-15
+
+Compiler and shell-conformance release for chelis v0.16.1. The compiler pin
+advanced from `=0.14.0` to `=0.16.1`, and the Nautilus package version advanced
+from 0.7.33 to 0.7.34. There are no public Nautilus API changes.
+
 ### Changed
 
 - Made the SciPy parity gate contract-compliant: external-oracle code is
@@ -17,6 +23,12 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   hard-coded red-team executable; Git history remains the archive for their
   historical evidence. Active surface and SKILL example validators now live
   under `scripts/`.
+
+## [0.7.33] - 2026-07-04
+
+Compiler-pin alignment for chelis v0.14.0. The compiler pin advanced from
+`=0.12.0` to `=0.14.0`, and the Nautilus package version advanced from 0.7.32
+to 0.7.33. No public Nautilus API changes.
 
 ## [0.7.32] - 2026-07-01
 
