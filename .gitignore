@@ -11,6 +11,7 @@ reef.lock
 *.swo
 __pycache__/
 *.py[cod]
+.venv/
 
 # Build artifacts that may leak from chelis build or bench runs
 *.o
@@ -19,3 +20,18 @@ __pycache__/
 
 # mdBook output
 docs/book/book/
+
+# Devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
+/devenv.yaml
+/devenv.lock
+/devenv.nix
+/.envrc

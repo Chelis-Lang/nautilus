@@ -1,9 +1,10 @@
 # LinAlg Module Overview
 
 The `Nautilus.LinAlg` module provides linear algebra primitives built
-entirely from pure Chelis tensor operations. Because nothing goes
-through FFI or opaque intrinsics, AD (automatic differentiation) via
-`grad` flows through every function automatically.
+entirely from pure Chelis tensor operations, without FFI or opaque
+intrinsics. Primitive adjoints remain available to compositions, but the
+library does not claim blanket `grad` support through every recursive or
+fold-based solver; differentiability requires an executable gradient oracle.
 
 ## What is included
 
@@ -13,7 +14,8 @@ through FFI or opaque intrinsics, AD (automatic differentiation) via
   positive-definite systems (see [CG Solve](cg-solve.md)).
 - **General-n decompositions** (alpha): `lu_solve` (Doolittle LU, no pivoting),
   `qr_decompose` (Householder QR, square), `cholesky_n` (column Cholesky, SPD),
-  `svd_n` (one-sided Jacobi SVD, square, 30n sweeps).
+  `svd_n` (one-sided Jacobi SVD, square, 30n sweeps), and `eig_n` (symmetric
+  Jacobi eigendecomposition).
 - **Matrix utilities**: `transpose`, `matmul_wrap`, `gram` (A^T A),
   `aat` (A A^T), `diag`, `trace_mat`, `trace_scalar`.
 - **Vector utilities**: `l2_norm_vec`, `inner_product`, `scale_vec`,

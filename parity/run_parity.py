@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""parity/run_parity.py - scipy oracle for Nautilus.
+"""Validate Nautilus against reviewed, checked-in SciPy goldens.
 
-This is the ONLY Python in the post-cutover Nautilus repo. It exists to
-compare Chelis-side function output against scipy reference values.
-Internal correctness is asserted in `tests/*.ch` via `chelis test`; this
-script catches drift between Nautilus implementations and scipy semantics.
+Normal runs never calculate or rewrite oracle values. Regeneration is an
+explicit operation that imports SciPy, rewrites parity/goldens/*.json, and
+leaves the resulting diff for review.
 
 Usage:
-    python3 parity/run_parity.py             # diagnostic table
-    python3 parity/run_parity.py --strict    # exit 1 on any abs-diff > tol
+    nautilus-parity                   # validate checked-in goldens
+    nautilus-parity --strict          # fail on any miss or configuration error
+    nautilus-parity --regen-goldens   # explicitly refresh from SciPy
 
 Mechanics:
     Each chelis eval --file invocation pays the full module-graph compile
@@ -18,19 +18,26 @@ Mechanics:
     that the script parses as `result_N = value` lines from stdout. With
     two domains, total wall-clock is ~70s instead of N * 35s.
 
-If scipy is missing the script prints a diagnostic and exits 0, so the
-harness is non-fatal in minimal environments.
+Strict validation fails closed if the golden corpus is absent, malformed,
+drifted from its case recipe, or has fewer than two configurations for any
+public parity case.
 """
 from __future__ import annotations
 
 import argparse
+import json
+import math
 import re
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Callable, Iterable, Tuple
 
 PKG = Path(__file__).resolve().parent.parent
+PARITY_ROOT = Path(__file__).resolve().parent
+GOLDENS_ROOT = PARITY_ROOT / "goldens"
+GOLDEN_SCHEMA = "nautilus-parity-goldens/1"
 PROBE_PATH = PKG / "src" / "probe.ch"
 
 # Result line format from `chelis eval --file`:
@@ -54,8 +61,9 @@ def load_scipy():
         import scipy.stats  # type: ignore
         return scipy_module(), np
     except ImportError as exc:
-        print(f"scipy not available ({exc}); skipping parity", file=sys.stderr)
-        return None, None
+        raise RuntimeError(
+            "golden regeneration requires the locked NumPy/SciPy environment"
+        ) from exc
 
 
 def scipy_module():
@@ -367,6 +375,145 @@ def distribution_cases(scipy):
 
 
 # ---------------------------------------------------------------------------
+# Reviewed golden corpus. Normal validation is stdlib-only; SciPy is imported
+# exclusively by the explicit --regen-goldens operation.
+# ---------------------------------------------------------------------------
+
+
+def flatten_oracle_cases(cases: list) -> list[dict]:
+    entries: list[dict] = []
+    for label, snippet_fn, ref_fn, samples, tol in cases:
+        distinct_samples = {json.dumps(sample, sort_keys=True) for sample in samples}
+        if len(distinct_samples) < 2:
+            raise ValueError(f"{label}: parity cases require at least two configs")
+        for sample in samples:
+            expected = float(ref_fn(sample))
+            if not math.isfinite(expected):
+                raise ValueError(f"{label} sample={sample!r}: non-finite oracle value")
+            entries.append(
+                {
+                    "label": label,
+                    "sample": sample,
+                    "expression": snippet_fn(sample),
+                    "expected": expected,
+                    "tolerance": float(tol),
+                }
+            )
+    return entries
+
+
+def write_golden(slug: str, entries: list[dict], scipy_version: str, numpy_version: str) -> None:
+    GOLDENS_ROOT.mkdir(parents=True, exist_ok=True)
+    path = GOLDENS_ROOT / f"{slug}.json"
+    payload = {
+        "schema": GOLDEN_SCHEMA,
+        "domain": slug,
+        "oracle": {"numpy": numpy_version, "scipy": scipy_version},
+        "cases": entries,
+    }
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    temporary.replace(path)
+    print(f"wrote {path.relative_to(PKG)} ({len(entries)} samples)")
+
+
+def regenerate_goldens() -> None:
+    scipy, numpy = load_scipy()
+    write_golden(
+        "special",
+        flatten_oracle_cases(special_cases(scipy)),
+        scipy.__version__,
+        numpy.__version__,
+    )
+    write_golden(
+        "distributions",
+        flatten_oracle_cases(distribution_cases(scipy)),
+        scipy.__version__,
+        numpy.__version__,
+    )
+
+
+def expected_case_metadata(slug: str) -> list[tuple[str, str, float, object]]:
+    """Build the non-oracle recipe metadata without importing SciPy."""
+    placeholder = SimpleNamespace(special=object(), stats=object())
+    if slug == "special":
+        cases = special_cases(placeholder)
+    elif slug == "distributions":
+        cases = distribution_cases(placeholder)
+    else:
+        raise ValueError(f"unknown parity domain: {slug}")
+
+    metadata: list[tuple[str, str, float, object]] = []
+    for label, snippet_fn, _ref_fn, samples, tolerance in cases:
+        for sample in samples:
+            # JSON normalization matches tuple-valued recipe samples to the
+            # list representation stored in checked-in golden files.
+            normalized_sample = json.loads(json.dumps(sample, sort_keys=True))
+            metadata.append(
+                (label, snippet_fn(sample), float(tolerance), normalized_sample)
+            )
+    return metadata
+
+
+def load_golden(slug: str) -> list[tuple[str, str, float, float, object]]:
+    path = GOLDENS_ROOT / f"{slug}.json"
+    if not path.is_file():
+        raise ValueError(f"missing checked-in golden: {path.relative_to(PKG)}")
+    try:
+        payload = json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ValueError(f"cannot read {path.relative_to(PKG)}: {exc}") from exc
+    if payload.get("schema") != GOLDEN_SCHEMA or payload.get("domain") != slug:
+        raise ValueError(f"{path.relative_to(PKG)}: unsupported schema or domain")
+    raw_cases = payload.get("cases")
+    if not isinstance(raw_cases, list) or not raw_cases:
+        raise ValueError(f"{path.relative_to(PKG)}: no golden cases")
+
+    configurations: dict[str, set[str]] = {}
+    entries: list[tuple[str, str, float, float, object]] = []
+    for index, case in enumerate(raw_cases):
+        try:
+            label = str(case["label"])
+            expression = str(case["expression"])
+            expected = float(case["expected"])
+            tolerance = float(case["tolerance"])
+            sample = case["sample"]
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                f"{path.relative_to(PKG)} case {index}: malformed golden: {exc}"
+            ) from exc
+        if not label or not expression or not math.isfinite(expected):
+            raise ValueError(f"{path.relative_to(PKG)} case {index}: invalid value")
+        if not math.isfinite(tolerance) or tolerance <= 0:
+            raise ValueError(f"{path.relative_to(PKG)} case {index}: invalid tolerance")
+        configuration = json.dumps(
+            {"expression": expression, "sample": sample}, sort_keys=True
+        )
+        configurations.setdefault(label, set()).add(configuration)
+        entries.append((label, expression, expected, tolerance, sample))
+
+    singletons = sorted(
+        label for label, configs in configurations.items() if len(configs) < 2
+    )
+    if singletons:
+        raise ValueError(
+            f"{path.relative_to(PKG)}: cases lack two-config coverage: "
+            + ", ".join(singletons)
+        )
+
+    actual_metadata = [
+        (label, expression, tolerance, sample)
+        for label, expression, _expected, tolerance, sample in entries
+    ]
+    if actual_metadata != expected_case_metadata(slug):
+        raise ValueError(
+            f"{path.relative_to(PKG)}: checked-in cases do not match the current "
+            "case recipe; regenerate and review the golden diff"
+        )
+    return entries
+
+
+# ---------------------------------------------------------------------------
 # Per-domain runner: builds the batched probe, parses results.
 # ---------------------------------------------------------------------------
 
@@ -394,24 +541,14 @@ DIST_IMPORTS = (
 
 
 def run_domain(name: str, imports: str, cases: list) -> tuple[int, int]:
-    """Run one batched chelis eval for a domain. Returns (passed, failed).
-
-    `cases` is a list of (label, snippet_builder, scipy_ref_callable, samples, tol)
-    where snippet_builder(sample) returns a Chelis expression like `erf(cast(0.5, f32))`.
-    """
-    # Build flat list of (case_idx, sample_idx, label, expr, ref, tol, sample)
-    flat = []
-    for label, snippet_fn, ref_fn, samples, tol in cases:
-        for s in samples:
-            flat.append((label, snippet_fn(s), ref_fn(s), tol, s))
-
+    """Run one batched Chelis evaluation against loaded golden cases."""
     # `chelis eval` can render some scalar-valued expressions as zero-rank
     # tensors, or omit them from multi-binding output. Adding scalar zero is a
     # value-preserving way to force the result line into the numeric scalar
     # form this harness parses.
     bindings = [
         f"result_{i} = add({expr}, cast(0.0, f32))"
-        for i, (_, expr, _, _, _) in enumerate(flat)
+        for i, (_, expr, _, _, _) in enumerate(cases)
     ]
     print(f"\n=== {name}: {len(bindings)} samples (one batched chelis eval) ===",
           flush=True)
@@ -421,7 +558,7 @@ def run_domain(name: str, imports: str, cases: list) -> tuple[int, int]:
 
     passed = 0
     failed = 0
-    for i, (label, expr, ref, tol, sample) in enumerate(flat):
+    for i, (label, expr, ref, tol, sample) in enumerate(cases):
         ours = results.get(i, float("nan"))
         diff = abs(ours - ref) if ours == ours else float("inf")
         ok = diff <= tol
@@ -437,22 +574,38 @@ def run_domain(name: str, imports: str, cases: list) -> tuple[int, int]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strict", action="store_true",
-                        help="exit 1 if any sample exceeds tol")
+                        help="exit 1 on any miss or golden configuration error")
+    parser.add_argument(
+        "--regen-goldens",
+        action="store_true",
+        help="explicitly rewrite checked-in goldens from the SciPy oracle",
+    )
     args = parser.parse_args()
 
-    scipy, _ = load_scipy()
-    if scipy is None:
+    if args.regen_goldens:
+        try:
+            regenerate_goldens()
+        except (RuntimeError, ValueError) as exc:
+            print(f"golden regeneration failed: {exc}", file=sys.stderr)
+            return 1
         return 0
 
-    print(f"parity oracle: chelis vs scipy on {PKG.name}")
+    try:
+        special = load_golden("special")
+        distributions = load_golden("distributions")
+    except ValueError as exc:
+        print(f"parity configuration error: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"parity oracle: chelis vs reviewed SciPy goldens on {PKG.name}")
 
     total_pass = 0
     total_fail = 0
 
-    p, f = run_domain("Special", SPECIAL_IMPORTS, special_cases(scipy))
+    p, f = run_domain("Special", SPECIAL_IMPORTS, special)
     total_pass += p; total_fail += f
 
-    p, f = run_domain("Distributions", DIST_IMPORTS, distribution_cases(scipy))
+    p, f = run_domain("Distributions", DIST_IMPORTS, distributions)
     total_pass += p; total_fail += f
 
     print(f"\nparity totals: {total_pass} passed, {total_fail} failed",

@@ -1,32 +1,57 @@
 # Nautilus parity
 
-This directory contains the SOLE Python script in post-cutover Nautilus.
-`run_parity.py` invokes the Chelis runtime via `chelis eval --file` on
-batched probe expressions and compares the output against
-`scipy.special`, `scipy.stats`, etc. as the external oracle. Internal
-mathematical correctness is asserted in `tests/*.ch` via `chelis test`;
-this script exists *solely* to catch drift between Nautilus
-implementations and scipy semantics. Run with
-`python3 parity/run_parity.py --strict` for CI (non-zero exit on any
-sample exceeding tol).
+This directory owns every external Python oracle used by Nautilus. Production
+Chelis code and non-parity tooling must not import or call NumPy, SciPy, or any
+other oracle library; CI enforces that boundary with
+`scripts/check_oracle_isolation.py`.
+
+`run_parity.py` invokes `chelis eval --file` on batched probe expressions and
+compares the results with the reviewed files under `goldens/`. Normal validation
+never imports SciPy and never rewrites expected values.
+
+## Validate
+
+The parity environment is an isolated uv project with a checked-in lockfile:
+
+```sh
+uv sync --project parity --frozen
+uv run --project parity --frozen python parity/run_parity.py --strict
+```
+
+Inside the Devenv shell, the equivalent convenience command is:
+
+```sh
+nautilus-parity --strict
+```
+
+Strict mode fails on tolerance misses, missing or malformed goldens, recipe /
+golden metadata drift, and any case lacking at least two distinct configurations.
+
+## Regenerate goldens
+
+Regeneration is explicit and must be reviewed; CI never runs it:
+
+```sh
+uv run --project parity --frozen python parity/run_parity.py --regen-goldens
+git diff -- parity/goldens/
+uv run --project parity --frozen python parity/run_parity.py --strict
+```
+
+The golden files record the locked NumPy and SciPy versions used to produce
+them. Regenerate only for an intentional oracle, case, or dependency change.
 
 ## Why batched probes
 
-Each `chelis eval --file` invocation pays the full module-graph compile
-cost — roughly 30–40 seconds with `Nautilus.Special` or
-`Nautilus.Distributions` imported. Running one eval per sample would
-take an hour for ~200 samples. Instead, all samples for a domain are
-emitted into a single probe with `result_0 = ...`, `result_1 = ...`,
-... bindings; one chelis eval per domain returns every result; the
-script parses `result_N = value` lines from stdout. Total wall-clock
-for the current ~80 special + ~125 distribution samples is ~70 s.
+Each `chelis eval --file` invocation pays the full module-graph compile cost —
+roughly 30–40 seconds with `Nautilus.Special` or `Nautilus.Distributions`
+imported. All samples for a domain are therefore emitted in one probe with
+`result_0 = ...`, `result_1 = ...`, and so on. One evaluation per domain keeps
+the full 216-sample run near 70 seconds.
 
-## Adding a new parity check
+## Adding a parity case
 
-1. In the relevant `*_cases(scipy)` table in `run_parity.py`, append a
-   `(label, snippet_builder, scipy_ref_callable, samples, tol)` tuple.
-2. `snippet_builder(sample) -> str` must return a Chelis expression
-   (the script wraps it with `result_N = ...`).
-3. The `import` in the corresponding `*_IMPORTS` constant must already
-   re-export the function being called; add the symbol if it's missing.
-4. Run locally to confirm it passes: `python3 -u parity/run_parity.py`.
+1. Add the case to the relevant `*_cases(scipy)` table in `run_parity.py`.
+2. Provide at least two distinct sample configurations.
+3. Ensure the corresponding import constant exports the called Nautilus verb.
+4. Regenerate the goldens explicitly and review the JSON diff.
+5. Run strict validation.

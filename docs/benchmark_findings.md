@@ -1,8 +1,9 @@
 # Nautilus vs scipy — Benchmark Findings (Phase 5)
 
-Measurement harness: `scripts/bench_vs_scipy.py`, in-process via
-`ctypes.CDLL` (no subprocess-per-trial cost). 20 trials per point,
-sizes 10 → 100k, f64 throughout. Hardware: single box, single thread.
+Historical measurements from the retired in-process `ctypes.CDLL` benchmark
+harness (available in Git history). It ran 20 trials per point, sizes 10 →
+100k, f64 throughout, on a single box and single thread. These results are an
+archived performance record, not a current executable gate.
 
 ## Headline numbers
 
@@ -96,7 +97,7 @@ flip to wins. See Upstream asks below.
   and *not* bandwidth: it was `-fPIC -shared` defaults forcing every
   call to `normal_cdf@plt` / `exp@plt`, preventing inlining even under
   `-flto`. Fix: add `-flto -fuse-linker-plugin -fvisibility=hidden
-  -Wl,-Bsymbolic` to `scripts/bench_vs_scipy.py::build_shared_lib`.
+  -Wl,-Bsymbolic` to the then-current benchmark shared-library build.
   Measured delta: `b_erf` 13.66 → 3.58 ns/el (**3.8×**);
   `b_compound_ncdf_times_exp_nxsq` 24.59 → 9.40 ns/el (**2.6×**).
   Added `-fopenmp` on top of combo-c: no change — OpenMP was never
@@ -151,8 +152,8 @@ flip to wins. See Upstream asks below.
   `scipy.optimize.brentq` in Python loops — what a real caller would
   actually write.
 
-- **Track 4 — Bench output restructure.** `scripts/bench_vs_scipy.py`
-  now leads with fused compound expressions (the thesis), drops n=1
+- **Track 4 — Bench output restructure.** The then-current benchmark output
+  led with fused compound expressions (the thesis), dropped n=1
   rows from the main display (dispatch-floor noise), groups per-kernel
   sweeps by winner/loser, and emits a summary table with
   crossover_n / best_ratio / regime columns.
@@ -179,7 +180,7 @@ flip to wins. See Upstream asks below.
    any upstream stdlib incomplete-gamma / incomplete-beta
    implementations.
 
-## Deferred (runtime-blocked)
+## Deferred in the retired harness (historical)
 
 - **LinAlg small-n benchmarks** (`inv_2x2`, `solve_2x2`,
   `cholesky_2x2`) need a real `chelis_tensor*` runtime shim for rank-1
@@ -189,24 +190,17 @@ flip to wins. See Upstream asks below.
 - **Distribution sampling benchmarks** (`normal_sample`) hit the same
   runtime gate — need `uniform_like` and tensor allocation. Future P6.
 
-- **Grad-through-rk4 neural-ODE demo** — blocked on the same tensor
-  runtime. Tracked in `upstream-bugs.md`.
+- **Grad-through-rk4 neural-ODE demo** — was blocked on the same retired
+  harness runtime. Current limitation history is tracked in
+  [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
 
-## How to run
+## Reproduction status
+
+The original benchmark harness was retired when Nautilus consolidated all
+external-oracle validation into the single checked-golden `parity/` project.
+Git history preserves the exact harness used for these measurements. Current
+correctness validation is:
 
 ```bash
-# Full sweep (compound thesis + per-kernel + solvers):
-python scripts/bench_vs_scipy.py --sizes 10,100,1000,10000,100000
-
-# Thesis only (fused compound expressions):
-python scripts/bench_vs_scipy.py --tier 3
-
-# Per-kernel sweeps only:
-python scripts/bench_vs_scipy.py --tier 2
-
-# Correctness gate (526 scipy-parity assertions, subprocess-driven):
-python scripts/bench_vs_scipy.py --tier 1
-
-# See the isolated ctypes dispatch floor:
-python scripts/bench_vs_scipy.py --sizes 1
+uv run --project parity --frozen python parity/run_parity.py --strict
 ```

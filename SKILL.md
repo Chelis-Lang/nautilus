@@ -4,12 +4,13 @@
 
 Nautilus is the numerical computing shell for Chelis. It replaces
 numpy.linalg + numpy.random distributions + scipy.* (special, stats,
-optimize, integrate, interpolate, spatial). 163 library exports
-(155 numerical/library + 1 `Nautilus.Core.version` metadata helper +
-7 `Nautilus.Signal` stubs); native gate `chelis test tests/` is
-459/459 clean and `parity/run_parity.py --strict` is 216/216 against
-scipy. Pure Chelis throughout. AD works through all functions
-automatically.
+optimize, integrate, interpolate, spatial). The current surface has 192
+exports: 185 numerical/library entries, 1 `Nautilus.Core.version` metadata
+helper, and 6 explicit `Nautilus.Signal` stubs (`fftfreq` is functional).
+The native gate `chelis test tests/` is 463/463 clean and the reviewed
+`parity/run_parity.py --strict` subset is 216/216 against scipy. Nautilus is
+pure Chelis throughout; AD is claimed only for surfaces with executable
+gradient coverage, not automatically for every solver or decomposition.
 
 ## 2. Import Patterns
 
@@ -906,7 +907,9 @@ General-n (alpha): `cholesky_n`, `lu_solve`, `qr_decompose`, `svd_n`, `eig_n`.
 General-n solvers: `cg_solve` (conjugate gradient for SPD systems), `matvec`, `vecmat`, `matmul_wrap`.
 Vector ops: `la_vec_add`, `la_vec_sub`, `la_vec_saxpy`, `scale_vec`, `l2_norm_vec`, `inner_product`.
 Matrix ops: `gram`, `aat`, `transpose`, `diag`, `trace_mat`, `trace_scalar`, `frobenius_norm`, `frobenius_sq`.
-All pure Chelis tensor-op composition. AD flows through `grad` automatically.
+All are pure Chelis tensor-op composition. Primitive adjoints remain available,
+but do not assume every recursive or fold-based decomposition supports `grad`;
+only surfaces with executable gradient coverage are advertised as differentiable.
 
 ### Nautilus.Stats
 Descriptive statistics over `tensor[n, f32]` inputs. All return `f32`.
@@ -925,7 +928,8 @@ Three root-finders, all taking `f: f32 -> f32`:
 Fixed-step ODE solvers taking `f: f32 -> f32 -> f32` (dy/dt = f(y, t)):
 `euler_step`, `euler_solve(f, y0, t0, t1, n_steps)`.
 `rk4_step`, `rk4_solve(f, y0, t0, t1, n_steps)`.
-`grad(rk4_solve(f, y0, t0, t1, n))` works for neural ODE composition.
+Broad AD through the recursive solver surface is follow-up work, not a shipped
+blanket guarantee; require an executable gradient oracle before relying on it.
 `rk45_adaptive_solve_grid`: vector ODE solver returning state at caller-supplied output times. `t_out` must be sorted ascending with all values in `(t0, t_end]`. Uses Dormand-Prince Hermite cubic dense output for interpolation.
 
 ### Nautilus.Integrate
@@ -973,10 +977,10 @@ Both take `f32 -> f32 -> f32` drift and diffusion functions. Noise tensor length
 Levenberg-Marquardt for single-parameter curve fitting. `model(x, theta) -> y` and `dmodel(x, theta) -> dy/dtheta`.
 
 `lm_scalar_nparam(model, x, y, theta0, tol, max_iters)`.
-Levenberg-Marquardt for multi-parameter curve fitting. `model` is curried: `model(theta)(x_data)` predicts the m-vector of y values. Uses a finite-difference Jacobian (eps=1e-5). The `tol` parameter is accepted for API compatibility but convergence runs for exactly `max_iters` iterations. Damping lambda is fixed at 0.01.
+Levenberg-Marquardt for multi-parameter curve fitting. `model` is curried: `model(theta)(x_data)` predicts the m-vector of y values. Uses a finite-difference Jacobian (eps=1e-5) while the exact generic and backend AD paths remain blocked by `docs/issue_drafts/grad_generic_vector_model_dims.md` and `docs/issue_drafts/grad_vector_model_wrapper_backward_dag.md`. The `tol` parameter is accepted for API compatibility but convergence runs for exactly `max_iters` iterations. Damping lambda is fixed at 0.01.
 
 ### Nautilus.Signal
-Typed API stubs. All return NaN except `fftfreq`. Blocked on upstream complex-number support (Phase 5f).
+Six typed transform/filter stubs return NaN; `fftfreq` is functional. The dated deferral is `spec/phase3j.md` § Explicit Deferrals (accepted 2026-07-14) and remains gated on Phase 5f complex-number support.
 
 ## 5. Gotchas
 
@@ -1007,7 +1011,7 @@ Typed API stubs. All return NaN except `fftfreq`. Blocked on upstream complex-nu
 
 - Tensor arguments follow Chelis linear-use discipline. Use `copy(t)` when a tensor is consumed more than once.
 
-- `lm_scalar_nparam` runs for exactly `max_iters` iterations — the `tol` parameter is accepted for API compatibility but does not trigger early exit. Damping `lambda` is fixed at `0.01`. For well-scaled problems with `theta0` near the optimum, 50–200 iterations converge. The finite-difference Jacobian uses `eps=1e-5`; if model outputs or parameters are larger than ~100, scale inputs so that the model is O(1) — once a Jacobian column goes to zero in f32 due to ULP cancellation, increasing `max_iters` does not help and the solver stalls permanently; only rescaling the problem escapes this condition.
+- `lm_scalar_nparam` runs for exactly `max_iters` iterations — the `tol` parameter is accepted for API compatibility but does not trigger early exit. Damping `lambda` is fixed at `0.01`. For well-scaled problems with `theta0` near the optimum, 50–200 iterations converge. The finite-difference Jacobian is the cited temporary narrowing in `docs/issue_drafts/grad_generic_vector_model_dims.md` and `docs/issue_drafts/grad_vector_model_wrapper_backward_dag.md`; it uses `eps=1e-5`. If model outputs or parameters are larger than ~100, scale inputs so that the model is O(1) — once a Jacobian column goes to zero in f32 due to ULP cancellation, increasing `max_iters` does not help and the solver stalls permanently; only rescaling the problem escapes this condition.
 
 - `lu_solve` requires every leading principal submatrix of `A` to be nonsingular. A well-conditioned matrix that needs one row swap (e.g., `[[0,1],[1,0]]`) will divide by zero and return NaN. Matrices that are SPD or strictly diagonally dominant are safe. If in doubt, use `cg_solve` for SPD systems.
 
@@ -1252,9 +1256,11 @@ The `Stability` column is the source of truth for row-level classification. Use
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
 | `lm_scalar_1param` | `[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs: tensor[n, f32], ys: tensor[n, f32], theta0: f32, lambda0: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Levenberg-Marquardt for single-parameter models; `model(x, theta)` and `dmodel(x, theta)` are function-typed |
-| `lm_scalar_nparam` | `[n, m](model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32], x: tensor[m, f32], y: tensor[m, f32], theta0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32]` | `alpha` | Multi-parameter LM via finite-difference Jacobian (eps=1e-5); `tol` accepted but unused (runs full `max_iters`); lambda fixed at 0.01; grad-based Jacobian blocked by upstream compiler bug (tracked in `docs/upstream-bugs.md`) |
+| `lm_scalar_nparam` | `[n, m](model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32], x: tensor[m, f32], y: tensor[m, f32], theta0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32]` | `alpha` | Multi-parameter LM via finite-difference Jacobian (eps=1e-5); `tol` accepted but unused (runs full `max_iters`); lambda fixed at 0.01; AD replacement pinned by `docs/issue_drafts/grad_generic_vector_model_dims.md` and `docs/issue_drafts/grad_vector_model_wrapper_backward_dag.md` |
 
-### Nautilus.Signal (7 exports -- stubs)
+### Nautilus.Signal (7 exports -- 6 stubs + `fftfreq`)
+
+The six NaN-returning rows share the dated `spec/phase3j.md` § Explicit Deferrals citation.
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|

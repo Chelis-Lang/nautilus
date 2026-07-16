@@ -13,21 +13,21 @@ Pre-v0.3.0 history: this script used to hand-roll the install by
 copying files into ~/.chelis/reef/packages/<name>/<version>/ and
 writing the index.json by hand, because chelis v0.2.x had no
 `reef install` subcommand. v0.3.0 shipped the proper command — see
-`chelis reef install --help` and docs/upstream-bugs.md
+`chelis reef install --help` and `docs/UPSTREAM_BUGS.md`
 ("v0.2.4 chelis-std bootstrap" — now resolved).
 
 Usage:
-    GH_TOKEN=...  CHELIS_TAG=v0.10.1  python3 scripts/install_chelis_std.py
+    GH_TOKEN=...  python3 scripts/install_chelis_std.py
+
+The Chelis monorepo tag is always resolved from the exact compiler pin in
+``reef.toml``; workflow-level pin mirrors cannot override runtime selection.
 
 Env:
     GH_TOKEN    PAT with `contents: read` on Chelis-Lang/chelis. Read
                 by `gh repo clone`; this script does not read it
                 directly.
-    CHELIS_TAG  Tag of the chelis monorepo to fetch chelis-std from
-                (defaults to v0.10.1).
-    CHELIS_BIN  Chelis binary to use for `reef install`. Defaults to
-                whichever `chelis` is on PATH; CI sets this to the
-                v0.10.1 toolchain it just downloaded.
+    CHELIS_BIN  Chelis binary to use for `reef install`. Defaults to the
+                pin-resolving `chelis` shim on PATH.
     WORK_DIR    Scratch directory for the monorepo clone (defaults to
                 /tmp/chelis-monorepo-for-std).
 """
@@ -39,14 +39,27 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    from . import reef_pin
+except ImportError:  # Direct execution: ``python3 scripts/install_chelis_std.py``.
+    import reef_pin
 
-DEFAULT_CHELIS_TAG = "v0.10.1"
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CHELIS_BIN = "chelis"
 DEFAULT_WORK_DIR = "/tmp/chelis-monorepo-for-std"
 
 
+def reef_chelis_tag(reef_path: Path = REPO_ROOT / "reef.toml") -> str:
+    try:
+        version = reef_pin.read_exact_reef_pin(reef_path)
+    except ValueError as exc:
+        raise RuntimeError(f"cannot resolve exact Chelis pin: {exc}") from exc
+    return f"v{version}"
+
+
 def main() -> int:
-    chelis_tag = os.environ.get("CHELIS_TAG", DEFAULT_CHELIS_TAG)
+    chelis_tag = reef_chelis_tag()
     chelis_bin = os.environ.get("CHELIS_BIN", DEFAULT_CHELIS_BIN)
     work_dir = Path(os.environ.get("WORK_DIR", DEFAULT_WORK_DIR))
 

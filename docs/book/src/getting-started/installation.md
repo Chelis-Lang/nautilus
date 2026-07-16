@@ -3,32 +3,30 @@
 ## Prerequisites
 
 Nautilus requires:
-- the latest validated Chelis release, currently [Chelis 0.9.0](https://github.com/Chelis-Lang/chelis/releases/tag/v0.9.0)
-- GCC (for compiling generated C code)
-- Python 3.10+ with numpy and scipy (for the scipy-parity oracle in `parity/`)
 
-## Download the Chelis toolchain
+- the latest validated Chelis release, currently [Chelis 0.16.1](https://github.com/Chelis-Lang/chelis/releases/tag/v0.16.1)
+- GCC (for compiling generated C code)
+- uv and Python 3.12 for the isolated parity project
+
+## Install the Chelis toolchain
 
 ```sh
-gh release download v0.9.0 \
-  --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.9.0-linux-x86_64.tar.gz'
-tar xzf chelis-v0.9.0-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.9.0-linux-x86_64/bin:$PATH"
+chelisup install 0.16.1
 ```
 
-The tarball contains `bin/chelis`, `lib/libchelis_runtime.a`, and
-`include/chelis_runtime.h`.
+`chelisup` installs releases side by side. Its `chelis` shim resolves the
+version from the nearest `reef.toml`; never replace it with a fixed symlink.
 
 ## Clone and build Nautilus
 
 ```sh
 git clone https://github.com/Chelis-Lang/nautilus.git
 cd nautilus
+chelis reef setup
 chelis reef build
 ```
 
-This produces `dist/nautilus-0.7.28.chb`, the reef package that other
+This produces `dist/nautilus-0.7.34.chb`, the reef package that other
 Chelis projects can depend on.
 
 ## Verify the installation
@@ -37,22 +35,26 @@ Chelis projects can depend on.
 # Type-check all modules
 for f in src/*.ch; do chelis check "$f"; done
 
-# Run the native identity / structural test gate (459 tests)
+# Run the native identity / structural test gate (463 tests)
 chelis test tests/ --jobs auto
+
+# Verify rejection contracts and current upstream blockers
+chelis test tests_neg/ --expect neg
+chelis test tests_blocked/ --expect blocked
 
 # Serial fallback for debugging
 chelis test tests/ --jobs 1
 
-# Run the scipy-parity oracle (requires numpy + scipy)
-pip install numpy scipy
-python parity/run_parity.py --strict
+# Validate against the reviewed SciPy goldens in the locked uv project
+uv sync --project parity --frozen
+uv run --project parity --frozen python parity/run_parity.py --strict
 ```
 
-You should see `459 passed, 0 failed` from `chelis test`, and
+You should see `463 passed, 0 failed` from `chelis test`, and
 `parity totals: 216 passed, 0 failed` from the parity oracle.
 
-If your `chelis` binary is not on `PATH`, set `CHELIS_BIN=/abs/path/to/chelis`
-when running the Python validation scripts.
+Ensure the `chelisup` shim is on `PATH` so parity probes resolve the reef-pinned
+toolchain.
 
 ## Using Nautilus in your project
 

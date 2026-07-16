@@ -1,9 +1,9 @@
 # Performance Results
 
-Benchmark findings from Phase 5 onward, measured with
-`scripts/bench_vs_scipy.py`. In-process via `ctypes.CDLL` (no
-subprocess-per-trial cost). 20 trials per point, sizes 10 to 100k, f64
-throughout. Single box, single thread.
+Archived Phase 5 benchmark findings measured with the retired in-process
+`ctypes.CDLL` harness. The run used 20 trials per point, sizes 10 to 100k, f64
+throughout, on a single box and thread. Git history preserves the exact
+measurement harness.
 
 ## Headline numbers
 
@@ -57,8 +57,8 @@ blocking gcc's cross-TU inlining. The LTO flags fix this:
 
 ### Current status
 
-These flags are a **workaround** applied in `scripts/bench_vs_scipy.py`
-only. They are not applied in the test harness or any consumer-facing
+These flags were a **workaround** in the then-current benchmark harness only.
+They were not applied in the test harness or any consumer-facing
 build path. The proper fix is upstream: the Chelis compiler should emit
 scalar helpers as `static inline` when a reef package is linked into a
 single shared object.
@@ -127,18 +127,12 @@ No remaining large-n losers after LTO and early-termination fixes.
 - **Distribution sampling** (`normal_sample`): same runtime gate.
 - **Grad-through-rk4 neural-ODE demo**: blocked on tensor runtime.
 
-## How to reproduce
+## Reproduction status
+
+The original measurement harness was retired during parity consolidation; use
+Git history to reproduce these historical numbers. The current external
+correctness gate is:
 
 ```bash
-# Full sweep:
-python scripts/bench_vs_scipy.py --sizes 10,100,1000,10000,100000
-
-# Fused compound thesis only:
-python scripts/bench_vs_scipy.py --tier 3
-
-# Per-kernel sweeps:
-python scripts/bench_vs_scipy.py --tier 2
-
-# Correctness gate (526 scipy-parity assertions):
-python scripts/bench_vs_scipy.py --tier 1
+uv run --project parity --frozen python parity/run_parity.py --strict
 ```

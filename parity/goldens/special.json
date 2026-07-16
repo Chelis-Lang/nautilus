@@ -1,0 +1,656 @@
+{
+  "cases": [
+    {
+      "expected": -0.9953222650189527,
+      "expression": "erf(cast(-2.0, f32))",
+      "label": "erf",
+      "sample": -2.0,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": -0.5204998778130465,
+      "expression": "erf(cast(-0.5, f32))",
+      "label": "erf",
+      "sample": -0.5,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 0.0,
+      "expression": "erf(cast(0.0, f32))",
+      "label": "erf",
+      "sample": 0.0,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 0.6778011938374184,
+      "expression": "erf(cast(0.7, f32))",
+      "label": "erf",
+      "sample": 0.7,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 0.9953222650189527,
+      "expression": "erf(cast(2.0, f32))",
+      "label": "erf",
+      "sample": 2.0,
+      "tolerance": 5e-06
+    },
+    {
+      "expected": 1.9953222650189528,
+      "expression": "erfc(cast(-2.0, f32))",
+      "label": "erfc",
+      "sample": -2.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 1.5204998778130465,
+      "expression": "erfc(cast(-0.5, f32))",
+      "label": "erfc",
+      "sample": -0.5,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 1.0,
+      "expression": "erfc(cast(0.0, f32))",
+      "label": "erfc",
+      "sample": 0.0,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.32219880616258156,
+      "expression": "erfc(cast(0.7, f32))",
+      "label": "erfc",
+      "sample": 0.7,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.033894853524689274,
+      "expression": "erfc(cast(1.5, f32))",
+      "label": "erfc",
+      "sample": 1.5,
+      "tolerance": 5e-05
+    },
+    {
+      "expected": -1.1630871536766743,
+      "expression": "erfinv(cast(-0.9, f32))",
+      "label": "erfinv",
+      "sample": -0.9,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": -0.2724627147267544,
+      "expression": "erfinv(cast(-0.3, f32))",
+      "label": "erfinv",
+      "sample": -0.3,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.4769362762044699,
+      "expression": "erfinv(cast(0.5, f32))",
+      "label": "erfinv",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 1.3859038243496775,
+      "expression": "erfinv(cast(0.95, f32))",
+      "label": "erfinv",
+      "sample": 0.95,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 1.7724538509055159,
+      "expression": "gamma(cast(0.5, f32))",
+      "label": "gamma",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.8862269254527579,
+      "expression": "gamma(cast(1.5, f32))",
+      "label": "gamma",
+      "sample": 1.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 1.329340388179137,
+      "expression": "gamma(cast(2.5, f32))",
+      "label": "gamma",
+      "sample": 2.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 24.0,
+      "expression": "gamma(cast(5.0, f32))",
+      "label": "gamma",
+      "sample": 5.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": -3.5449077018110318,
+      "expression": "gamma(cast(-0.5, f32))",
+      "label": "gamma",
+      "sample": -0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 2.363271801207355,
+      "expression": "gamma(cast(-1.5, f32))",
+      "label": "gamma",
+      "sample": -1.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.5723649429247,
+      "expression": "log_gamma(cast(0.5, f32))",
+      "label": "log_gamma",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": -0.12078223763524526,
+      "expression": "log_gamma(cast(1.5, f32))",
+      "label": "log_gamma",
+      "sample": 1.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.2846828704729192,
+      "expression": "log_gamma(cast(2.5, f32))",
+      "label": "log_gamma",
+      "sample": 2.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 3.1780538303479458,
+      "expression": "log_gamma(cast(5.0, f32))",
+      "label": "log_gamma",
+      "sample": 5.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 12.801827480081469,
+      "expression": "log_gamma(cast(10.0, f32))",
+      "label": "log_gamma",
+      "sample": 10.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": -1.9635100260214235,
+      "expression": "digamma(cast(0.5, f32))",
+      "label": "digamma",
+      "sample": 0.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.03648997397857652,
+      "expression": "digamma(cast(1.5, f32))",
+      "label": "digamma",
+      "sample": 1.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.7031566406452432,
+      "expression": "digamma(cast(2.5, f32))",
+      "label": "digamma",
+      "sample": 2.5,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 1.5061176684318003,
+      "expression": "digamma(cast(5.0, f32))",
+      "label": "digamma",
+      "sample": 5.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 2.251752589066721,
+      "expression": "digamma(cast(10.0, f32))",
+      "label": "digamma",
+      "sample": 10.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 3.6362096709023586,
+      "expression": "trigamma(cast(0.6, f32))",
+      "label": "trigamma",
+      "sample": 0.6,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 1.6449340668482266,
+      "expression": "trigamma(cast(1.0, f32))",
+      "label": "trigamma",
+      "sample": 1.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.6449340668482266,
+      "expression": "trigamma(cast(2.0, f32))",
+      "label": "trigamma",
+      "sample": 2.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.22132295573711533,
+      "expression": "trigamma(cast(5.0, f32))",
+      "label": "trigamma",
+      "sample": 5.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 0.10516633568168576,
+      "expression": "trigamma(cast(10.0, f32))",
+      "label": "trigamma",
+      "sample": 10.0,
+      "tolerance": 0.0005
+    },
+    {
+      "expected": 1.0,
+      "expression": "beta(cast(1.0, f32), cast(1.0, f32))",
+      "label": "beta",
+      "sample": [
+        1.0,
+        1.0
+      ],
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.08333333333333333,
+      "expression": "beta(cast(2.0, f32), cast(3.0, f32))",
+      "label": "beta",
+      "sample": [
+        2.0,
+        3.0
+      ],
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 0.05,
+      "expression": "beta(cast(4.0, f32), cast(2.0, f32))",
+      "label": "beta",
+      "sample": [
+        4.0,
+        2.0
+      ],
+      "tolerance": 5e-05
+    },
+    {
+      "expected": 1.0,
+      "expression": "bessel_i0(cast(0.0, f32))",
+      "label": "bessel_i0",
+      "sample": 0.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.0634833707413236,
+      "expression": "bessel_i0(cast(0.5, f32))",
+      "label": "bessel_i0",
+      "sample": 0.5,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.2660658777520082,
+      "expression": "bessel_i0(cast(1.0, f32))",
+      "label": "bessel_i0",
+      "sample": 1.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 2.279585302336067,
+      "expression": "bessel_i0(cast(2.0, f32))",
+      "label": "bessel_i0",
+      "sample": 2.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 11.30192195213633,
+      "expression": "bessel_i0(cast(4.0, f32))",
+      "label": "bessel_i0",
+      "sample": 4.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.25789430539089636,
+      "expression": "bessel_i1(cast(0.5, f32))",
+      "label": "bessel_i1",
+      "sample": 0.5,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.5651591039924851,
+      "expression": "bessel_i1(cast(1.0, f32))",
+      "label": "bessel_i1",
+      "sample": 1.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.5906368546373295,
+      "expression": "bessel_i1(cast(2.0, f32))",
+      "label": "bessel_i1",
+      "sample": 2.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 9.759465153704449,
+      "expression": "bessel_i1(cast(4.0, f32))",
+      "label": "bessel_i1",
+      "sample": 4.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.924419071227666,
+      "expression": "bessel_k0(cast(0.5, f32))",
+      "label": "bessel_k0",
+      "sample": 0.5,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.4210244382407082,
+      "expression": "bessel_k0(cast(1.0, f32))",
+      "label": "bessel_k0",
+      "sample": 1.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.1138938727495334,
+      "expression": "bessel_k0(cast(2.0, f32))",
+      "label": "bessel_k0",
+      "sample": 2.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.011159676085853023,
+      "expression": "bessel_k0(cast(4.0, f32))",
+      "label": "bessel_k0",
+      "sample": 4.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.6564411200033007,
+      "expression": "bessel_k1(cast(0.5, f32))",
+      "label": "bessel_k1",
+      "sample": 0.5,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.6019072301972346,
+      "expression": "bessel_k1(cast(1.0, f32))",
+      "label": "bessel_k1",
+      "sample": 1.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.13986588181652246,
+      "expression": "bessel_k1(cast(2.0, f32))",
+      "label": "bessel_k1",
+      "sample": 2.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.012483498887268428,
+      "expression": "bessel_k1(cast(4.0, f32))",
+      "label": "bessel_k1",
+      "sample": 4.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.0,
+      "expression": "bessel_j0(cast(0.0, f32))",
+      "label": "bessel_j0",
+      "sample": 0.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.7651976865579665,
+      "expression": "bessel_j0(cast(1.0, f32))",
+      "label": "bessel_j0",
+      "sample": 1.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": -0.1775967713143383,
+      "expression": "bessel_j0(cast(5.0, f32))",
+      "label": "bessel_j0",
+      "sample": 5.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.1716508071375539,
+      "expression": "bessel_j0(cast(8.0, f32))",
+      "label": "bessel_j0",
+      "sample": 8.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.24226845767487387,
+      "expression": "bessel_j1(cast(0.5, f32))",
+      "label": "bessel_j1",
+      "sample": 0.5,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.44005058574493355,
+      "expression": "bessel_j1(cast(1.0, f32))",
+      "label": "bessel_j1",
+      "sample": 1.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": -0.3275791375914653,
+      "expression": "bessel_j1(cast(5.0, f32))",
+      "label": "bessel_j1",
+      "sample": 5.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.2346363468539146,
+      "expression": "bessel_j1(cast(8.0, f32))",
+      "label": "bessel_j1",
+      "sample": 8.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": -0.4445187335067066,
+      "expression": "bessel_y0(cast(0.5, f32))",
+      "label": "bessel_y0",
+      "sample": 0.5,
+      "tolerance": 0.05
+    },
+    {
+      "expected": 0.08825696421567697,
+      "expression": "bessel_y0(cast(1.0, f32))",
+      "label": "bessel_y0",
+      "sample": 1.0,
+      "tolerance": 0.05
+    },
+    {
+      "expected": 0.5103756726497451,
+      "expression": "bessel_y0(cast(2.0, f32))",
+      "label": "bessel_y0",
+      "sample": 2.0,
+      "tolerance": 0.05
+    },
+    {
+      "expected": -0.30851762524903314,
+      "expression": "bessel_y0(cast(5.0, f32))",
+      "label": "bessel_y0",
+      "sample": 5.0,
+      "tolerance": 0.05
+    },
+    {
+      "expected": -1.471472392670243,
+      "expression": "bessel_y1(cast(0.5, f32))",
+      "label": "bessel_y1",
+      "sample": 0.5,
+      "tolerance": 0.05
+    },
+    {
+      "expected": -0.7812128213002888,
+      "expression": "bessel_y1(cast(1.0, f32))",
+      "label": "bessel_y1",
+      "sample": 1.0,
+      "tolerance": 0.05
+    },
+    {
+      "expected": -0.10703243154093758,
+      "expression": "bessel_y1(cast(2.0, f32))",
+      "label": "bessel_y1",
+      "sample": 2.0,
+      "tolerance": 0.05
+    },
+    {
+      "expected": 0.14786314339122747,
+      "expression": "bessel_y1(cast(5.0, f32))",
+      "label": "bessel_y1",
+      "sample": 5.0,
+      "tolerance": 0.05
+    },
+    {
+      "expected": 0.22740742820168564,
+      "expression": "airy_ai(cast(-2.0, f32))",
+      "label": "airy_ai",
+      "sample": -2.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.4757280916105395,
+      "expression": "airy_ai(cast(-0.5, f32))",
+      "label": "airy_ai",
+      "sample": -0.5,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.3550280538878172,
+      "expression": "airy_ai(cast(0.0, f32))",
+      "label": "airy_ai",
+      "sample": 0.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.13529241631288147,
+      "expression": "airy_ai(cast(1.0, f32))",
+      "label": "airy_ai",
+      "sample": 1.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.00659113935746072,
+      "expression": "airy_ai(cast(3.0, f32))",
+      "label": "airy_ai",
+      "sample": 3.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": -0.4123025879563985,
+      "expression": "airy_bi(cast(-2.0, f32))",
+      "label": "airy_bi",
+      "sample": -2.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.3803526597510537,
+      "expression": "airy_bi(cast(-0.5, f32))",
+      "label": "airy_bi",
+      "sample": -0.5,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 0.6149266274460007,
+      "expression": "airy_bi(cast(0.0, f32))",
+      "label": "airy_bi",
+      "sample": 0.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.2074235949528715,
+      "expression": "airy_bi(cast(1.0, f32))",
+      "label": "airy_bi",
+      "sample": 1.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 14.037328963730229,
+      "expression": "airy_bi(cast(3.0, f32))",
+      "label": "airy_bi",
+      "sample": 3.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.5707963267948966,
+      "expression": "ellipk(cast(0.0, f32))",
+      "label": "ellipk",
+      "sample": 0.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.685750354812596,
+      "expression": "ellipk(cast(0.25, f32))",
+      "label": "ellipk",
+      "sample": 0.25,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.8540746773013719,
+      "expression": "ellipk(cast(0.5, f32))",
+      "label": "ellipk",
+      "sample": 0.5,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 2.156515647499643,
+      "expression": "ellipk(cast(0.75, f32))",
+      "label": "ellipk",
+      "sample": 0.75,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 2.5780921133481733,
+      "expression": "ellipk(cast(0.9, f32))",
+      "label": "ellipk",
+      "sample": 0.9,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.5707963267948966,
+      "expression": "ellipe(cast(0.0, f32))",
+      "label": "ellipe",
+      "sample": 0.0,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.4674622093394272,
+      "expression": "ellipe(cast(0.25, f32))",
+      "label": "ellipe",
+      "sample": 0.25,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.3506438810476755,
+      "expression": "ellipe(cast(0.5, f32))",
+      "label": "ellipe",
+      "sample": 0.5,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.2110560275684594,
+      "expression": "ellipe(cast(0.75, f32))",
+      "label": "ellipe",
+      "sample": 0.75,
+      "tolerance": 0.005
+    },
+    {
+      "expected": 1.1047747327040733,
+      "expression": "ellipe(cast(0.9, f32))",
+      "label": "ellipe",
+      "sample": 0.9,
+      "tolerance": 0.005
+    }
+  ],
+  "domain": "special",
+  "oracle": {
+    "numpy": "2.5.1",
+    "scipy": "1.18.0"
+  },
+  "schema": "nautilus-parity-goldens/1"
+}
