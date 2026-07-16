@@ -33,7 +33,7 @@ jobs:
         run: python3 scripts/check_workflow_pins.py
 
       - name: Install reef-pinned Chelis
-        uses: ./.github/actions/install-chelis
+        uses: Chelis-Lang/ci/actions/setup-chelis@078f5adcf6984350cd4645e2db16c670a3566185
         with:
           gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
 
@@ -112,7 +112,7 @@ jobs:
 
       - name: Install chelis toolchain (cached)
         id: chelis
-        uses: ./.github/actions/install-chelis
+        uses: Chelis-Lang/ci/actions/setup-chelis@078f5adcf6984350cd4645e2db16c670a3566185
         with:
           gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
           reef-cache-key: std
@@ -184,7 +184,7 @@ jobs:
 
       - name: Install chelis toolchain (cached)
         id: chelis
-        uses: ./.github/actions/install-chelis
+        uses: Chelis-Lang/ci/actions/setup-chelis@078f5adcf6984350cd4645e2db16c670a3566185
         with:
           gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
           reef-cache-key: std
@@ -216,7 +216,7 @@ jobs:
 
       - name: Install chelis toolchain (cached)
         id: chelis
-        uses: ./.github/actions/install-chelis
+        uses: Chelis-Lang/ci/actions/setup-chelis@078f5adcf6984350cd4645e2db16c670a3566185
         with:
           gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
           reef-cache-key: std
@@ -254,7 +254,7 @@ jobs:
 
       - name: Install chelis toolchain (cached)
         id: chelis
-        uses: ./.github/actions/install-chelis
+        uses: Chelis-Lang/ci/actions/setup-chelis@078f5adcf6984350cd4645e2db16c670a3566185
         with:
           platform: darwin-arm64
           gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}

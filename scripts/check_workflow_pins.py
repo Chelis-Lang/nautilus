@@ -15,6 +15,7 @@ except ImportError:  # Direct execution: ``python3 scripts/check_workflow_pins.p
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INSTALL_MARKERS = (
     "uses: ./.github/actions/install-chelis",
+    "uses: Chelis-Lang/ci/actions/setup-chelis@",
     "chelisup install",
     "--repo Chelis-Lang/chelis",
 )

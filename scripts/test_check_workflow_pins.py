@@ -66,6 +66,14 @@ class WorkflowPinGuardTests(unittest.TestCase):
         )
         self.assertEqual(self.errors(), [])
 
+    def test_shared_setup_action_is_an_install_marker(self) -> None:
+        workflow = self.installing_workflow().replace(
+            "uses: ./.github/actions/install-chelis",
+            "uses: Chelis-Lang/ci/actions/setup-chelis@" + "a" * 40,
+        )
+        self.write("ci.yml", workflow)
+        self.assertEqual(self.errors(), [])
+
     def test_drift_and_missing_values_fail(self) -> None:
         cases = (
             ("CHELIS_TAG", "v1.2.2", VERSION),
