@@ -12,7 +12,6 @@ reef.lock
 __pycache__/
 *.py[cod]
 .venv/
-ci/node_modules/
 
 # Build artifacts that may leak from chelis build or bench runs
 *.o

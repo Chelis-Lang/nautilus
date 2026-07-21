@@ -54,30 +54,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      # actions/setup-node v4
-      - name: Set up pinned Node for OpenSpec governance
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: 22.17.0
-          cache: npm
-          cache-dependency-path: ci/package-lock.json
-
-      - name: Install locked OpenSpec CLI
-        run: npm ci --prefix ci --ignore-scripts --no-audit --no-fund
-
       - name: OpenSpec governance gate
-        env:
-          OPENSPEC_BIN: ${{ github.workspace }}/ci/node_modules/.bin/openspec
-        run: |
-          set -euo pipefail
-          base_args=(--base origin/main)
-          event_before="${{ github.event.before }}"
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            base_args=(--base "${{ github.event.pull_request.base.sha }}")
-          elif [ -n "$event_before" ] && [ "$event_before" != "0000000000000000000000000000000000000000" ]; then
-            base_args=(--base "$event_before")
-          fi
-          python3 scripts/check_openspec.py --self-test --merge-bound "${base_args[@]}"
+        uses: Chelis-Lang/ci/actions/openspec-governance@8b240a2d0ea55f161e69b44b2ee42733ee197230 # commit:8b240a2d0ea5
 
       - name: Reject AI-author commits
         run: |

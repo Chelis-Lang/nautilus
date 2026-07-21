@@ -16,55 +16,55 @@ Nautilus SHALL maintain `ci/flake.nix` and `ci/flake.lock` as an optional local 
 - **THEN** the app SHALL run merge-bound completion and negative self-tests against `origin/main`
 - **THEN** active lifecycle evidence SHALL be rejected
 
-### Requirement: CI provisions OpenSpec through an npm lock
-The CI guard SHALL pin `actions/setup-node` to an immutable commit and Node 22.17.0. `ci/package.json` SHALL select `@fission-ai/openspec` exactly at 1.6.0, and `ci/package-lock.json` SHALL lock its complete dependency graph with registry integrity hashes. CI SHALL install that graph with `npm ci --prefix ci --ignore-scripts`.
+### Requirement: CI uses an immutable central OpenSpec action
+After full-history checkout, the CI guard SHALL invoke `Chelis-Lang/ci/actions/openspec-governance@8b240a2d0ea55f161e69b44b2ee42733ee197230`. Nautilus SHALL NOT duplicate the action's Node setup, npm package metadata, npm lock, or event-base launcher.
 
-#### Scenario: Locked package is available
-- **WHEN** CI prepares the governance gate
-- **THEN** npm SHALL install only the dependency graph accepted by the committed lock
-- **THEN** the checker SHALL independently verify OpenSpec 1.6.0
+#### Scenario: Reviewed central action is available
+- **WHEN** GitHub Actions prepares the governance gate
+- **THEN** it SHALL fetch the exact full central commit
+- **THEN** the action SHALL provide OpenSpec 1.6.0 and run Nautilus's checker
 
-#### Scenario: Provisioning fails
-- **WHEN** Node setup, npm installation, lock verification, launch, or version verification fails
+#### Scenario: Central action is inaccessible or fails
+- **WHEN** private action access, Node setup, npm integrity, exact version validation, launch, or governance validation fails
 - **THEN** CI SHALL fail without Nix or ambient-executable fallback
 
-### Requirement: CI invokes the repository-local OpenSpec executable
-The CI governance step SHALL set `OPENSPEC_BIN` to the executable under `ci/node_modules/.bin/openspec` before invoking `scripts/check_openspec.py`. It SHALL use the runner's existing Python and Git installations rather than obtaining them through Nix.
+### Requirement: Central action invocation remains bounded
+The pinned central action SHALL accept no caller commands, checker paths, executable paths, modes, bases, secrets, or permissions. It SHALL derive a bounded event comparison base and invoke exactly the regular non-symlink `scripts/check_openspec.py` from the checked-out Nautilus workspace with self-test and merge-bound arguments.
 
-#### Scenario: CI gate launches successfully
-- **WHEN** the governance step starts after `npm ci`
-- **THEN** every OpenSpec command and negative self-test SHALL use the repository-local executable
-- **THEN** the checker SHALL inspect the event-specific comparison base
+#### Scenario: Pull request gate launches
+- **WHEN** the checked-out repository has full history and the fixed checker path is valid
+- **THEN** the action SHALL pass the pull request base SHA to the checker
+- **THEN** every OpenSpec command and negative self-test SHALL use the action-local executable
 
-#### Scenario: Repository-local executable is absent or wrong
-- **WHEN** the locked executable is missing or does not report exactly 1.6.0
+#### Scenario: Consumer prerequisite is invalid
+- **WHEN** the event payload, comparison SHA, Python version, Git executable, workspace, or fixed checker path is absent or malformed
 - **THEN** validation SHALL stop before accepting governance evidence
 
 ### Requirement: Local and CI gates share checker controls
-Optional local Nix invocation and npm-provisioned CI invocation SHALL execute the same dependency-free `scripts/check_openspec.py`. CI MAY provide an event-specific base SHA; local invocation SHALL default to `origin/main`. Both paths SHALL support explicit pre-archive mode and default merge-bound mode.
+Optional local Nix invocation and central-action CI invocation SHALL execute the same dependency-free `scripts/check_openspec.py`. CI SHALL use its event-specific base SHA; local invocation SHALL default to `origin/main`. Both paths SHALL execute completion, self-test, archive-state, branch-scope, symlink, task, and synchronization controls, and the checker SHALL independently enforce OpenSpec 1.6.0.
 
-#### Scenario: Pull request gate runs
-- **WHEN** GitHub Actions validates a pull request
-- **THEN** it SHALL pass the pull request base SHA
-- **THEN** the same completion, self-test, archive-state, branch-scope, symlink, task, and synchronization controls used locally SHALL run
+#### Scenario: Equivalent merge-bound evidence is evaluated
+- **WHEN** the local gate and CI gate validate the same repository state and comparison commit
+- **THEN** both SHALL apply the same Nautilus-owned governance checks
+- **THEN** provisioning differences SHALL NOT change acceptance semantics
 
-### Requirement: OpenSpec-specific Node and npm scope remains isolated
-Node and npm added for OpenSpec SHALL be confined to the governance job and `ci/package.json` plus `ci/package-lock.json`. Nautilus's Chelis build, tests, parity environment, runtime package, and repository-wide development tooling SHALL NOT acquire a Node dependency from this change.
+### Requirement: Shared mechanics do not move Nautilus authority
+Nautilus SHALL retain workflow triggers, checkout depth, job dependencies, permissions, `scripts/check_openspec.py`, lifecycle artifacts, compiler pins, numerical gates, parity evidence, and downstream contracts. The central action SHALL own only OpenSpec CI provisioning and bounded launch mechanics.
 
 #### Scenario: Workflow and repository are inspected
 - **WHEN** the governance integration is reviewed
-- **THEN** Node setup and npm installation SHALL occur only before the OpenSpec gate
-- **THEN** numerical and parity jobs SHALL remain unchanged
+- **THEN** Nautilus SHALL contain one immutable action pointer instead of Node/npm implementation steps
+- **THEN** numerical, parity, compiler, and credential behavior SHALL remain unchanged
 
-### Requirement: npm installation is integrity checked and script free
-CI SHALL use the committed lockfile's integrity metadata and SHALL disable package lifecycle scripts during OpenSpec installation. Cache use MAY improve performance but SHALL NOT replace lock or version verification.
+### Requirement: Hosted consumer evidence gates pointer acceptance
+The central action's deterministic and hosted self-tests SHALL pass on commit `8b240a2d0ea55f161e69b44b2ee42733ee197230`, and Nautilus's complete hosted suite SHALL pass through that exact pointer before the migration is accepted. The prior local npm implementation SHALL remain available in Git history for rollback.
 
-#### Scenario: npm cache supplies package content
-- **WHEN** cached content is available
-- **THEN** npm SHALL still enforce the committed lock and integrity metadata
-- **THEN** the checker SHALL still enforce OpenSpec 1.6.0
+#### Scenario: Nautilus pointer is reviewed
+- **WHEN** PR CI runs with the central action pointer
+- **THEN** private cross-repository access and repository-specific governance SHALL be proven by the hosted run
+- **THEN** a green local simulation alone SHALL NOT satisfy acceptance
 
-#### Scenario: A dependency declares an install script
-- **WHEN** `npm ci` processes the locked graph
-- **THEN** `--ignore-scripts` SHALL prevent the script from executing
-- **THEN** the published OpenSpec CLI SHALL remain runnable from its included distribution
+#### Scenario: Pointer migration fails
+- **WHEN** private access or any required Nautilus job fails because of the central pointer
+- **THEN** the PR SHALL restore the prior local provisioning or select a separately reviewed known-good central SHA
+- **THEN** rollback SHALL NOT change OpenSpec policy, numerical behavior, compiler pins, permissions, or credentials

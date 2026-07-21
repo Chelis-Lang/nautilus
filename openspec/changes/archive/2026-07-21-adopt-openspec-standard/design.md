@@ -2,7 +2,7 @@
 
 Nautilus already has an owning phase specification, public-surface documentation, strict shell-conformance rules, negative tests, blocked probes, reviewed SciPy parity goldens, and executable CI gates. Those artifacts remain authoritative for numerical correctness, but they do not provide one uniform lifecycle for proposing a change, reviewing normative scenarios, sequencing implementation, and retiring superseded intent.
 
-OpenSpec 1.6.0 provides that lifecycle. A scoped Nix flake can lock optional local OpenSpec tooling from `numtide/llm-agents.nix`, while CI can install the official `@fission-ai/openspec` package through a repository-scoped npm lock. Both paths leave Nautilus's existing Chelis and parity environments unchanged.
+OpenSpec 1.6.0 provides that lifecycle. A scoped Nix flake can lock optional local OpenSpec tooling from `numtide/llm-agents.nix`, while CI can pin the reviewed private `Chelis-Lang/ci/actions/openspec-governance` action for exact npm provisioning and bounded launch mechanics. Both paths execute Nautilus's own checker and leave its Chelis and parity environments unchanged.
 
 ## Goals / Non-Goals
 
@@ -12,7 +12,7 @@ OpenSpec 1.6.0 provides that lifecycle. A scoped Nix flake can lock optional loc
 - Preserve numerical domain, tolerance, stability, AD, parity, compiler-pin, and downstream compatibility boundaries.
 - Keep each branch to one coherent governed outcome without making branch names compliance evidence.
 - Make implementation evidence, task completion, baseline synchronization, and lifecycle closure explicit.
-- Expose one governance checker using OpenSpec 1.6.0 through lock-backed optional local Nix tooling and lock-backed npm provisioning in CI.
+- Expose one Nautilus-owned governance checker using OpenSpec 1.6.0 through lock-backed optional local Nix tooling and an immutable central CI action pointer.
 - Close the pre-sync, symlink-mutation, and mixed-line-ending task bypasses identified during the Beacon prototype review.
 
 **Non-Goals:**
@@ -58,15 +58,15 @@ All files and directories under `openspec/` must be non-symlink repository artif
 
 Task parsing splits on LF without normalizing bytes, mirrors OpenSpec's ECMAScript whitespace and case-insensitive completion mark, accepts Nautilus's stricter indented lists, strips only a trailing CR from each LF-delimited line, and requires a non-whitespace description. This catches incomplete CRLF tasks in otherwise LF files.
 
-### 7. Pin optional local tooling and CI provisioning separately
+### 7. Pin optional local tooling and central CI mechanics separately
 
 `ci/flake.nix` exposes optional `openspec` and `openspec-gate` apps on supported Linux and macOS systems. `ci/flake.lock` transitively pins `numtide/llm-agents.nix` revision `5cefe9e186d79d89abd38b3a225d8eb3b6d64ae3`, whose package reports OpenSpec 1.6.0. The flake launcher injects absolute Nix-store Python, Git, and OpenSpec executables for developers who choose Nix.
 
-GitHub Actions does not install or invoke Nix for OpenSpec. `ci/package.json` pins `@fission-ai/openspec` exactly at 1.6.0, and `ci/package-lock.json` locks the complete npm dependency graph with registry integrity hashes. CI pins `actions/setup-node` to an immutable revision and Node 22.17.0, runs `npm ci --prefix ci --ignore-scripts`, and passes the repository-local OpenSpec executable to the checker. Installation, version validation, checker execution, or governance validation failure has no ambient-executable fallback.
+GitHub Actions does not install or invoke Nix for OpenSpec and Nautilus does not carry a duplicate npm lock. After full-history checkout, `hard-rule-guard` invokes `Chelis-Lang/ci/actions/openspec-governance@8b240a2d0ea55f161e69b44b2ee42733ee197230`. That reviewed action pins a Node 24-compatible setup action, Node 22.17.0, and exact `@fission-ai/openspec` 1.6.0 lock resolution with scripts disabled. Its bounded launcher derives the event base and invokes only `$GITHUB_WORKSPACE/scripts/check_openspec.py` in self-test merge-bound mode. It accepts no commands, paths, modes, bases, executables, secrets, or permissions from Nautilus and has no Nix or ambient OpenSpec fallback.
 
 ### 8. Share checker behavior across local and CI paths
 
-Developers may run `nix run ./ci#openspec -- <args>` for direct CLI work and `nix run ./ci#openspec-gate` for merge-bound governance. `--pre-archive` is explicit. CI invokes the same `scripts/check_openspec.py` with the npm-locked executable and its event-specific base SHA. Both paths run completion, branch-scope, archive, and negative self-test controls; the checker independently enforces OpenSpec 1.6.0.
+Developers may run `nix run ./ci#openspec -- <args>` for direct CLI work and `nix run ./ci#openspec-gate` for merge-bound governance. `--pre-archive` is explicit. CI invokes the same dependency-free `scripts/check_openspec.py` through the immutable central action with its event-specific base SHA. Both paths run completion, branch-scope, archive, and negative self-test controls; the checker independently enforces OpenSpec 1.6.0. The central action owns only execution mechanics: Nautilus retains lifecycle policy, checker implementation, checkout depth, job ordering, permissions, and all numerical acceptance evidence.
 
 ### 9. Record the shell-scaffolding pilot
 
@@ -77,7 +77,7 @@ Adding `openspec/`, `ci/`, and one governance step is a deliberate Nautilus pilo
 - **Extra ceremony for small work** → Use exact-path maintenance exemptions.
 - **False confidence from valid prose** → Keep executable numerical and conformance gates authoritative.
 - **Optional local Nix latency** → Keep Nix outside the CI critical path and retain its transitive lock.
-- **npm registry or action supply failure** → Commit integrity-checked npm resolution, pin the Node action and runtime, ignore package scripts, and fail without ambient fallback.
+- **Central action access or npm supply failure** → Pin the hosted-green full central SHA, retain local provisioning in Git history for rollback, and fail without ambient fallback.
 - **Shell scaffolding drift** → Record this pilot explicitly and defer sibling adoption to a separately governed decision.
 - **Archive sequencing errors** → Reject baseline edits while lifecycle evidence is active.
 - **Mutable historical evidence** → Reject every symlink under `openspec/`.
@@ -86,8 +86,8 @@ Adding `openspec/`, `ci/`, and one governance step is a deliberate Nautilus pilo
 ## Migration Plan
 
 1. Refresh this existing change on current Nautilus `origin/main` and complete both capability contracts.
-2. Add optional locked Nix apps, CI-only npm locking, and the dependency-free checker with targeted positive and negative controls.
-3. Add the npm-provisioned governance step to the existing guard dependency chain and document the optional local Nix workflow.
+2. Add optional locked Nix apps and the dependency-free checker with targeted positive and negative controls.
+3. Pin the hosted-green central OpenSpec action in the existing guard dependency chain and document the optional local Nix workflow plus exact rollback pointer.
 4. Record the pilot divergence without editing managed agent or skill content.
 5. Run strict OpenSpec validation, focused checker fixtures, workflow tests, conformance audit, diff checks, and a fresh adversarial review.
 6. Run the complete pre-archive gate, synchronize both capabilities once, archive the lifecycle, and rerun merge-bound validation.
