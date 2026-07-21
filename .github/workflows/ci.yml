@@ -54,6 +54,26 @@ jobs:
         with:
           fetch-depth: 0
 
+      # DeterminateSystems/nix-installer-action v20
+      - name: Install pinned Nix for OpenSpec governance
+        uses: DeterminateSystems/nix-installer-action@786fff0690178f1234e4e1fe9b536e94f5433196
+        with:
+          extra-conf: |
+            extra-substituters = https://cache.numtide.com
+            extra-trusted-public-keys = niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
+
+      - name: OpenSpec governance gate
+        run: |
+          set -euo pipefail
+          base_args=()
+          event_before="${{ github.event.before }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_args=(--base "${{ github.event.pull_request.base.sha }}")
+          elif [ -n "$event_before" ] && [ "$event_before" != "0000000000000000000000000000000000000000" ]; then
+            base_args=(--base "$event_before")
+          fi
+          nix run ./ci#openspec-gate -- "${base_args[@]}"
+
       - name: Reject AI-author commits
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
