@@ -3,68 +3,68 @@
 ## Purpose
 TBD - created by archiving change adopt-openspec-standard. Update Purpose after archive.
 ## Requirements
-### Requirement: Scoped CI flake exposes stable OpenSpec apps
-Nautilus SHALL maintain `ci/flake.nix` and `ci/flake.lock` as the repository-scoped entry point for OpenSpec tooling. The flake SHALL expose `openspec` for direct CLI work and `openspec-gate` for complete governance validation on supported Linux and macOS systems.
+### Requirement: Scoped CI flake exposes optional local OpenSpec apps
+Nautilus SHALL maintain `ci/flake.nix` and `ci/flake.lock` as an optional local entry point for OpenSpec tooling. The flake SHALL expose `openspec` for direct CLI work and `openspec-gate` for complete governance validation on supported Linux and macOS systems. GitHub Actions SHALL NOT require Nix to run OpenSpec governance.
 
-#### Scenario: Developer invokes direct OpenSpec
+#### Scenario: Developer invokes direct OpenSpec through Nix
 - **WHEN** a developer runs `nix run ./ci#openspec -- <args>`
 - **THEN** Nix SHALL execute the lock-pinned package
 - **THEN** `--version` SHALL report 1.6.0
 
-#### Scenario: Developer invokes merge-bound governance
+#### Scenario: Developer invokes local governance through Nix
 - **WHEN** a developer runs `nix run ./ci#openspec-gate`
 - **THEN** the app SHALL run merge-bound completion and negative self-tests against `origin/main`
 - **THEN** active lifecycle evidence SHALL be rejected
 
-#### Scenario: Developer invokes pre-archive governance
-- **WHEN** a developer runs `nix run ./ci#openspec-gate -- --pre-archive`
-- **THEN** one complete active lifecycle MAY be validated
-- **THEN** baseline spec changes SHALL still be rejected
+### Requirement: CI provisions OpenSpec through an npm lock
+The CI guard SHALL pin `actions/setup-node` to an immutable commit and Node 22.17.0. `ci/package.json` SHALL select `@fission-ai/openspec` exactly at 1.6.0, and `ci/package-lock.json` SHALL lock its complete dependency graph with registry integrity hashes. CI SHALL install that graph with `npm ci --prefix ci --ignore-scripts`.
 
-### Requirement: CI provisions OpenSpec through pinned Nix inputs
-The CI guard SHALL install Nix through an immutable action revision. `ci/flake.lock` SHALL lock `numtide/llm-agents.nix` at revision `5cefe9e186d79d89abd38b3a225d8eb3b6d64ae3`, and the resulting executable SHALL report OpenSpec 1.6.0.
-
-#### Scenario: Pinned package is available
-- **WHEN** CI runs the governance app
-- **THEN** Nix SHALL build or substitute the package from locked inputs
-- **THEN** the checker SHALL independently verify version 1.6.0
+#### Scenario: Locked package is available
+- **WHEN** CI prepares the governance gate
+- **THEN** npm SHALL install only the dependency graph accepted by the committed lock
+- **THEN** the checker SHALL independently verify OpenSpec 1.6.0
 
 #### Scenario: Provisioning fails
-- **WHEN** installation, evaluation, realization, substitution, launch, or version verification fails
-- **THEN** CI SHALL fail without npm or ambient-executable fallback
+- **WHEN** Node setup, npm installation, lock verification, launch, or version verification fails
+- **THEN** CI SHALL fail without Nix or ambient-executable fallback
 
-### Requirement: Gate app injects immutable store executables
-The `openspec-gate` app SHALL inject exact Nix-store Python, Git, and OpenSpec executable paths before invoking `scripts/check_openspec.py`.
+### Requirement: CI invokes the repository-local OpenSpec executable
+The CI governance step SHALL set `OPENSPEC_BIN` to the executable under `ci/node_modules/.bin/openspec` before invoking `scripts/check_openspec.py`. It SHALL use the runner's existing Python and Git installations rather than obtaining them through Nix.
 
-#### Scenario: Gate launches successfully
-- **WHEN** the app starts
-- **THEN** repository discovery SHALL use the store Git executable
-- **THEN** every OpenSpec command and self-test SHALL use the store OpenSpec executable
+#### Scenario: CI gate launches successfully
+- **WHEN** the governance step starts after `npm ci`
+- **THEN** every OpenSpec command and negative self-test SHALL use the repository-local executable
+- **THEN** the checker SHALL inspect the event-specific comparison base
 
-#### Scenario: OpenSpec version differs
-- **WHEN** the injected executable does not report exactly 1.6.0
-- **THEN** validation SHALL stop before governance checks
+#### Scenario: Repository-local executable is absent or wrong
+- **WHEN** the locked executable is missing or does not report exactly 1.6.0
+- **THEN** validation SHALL stop before accepting governance evidence
 
-### Requirement: Local and CI gates share one command surface
-Repository guidance and GitHub Actions SHALL invoke the default merge-bound `nix run ./ci#openspec-gate`. CI MAY provide an event-specific base SHA; local invocation SHALL default to `origin/main`. The same app SHALL expose explicit `--pre-archive` mode.
+### Requirement: Local and CI gates share checker controls
+Optional local Nix invocation and npm-provisioned CI invocation SHALL execute the same dependency-free `scripts/check_openspec.py`. CI MAY provide an event-specific base SHA; local invocation SHALL default to `origin/main`. Both paths SHALL support explicit pre-archive mode and default merge-bound mode.
 
 #### Scenario: Pull request gate runs
 - **WHEN** GitHub Actions validates a pull request
 - **THEN** it SHALL pass the pull request base SHA
 - **THEN** the same completion, self-test, archive-state, branch-scope, symlink, task, and synchronization controls used locally SHALL run
 
-### Requirement: OpenSpec-specific Node and npm bootstrap is absent
-Nautilus CI SHALL NOT provision Node or invoke npm solely for OpenSpec. The scoped Nix flake SHALL be the supported provisioning path.
+### Requirement: OpenSpec-specific Node and npm scope remains isolated
+Node and npm added for OpenSpec SHALL be confined to the governance job and `ci/package.json` plus `ci/package-lock.json`. Nautilus's Chelis build, tests, parity environment, runtime package, and repository-wide development tooling SHALL NOT acquire a Node dependency from this change.
 
-#### Scenario: Workflow is inspected
-- **WHEN** the governance steps are reviewed
-- **THEN** no OpenSpec-specific Node setup or npm installation SHALL exist
-- **THEN** CI SHALL invoke `ci#openspec-gate`
+#### Scenario: Workflow and repository are inspected
+- **WHEN** the governance integration is reviewed
+- **THEN** Node setup and npm installation SHALL occur only before the OpenSpec gate
+- **THEN** numerical and parity jobs SHALL remain unchanged
 
-### Requirement: Numtide cache trust is explicit
-The Nix installer action SHALL configure `https://cache.numtide.com` and trusted public key `niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=` explicitly. Cache use SHALL NOT replace lock or version checks.
+### Requirement: npm installation is integrity checked and script free
+CI SHALL use the committed lockfile's integrity metadata and SHALL disable package lifecycle scripts during OpenSpec installation. Cache use MAY improve performance but SHALL NOT replace lock or version verification.
 
-#### Scenario: Cached package is substituted
-- **WHEN** Numtide serves the locked package
-- **THEN** Nix SHALL verify the configured key
+#### Scenario: npm cache supplies package content
+- **WHEN** cached content is available
+- **THEN** npm SHALL still enforce the committed lock and integrity metadata
 - **THEN** the checker SHALL still enforce OpenSpec 1.6.0
+
+#### Scenario: A dependency declares an install script
+- **WHEN** `npm ci` processes the locked graph
+- **THEN** `--ignore-scripts` SHALL prevent the script from executing
+- **THEN** the published OpenSpec CLI SHALL remain runnable from its included distribution

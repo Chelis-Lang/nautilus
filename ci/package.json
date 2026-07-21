@@ -1,0 +1,8 @@
+{
+  "name": "nautilus-ci-tools",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "@fission-ai/openspec": "1.6.0"
+  }
+}

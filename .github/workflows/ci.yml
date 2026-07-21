@@ -54,25 +54,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      # DeterminateSystems/nix-installer-action v20
-      - name: Install pinned Nix for OpenSpec governance
-        uses: DeterminateSystems/nix-installer-action@786fff0690178f1234e4e1fe9b536e94f5433196
+      # actions/setup-node v4
+      - name: Set up pinned Node for OpenSpec governance
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          extra-conf: |
-            extra-substituters = https://cache.numtide.com
-            extra-trusted-public-keys = niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
+          node-version: 22.17.0
+          cache: npm
+          cache-dependency-path: ci/package-lock.json
+
+      - name: Install locked OpenSpec CLI
+        run: npm ci --prefix ci --ignore-scripts --no-audit --no-fund
 
       - name: OpenSpec governance gate
+        env:
+          OPENSPEC_BIN: ${{ github.workspace }}/ci/node_modules/.bin/openspec
         run: |
           set -euo pipefail
-          base_args=()
+          base_args=(--base origin/main)
           event_before="${{ github.event.before }}"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base_args=(--base "${{ github.event.pull_request.base.sha }}")
           elif [ -n "$event_before" ] && [ "$event_before" != "0000000000000000000000000000000000000000" ]; then
             base_args=(--base "$event_before")
           fi
-          nix run ./ci#openspec-gate -- "${base_args[@]}"
+          python3 scripts/check_openspec.py --self-test --merge-bound "${base_args[@]}"
 
       - name: Reject AI-author commits
         run: |

@@ -3,14 +3,16 @@
 - [x] 1.1 Refresh the existing adoption branch onto current Nautilus `origin/main` without changing numerical behavior or the Chelis pin.
 - [x] 1.2 Update the proposal and design for Nautilus-specific numerical, AD, parity, conformance, and shell-scaffolding boundaries.
 - [x] 1.3 Add complete delta specifications for `spec-driven-change-governance` and `nix-openspec-tooling`.
-- [x] 1.4 Run strict OpenSpec validation and confirm every apply-required artifact reports complete before implementation.
+- [x] 1.4 Revalidate the revised npm-provisioned CI design strictly and confirm every apply-required artifact reports complete.
 
 ## 2. Locked Tooling
 
-- [x] 2.1 Add a scoped `ci/flake.nix` and transitive lock exposing `openspec` and `openspec-gate` on supported systems.
-- [x] 2.2 Add a shell-free launcher that injects Nix-store Python, Git, and OpenSpec executables and defaults to merge-bound self-testing against `origin/main`.
-- [x] 2.3 Verify the direct app reports OpenSpec 1.6.0 and that missing or wrong-version executables fail closed.
-- [x] 2.4 Configure the pinned Determinate Nix installer and exact Numtide cache trust without adding Node/npm bootstrap.
+- [x] 2.1 Add a scoped `ci/flake.nix` and transitive lock exposing optional local `openspec` and `openspec-gate` apps on supported systems.
+- [x] 2.2 Add a shell-free local launcher that injects Nix-store Python, Git, and OpenSpec executables and defaults to merge-bound self-testing against `origin/main`.
+- [x] 2.3 Verify the optional local app reports OpenSpec 1.6.0 and that missing or wrong-version executables fail closed.
+- [x] 2.4 Add scoped `ci/package.json` and `ci/package-lock.json` files pinning `@fission-ai/openspec` 1.6.0 and its integrity-checked transitive graph.
+- [x] 2.5 Replace CI's Nix installer and cache configuration with immutable Node setup plus `npm ci --prefix ci --ignore-scripts`.
+- [x] 2.6 Invoke the checker with the repository-local npm executable and prove no Nix or ambient OpenSpec fallback is used in CI.
 
 ## 3. Governance Checker
 
@@ -26,21 +28,21 @@
 - [x] 4.1 Add an unmanaged `OpenSpec Change Governance` section to `AGENTS.md` without editing Chelis-managed blocks.
 - [x] 4.2 Record the OpenSpec pilot as a deliberate shell-local scaffolding divergence with a later-cascade decision boundary.
 - [x] 4.3 Document significant-change classification, exact maintenance exemptions, apply readiness, numerical evidence authority, emergency handling, and controlled archive sequencing.
-- [x] 4.4 Add the locked governance app to the existing `hard-rule-guard` after full-history checkout and before numerical jobs.
+- [x] 4.4 Run the npm-provisioned governance checker in the existing `hard-rule-guard` after full-history checkout and before numerical jobs.
 - [x] 4.5 Preserve existing pin, conformance, oracle-isolation, Chelis-native test, blocked-probe, and SciPy parity gates unchanged.
 
 ## 5. Acceptance
 
 - [x] 5.1 Run the complete checker positive/negative self-test in active mode against `origin/main` before enabling task-complete pre-archive enforcement.
-- [x] 5.2 Run `nix flake check ./ci --all-systems` and verify both app surfaces evaluate.
-- [x] 5.3 Run Nautilus Python automation tests, workflow pin checks, oracle isolation, and action workflow linting.
+- [x] 5.2 Run `nix flake check ./ci --all-systems` and verify the optional local app surfaces evaluate.
+- [x] 5.3 Run the npm-locked CI command, Nautilus Python automation tests, workflow pin checks, oracle isolation, and action workflow linting.
 - [x] 5.4 Run `chelis reef conform audit --explain` and verify the managed agent/skill surfaces remain untouched.
 - [x] 5.5 Run `git diff --check` and inspect the final scope against the two capability contracts.
-- [x] 5.6 Perform a fresh adversarial review of governance bypasses, Nix provenance, CI dependency ordering, and Nautilus-specific authority boundaries; resolve valid findings.
+- [x] 5.6 Perform a fresh adversarial review of governance bypasses, npm provenance, CI dependency ordering, and Nautilus-specific authority boundaries; resolve valid findings.
 
 ## 6. Archive Readiness
 
 - [x] 6.1 Verify every implementation and acceptance task above is checked only after its command, diff, test, or review evidence has been observed.
 - [x] 6.2 Confirm the archive handoff will synchronize both capability deltas exactly once, retain the archived lifecycle, and leave zero active changes.
 
-After every task is complete, the controlled closeout workflow MUST run the locked pre-archive gate, synchronize and archive once, rerun merge-bound governance, and only then request fresh approval for the final archive commit.
+After every task is complete, the controlled closeout workflow MUST run the locked pre-archive gate through an available local OpenSpec 1.6.0 executable, synchronize and archive once, rerun merge-bound governance through the npm-locked CI path, and only then request fresh approval for the final archive commit.
