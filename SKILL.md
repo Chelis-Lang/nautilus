@@ -977,7 +977,7 @@ Both take `f32 -> f32 -> f32` drift and diffusion functions. Noise tensor length
 Levenberg-Marquardt for single-parameter curve fitting. `model(x, theta) -> y` and `dmodel(x, theta) -> dy/dtheta`.
 
 `lm_scalar_nparam(model, x, y, theta0, tol, max_iters)`.
-Levenberg-Marquardt for multi-parameter curve fitting. `model` is curried: `model(theta)(x_data)` predicts the m-vector of y values. Uses a finite-difference Jacobian (eps=1e-5) while the exact generic and backend AD paths remain blocked by `docs/issue_drafts/grad_generic_vector_model_dims.md` and `docs/issue_drafts/grad_vector_model_wrapper_backward_dag.md`. The `tol` parameter is accepted for API compatibility but convergence runs for exactly `max_iters` iterations. Damping lambda is fixed at 0.01.
+Levenberg-Marquardt for multi-parameter curve fitting. `model` is curried: `model(theta)(x_data)` predicts the m-vector of y values. Uses a finite-difference Jacobian (eps=1e-5) while the exact generic and backend AD paths remain blocked by `chelis#847` and `chelis#676`. The `tol` parameter is accepted for API compatibility but convergence runs for exactly `max_iters` iterations. Damping lambda is fixed at 0.01.
 
 ### Nautilus.Signal
 Six typed transform/filter stubs return NaN; `fftfreq` is functional. The dated deferral is `spec/phase3j.md` § Explicit Deferrals (accepted 2026-07-14) and remains gated on Phase 5f complex-number support.
@@ -1011,7 +1011,7 @@ Six typed transform/filter stubs return NaN; `fftfreq` is functional. The dated 
 
 - Tensor arguments follow Chelis linear-use discipline. Use `copy(t)` when a tensor is consumed more than once.
 
-- `lm_scalar_nparam` runs for exactly `max_iters` iterations — the `tol` parameter is accepted for API compatibility but does not trigger early exit. Damping `lambda` is fixed at `0.01`. For well-scaled problems with `theta0` near the optimum, 50–200 iterations converge. The finite-difference Jacobian is the cited temporary narrowing in `docs/issue_drafts/grad_generic_vector_model_dims.md` and `docs/issue_drafts/grad_vector_model_wrapper_backward_dag.md`; it uses `eps=1e-5`. If model outputs or parameters are larger than ~100, scale inputs so that the model is O(1) — once a Jacobian column goes to zero in f32 due to ULP cancellation, increasing `max_iters` does not help and the solver stalls permanently; only rescaling the problem escapes this condition.
+- `lm_scalar_nparam` runs for exactly `max_iters` iterations — the `tol` parameter is accepted for API compatibility but does not trigger early exit. Damping `lambda` is fixed at `0.01`. For well-scaled problems with `theta0` near the optimum, 50–200 iterations converge. The finite-difference Jacobian is the cited temporary narrowing in `chelis#847` and `chelis#676`; it uses `eps=1e-5`. If model outputs or parameters are larger than ~100, scale inputs so that the model is O(1) — once a Jacobian column goes to zero in f32 due to ULP cancellation, increasing `max_iters` does not help and the solver stalls permanently; only rescaling the problem escapes this condition.
 
 - `lu_solve` requires every leading principal submatrix of `A` to be nonsingular. A well-conditioned matrix that needs one row swap (e.g., `[[0,1],[1,0]]`) will divide by zero and return NaN. Matrices that are SPD or strictly diagonally dominant are safe. If in doubt, use `cg_solve` for SPD systems.
 
@@ -1256,7 +1256,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
 | `lm_scalar_1param` | `[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs: tensor[n, f32], ys: tensor[n, f32], theta0: f32, lambda0: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Levenberg-Marquardt for single-parameter models; `model(x, theta)` and `dmodel(x, theta)` are function-typed |
-| `lm_scalar_nparam` | `[n, m](model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32], x: tensor[m, f32], y: tensor[m, f32], theta0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32]` | `alpha` | Multi-parameter LM via finite-difference Jacobian (eps=1e-5); `tol` accepted but unused (runs full `max_iters`); lambda fixed at 0.01; AD replacement pinned by `docs/issue_drafts/grad_generic_vector_model_dims.md` and `docs/issue_drafts/grad_vector_model_wrapper_backward_dag.md` |
+| `lm_scalar_nparam` | `[n, m](model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32], x: tensor[m, f32], y: tensor[m, f32], theta0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32]` | `alpha` | Multi-parameter LM via finite-difference Jacobian (eps=1e-5); `tol` accepted but unused (runs full `max_iters`); lambda fixed at 0.01; AD replacement pinned by `chelis#847` and `chelis#676` |
 
 ### Nautilus.Signal (7 exports -- 6 stubs + `fftfreq`)
 

@@ -1,8 +1,8 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the validated `chelis 0.16.1` toolchain
-(Nautilus `0.7.34`).
+repository state on the validated `chelis 0.17.1` toolchain
+(Nautilus `0.7.35`).
 
 ## Scope
 
@@ -121,7 +121,7 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to `chelis 0.16.1` exactly via `reef.toml`. Historical
+Nautilus is pinned to `chelis 0.17.1` exactly via `reef.toml`. Historical
 compiler/runtime bugs discovered during Nautilus P0-P3 and current narrowed
 limitations are documented in `docs/UPSTREAM_BUGS.md`.
 
@@ -187,10 +187,10 @@ On upstream releases through `v0.1.21`:
 - Nautilus is `f32` only. Precision is generally in the 6-7 significant
   digit range.
 - `lm_scalar_nparam` uses a finite-difference Jacobian (`eps=1e-5`) while
-  `docs/issue_drafts/grad_generic_vector_model_dims.md` and
-  `docs/issue_drafts/grad_vector_model_wrapper_backward_dag.md` block the
-  exact AD replacement. Scale parameters and outputs to O(1) to avoid f32
-  cancellation in finite-difference columns.
+  `chelis#847` (generic wrapper collapses `n` and `m`) and `chelis#676`
+  (concrete backward-DAG witness) block the exact AD replacement. Scale
+  parameters and outputs to O(1) to avoid f32 cancellation in
+  finite-difference columns.
 - `lu_solve`, `qr_decompose`, `svd_n`, and `eig_n` are `alpha` stability and
   square-only.  `lu_solve` requires non-zero leading principal submatrices (no
   partial pivoting).  `svd_n` and `eig_n` use a fixed 30n classical Jacobi

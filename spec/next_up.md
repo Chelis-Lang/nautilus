@@ -10,9 +10,9 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Status snapshot (2026-07-14, `chelis 0.16.1`).**
+**Status snapshot (2026-07-23, `chelis 0.17.1`).**
 
-- Current pin is `chelis 0.16.1` (Nautilus `0.7.34`). The current acceptance
+- Current pin is `chelis 0.17.1` (Nautilus `0.7.35`). The current acceptance
   gate passes 463 native tests in parallel and serial modes, 3 negative
   contracts, 2 expected-failure blocker probes, and 216/216 reviewed scipy
   parity samples.
@@ -208,15 +208,14 @@ lambda is fixed at `0.01`.
 **Current 0.16.1 blocker chain, re-probed 2026-07-14:**
 
 1. The exact generic wrapper collapses independently declared `n` and `m` at
-   check time. Citation and reproducer:
-   `docs/issue_drafts/grad_generic_vector_model_dims.md` and
+   check time. Citation and reproducer: `chelis#847` and
    `tests_blocked/curvefit/lm_jacobian_generic_dims.ch`.
 2. With dimensions concretized to `n=2`, `m=6`, the same arbitrary-model
    wrapper checks at score 1 but eval and C build reject its malformed backward
    DAG (`mismatched dimension count: 0 vs 1`). Citation and reproducer:
-   `docs/issue_drafts/grad_vector_model_wrapper_backward_dag.md` and
-   `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`; this is the same
-   verifier class as chelis#676 pending upstream scope confirmation.
+   `chelis#676` and `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`; the
+   function-valued-model capture is filed there as a witness of the same
+   backward-DAG verifier class.
 
 A capture-free direct multi-argument tensor objective is the positive control:
 it checks, evaluates to the correct gradient, C-builds, and compiles. The
