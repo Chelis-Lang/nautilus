@@ -21,13 +21,12 @@ Verdicts are fail-closed:
 
 | Probe | Current blocker | Re-probe trigger |
 |---|---|---|
-| `curvefit/lm_jacobian_generic_dims.ch` | Generic vector-model grad wrapper collapses rigid `n` and `m`; `docs/issue_drafts/grad_generic_vector_model_dims.md` | Every pin bump and the release carrying its upstream resolution |
-| `curvefit/lm_jacobian_model_wrapper.ch` | Concrete arbitrary-model wrapper emits a malformed backward DAG; draft path, same class as `chelis#676` pending scope confirmation | Every pin bump and the release resolving the filed/deduplicated issue |
+| `curvefit/lm_jacobian_generic_dims.ch` | Generic vector-model grad wrapper collapses rigid `n` and `m`; `chelis#847` | Every pin bump and the release carrying its upstream resolution |
+| `curvefit/lm_jacobian_model_wrapper.ch` | Concrete arbitrary-model wrapper emits a malformed backward DAG; `chelis#676` (function-valued-capture witness, same verifier class) | Every pin bump and the release resolving the issue |
 
 ## Manual-only current probe
 
-The unused-Reef-import `eval --file` residue in
-`docs/issue_drafts/eval_unused_reef_import_symbolic_input.md` is CLI-context
+The unused-Reef-import `eval --file` residue (`chelis#848`) is CLI-context
 only and cannot be represented by the `chelis test` expected-failure harness.
 Re-run the exact temporary-file command in `docs/UPSTREAM_BUGS.md` at every pin
 bump. Real imported calls used by parity are positive and must remain green.

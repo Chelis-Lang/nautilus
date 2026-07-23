@@ -21,9 +21,8 @@ BASELINE_EXPR = "add(cast(1, f32), cast(2, f32))"
 BASELINE_FILE = "bench = add(cast(1, f32), cast(2, f32))\n"
 
 # These intentionally evaluate an independent root to isolate import startup.
-# Chelis 0.16.1 rejects that unused-import shape; keep it visible and cited
-# rather than silently changing the measured surface:
-# docs/issue_drafts/eval_unused_reef_import_symbolic_input.md.
+# Chelis 0.16.1 and 0.17.1 reject that unused-import shape; keep it visible and
+# cited rather than silently changing the measured surface: chelis#848.
 IMPORT_SNIPPETS: dict[str, str] = {
     "Nautilus.Special": "import Nautilus.Special (erf)\nbench = cast(0, f32)\n",
     "Nautilus.Distributions": "import Nautilus.Distributions (normal_cdf)\nbench = cast(0, f32)\n",
@@ -229,7 +228,7 @@ def recommended_changes(
         elif "missing required input" in first.detail and "symbolic dimension" in first.detail:
             recs.append(
                 "The historical package-import hang is fixed, but an unused Reef import leaks an unrelated symbolic input into eval. "
-                "Track the exact residue via `docs/issue_drafts/eval_unused_reef_import_symbolic_input.md`; real imported calls used by parity remain green."
+                "Track the exact residue via `chelis#848`; real imported calls used by parity remain green."
             )
         else:
             recs.append(

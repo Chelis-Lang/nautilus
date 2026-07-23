@@ -23,8 +23,8 @@ reproductions, workarounds, and status notes.
 release.
 
 - **Generic vector-model Jacobian wrapper collapses `n` and `m`** —
-  [`docs/issue_drafts/grad_generic_vector_model_dims.md`](issue_drafts/grad_generic_vector_model_dims.md),
-  ready to file after final tracker deduplication.
+  `chelis#847`
+  ([Chelis-Lang/chelis#847](https://github.com/Chelis-Lang/chelis/issues/847)).
     - **Minimal reproducer:** `tests_blocked/curvefit/lm_jacobian_generic_dims.ch`
       defines the exact `lm_scalar_nparam` model type
       `&tensor[n] -> &tensor[m] -> tensor[m]` and differentiates a scalar output
@@ -41,9 +41,10 @@ release.
       this outer checker layer moved; it is not sufficient by itself to remove
       the workaround.
 - **Concrete arbitrary-model wrapper emits a malformed backward DAG** —
-  [`docs/issue_drafts/grad_vector_model_wrapper_backward_dag.md`](issue_drafts/grad_vector_model_wrapper_backward_dag.md).
-  The diagnostic class matches open `chelis#676`; upstream scope confirmation is
-  required before replacing the draft path with that number.
+  `chelis#676`
+  ([Chelis-Lang/chelis#676](https://github.com/Chelis-Lang/chelis/issues/676)).
+  Filed as a function-valued-model-capture witness on `chelis#676` (the same
+  backward-DAG verifier class as that issue's tensor-capture reproducer).
     - **Minimal reproducer:** `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`,
       a concrete `n=2`, `m=6` linear model with expected first Jacobian row
       `[1, 1]`.
@@ -56,16 +57,17 @@ release.
       this layer remains after concretizing away the generic checker failure.
     - **Workaround:** the cited finite-difference Jacobian (`eps=1e-5`), with its
       documented f32 scaling/cancellation limit.
-    - **Re-probe trigger:** every pin bump and the release resolving chelis#676 or
-      the filed residue. On pass, re-run the generic probe and compare full LM
-      recovery trajectories before de-narrowing.
+    - **Re-probe trigger:** every pin bump and the release resolving chelis#676.
+      On pass, re-run the generic probe and compare full LM recovery
+      trajectories before de-narrowing.
 
 ## Tracking
 
 **Re-probe cadence:** at every compiler pin bump.
 
 - **Import-only `eval --file` leaks an unrelated symbolic input** —
-  [`docs/issue_drafts/eval_unused_reef_import_symbolic_input.md`](issue_drafts/eval_unused_reef_import_symbolic_input.md).
+  `chelis#848`
+  ([Chelis-Lang/chelis#848](https://github.com/Chelis-Lang/chelis/issues/848)).
     - **Minimal reproducer:** from the Reef root, evaluate an extensionless file
       containing `import Nautilus.Special (erf)` and an independent
       `bench = cast(0, f32)` via `chelis eval --file <path> bench`.
@@ -91,9 +93,10 @@ release.
 **Re-probe cadence:** at every pin bump and whenever a stated filing condition
 is met.
 
-- **No inactive limitation is parked.** The three ready-to-file drafts are active
-  citations in §Actively blocking / §Tracking above; their filing conditions are
-  indexed in [`docs/issue_drafts/README.md`](issue_drafts/README.md).
+- **No inactive limitation is parked.** The three previously-parked drafts are now
+  filed upstream — `chelis#847` (generic dim collapse), `chelis#676` (concrete
+  backward-DAG witness), and `chelis#848` (import-only eval residue) — and are
+  active citations in §Actively blocking / §Tracking above.
 
 ## Archived
 

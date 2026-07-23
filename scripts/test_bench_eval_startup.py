@@ -40,7 +40,7 @@ class EvalStartupBenchmarkTests(unittest.TestCase):
         )
 
         self.assertTrue(any("historical package-import hang is fixed" in item for item in recommendations))
-        self.assertTrue(any("eval_unused_reef_import_symbolic_input.md" in item for item in recommendations))
+        self.assertTrue(any("chelis#848" in item for item in recommendations))
 
 
 if __name__ == "__main__":

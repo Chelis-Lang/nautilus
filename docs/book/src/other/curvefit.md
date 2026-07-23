@@ -64,10 +64,11 @@ and updates the `n` parameters. The current implementation executes exactly
 The Jacobian currently uses forward differences with `eps=1e-5`. This is a
 cited temporary narrowing: the exact generic and C/eval AD paths remain pinned
 by
-[`grad_generic_vector_model_dims.md`](../../../issue_drafts/grad_generic_vector_model_dims.md)
-and
-[`grad_vector_model_wrapper_backward_dag.md`](../../../issue_drafts/grad_vector_model_wrapper_backward_dag.md).
-The executable reproducers live under `tests_blocked/curvefit/`.
+[`chelis#847`](https://github.com/Chelis-Lang/chelis/issues/847) (generic
+wrapper collapses `n` and `m`) and
+[`chelis#676`](https://github.com/Chelis-Lang/chelis/issues/676) (concrete
+backward-DAG witness). The executable reproducers live under
+`tests_blocked/curvefit/`.
 
 Scale parameters and predictions to roughly O(1). At larger magnitudes an
 `eps=1e-5` perturbation can fall below an f32 ULP, produce a zero Jacobian

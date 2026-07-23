@@ -41,6 +41,6 @@ Skipped. No documented persistent eval/session surface is exposed here.
 
 ## Recommended upstream changes
 
-- The historical package-import hang is fixed, but an unused Reef import leaks an unrelated symbolic input into eval. Track the exact residue via `docs/issue_drafts/eval_unused_reef_import_symbolic_input.md`; real imported calls used by parity remain green.
+- The historical package-import hang is fixed, but an unused Reef import leaks an unrelated symbolic input into eval. Track the exact residue via `chelis#848`; real imported calls used by parity remain green.
 - The file-backed baseline already exceeds the 200 ms target before Nautilus imports are added. Upstream should reduce fixed startup cost first, then revisit package import caching.
 - Warm-cache measurement is still skipped because this CLI does not expose a documented persistent eval/session mode to benchmark.
