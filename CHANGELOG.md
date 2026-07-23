@@ -6,12 +6,45 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.35] - 2026-07-23
+
+Compiler and shell-conformance release for chelis v0.17.1 (the "loud checking"
+release). The compiler pin advanced from `=0.16.1` to `=0.17.1` and the Nautilus
+package version advanced from 0.7.34 to 0.7.35. There are no public Nautilus API
+changes and no Nautilus source migration was required — the whole `src/` tree
+builds and all suites are green at 0.17.1 on first probe.
+
 ### Changed
 
+- Bumped the chelis pin to `=0.17.1` in lockstep across `reef.toml` and the CI,
+  nightly, and release workflow audit mirrors (via `chelis reef conform bump`),
+  restamped the `AGENTS.md` and `docs/CHELIS_SURFACE.md` managed blocks, and
+  re-materialized the vendored skill set against the 0.17.1 toolchain.
+- Restructured `docs/UPSTREAM_BUGS.md` so every live-section entry cites its
+  blocker by `chelis#NNN` or a `docs/issue_drafts/` draft path. 0.17.1's `chelis
+  reef conform audit` now enforces the §4 cite-by-number rule as a MUST
+  (previously the prose-name `###` headings audited green); the old
+  heading-plus-detail-bullets shape counted each bullet as an uncited entry.
+- Re-probed the upstream blockers at 0.17.1: both `tests_blocked/curvefit`
+  probes still fail with their pinned diagnostics (`chelis test tests_blocked/
+  --expect blocked` → 2 ok) and the import-only `eval --file` residue still
+  reproduces (`missing required input 'a' for symbolic dimension 'k'`). Refreshed
+  the documented `eval` values for 0.17.1's dtype-faithful output — f32 reads now
+  print at f32 precision (e.g. `erf(1)` → `0.8427007`, was `0.842700719833374`);
+  the strict parity tolerances already absorb the change.
 - Made `reef.toml` the runtime source of truth for CI toolchain and registry
-  installation. The shared installer now resolves and verifies the exact
-  compiler pin itself; workflow pin variables remain audit-only mirrors as
-  required by the shell contract.
+  installation. The shared installer resolves and verifies the exact compiler
+  pin itself; workflow pin variables remain audit-only mirrors as required by
+  the shell contract.
+
+### Validated
+
+- `chelis reef build` clean (`dist/nautilus-0.7.35.{chb,tar.zst}`);
+  `chelis test tests/` 463/463 native; `chelis test tests_blocked/ --expect
+  blocked` 2/2 still-blocked; `chelis test tests_neg/ --expect neg` 3/3;
+  `parity/run_parity.py --strict` 216/216 SciPy samples; `chelis reef conform
+  audit` and `conform bump-check --base origin/main` both green; the `scripts/`
+  Python contract suite 21/21.
 
 ## [0.7.34] - 2026-07-15
 
