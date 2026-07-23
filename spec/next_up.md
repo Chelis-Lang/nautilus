@@ -10,9 +10,9 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Status snapshot (2026-07-14, `chelis 0.16.1`).**
+**Status snapshot (2026-07-23, `chelis 0.17.1`).**
 
-- Current pin is `chelis 0.16.1` (Nautilus `0.7.34`). The current acceptance
+- Current pin is `chelis 0.17.1` (Nautilus `0.7.35`). The current acceptance
   gate passes 463 native tests in parallel and serial modes, 3 negative
   contracts, 2 expected-failure blocker probes, and 216/216 reviewed scipy
   parity samples.

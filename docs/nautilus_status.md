@@ -1,8 +1,8 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the validated `chelis 0.16.1` toolchain
-(Nautilus `0.7.34`).
+repository state on the validated `chelis 0.17.1` toolchain
+(Nautilus `0.7.35`).
 
 ## Scope
 
@@ -121,7 +121,7 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to `chelis 0.16.1` exactly via `reef.toml`. Historical
+Nautilus is pinned to `chelis 0.17.1` exactly via `reef.toml`. Historical
 compiler/runtime bugs discovered during Nautilus P0-P3 and current narrowed
 limitations are documented in `docs/UPSTREAM_BUGS.md`.
 

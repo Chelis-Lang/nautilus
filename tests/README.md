@@ -165,7 +165,7 @@ When you do:
 
 ---
 
-## Runtime constraints (chelis 0.16.1)
+## Runtime constraints (chelis 0.17.1)
 
 The `chelis test` host runtime supports `matmul`, `permute`, and `sum`
 as of chelis v0.2.5. All `Nautilus.LinAlg` exports are testable
