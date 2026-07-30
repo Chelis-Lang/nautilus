@@ -5,7 +5,7 @@ to this file so Claude-style and Codex-style entry points do not drift.
 
 ## Repo Identity
 
-<!-- BEGIN CHELIS MANAGED BLOCK: agents-inheritance chelis@0.17.1 (sha256:758a5eb9aefb5c7e) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: agents-inheritance chelis@0.17.3 (sha256:758a5eb9aefb5c7e) -->
 This repository is a downstream **shell** of the Chelis compiler. Its upstream
 of truth is `Chelis-Lang/chelis`: the monorepo `AGENTS.md` applies verbatim
 (machine-local environment sections excepted), and
@@ -33,7 +33,8 @@ only through a `chelis reef conform bump` PR (never a direct edit to `main`).
   Chelis release by default. Treat stale pins as drift, not as a reason
   to stay on an older compiler.
 - `reef.toml` should pin the currently validated release exactly. As of
-  this repo state, that is `chelis 0.17.1`.
+  this repo state, that is the `chelis 0.17.3` release candidate pending
+  publication of the matching upstream assets.
 - If the latest published Chelis release fails Nautilus validation,
   document the blocker clearly and pin the newest known-good release
   until the blocker is resolved.
@@ -106,14 +107,14 @@ local_skills`, and shared-skill overrides use the sanctioned trailing
 
 Upstream bugs are tracked in
 [`docs/UPSTREAM_BUGS.md`](docs/UPSTREAM_BUGS.md). The original v0.1.x
-compiler/runtime blockers are archived. Chelis 0.16.1 re-probes narrowed the
-current multi-parameter LM limitation to two live layers: generic `n`/`m`
-dimension collapse and malformed backward-DAG lowering for the arbitrary
-vector-model wrapper. Both are pinned under `tests_blocked/curvefit/` and cite
-ready-to-file drafts pending upstream deduplication. Real package-aware
-`eval --file` calls used by parity now pass; the import-only startup benchmark
-retains a separately documented symbolic-input residue. See the operational
-status sections in `docs/UPSTREAM_BUGS.md` for reproducers and triggers.
+compiler/runtime blockers are archived. Chelis 0.17.2 resolves the generic
+`n`/`m` checker collapse (chelis#847); both generic and concrete arbitrary
+vector-model Jacobian reproducers now reach the one remaining malformed
+backward-DAG layer (chelis#676), pinned under `tests_blocked/curvefit/`. Real
+package-aware `eval --file` calls used by parity pass; the import-only startup
+benchmark retains a separately documented symbolic-input residue. See the
+operational status sections in `docs/UPSTREAM_BUGS.md` for reproducers and
+triggers.
 
 ## Authorship Policy
 

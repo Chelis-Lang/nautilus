@@ -5,12 +5,17 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
-> **Current pin: `chelis 0.17.1`.** The two active-blocker probes, the manual
-> `eval --file` residue, and the linearity/copy controls were re-run at 0.17.1
-> on 2026-07-23: both blocked curvefit probes still fail with their pinned
-> diagnostics (`chelis test tests_blocked/ --expect blocked` → 2 ok) and the
+> **Current candidate pin: `chelis 0.17.3`.** The two CurveFit wrapper shapes,
+> the manual `eval --file` residue, and the linearity/copy controls were re-run
+> with the exact local 0.17.3 release candidate
+> on 2026-07-30. The former generic `n`/`m` checker collapse (chelis#847) is
+> fixed: the generic wrapper now reaches the same malformed backward-DAG
+> verifier layer as the concrete wrapper (chelis#676), so both blocked probes
+> are pinned to `mismatched dimension count: 0 vs 1`
+> (`chelis test tests_blocked/ --expect blocked` → 2 ok). The
 > import-only residue still reproduces (`missing required input 'a' for symbolic
-> dimension 'k'`, rc=1, not a hang). 0.17.1 also makes `chelis eval` output
+> dimension 'k'`, rc=1, not a hang), while a real `Special.erf(1)` import
+> remains green at `0.8427007`. Chelis 0.17.1 made `chelis eval` output
 > dtype-faithful, so f32 reads now print at f32 precision (e.g. `erf(1)` →
 > `0.8427007`, previously `0.842700719833374`); the strict parity tolerances
 > already absorb this (216/216). Prior 0.16.1 per-verb evidence is in the
@@ -22,24 +27,6 @@ reproductions, workarounds, and status notes.
 **Re-probe cadence:** at every compiler pin bump and before every Nautilus
 release.
 
-- **Generic vector-model Jacobian wrapper collapses `n` and `m`** —
-  `chelis#847`
-  ([Chelis-Lang/chelis#847](https://github.com/Chelis-Lang/chelis/issues/847)).
-    - **Minimal reproducer:** `tests_blocked/curvefit/lm_jacobian_generic_dims.ch`
-      defines the exact `lm_scalar_nparam` model type
-      `&tensor[n] -> &tensor[m] -> tensor[m]` and differentiates a scalar output
-      projection with respect to `theta[n]`.
-    - **0.17.1 result:** `chelis check` fails before lowering with
-      `distinct declared dim parameters ... were unified`; the blocked runner
-      still pins this first failure at 0.17.1. A capture-free generic direct
-      objective is a green control, so generic tensor grad itself works.
-    - **Affected Nautilus surface:** the permanent AD Jacobian implementation for
-      `Nautilus.CurveFit.lm_scalar_nparam`.
-    - **Workaround:** retain the finite-difference columns in `src/curvefit.ch`.
-    - **Re-probe trigger:** every pin bump and the release resolving the filed or
-      deduplicated issue. A diagnostic drift to backward-DAG verification means
-      this outer checker layer moved; it is not sufficient by itself to remove
-      the workaround.
 - **Concrete arbitrary-model wrapper emits a malformed backward DAG** —
   `chelis#676`
   ([Chelis-Lang/chelis#676](https://github.com/Chelis-Lang/chelis/issues/676)).
@@ -48,11 +35,14 @@ release.
     - **Minimal reproducer:** `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`,
       a concrete `n=2`, `m=6` linear model with expected first Jacobian row
       `[1, 1]`.
-    - **0.17.1 result per surface:** `chelis check` passes at score 1;
-      `chelis eval --file` and `chelis build --target c` both fail while verifying
-      the backward DAG with `mismatched dimension count: 0 vs 1`; the blocked
-      runner still reproduces the same class at 0.17.1. A direct capture-free
-      tensor objective evaluates, C-builds, and compiles correctly.
+    - **0.17.3 candidate result per surface:** both
+      `tests_blocked/curvefit/lm_jacobian_generic_dims.ch` and the concrete
+      wrapper fail while verifying the backward DAG with
+      `mismatched dimension count: 0 vs 1`; the blocked runner pins both
+      shapes to this one live class. This is real progress: the generic shape
+      formerly stopped at chelis#847's outer checker error. A direct
+      capture-free tensor objective evaluates, C-builds, and compiles
+      correctly.
     - **Affected Nautilus surface:** same AD replacement for `lm_scalar_nparam`;
       this layer remains after concretizing away the generic checker failure.
     - **Workaround:** the cited finite-difference Jacobian (`eps=1e-5`), with its
@@ -71,14 +61,15 @@ release.
     - **Minimal reproducer:** from the Reef root, evaluate an extensionless file
       containing `import Nautilus.Special (erf)` and an independent
       `bench = cast(0, f32)` via `chelis eval --file <path> bench`.
-    - **0.17.1 result:** the import-only case still fails after compilation with
-      `missing required input 'a' for symbolic dimension 'k'` (re-probed
-      2026-07-23, rc=1, not a hang). Real imported calls used by parity pass —
-      `Special.erf(1)` returns `0.8427007` (0.17.1 dtype-faithful f32; was
+    - **0.17.3 candidate result:** all 15 import-only shapes still fail after
+      compilation with `missing required input 'a' for symbolic dimension 'k'`
+      (re-probed 2026-07-30, rc=1, not a hang). Real imported calls used by
+      strict parity pass —
+      `Special.erf(1)` returns `0.8427007` (dtype-faithful f32; was
       `0.842700719833374` at 0.16.1) and `Distributions.normal_cdf(0,0,1)`
       returns `0.5` through `src/probe.ch`. The prior 0.16.1 sweep timed the
       no-import baseline at about 23 seconds and failed all 14 per-module
-      import-only cases; the failure class is unchanged at 0.17.1.
+      import-only cases; the failure class is unchanged at 0.17.3.
     - **Affected Nautilus surface:** `scripts/bench_eval_startup.py` cannot measure
       pure import startup; strict numerical parity is not blocked.
     - **Workaround:** keep the import-only failure visible, use a 60-second probe
@@ -93,15 +84,29 @@ release.
 **Re-probe cadence:** at every pin bump and whenever a stated filing condition
 is met.
 
-- **No inactive limitation is parked.** The three previously-parked drafts are now
-  filed upstream — `chelis#847` (generic dim collapse), `chelis#676` (concrete
-  backward-DAG witness), and `chelis#848` (import-only eval residue) — and are
-  active citations in §Actively blocking / §Tracking above.
+- **No inactive limitation is parked.** The remaining filed issues are
+  chelis#676 (backward-DAG wrapper shapes) and chelis#848 (import-only eval
+  residue); chelis#847's downstream symptom is archived below.
 
 ## Archived
 
 **Re-probe cadence:** no routine re-probe; revisit only when a regression is
 reported or a current narrowing still cites the old behavior.
+
+### chelis#847 — generic vector-model wrapper no longer collapses `n` and `m`
+
+- **Resolution at 0.17.2:** the exact generic
+  `&tensor[n] -> &tensor[m] -> tensor[m]` Jacobian wrapper no longer stops at
+  `distinct declared dim parameters ... were unified`; it progresses into AD
+  lowering.
+- **Remaining residue:** the same wrapper now reaches chelis#676's malformed
+  backward-DAG verifier failure, identical to the concrete `n=2`, `m=6`
+  wrapper. The finite-difference Jacobian therefore remains, cited only to
+  chelis#676.
+- **Regression coverage:** `lm_jacobian_generic_dims.ch` stays in
+  `tests_blocked/curvefit/` as a second shape for chelis#676. Its expected
+  diagnostic is the backward-DAG mismatch, so a return of the checker collapse
+  is a loud DRIFTED failure.
 
 ### `redundant-linearity-call` no longer flags required `copy()`
 

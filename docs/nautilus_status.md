@@ -1,8 +1,8 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the validated `chelis 0.17.1` toolchain
-(Nautilus `0.7.35`).
+repository state on the `chelis 0.17.3` release candidate
+(Nautilus `0.7.36`).
 
 ## Scope
 
@@ -121,7 +121,9 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to `chelis 0.17.1` exactly via `reef.toml`. Historical
+Nautilus is pinned to the `chelis 0.17.3` candidate exactly via `reef.toml`.
+Official release acceptance remains pending publication of the upstream
+v0.17.3 assets. Historical
 compiler/runtime bugs discovered during Nautilus P0-P3 and current narrowed
 limitations are documented in `docs/UPSTREAM_BUGS.md`.
 
@@ -129,12 +131,13 @@ For the pinned toolchain:
 
 - The shipped finite-difference `lm_scalar_nparam` surface remains
   runtime-verified. The positive native gate is `463 / 463`, strict parity is
-  `216 / 216`, and two current AD replacement blockers are executable under
-  `tests_blocked/curvefit/`.
+  `216 / 216`, and two shapes of the current AD replacement blocker are
+  executable under `tests_blocked/curvefit/`.
 - Tensor-wrt and capture-free multi-argument grad now evaluate and C-build.
-  The exact permanent Jacobian path remains blocked at two narrower layers:
-  generic `n`/`m` dimension collapse and malformed backward-DAG lowering for
-  an arbitrary vector-model wrapper. Both cite ready-to-file issue drafts.
+  Chelis 0.17.3 retains the fix for the former generic `n`/`m` checker collapse
+  (chelis#847). The exact permanent Jacobian path remains blocked at one
+  malformed backward-DAG layer (chelis#676), reproduced by both generic and
+  concrete arbitrary vector-model wrappers.
 - Package-aware `eval --file` calls used by parity pass. The historical hang is
   fixed; the import-only startup benchmark instead exposes a tracked symbolic-
   input residue and no longer uses a 5-second timeout.
@@ -187,8 +190,8 @@ On upstream releases through `v0.1.21`:
 - Nautilus is `f32` only. Precision is generally in the 6-7 significant
   digit range.
 - `lm_scalar_nparam` uses a finite-difference Jacobian (`eps=1e-5`) while
-  `chelis#847` (generic wrapper collapses `n` and `m`) and `chelis#676`
-  (concrete backward-DAG witness) block the exact AD replacement. Scale
+  `chelis#676` blocks the exact AD replacement for both generic and concrete
+  arbitrary vector-model wrappers. Scale
   parameters and outputs to O(1) to avoid f32 cancellation in
   finite-difference columns.
 - `lu_solve`, `qr_decompose`, `svd_n`, and `eig_n` are `alpha` stability and

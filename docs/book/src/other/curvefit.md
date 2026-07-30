@@ -62,12 +62,11 @@ and updates the `n` parameters. The current implementation executes exactly
 `max_iters`; `tol` is reserved for API compatibility and does not stop early.
 
 The Jacobian currently uses forward differences with `eps=1e-5`. This is a
-cited temporary narrowing: the exact generic and C/eval AD paths remain pinned
-by
-[`chelis#847`](https://github.com/Chelis-Lang/chelis/issues/847) (generic
-wrapper collapses `n` and `m`) and
-[`chelis#676`](https://github.com/Chelis-Lang/chelis/issues/676) (concrete
-backward-DAG witness). The executable reproducers live under
+cited temporary narrowing: at the Chelis 0.17.3 candidate the former generic checker
+collapse (chelis#847) is fixed, but both the generic and concrete arbitrary
+model wrappers reach
+[`chelis#676`](https://github.com/Chelis-Lang/chelis/issues/676)'s malformed
+backward-DAG verifier failure. The executable reproducers live under
 `tests_blocked/curvefit/`.
 
 Scale parameters and predictions to roughly O(1). At larger magnitudes an
@@ -80,5 +79,4 @@ column, and permanently stall the fit.
 - `lm_scalar_1param` requires an analytical derivative and keeps its supplied
   damping factor fixed.
 - `lm_scalar_nparam` keeps lambda fixed at `0.01`, does not yet use `tol` for
-  early exit, and retains finite differences until both cited AD blockers
-  clear.
+  early exit, and retains finite differences until chelis#676 clears.

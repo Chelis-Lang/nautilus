@@ -38,9 +38,9 @@ def lm_scalar_1param[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs:
   n_i = numel(copy(xs))
   if lte(n_i, cast(0, int64)) then cf_nan_f() else lm1_rec(model, dmodel, xs, ys, theta0, lambda0, tol, max_iters)
 }
--- Finite differences remain necessary until both exact AD reproducers clear:
--- chelis#847 (generic wrapper collapses n and m) and
--- chelis#676 (concrete arbitrary-model wrapper backward-DAG witness).
+-- Finite differences remain necessary until chelis#676 clears: at 0.17.3 both
+-- the generic and concrete arbitrary-model wrappers reach its malformed
+-- backward-DAG verifier layer (the former chelis#847 checker collapse is fixed).
 def lm_jcol[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32], x: &tensor[m, f32], theta: &tensor[n, f32], base_pred: &tensor[m, f32], tpl_n: &tensor[n, f32], i: int64, eps: f32) -> tensor[m, f32] = {
   eps_vec = la_basis_n_f32(i, eps, tpl_n)
   theta_plus = la_vec_add(theta, eps_vec)

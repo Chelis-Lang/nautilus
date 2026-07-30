@@ -21,7 +21,7 @@ Verdicts are fail-closed:
 
 | Probe | Current blocker | Re-probe trigger |
 |---|---|---|
-| `curvefit/lm_jacobian_generic_dims.ch` | Generic vector-model grad wrapper collapses rigid `n` and `m`; `chelis#847` | Every pin bump and the release carrying its upstream resolution |
+| `curvefit/lm_jacobian_generic_dims.ch` | Generic vector-model wrapper reaches malformed backward-DAG verification after chelis#847's checker fix; `chelis#676` | Every pin bump and the release resolving chelis#676 |
 | `curvefit/lm_jacobian_model_wrapper.ch` | Concrete arbitrary-model wrapper emits a malformed backward DAG; `chelis#676` (function-valued-capture witness, same verifier class) | Every pin bump and the release resolving the issue |
 
 ## Manual-only current probe
