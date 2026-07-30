@@ -27,9 +27,12 @@ Nautilus-facing capability beyond the re-probed pin surface. Planned Phase 5
 work is not mislabeled as `@upstream`.
 
 This is the Nautilus-scoped view of the
-[canonical Chelis inventory](https://github.com/Chelis-Lang/chelis/blob/v0.17.3/docs/CHELIS_SURFACE.md).
-Version-sensitive statements below also resolve to the numbered specifications
-staged for tag `v0.17.3` and to the executable 0.17.3 candidate probes cited in
+[canonical Chelis inventory at the tagged source commit](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/docs/CHELIS_SURFACE.md).
+That merged/tagged commit has the same source tree as pre-squash commit
+`4dd8dcdbe36319d9525edeaf047302c0e3236a89`, from which the tested candidate
+binary was built. The permanent commit links remain valid while the GitHub
+Release assets are unpublished. Version-sensitive statements also resolve to
+the executable 0.17.3 candidate probes cited in
 [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
 
 ## Capability inventory
@@ -130,14 +133,14 @@ shipped library modules themselves do not import a runtime `Std.*` module.
 
 | Authoritative source | Relevance to this view |
 |---|---|
-| [Canonical capability surface](https://github.com/Chelis-Lang/chelis/blob/v0.17.3/docs/CHELIS_SURFACE.md) | Complete builtin vocabulary, DAG/host lanes, backends, effects, and chelis-std inventory. |
-| [spec/04 — type system](https://github.com/Chelis-Lang/chelis/blob/v0.17.3/spec/04-type-system.md) | Precisions, literals, dimensions, no broadcasting, runtime shapes, effects, and linearity. |
-| [spec/05 — RISC primitives](https://github.com/Chelis-Lang/chelis/blob/v0.17.3/spec/05-risc-primitives.md) | Primitive semantics, movement, reductions, and per-op adjoints. |
-| [spec/06 — transformations](https://github.com/Chelis-Lang/chelis/blob/v0.17.3/spec/06-transformations.md) | `grad` result shape, `wrt`, symbolic adjoints, and tensor/host transform boundaries. |
-| [spec/08 — backends](https://github.com/Chelis-Lang/chelis/blob/v0.17.3/spec/08-backends.md) | C, HIP, and Metal backend scope and rejection rules. |
-| [Rank polymorphism design](https://github.com/Chelis-Lang/chelis/blob/v0.17.3/spec/design/rank_polymorphism.md) | Name-preserving `..r` support and body discipline. |
-| [Implicit linearity design](https://github.com/Chelis-Lang/chelis/blob/v0.17.3/spec/design/implicit_linearity.md) | Inserted copy/drop behavior and preserved hard errors. |
-| [Differentiable-language design](https://github.com/Chelis-Lang/chelis/blob/v0.17.3/spec/design/differentiable_language.md) | Shipped AD slices versus later control/ADT/effect/implicit-diff scope. |
-| [Shell repo contract](https://github.com/Chelis-Lang/chelis/blob/v0.17.3/spec/design/shell_repo_contract.md#3-capability-surface-doc--docschelis_surfacemd-must) | Required downstream `@pin`/`@upstream` inventory contract. |
+| [Canonical capability surface](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/docs/CHELIS_SURFACE.md) | Complete builtin vocabulary, DAG/host lanes, backends, effects, and chelis-std inventory. |
+| [spec/04 — type system](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/spec/04-type-system.md) | Precisions, literals, dimensions, no broadcasting, runtime shapes, effects, and linearity. |
+| [spec/05 — RISC primitives](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/spec/05-risc-primitives.md) | Primitive semantics, movement, reductions, and per-op adjoints. |
+| [spec/06 — transformations](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/spec/06-transformations.md) | `grad` result shape, `wrt`, symbolic adjoints, and tensor/host transform boundaries. |
+| [spec/08 — backends](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/spec/08-backends.md) | C, HIP, and Metal backend scope and rejection rules. |
+| [Rank polymorphism design](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/spec/design/rank_polymorphism.md) | Name-preserving `..r` support and body discipline. |
+| [Implicit linearity design](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/spec/design/implicit_linearity.md) | Inserted copy/drop behavior and preserved hard errors. |
+| [Differentiable-language design](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/spec/design/differentiable_language.md) | Shipped AD slices versus later control/ADT/effect/implicit-diff scope. |
+| [Shell repo contract](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/spec/design/shell_repo_contract.md#3-capability-surface-doc--docschelis_surfacemd-must) | Required downstream `@pin`/`@upstream` inventory contract. |
 | [`spec/phase3j.md`](../spec/phase3j.md) | Nautilus architecture, acceptance rules, and dated deferrals. |
 | [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) | Executable 0.17.3 candidate re-probes, current residues, workarounds, and triggers. |

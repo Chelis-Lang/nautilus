@@ -27,6 +27,14 @@ need that split.
 
 ## Consumer flow
 
+> **Pre-publication guard:** the repository is validated against the local
+> Chelis 0.17.3 release candidate. The
+> [`v0.17.3` source tag](https://github.com/Chelis-Lang/chelis/tree/v0.17.3)
+> exists, but its GitHub Release and checksummed platform assets do not yet.
+> The commands below are the exact post-publication consumer flow; do not run
+> them until those official assets are published. Until then, the latest
+> installable upstream release remains v0.17.2.
+
 ### Linux (x86_64)
 
 ```sh
@@ -58,9 +66,10 @@ chelis reef install --from-monorepo /path/to/nautilus-checkout nautilus
 chelis reef build
 ```
 
-The CI's `mac-smoke` job runs this exact flow on every push as
-proof-of-life that the Nautilus reef package builds under the
-Darwin chelis toolchain.
+After the official assets publish, CI's `mac-smoke` job runs this exact flow on
+every push as proof-of-life that the Nautilus reef package builds under the
+Darwin chelis toolchain. Pre-publication acceptance uses the exact local
+candidate binary and does not claim that the release-download path is live.
 
 ## Non-goal: do NOT add platform suffixes to Nautilus release artifacts
 
