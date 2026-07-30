@@ -1,7 +1,7 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the `chelis 0.17.3` release candidate
+repository state on the `chelis 0.17.4` release candidate
 (Nautilus `0.7.36`).
 
 ## Scope
@@ -121,9 +121,9 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to the `chelis 0.17.3` candidate exactly via `reef.toml`.
+Nautilus is pinned to the `chelis 0.17.4` candidate exactly via `reef.toml`.
 Official release acceptance remains pending publication of the upstream
-v0.17.3 assets. Historical
+v0.17.4 assets. Historical
 compiler/runtime bugs discovered during Nautilus P0-P3 and current narrowed
 limitations are documented in `docs/UPSTREAM_BUGS.md`.
 
@@ -134,7 +134,7 @@ For the pinned toolchain:
   `216 / 216`, and two shapes of the current AD replacement blocker are
   executable under `tests_blocked/curvefit/`.
 - Tensor-wrt and capture-free multi-argument grad now evaluate and C-build.
-  Chelis 0.17.3 retains the fix for the former generic `n`/`m` checker collapse
+  Chelis 0.17.4 retains the fix for the former generic `n`/`m` checker collapse
   (chelis#847). The exact permanent Jacobian path remains blocked at one
   malformed backward-DAG layer (chelis#676), reproduced by both generic and
   concrete arbitrary vector-model wrappers.

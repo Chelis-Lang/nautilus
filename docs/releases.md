@@ -28,20 +28,21 @@ need that split.
 ## Consumer flow
 
 > **Pre-publication guard:** the repository is validated against the local
-> Chelis 0.17.3 release candidate. The
-> [`v0.17.3` source tag](https://github.com/Chelis-Lang/chelis/tree/v0.17.3)
-> exists, but its GitHub Release and checksummed platform assets do not yet.
+> Chelis 0.17.4 release candidate, built from local source commit
+> `7061e0b27006dc6ee31ef90b3011710526815ada`. Its source tag, GitHub Release,
+> and checksummed platform assets do not yet exist.
 > The commands below are the exact post-publication consumer flow; do not run
 > them until those official assets are published. Until then, the latest
-> installable upstream release remains v0.17.2.
+> installable upstream release remains v0.17.2 (the `v0.17.3` source tag exists
+> without matching release assets).
 
 ### Linux (x86_64)
 
 ```sh
-gh release download v0.17.3 --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.17.3-linux-x86_64.tar.gz'
-tar xzf chelis-v0.17.3-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.17.3-linux-x86_64/bin:$PATH"
+gh release download v0.17.4 --repo Chelis-Lang/chelis \
+  --pattern 'chelis-v0.17.4-linux-x86_64.tar.gz'
+tar xzf chelis-v0.17.4-linux-x86_64.tar.gz
+export PATH="$PWD/chelis-v0.17.4-linux-x86_64/bin:$PATH"
 
 # In your Chelis project's reef.toml:
 #   nautilus = "0.7.36"
@@ -54,10 +55,10 @@ chelis reef build
 Identical except for the toolchain download:
 
 ```sh
-gh release download v0.17.3 --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.17.3-darwin-arm64.tar.gz'
-tar xzf chelis-v0.17.3-darwin-arm64.tar.gz
-export PATH="$PWD/chelis-v0.17.3-darwin-arm64/bin:$PATH"
+gh release download v0.17.4 --repo Chelis-Lang/chelis \
+  --pattern 'chelis-v0.17.4-darwin-arm64.tar.gz'
+tar xzf chelis-v0.17.4-darwin-arm64.tar.gz
+export PATH="$PWD/chelis-v0.17.4-darwin-arm64/bin:$PATH"
 
 # Same steps from here on. The Nautilus .chb + .tar.zst are
 # the same files used on Linux. The Darwin chelis compiler

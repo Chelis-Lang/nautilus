@@ -1,6 +1,6 @@
 # Chelis Capability Surface (this shell)
 
-<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.17.3 (sha256:28011bed9ccb5778) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.17.4 (sha256:28011bed9ccb5778) -->
 This file is a domain-scoped view of the canonical Chelis capability surface,
 generated for the pinned toolchain. Each capability row is marked `@pin` (usable
 at the current pin) or `@upstream` (lands at the next bump). **Read it before
@@ -14,25 +14,24 @@ in `Chelis-Lang/chelis`.
 
 | Item | Value |
 |---|---|
-| Pinned compiler | `chelis 0.17.3` release candidate (`reef.toml`: `=0.17.3`) |
-| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.17.3` in the candidate-generated `reef.lock` |
+| Pinned compiler | `chelis 0.17.4` release candidate (`reef.toml`: `=0.17.4`) |
+| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.17.4` in the candidate-generated `reef.lock` |
 | Latest published upstream | `chelis 0.17.2` (`v0.17.2`, published 2026-07-30) |
 | Last refreshed | 2026-07-30 |
 
 `@pin` means the row describes behavior available (or a limitation verified)
 on the exact pinned release. `@upstream` means a capability exists in a newer
 published release and will arrive at the next pin bump. There are no
-`@upstream` rows in this snapshot because the 0.17.3 candidate adds no
+`@upstream` rows in this snapshot because the 0.17.4 candidate adds no
 Nautilus-facing capability beyond the re-probed pin surface. Planned Phase 5
 work is not mislabeled as `@upstream`.
 
 This is the Nautilus-scoped view of the
-[canonical Chelis inventory at the tagged source commit](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/docs/CHELIS_SURFACE.md).
-That merged/tagged commit has the same source tree as pre-squash commit
-`4dd8dcdbe36319d9525edeaf047302c0e3236a89`, from which the tested candidate
-binary was built. The permanent commit links remain valid while the GitHub
-Release assets are unpublished. Version-sensitive statements also resolve to
-the executable 0.17.3 candidate probes cited in
+[canonical Chelis inventory at the latest tagged source commit](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/docs/CHELIS_SURFACE.md).
+The tested 0.17.4 candidate binary was built from local source commit
+`7061e0b27006dc6ee31ef90b3011710526815ada`; its tag and release assets remain
+unpublished. Version-sensitive statements resolve to the executable 0.17.4
+candidate probes cited in
 [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
 
 ## Capability inventory
@@ -88,7 +87,7 @@ entire reached body must lower into a supported transform lane.
 | `floor_div` and integer/index arithmetic | Piecewise-constant/index math is non-differentiable or a stop-gradient boundary; unsupported differentiation fails closed. | Not an advertised AD path. | `@pin` |
 | `uniform_like` | Random source; zero gradient and handled `Random` effect. | Sampling exports are not advertised as reparameterized gradients. | `@pin` |
 | Host-list and host-tensor operations (`map`, `fold`, `sort`, `einsum`, general `to_list`/`to_tensor`) | No general host-lane adjoint. The compiler has narrow documented boundary rewrites, but Nautilus does not infer package-wide differentiability from them. | Solvers/decompositions need an executable gradient oracle before being advertised as differentiable. | `@pin` |
-| Multi-parameter CurveFit Jacobian wrapper | Plain tensor-wrt and capture-free multi-argument controls pass. The former generic-dimension checker collapse remains resolved at 0.17.3, but both the generic and concrete arbitrary-model wrappers still reach malformed backward-DAG lowering (chelis#676). | `lm_scalar_nparam` retains its finite-difference Jacobian. Both exact wrapper shapes are executable in `tests_blocked/curvefit/`. | `@pin` |
+| Multi-parameter CurveFit Jacobian wrapper | Plain tensor-wrt and capture-free multi-argument controls pass. The former generic-dimension checker collapse remains resolved at 0.17.4, but both the generic and concrete arbitrary-model wrappers still reach malformed backward-DAG lowering (chelis#676). | `lm_scalar_nparam` retains its finite-difference Jacobian. Both exact wrapper shapes are executable in `tests_blocked/curvefit/`. | `@pin` |
 
 No broad LinAlg, solver, distribution, or special-function AD promise is made
 by this inventory. The acceptance rule in
@@ -143,4 +142,4 @@ shipped library modules themselves do not import a runtime `Std.*` module.
 | [Differentiable-language design](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/spec/design/differentiable_language.md) | Shipped AD slices versus later control/ADT/effect/implicit-diff scope. |
 | [Shell repo contract](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/spec/design/shell_repo_contract.md#3-capability-surface-doc--docschelis_surfacemd-must) | Required downstream `@pin`/`@upstream` inventory contract. |
 | [`spec/phase3j.md`](../spec/phase3j.md) | Nautilus architecture, acceptance rules, and dated deferrals. |
-| [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) | Executable 0.17.3 candidate re-probes, current residues, workarounds, and triggers. |
+| [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) | Executable 0.17.4 candidate re-probes, current residues, workarounds, and triggers. |

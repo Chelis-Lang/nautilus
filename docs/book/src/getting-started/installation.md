@@ -4,14 +4,14 @@
 
 Nautilus requires:
 
-- the Chelis 0.17.3 release candidate, installable after the official [Chelis 0.17.3](https://github.com/Chelis-Lang/chelis/releases/tag/v0.17.3) assets are published
+- the Chelis 0.17.4 release candidate, installable after the official [Chelis 0.17.4](https://github.com/Chelis-Lang/chelis/releases/tag/v0.17.4) assets are published
 - GCC (for compiling generated C code)
 - uv and Python 3.12 for the isolated parity project
 
 ## Install the Chelis toolchain
 
 ```sh
-chelisup install 0.17.3
+chelisup install 0.17.4
 ```
 
 `chelisup` installs releases side by side. Its `chelis` shim resolves the

@@ -5,9 +5,9 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
-> **Current candidate pin: `chelis 0.17.3`.** The two CurveFit wrapper shapes,
+> **Current candidate pin: `chelis 0.17.4`.** The two CurveFit wrapper shapes,
 > the manual `eval --file` residue, and the linearity/copy controls were re-run
-> with the exact local 0.17.3 release candidate
+> with the exact local 0.17.4 release candidate
 > on 2026-07-30. The former generic `n`/`m` checker collapse (chelis#847) is
 > fixed: the generic wrapper now reaches the same malformed backward-DAG
 > verifier layer as the concrete wrapper (chelis#676), so both blocked probes
@@ -35,7 +35,7 @@ release.
     - **Minimal reproducer:** `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`,
       a concrete `n=2`, `m=6` linear model with expected first Jacobian row
       `[1, 1]`.
-    - **0.17.3 candidate result per surface:** both
+    - **0.17.4 candidate result per surface:** both
       `tests_blocked/curvefit/lm_jacobian_generic_dims.ch` and the concrete
       wrapper fail while verifying the backward DAG with
       `mismatched dimension count: 0 vs 1`; the blocked runner pins both
@@ -61,7 +61,7 @@ release.
     - **Minimal reproducer:** from the Reef root, evaluate an extensionless file
       containing `import Nautilus.Special (erf)` and an independent
       `bench = cast(0, f32)` via `chelis eval --file <path> bench`.
-    - **0.17.3 candidate result:** all 15 import-only shapes still fail after
+    - **0.17.4 candidate result:** all 15 import-only shapes still fail after
       compilation with `missing required input 'a' for symbolic dimension 'k'`
       (re-probed 2026-07-30, rc=1, not a hang). Real imported calls used by
       strict parity pass —
@@ -69,7 +69,7 @@ release.
       `0.842700719833374` at 0.16.1) and `Distributions.normal_cdf(0,0,1)`
       returns `0.5` through `src/probe.ch`. The prior 0.16.1 sweep timed the
       no-import baseline at about 23 seconds and failed all 14 per-module
-      import-only cases; the failure class is unchanged at 0.17.3.
+      import-only cases; the failure class is unchanged at 0.17.4.
     - **Affected Nautilus surface:** `scripts/bench_eval_startup.py` cannot measure
       pure import startup; strict numerical parity is not blocked.
     - **Workaround:** keep the import-only failure visible, use a 60-second probe

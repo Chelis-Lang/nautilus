@@ -36,14 +36,14 @@ decomposition.
 
 ## Getting started
 
-Targets the Chelis 0.17.3 release candidate. Install it from the upstream
-[v0.17.3 release](https://github.com/Chelis-Lang/chelis/releases/tag/v0.17.3)
+Targets the Chelis 0.17.4 release candidate. Install it from the upstream
+[v0.17.4 release](https://github.com/Chelis-Lang/chelis/releases/tag/v0.17.4)
 once its official assets are published.
 Install it through `chelisup`; do not replace the pin-resolving shim with a
 version-specific symlink.
 
 ```sh
-chelisup install 0.17.3
+chelisup install 0.17.4
 chelis reef setup
 chelis reef build
 chelis test tests/ --jobs auto
