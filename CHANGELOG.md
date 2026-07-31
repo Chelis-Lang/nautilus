@@ -14,7 +14,7 @@ to 0.7.37.
 The official Linux glibc-2.31 asset was verified at SHA-256
 `65f5949a540a547aacbee9845b3d40d2a02d1b28e3c8d608fc7af140fafd6ccf`;
 its installed compiler payload was
-`e1952d3b015bc8216ef51e6b71af5126eb9e5cfbd1197fa85ffdf658d566b2c2`.
+`9728e7824cd5d8aba26daf5189f95b90c98f9636b8aa0b6ca2fe9cc286c44801`.
 The release fixes the import-only `eval --file` residue tracked by chelis#848:
 all 15 benchmark shapes now execute. Both chelis#676 CurveFit blocker shapes
 retain their expected diagnostic, so the finite-difference Jacobian remains.

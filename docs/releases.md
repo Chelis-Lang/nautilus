@@ -86,7 +86,7 @@ checksum manifest transported from a different release or channel.
 > tarball has SHA-256
 > `65f5949a540a547aacbee9845b3d40d2a02d1b28e3c8d608fc7af140fafd6ccf`;
 > its compiler payload has SHA-256
-> `e1952d3b015bc8216ef51e6b71af5126eb9e5cfbd1197fa85ffdf658d566b2c2`.
+> `9728e7824cd5d8aba26daf5189f95b90c98f9636b8aa0b6ca2fe9cc286c44801`.
 > That exact payload passed Nautilus's complete local acceptance gate on
 > 2026-07-31.
 

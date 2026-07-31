@@ -17,7 +17,7 @@ in `Chelis-Lang/chelis`.
 | Pinned compiler | Published `chelis 0.17.5` (`reef.toml`: `=0.17.5`) |
 | Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.17.5` in the regenerated `reef.lock` |
 | Upstream release identity | Source commit `333cb4d3688573036d37828eba68416c11c5d1b4`; Linux glibc-2.31 asset SHA-256 `65f5949a540a547aacbee9845b3d40d2a02d1b28e3c8d608fc7af140fafd6ccf` |
-| Installed compiler payload | SHA-256 `e1952d3b015bc8216ef51e6b71af5126eb9e5cfbd1197fa85ffdf658d566b2c2` |
+| Installed compiler payload | SHA-256 `9728e7824cd5d8aba26daf5189f95b90c98f9636b8aa0b6ca2fe9cc286c44801` |
 | Validation status | Complete local gate passed on the official release payload; Nautilus publication remains gated on the milestone red team |
 | Last refreshed | 2026-07-31 |
 
@@ -29,7 +29,7 @@ rows in this snapshot; planned Phase 5 work is not mislabeled as upstream.
 This is the Nautilus-scoped view of the canonical Chelis inventory. The
 published Linux glibc-2.31 asset was checked against its release sidecar, then
 its byte-identical compiler payload (SHA-256
-`e1952d3b015bc8216ef51e6b71af5126eb9e5cfbd1197fa85ffdf658d566b2c2`)
+`9728e7824cd5d8aba26daf5189f95b90c98f9636b8aa0b6ca2fe9cc286c44801`)
 ran the full local gate. Version-sensitive statements resolve to the executable
 0.17.5 probes cited in
 [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
