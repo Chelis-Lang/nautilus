@@ -257,7 +257,7 @@ def recommended_changes(
     if successful_imports:
         slowest = max(successful_imports, key=lambda result: float(result.stats["median_ms"]))
         recs.append(
-            f"If import-backed eval is fixed, start optimization work with `{slowest.label}` because it is the slowest successfully measured import scenario in this run."
+            f"Start optimization work with `{slowest.label}` because it is the slowest successfully measured import scenario in this run."
         )
 
     if not recs:

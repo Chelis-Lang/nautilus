@@ -5,13 +5,13 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
-> **Current release pin: `chelis 0.17.4`.** The two CurveFit wrapper shapes,
-> the manual `eval --file` residue, and the linearity/copy controls were re-run
-> against the release source on 2026-07-30. On 2026-07-31, the published Linux
-> glibc-2.31 asset (release SHA-256
-> `6b7f477d65b2dea4e85b5107a51ae5714a5113138a6791361b74205f9448a121`;
-> source commit `0b0c92f9916163b05a483fba70473496923730e6`) ran the complete local
-> gate. Artifact
+> **Current release pin: `chelis 0.17.5`.** The published Linux glibc-2.31
+> asset (release SHA-256
+> `65f5949a540a547aacbee9845b3d40d2a02d1b28e3c8d608fc7af140fafd6ccf`;
+> compiler payload SHA-256
+> `9728e7824cd5d8aba26daf5189f95b90c98f9636b8aa0b6ca2fe9cc286c44801`;
+> source commit `333cb4d3688573036d37828eba68416c11c5d1b4`) ran the complete local
+> gate on 2026-07-31. Artifact
 > de-narrowing passed with that official compiler:
 > `chelis reef verify-artifact` accepts the generated pair, rejects an archive
 > byte mutation and a CHB trailing byte, and two unchanged builds produce
@@ -21,9 +21,9 @@ reproductions, workarounds, and status notes.
 > verifier layer as the concrete wrapper (chelis#676), so both blocked probes
 > are pinned to `mismatched dimension count: 0 vs 1`
 > (`chelis test tests_blocked/ --expect blocked` → 2 ok). The
-> import-only residue still reproduces (`missing required input 'a' for symbolic
-> dimension 'k'`, rc=1, not a hang), while a real `Special.erf(1)` import
-> remains green at `0.8427007`. Chelis 0.17.1 made `chelis eval` output
+> import-only residue is fixed: all 15 module and all-module benchmark shapes
+> now execute, so chelis#848 is archived below. Real `Special.erf(1)` remains
+> green at `0.8427007`. Chelis 0.17.1 made `chelis eval` output
 > dtype-faithful, so f32 reads now print at f32 precision (e.g. `erf(1)` →
 > `0.8427007`, previously `0.842700719833374`); the strict parity tolerances
 > already absorb this (216/216). Prior 0.16.1 per-verb evidence is in the
@@ -43,7 +43,7 @@ release.
     - **Minimal reproducer:** `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`,
       a concrete `n=2`, `m=6` linear model with expected first Jacobian row
       `[1, 1]`.
-    - **0.17.4 release result per surface:** both
+    - **0.17.5 release result per surface:** both
       `tests_blocked/curvefit/lm_jacobian_generic_dims.ch` and the concrete
       wrapper fail while verifying the backward DAG with
       `mismatched dimension count: 0 vs 1`; the blocked runner pins both
@@ -63,29 +63,9 @@ release.
 
 **Re-probe cadence:** at every compiler pin bump.
 
-- **Import-only `eval --file` leaks an unrelated symbolic input** —
-  `chelis#848`
-  ([Chelis-Lang/chelis#848](https://github.com/Chelis-Lang/chelis/issues/848)).
-    - **Minimal reproducer:** from the Reef root, evaluate an extensionless file
-      containing `import Nautilus.Special (erf)` and an independent
-      `bench = cast(0, f32)` via `chelis eval --file <path> bench`.
-    - **0.17.4 release-source result:** all 15 import-only shapes still fail after
-      compilation with `missing required input 'a' for symbolic dimension 'k'`
-      (re-probed 2026-07-30, rc=1, not a hang). Real imported calls used by
-      strict parity pass —
-      `Special.erf(1)` returns `0.8427007` (dtype-faithful f32; was
-      `0.842700719833374` at 0.16.1) and `Distributions.normal_cdf(0,0,1)`
-      returns `0.5` through `src/probe.ch`. The prior 0.16.1 sweep timed the
-      no-import baseline at about 23 seconds and failed all 14 per-module
-      import-only cases; the failure class is unchanged at 0.17.4.
-    - **Affected Nautilus surface:** `scripts/bench_eval_startup.py` cannot measure
-      pure import startup; strict numerical parity is not blocked.
-    - **Workaround:** keep the import-only failure visible, use a 60-second probe
-      timeout so normal compilation is not mislabeled as a hang, and do not cite
-      the old 5-second table as current behavior.
-    - **Re-probe trigger:** every pin bump and the release resolving the filed or
-      deduplicated issue. This CLI-only context remains on the manual list because
-      `chelis test --expect blocked` cannot express it.
+- **No separately tracked limitation remains.** The active finite-difference
+  narrowing is blocking and stays under chelis#676 above; chelis#848 is
+  archived below after its 0.17.5 release-asset re-probe passed all 15 shapes.
 
 ## Parked
 
@@ -93,13 +73,26 @@ release.
 is met.
 
 - **No inactive limitation is parked.** The remaining filed issues are
-  chelis#676 (backward-DAG wrapper shapes) and chelis#848 (import-only eval
-  residue). Chelis#847, chelis#970, and chelis#972 are archived below.
+  chelis#676 (backward-DAG wrapper shapes). Chelis#847, chelis#848,
+  chelis#970, and chelis#972 are archived below.
 
 ## Archived
 
 **Re-probe cadence:** no routine re-probe; revisit only when a regression is
 reported or a current narrowing still cites the old behavior.
+
+### chelis#848 — import-only package eval no longer leaks a symbolic input
+
+- **Resolution in the 0.17.5 release:** all 15 import-only shapes in
+  `scripts/bench_eval_startup.py` execute through
+  `chelis eval --file <path> bench`; none reports the former
+  `missing required input 'a' for symbolic dimension 'k'` diagnostic.
+- **Downstream de-narrowing:** the benchmark now records import timings instead
+  of treating every scenario as blocked. The strict parity route remains green
+  and continues to cover real imported calls separately.
+- **Regression trigger:** reopen the downstream narrowing only if an
+  import-only module or all-module shape again fails. The upstream issue was
+  still open when this release-asset verification was recorded.
 
 ### chelis#972 — canonical Reef artifact validation is compiler-owned
 
@@ -115,7 +108,7 @@ reported or a current narrowing still cites the old behavior.
 - **Retained boundary:** the independently transported SHA-256 manifest remains
   because canonical parsing does not authenticate a publisher that can replace
   both payloads and their manifest.
-- **Official-asset gate:** the downloaded Linux glibc-2.31 v0.17.4 asset passed
+- **Official-asset gate:** the downloaded Linux glibc-2.31 v0.17.5 asset passed
   the same checks on 2026-07-31.
 
 ### chelis#970 — unchanged Reef builds are byte-reproducible
@@ -130,7 +123,7 @@ reported or a current narrowing still cites the old behavior.
 - **Claim boundary:** this proves unchanged-build identity on each executing
   platform. The jobs do not compare Linux output directly with Darwin output,
   so no separate measured cross-platform identity claim is made.
-- **Official-asset gate:** the downloaded Linux glibc-2.31 v0.17.4 asset passed
+- **Official-asset gate:** the downloaded Linux glibc-2.31 v0.17.5 asset passed
   the two-build comparison on 2026-07-31.
 
 ### chelis#847 — generic vector-model wrapper no longer collapses `n` and `m`

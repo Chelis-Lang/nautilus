@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.37] - Unreleased
+
+Compiler-pin and de-narrowing release for Chelis v0.17.5. The required
+`chelis reef conform bump 0.17.5` command advanced the compiler pin and all
+workflow audit mirrors, and the Nautilus package version advanced from 0.7.36
+to 0.7.37.
+
+The official Linux glibc-2.31 asset was verified at SHA-256
+`65f5949a540a547aacbee9845b3d40d2a02d1b28e3c8d608fc7af140fafd6ccf`;
+its installed compiler payload was
+`9728e7824cd5d8aba26daf5189f95b90c98f9636b8aa0b6ca2fe9cc286c44801`.
+The release fixes the import-only `eval --file` residue tracked by chelis#848:
+all 15 benchmark shapes now execute. Both chelis#676 CurveFit blocker shapes
+retain their expected diagnostic, so the finite-difference Jacobian remains.
+The complete local gate passed before this candidate was pushed; publishing
+still requires the milestone red-team pass.
+
 ## [0.7.36] - 2026-07-31
 
 Compiler and release-artifact hardening release for Chelis v0.17.4. The
