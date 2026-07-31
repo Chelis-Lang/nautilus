@@ -17,7 +17,7 @@ in `Chelis-Lang/chelis`.
 | Pinned compiler | `chelis 0.17.4` release candidate (`reef.toml`: `=0.17.4`) |
 | Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.17.4` in the candidate-generated `reef.lock` |
 | Latest published upstream | `chelis 0.17.2` (`v0.17.2`, published 2026-07-30) |
-| Last refreshed | 2026-07-30 |
+| Last refreshed | 2026-07-31 |
 
 `@pin` means the row describes behavior available (or a limitation verified)
 on the exact pinned release. `@upstream` means a capability exists in a newer
@@ -26,12 +26,12 @@ published release and will arrive at the next pin bump. There are no
 Nautilus-facing capability beyond the re-probed pin surface. Planned Phase 5
 work is not mislabeled as `@upstream`.
 
-This is the Nautilus-scoped view of the
-[canonical Chelis inventory at the latest tagged source commit](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/docs/CHELIS_SURFACE.md).
-The tested 0.17.4 candidate binary was built from source commit
-`9a58c5781105bbe07d37afbb6ecfc7b3a879e0de`; its tag and release assets remain
-unpublished. Version-sensitive statements resolve to the executable 0.17.4
-candidate probes cited in
+This is the Nautilus-scoped view of the canonical Chelis inventory. The final
+merged 0.17.4 source SHA and official platform-asset SHA-256 values remain
+explicitly pending until upstream main is green and the release assets are
+published; no transient integration SHA is recorded as release identity.
+Version-sensitive statements resolve to the executable 0.17.4 candidate probes
+cited in
 [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
 
 ## Capability inventory
@@ -104,6 +104,7 @@ specified in the two ready-to-file drafts linked from
 | `Io`, `Test`, and resources | Library `src/` introduces no I/O or device-resource effect. `Std.Test` assertions in `tests/` introduce the test effect. | `@pin` |
 | Package-aware `eval --file` | Real imported Nautilus calls pass and strict parity batches 216 reviewed samples through this route. The separate import-only/symbolic-input startup shape can still report “missing required input `a` for symbolic dimension `k`”; it is a tracked benchmark residue, not a reason to avoid real package-aware eval. | `@pin` |
 | C/package build | `chelis reef build` packages the full pure-Chelis surface successfully. Host-lane list/tensor operations are supported by the C host emitter. | `@pin` |
+| Canonical artifact verification | `chelis reef verify-artifact` fully consumes the CHB, enforces canonical metadata, and checks its paired archive digest. Nautilus's release gate also proves archive-mutation and CHB-trailing-byte rejection plus unchanged-build byte identity. | `@pin` |
 | HIP/Metal | Upstream DAG subsets exist, but Nautilus's host-lane algorithms and lack of a package-level GPU oracle mean no Nautilus GPU support claim is made. | `@pin` |
 | Complex numbers | Complex scalar/tensor precision is not in the active type set. Six `Nautilus.Signal` transform/filter names therefore remain explicit NaN-returning stubs under the dated Phase 5f deferral; `fftfreq` is functional. | `@pin` |
 

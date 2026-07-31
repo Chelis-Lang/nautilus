@@ -7,11 +7,11 @@ Nautilus publishes three assets per tag:
 - `nautilus-X.Y.Z.sha256` — canonical SHA-256 manifest for both payloads
 
 The tag-triggered release workflow builds a matching pair from its checkout,
-validates it semantically, seals both payloads with the checksum manifest, and
-uploads all three assets together. A successful rerun rebuilds and reseals the
-payloads, then explicitly replaces all three same-named attached assets; because
-chelis#970 makes rebuild bytes unstable, the currently attached sealed payload
-set is the release identity.
+validates it semantically and canonically, seals both payloads with the checksum
+manifest, rebuilds from the unchanged checkout, and requires the second pair to
+be byte-identical before uploading all three assets together. A successful
+rerun performs the same deterministic rebuild and explicitly replaces all three
+same-named attached assets.
 
 New package outputs under `dist/` are ignored. Two historical bootstrap
 artifacts, `dist/nautilus-0.1.4.chb` and
@@ -22,17 +22,20 @@ inputs. The release workflow and normal package CI run
 the checker again without write authority before upload. The checker validates
 the archive contents, the archive↔shell hash pair through Reef's installer,
 byte-identical placement, and a fresh dependent package compilation importing
-`Nautilus.Special.erf`.
+`Nautilus.Special.erf`. It also calls the compiler-owned
+`chelis reef verify-artifact` oracle directly. That verifier consumes the
+complete canonical CHB envelope and rejects truncation, trailing bytes,
+noncanonical metadata, and an archive whose digest disagrees with the CHB.
 
 The checksum manifest is an independently transported seal over every byte of
 both payloads. It detects a one-byte `.chb` change, appended junk, or archive
 mutation after the workflow seals the release. It does not distinguish a
 malicious or compromised release authority that can replace both payloads and
 their checksum manifest: a checksum created at the same trust boundary cannot
-provide that stronger provenance claim. Reef itself currently accepts some
-otherwise parse-valid `.chb` mutations and trailing bytes; canonical full-shell
-validation is tracked as
-[chelis#972](https://github.com/Chelis-Lang/chelis/issues/972).
+provide that stronger provenance claim. The compiler-owned canonical validator
+closes [chelis#972](https://github.com/Chelis-Lang/chelis/issues/972) at the
+0.17.4 integration candidate; the checksum manifest remains necessary for
+transport integrity and publisher identification.
 
 ## These artifacts are platform-agnostic by design
 
@@ -43,13 +46,15 @@ no `.a`. The format is IR-level metadata that the *downstream*
 consumer's chelis compiler reads.
 
 The `.tar.zst` is the source tree (`reef.toml`, `reef.lock`, every
-`src/*.ch` file). Its contents are platform-neutral, but this is not currently
-a reproducible-build guarantee: unchanged builds can produce different bytes
-because archive metadata includes filesystem mtimes, and the `.chb` correctly
-changes with the archive hash. Chelis tracks canonical archive metadata and
-cross-build byte identity as chelis#970. Consumers identify the one official
-sealed payload set attached to a release; they must not substitute an
-independently rebuilt pair by filename alone.
+`src/*.ch` file). Its contents and build metadata are platform-neutral. Chelis
+0.17.4's integration candidate canonicalizes archive member order, paths,
+modes, ownership, and timestamps; the `.chb` embeds the resulting archive
+digest. The Linux release job and both Linux and Darwin CI jobs now build twice
+from the same checkout and require byte-identical archive and CHB bytes,
+closing [chelis#970](https://github.com/Chelis-Lang/chelis/issues/970) for the
+unchanged-build surface Nautilus claims. CI does not compare Linux-built bytes
+with Darwin-built bytes, so it does not claim a separately measured
+cross-platform identity result.
 
 The platform boundary lives **upstream of Nautilus** — in the chelis
 toolchain itself, which ships separate `linux-x86_64` and `darwin-arm64`
@@ -70,9 +75,10 @@ On macOS, use `shasum -a 256 -c nautilus-X.Y.Z.sha256`. Do not accept a
 checksum manifest transported from a different release or channel.
 
 > **Pre-publication guard:** the repository is validated against the local
-> Chelis 0.17.4 release candidate, built from source commit
-> `9a58c5781105bbe07d37afbb6ecfc7b3a879e0de`. Its source tag, GitHub Release,
-> and checksummed platform assets do not yet exist.
+> Chelis 0.17.4 cascade-integration candidate. The final merged source SHA and
+> official checksummed platform-asset SHA-256 values are deliberately pending
+> until upstream main is green and the v0.17.4 release assets exist; no local
+> candidate digest is presented as a release digest.
 > The commands below are the exact post-publication consumer flow; do not run
 > them until those official assets are published. Until then, the latest
 > installable upstream release remains v0.17.2 (the `v0.17.3` source tag exists
@@ -112,8 +118,8 @@ chelis reef build
 After the official assets publish, CI's `mac-smoke` job builds, seals, and
 validates a Darwin artifact pair from its current checkout as proof-of-life for
 that toolchain.
-It does not compare the Darwin-built bytes with the Linux release pair; that
-stronger reproducibility guarantee remains blocked by chelis#970.
+It enforces unchanged-build byte identity on Darwin but does not compare the
+Darwin-built bytes with the Linux release pair.
 Pre-publication acceptance uses the exact local candidate binary and does not
 claim that the release-download path or official asset pair is live.
 
@@ -128,8 +134,9 @@ artifacts contain only language-level IR + source — there is no
 platform-specific code to vary.
 
 `scripts/check_release_artifacts.py` rejects native-code members in the source
-archive, verifies the checksum seal, asks Reef to deserialize and install the
-exact generated pair, and compiles a dependent package through the installed
-shell. The `mac-smoke` job repeats that validation on Darwin. Treat a failure
-as an upstream packaging bug to fix, not evidence that Nautilus needs platform
-suffixes.
+archive, invokes `chelis reef verify-artifact`, verifies the checksum seal,
+asks Reef to install the exact generated pair, and compiles a dependent package
+through the installed shell. It adversarially requires rejection of an archive
+byte mutation and a CHB trailing byte. The `mac-smoke` job repeats that
+validation on Darwin. Treat a failure as an upstream packaging bug to fix, not
+evidence that Nautilus needs platform suffixes.

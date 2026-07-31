@@ -7,8 +7,13 @@ reproductions, workarounds, and status notes.
 
 > **Current candidate pin: `chelis 0.17.4`.** The two CurveFit wrapper shapes,
 > the manual `eval --file` residue, and the linearity/copy controls were re-run
-> with the exact local 0.17.4 release candidate
-> on 2026-07-30. The former generic `n`/`m` checker collapse (chelis#847) is
+> with the exact local 0.17.4 release candidate on 2026-07-30. Artifact
+> de-narrowing was re-run with the cascade-integration candidate on 2026-07-31:
+> `chelis reef verify-artifact` accepts the generated pair, rejects an archive
+> byte mutation and a CHB trailing byte, and two unchanged builds produce
+> identical archive and CHB bytes. Final official-asset validation remains
+> pending upstream publication. The former generic `n`/`m` checker collapse
+> (chelis#847) is
 > fixed: the generic wrapper now reaches the same malformed backward-DAG
 > verifier layer as the concrete wrapper (chelis#676), so both blocked probes
 > are pinned to `mismatched dimension count: 0 vs 1`
@@ -55,42 +60,6 @@ release.
 
 **Re-probe cadence:** at every compiler pin bump.
 
-- **Reef accepts CHB trailing bytes and lacks a canonical validator** —
-  `chelis#972`
-  ([Chelis-Lang/chelis#972](https://github.com/Chelis-Lang/chelis/issues/972)).
-    - **Minimal reproducer:** append arbitrary bytes to a generated `.chb`,
-      leave its matching `.tar.zst` unchanged, and install the pair with
-      `chelis reef install --from-monorepo`.
-    - **0.17.4 candidate result:** Reef accepts and copies the modified shell
-      because the consumed envelope still contains the correct source-archive
-      hash. Some one-byte mutations outside consumed fields are also accepted.
-    - **Affected Nautilus surface:** Reef install alone is not full-payload
-      release validation. The release gate therefore seals both payloads with
-      an independently transported SHA-256 manifest, verifies byte-identical
-      installation, and compiles a dependent import. The manifest detects
-      post-seal mutation but cannot authenticate against a release authority
-      able to replace both payloads and manifest.
-    - **Re-probe trigger:** every pin bump and the release resolving
-      chelis#972. On pass, add canonical CHB validation to the release gate;
-      retain the checksum manifest as transport integrity.
-
-- **Reef package bytes are not reproducible across unchanged builds** —
-  `chelis#970`
-  ([Chelis-Lang/chelis#970](https://github.com/Chelis-Lang/chelis/issues/970)).
-    - **Minimal reproducer:** run `chelis reef build` twice without changing
-      package inputs and compare both `dist/*.tar.zst` and `dist/*.chb`
-      SHA-256 values. Setting `SOURCE_DATE_EPOCH=0` does not stabilize them.
-    - **0.17.4 candidate result:** both hashes change. `reef.lock` is rewritten
-      with a new mtime, archive entry metadata preserves that mtime, and the
-      shell correctly changes because it embeds the archive hash.
-    - **Affected Nautilus surface:** release documentation cannot claim
-      byte-identical cross-host rebuilds. The tag workflow instead produces one
-      official pair and validates its archive contents plus archive↔shell
-      integrity with `scripts/check_release_artifacts.py`.
-    - **Re-probe trigger:** a Chelis release that canonicalizes Reef archive
-      metadata or documents `SOURCE_DATE_EPOCH` support. Promote the local gate
-      to a two-build hash comparison before restoring any reproducibility claim.
-
 - **Import-only `eval --file` leaks an unrelated symbolic input** —
   `chelis#848`
   ([Chelis-Lang/chelis#848](https://github.com/Chelis-Lang/chelis/issues/848)).
@@ -121,14 +90,45 @@ release.
 is met.
 
 - **No inactive limitation is parked.** The remaining filed issues are
-  chelis#676 (backward-DAG wrapper shapes), chelis#848 (import-only eval
-  residue), and chelis#970 (Reef artifact reproducibility); chelis#847's
-  downstream symptom is archived below.
+  chelis#676 (backward-DAG wrapper shapes) and chelis#848 (import-only eval
+  residue). Chelis#847, chelis#970, and chelis#972 are archived below.
 
 ## Archived
 
 **Re-probe cadence:** no routine re-probe; revisit only when a regression is
 reported or a current narrowing still cites the old behavior.
+
+### chelis#972 — canonical Reef artifact validation is compiler-owned
+
+- **Resolution in the 0.17.4 integration candidate:** the public
+  `chelis reef verify-artifact --archive ... --shell ... --json` command fully
+  consumes the CHB, enforces canonical encoding and metadata order, and checks
+  the archive digest embedded in the shell. Reef installation uses the same
+  verifier.
+- **Downstream de-narrowing:** `scripts/check_release_artifacts.py` now calls
+  that command as its canonical pair oracle. Its executable negative gates
+  require an archive byte mutation and an appended CHB byte to fail for the
+  expected reason.
+- **Retained boundary:** the independently transported SHA-256 manifest remains
+  because canonical parsing does not authenticate a publisher that can replace
+  both payloads and their manifest.
+- **Final release gate:** repeat the same checks with the downloaded official
+  v0.17.4 toolchain asset before publishing Nautilus 0.7.36.
+
+### chelis#970 — unchanged Reef builds are byte-reproducible
+
+- **Resolution in the 0.17.4 integration candidate:** Reef canonicalizes
+  archive member order, paths, regular-file metadata, and timestamps; the CHB
+  embeds the canonical archive digest. Two consecutive Nautilus builds from
+  the unchanged checkout produced byte-identical `.tar.zst` and `.chb` files.
+- **Downstream de-narrowing:** Linux release CI and Linux/Darwin package CI now
+  seal the first build, rebuild without source changes, and validate the second
+  build against the first build's SHA-256 manifest.
+- **Claim boundary:** this proves unchanged-build identity on each executing
+  platform. The jobs do not compare Linux output directly with Darwin output,
+  so no separate measured cross-platform identity claim is made.
+- **Final release gate:** repeat the two-build comparison with the downloaded
+  official v0.17.4 toolchain asset before publishing Nautilus 0.7.36.
 
 ### chelis#847 — generic vector-model wrapper no longer collapses `n` and `m`
 

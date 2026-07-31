@@ -136,6 +136,7 @@ jobs:
       - name: Seal and validate Reef release payloads
         run: |
           python3 scripts/check_release_artifacts.py --write-checksums
+          chelis reef build
           python3 scripts/check_release_artifacts.py
 
       # One chelis check as a smoke that the binary works + the score=1
@@ -277,6 +278,7 @@ jobs:
       - name: Seal and validate Darwin-built Reef payloads
         run: |
           python3 scripts/check_release_artifacts.py --write-checksums
+          chelis reef build
           python3 scripts/check_release_artifacts.py
 
   # legacy-harness moved to .github/workflows/nightly.yml — runs on a

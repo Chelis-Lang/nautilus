@@ -67,6 +67,7 @@ jobs:
       - name: Seal and validate Reef release payloads
         run: |
           python3 scripts/check_release_artifacts.py --write-checksums
+          chelis reef build
           python3 scripts/check_release_artifacts.py
 
       - name: Verify release assets
@@ -87,8 +88,6 @@ jobs:
             dist/${{ env.PACKAGE_NAME }}-${{ env.PACKAGE_VERSION }}.sha256
           generate_release_notes: true
           fail_on_unmatched_files: true
-          # Re-running this tag workflow rebuilds and reseals the payloads.
-          # Until chelis#970 makes those bytes reproducible, the attached
-          # payloads plus checksum manifest are the release identity and a
-          # successful rerun explicitly replaces the complete set.
+          # A successful rerun deterministically rebuilds the same bytes, then
+          # explicitly replaces the complete payload set.
           overwrite_files: true

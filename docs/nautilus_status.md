@@ -141,6 +141,11 @@ For the pinned toolchain:
 - Package-aware `eval --file` calls used by parity pass. The historical hang is
   fixed; the import-only startup benchmark instead exposes a tracked symbolic-
   input residue and no longer uses a 5-second timeout.
+- The release gate uses the compiler-owned canonical artifact verifier,
+  adversarially requires archive-mutation and CHB-trailing-byte rejection, and
+  requires two unchanged builds to produce byte-identical archive and CHB
+  payloads. These checks de-narrow chelis#970 and chelis#972 on the integration
+  candidate; the downloaded official v0.17.4 asset remains the final oracle.
 - The old `redundant-linearity-call` false positive is fixed. The 131 copies it
   now identifies in `src/linalg.ch` were removed with a green package build;
   11 semantically required copies remain.

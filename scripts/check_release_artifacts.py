@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Validate the Reef artifact pair produced by ``chelis reef build``.
 
-This is an integrity and platform-content gate, not a reproducible-build claim.
-Chelis#970 tracks byte instability between otherwise identical builds.
+The compiler owns canonical CHB/archive validation. This shell gate adds
+transport sealing, platform-content checks, installation, dependent
+compilation, and unchanged-build byte comparison around that oracle.
 """
 
 from __future__ import annotations
@@ -12,11 +13,11 @@ import ctypes
 import ctypes.util
 import hashlib
 import io
+import json
 import os
 import re
 import shutil
 import subprocess
-import sys
 import tarfile
 import tempfile
 from pathlib import Path, PurePosixPath
@@ -56,7 +57,9 @@ def validate_member_names(names: list[str]) -> None:
     found = set(names)
     missing = required - found
     if missing:
-        raise RuntimeError(f"source archive misses required member(s): {sorted(missing)}")
+        raise RuntimeError(
+            f"source archive misses required member(s): {sorted(missing)}"
+        )
 
     source_count = 0
     for raw in names:
@@ -69,7 +72,9 @@ def validate_member_names(names: list[str]) -> None:
             source_count += 1
             continue
         if path.suffix.lower() in NATIVE_SUFFIXES:
-            raise RuntimeError(f"native-code member in platform-neutral source archive: {raw}")
+            raise RuntimeError(
+                f"native-code member in platform-neutral source archive: {raw}"
+            )
         raise RuntimeError(f"unexpected source-archive member: {raw}")
     if source_count == 0:
         raise RuntimeError("source archive contains no src/*.ch modules")
@@ -172,9 +177,7 @@ def validate_tar_bytes(raw_tar: bytes) -> list[str]:
     except tarfile.TarError as error:
         raise RuntimeError(f"invalid source tar stream: {error}") from error
     non_files = [
-        f"{member.name} ({member.type!r})"
-        for member in members
-        if not member.isfile()
+        f"{member.name} ({member.type!r})" for member in members if not member.isfile()
     ]
     if non_files:
         raise RuntimeError(
@@ -221,9 +224,7 @@ def write_checksum_manifest(checksums: Path, artifacts: tuple[Path, ...]) -> Non
         raise
 
 
-def validate_checksum_manifest(
-    checksums: Path, artifacts: tuple[Path, ...]
-) -> None:
+def validate_checksum_manifest(checksums: Path, artifacts: tuple[Path, ...]) -> None:
     if not checksums.is_file():
         raise RuntimeError(f"missing checksum manifest: {checksums}")
     try:
@@ -271,6 +272,61 @@ def resolve_chelis() -> str:
     raise RuntimeError("chelis not found; set CHELIS_BIN")
 
 
+def verify_canonical_pair(chelis: str, archive: Path, shell: Path) -> dict[str, object]:
+    result = subprocess.run(
+        [
+            chelis,
+            "reef",
+            "verify-artifact",
+            "--archive",
+            str(archive),
+            "--shell",
+            str(shell),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.stderr:
+        raise RuntimeError(
+            f"chelis reef verify-artifact --json polluted stderr: {result.stderr!r}"
+        )
+    try:
+        report = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError(
+            "chelis reef verify-artifact --json emitted invalid JSON: "
+            f"{result.stdout!r}"
+        ) from error
+    if not isinstance(report, dict):
+        raise RuntimeError("artifact verifier JSON must be an object")
+    valid = report.get("valid")
+    errors = report.get("errors")
+    if (
+        not isinstance(valid, bool)
+        or not isinstance(errors, list)
+        or any(not isinstance(error, str) for error in errors)
+    ):
+        raise RuntimeError(
+            "artifact verifier JSON must contain boolean valid and string-list errors"
+        )
+    if valid != (not errors):
+        raise RuntimeError("artifact verifier violated valid == errors.is_empty()")
+    if (result.returncode == 0) != valid:
+        raise RuntimeError(
+            "artifact verifier exit status disagrees with its valid field"
+        )
+    return report
+
+
+def require_valid_canonical_pair(chelis: str, archive: Path, shell: Path) -> None:
+    report = verify_canonical_pair(chelis, archive, shell)
+    if not report["valid"]:
+        raise RuntimeError(
+            "compiler rejected generated artifact pair: " + "; ".join(report["errors"])
+        )
+
+
 def validate_pair_with_chelis(
     chelis: str, manifest: Path, archive: Path, shell: Path, name: str, version: str
 ) -> None:
@@ -301,15 +357,16 @@ def validate_pair_with_chelis(
         )
         if result.returncode != 0:
             raise RuntimeError(
-                "artifact pair failed Reef validation:\n"
-                f"{result.stdout}{result.stderr}"
+                f"artifact pair failed Reef validation:\n{result.stdout}{result.stderr}"
             )
 
         installed = reef_home / "packages" / name / version
         for source in (archive, shell):
             target = installed / source.name
             if not target.is_file() or source.read_bytes() != target.read_bytes():
-                raise RuntimeError(f"installed artifact is not byte-identical to {source}")
+                raise RuntimeError(
+                    f"installed artifact is not byte-identical to {source}"
+                )
 
         consumer = root / "consumer"
         consumer_src = consumer / "src"
@@ -345,33 +402,44 @@ def validate_pair_with_chelis(
 
 
 def _compiler_pin(manifest: Path) -> str:
-    match = re.search(
-        r'(?m)^compiler\s*=\s*"=?([^"]+)"', manifest.read_text()
-    )
+    match = re.search(r'(?m)^compiler\s*=\s*"=?([^"]+)"', manifest.read_text())
     if not match:
         raise RuntimeError(f"cannot read compiler pin from {manifest}")
     return match.group(1)
 
 
-def require_tampered_archive_rejection(
-    chelis: str, manifest: Path, archive: Path, shell: Path, name: str, version: str
-) -> None:
+def require_tampered_archive_rejection(chelis: str, archive: Path, shell: Path) -> None:
     with tempfile.TemporaryDirectory(prefix="nautilus-artifact-tamper-") as raw_tmp:
         tampered = Path(raw_tmp) / archive.name
         payload = bytearray(archive.read_bytes())
         payload[-1] ^= 1
         tampered.write_bytes(payload)
-        try:
-            validate_pair_with_chelis(
-                chelis, manifest, tampered, shell, name, version
+        report = verify_canonical_pair(chelis, tampered, shell)
+        if report["valid"]:
+            raise RuntimeError(
+                "compiler accepted an archive with a mismatched shell hash"
             )
-        except RuntimeError as error:
-            if "disagrees with archive" not in str(error):
-                raise RuntimeError(
-                    f"tampered pair failed for the wrong reason: {error}"
-                ) from error
-            return
-        raise RuntimeError("Reef accepted an archive with a mismatched shell hash")
+        if not any("archive" in error.lower() for error in report["errors"]):
+            raise RuntimeError(
+                "tampered archive failed for the wrong reason: "
+                + "; ".join(report["errors"])
+            )
+
+
+def require_trailing_shell_rejection(chelis: str, archive: Path, shell: Path) -> None:
+    with tempfile.TemporaryDirectory(
+        prefix="nautilus-artifact-trailing-shell-"
+    ) as raw_tmp:
+        tampered = Path(raw_tmp) / shell.name
+        tampered.write_bytes(shell.read_bytes() + b"\x00")
+        report = verify_canonical_pair(chelis, archive, tampered)
+        if report["valid"]:
+            raise RuntimeError("compiler accepted a CHB with a trailing byte")
+        if not any("trailing" in error.lower() for error in report["errors"]):
+            raise RuntimeError(
+                "CHB trailing-byte mutation failed for the wrong reason: "
+                + "; ".join(report["errors"])
+            )
 
 
 def parse_args() -> argparse.Namespace:
@@ -402,17 +470,18 @@ def main() -> int:
 
     names = archive_members(archive)
     chelis = resolve_chelis()
+    require_valid_canonical_pair(chelis, archive, shell)
     validate_pair_with_chelis(chelis, manifest, archive, shell, name, version)
-    require_tampered_archive_rejection(
-        chelis, manifest, archive, shell, name, version
-    )
+    require_tampered_archive_rejection(chelis, archive, shell)
+    require_trailing_shell_rejection(chelis, archive, shell)
     if args.write_checksums:
         write_checksum_manifest(checksums, artifacts)
         validate_checksum_manifest(checksums, artifacts)
     print(
         f"release artifacts OK: {archive.name} + {shell.name} + {checksums.name}; "
-        f"{len(names) - 2} source modules; SHA-256 seal + Reef install + "
-        "dependent compile + archive-tamper rejection passed"
+        f"{len(names) - 2} source modules; canonical compiler verification + "
+        "SHA-256 seal + Reef install + dependent compile + archive mismatch + "
+        "CHB trailing-byte rejection passed"
     )
     return 0
 

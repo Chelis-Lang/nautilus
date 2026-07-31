@@ -15,13 +15,15 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - Corrected the release-artifact contract: versioned Reef package outputs are
   built once from the tag and uploaded, not committed. CI now rejects native
   source-archive members and asks Reef to validate/install the exact generated
-  archive↔shell pair. Cross-build byte reproducibility remains explicitly
-  unclaimed and tracked upstream as chelis#970.
+  archive↔shell pair. The release and CI gates now rebuild from the unchanged
+  checkout and require byte-identical archive and CHB outputs, resolving the
+  Nautilus narrowing tracked by chelis#970.
 - Sealed the complete release payload set with an independently transported
   SHA-256 manifest, added byte-flip and appended-junk regressions, and compiled
-  a fresh dependent package through the installed shell. Reef's lack of
-  canonical full-CHB validation is tracked as chelis#972; the checksum's
-  release-authority trust boundary is explicit.
+  a fresh dependent package through the installed shell. The gate now invokes
+  `chelis reef verify-artifact` and requires compiler rejection of an archive
+  mutation and CHB trailing byte, resolving the chelis#972 narrowing while
+  retaining the checksum's explicit release-authority trust boundary.
 
 ## [0.7.34] - 2026-07-15
 

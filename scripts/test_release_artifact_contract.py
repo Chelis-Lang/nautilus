@@ -5,11 +5,13 @@ from __future__ import annotations
 
 import ctypes
 import io
+import json
 import subprocess
 import tarfile
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from scripts import check_release_artifacts as artifacts
 
@@ -68,6 +70,122 @@ def zstd_compress(raw: bytes) -> bytes:
 
 
 class ReleaseArtifactContractTests(unittest.TestCase):
+    def test_compiler_verifier_is_the_canonical_pair_oracle(self) -> None:
+        success = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "valid": True,
+                    "package": {"name": "nautilus", "version": "1.0.0"},
+                    "compiler": "0.17.4",
+                    "shell_sha256": "a" * 64,
+                    "archive_sha256": "b" * 64,
+                    "errors": [],
+                }
+            ),
+            stderr="",
+        )
+        with mock.patch.object(
+            artifacts.subprocess, "run", return_value=success
+        ) as run:
+            report = artifacts.verify_canonical_pair(
+                "/candidate/chelis",
+                Path("/tmp/nautilus.tar.zst"),
+                Path("/tmp/nautilus.chb"),
+            )
+
+        self.assertTrue(report["valid"])
+        run.assert_called_once_with(
+            [
+                "/candidate/chelis",
+                "reef",
+                "verify-artifact",
+                "--archive",
+                "/tmp/nautilus.tar.zst",
+                "--shell",
+                "/tmp/nautilus.chb",
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+    def test_compiler_verifier_rejects_invalid_machine_contracts(self) -> None:
+        cases = (
+            (
+                "zero exit with errors",
+                subprocess.CompletedProcess(
+                    args=[],
+                    returncode=0,
+                    stdout='{"valid":true,"errors":["bad"]}',
+                    stderr="",
+                ),
+            ),
+            (
+                "nonzero exit with valid report",
+                subprocess.CompletedProcess(
+                    args=[],
+                    returncode=1,
+                    stdout='{"valid":true,"errors":[]}',
+                    stderr="",
+                ),
+            ),
+            (
+                "stderr pollution",
+                subprocess.CompletedProcess(
+                    args=[],
+                    returncode=1,
+                    stdout='{"valid":false,"errors":["trailing bytes"]}',
+                    stderr="warning",
+                ),
+            ),
+        )
+        for label, result in cases:
+            with self.subTest(label=label):
+                with mock.patch.object(
+                    artifacts.subprocess, "run", return_value=result
+                ):
+                    with self.assertRaises(RuntimeError):
+                        artifacts.verify_canonical_pair(
+                            "/candidate/chelis",
+                            Path("/tmp/nautilus.tar.zst"),
+                            Path("/tmp/nautilus.chb"),
+                        )
+
+    def test_release_gate_requires_compiler_rejection_of_chb_trailing_bytes(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="nautilus-canonical-shell-test-"
+        ) as raw_tmp:
+            root = Path(raw_tmp)
+            archive = root / "nautilus-1.0.0.tar.zst"
+            shell = root / "nautilus-1.0.0.chb"
+            archive.write_bytes(b"archive")
+            shell.write_bytes(b"canonical shell")
+
+            def fake_verify(
+                *args: object, **kwargs: object
+            ) -> subprocess.CompletedProcess[str]:
+                command = args[0]
+                candidate = Path(command[command.index("--shell") + 1])
+                self.assertTrue(candidate.read_bytes().endswith(b"\x00"))
+                return subprocess.CompletedProcess(
+                    args=command,
+                    returncode=1,
+                    stdout='{"valid":false,"errors":["CHB contains trailing bytes"]}',
+                    stderr="",
+                )
+
+            with mock.patch.object(
+                artifacts.subprocess, "run", side_effect=fake_verify
+            ):
+                artifacts.require_trailing_shell_rejection(
+                    "/candidate/chelis", archive, shell
+                )
+            self.assertEqual(shell.read_bytes(), b"canonical shell")
+
     def test_checksum_seal_rejects_shell_byte_flip_and_appended_junk(self) -> None:
         for label, mutate in (
             ("byte flip", lambda payload: bytes([payload[0] ^ 1]) + payload[1:]),
@@ -111,9 +229,7 @@ class ReleaseArtifactContractTests(unittest.TestCase):
             artifacts.validate_checksum_manifest(checksums, payloads)
 
     def test_checksum_manifest_rejects_noncanonical_or_extra_records(self) -> None:
-        with tempfile.TemporaryDirectory(
-            prefix="nautilus-checksum-shape-"
-        ) as raw_tmp:
+        with tempfile.TemporaryDirectory(prefix="nautilus-checksum-shape-") as raw_tmp:
             root = Path(raw_tmp)
             archive = root / "nautilus-1.0.0.tar.zst"
             shell = root / "nautilus-1.0.0.chb"
@@ -123,8 +239,7 @@ class ReleaseArtifactContractTests(unittest.TestCase):
             payloads = (archive, shell)
             artifacts.write_checksum_manifest(checksums, payloads)
             checksums.write_text(
-                checksums.read_text()
-                + f"{'0' * 64}  unexpected-payload\n"
+                checksums.read_text() + f"{'0' * 64}  unexpected-payload\n"
             )
             with self.assertRaisesRegex(RuntimeError, "filenames/order"):
                 artifacts.validate_checksum_manifest(checksums, payloads)
@@ -215,12 +330,12 @@ class ReleaseArtifactContractTests(unittest.TestCase):
         seal = release.index(
             "python3 scripts/check_release_artifacts.py --write-checksums"
         )
-        validate = release.index(
-            "python3 scripts/check_release_artifacts.py", seal + 1
-        )
+        rebuild = release.index("chelis reef build", seal)
+        validate = release.index("python3 scripts/check_release_artifacts.py", seal + 1)
         publish = release.index("uses: softprops/action-gh-release@v2")
         self.assertLess(build, seal)
-        self.assertLess(seal, validate)
+        self.assertLess(seal, rebuild)
+        self.assertLess(rebuild, validate)
         self.assertLess(validate, publish)
         self.assertIn(
             "dist/${{ env.PACKAGE_NAME }}-${{ env.PACKAGE_VERSION }}.sha256",
@@ -229,20 +344,26 @@ class ReleaseArtifactContractTests(unittest.TestCase):
         self.assertIn("overwrite_files: true", release[publish:])
 
         docs = (ROOT / "docs" / "releases.md").read_text()
-        self.assertIn("successful rerun", docs)
-        self.assertIn("sealed payload", docs)
-        self.assertIn("set is the release identity", docs)
+        self.assertIn("rerun performs the same deterministic rebuild", docs)
+        self.assertIn("seals both payloads", docs)
+        self.assertIn("byte-identical", docs)
         self.assertIn("release authority", docs)
 
         ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
         self.assertGreaterEqual(
-            ci.count(
-                "python3 scripts/check_release_artifacts.py --write-checksums"
-            ),
+            ci.count("python3 scripts/check_release_artifacts.py --write-checksums"),
             2,
         )
         self.assertGreaterEqual(
             ci.count("python3 scripts/check_release_artifacts.py\n"), 2
+        )
+        self.assertGreaterEqual(
+            ci.count(
+                "python3 scripts/check_release_artifacts.py --write-checksums\n"
+                "          chelis reef build\n"
+                "          python3 scripts/check_release_artifacts.py"
+            ),
+            2,
         )
 
 
