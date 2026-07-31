@@ -5,10 +5,16 @@ Nautilus publishes two artifacts per tag:
 - `nautilus-X.Y.Z.chb` — Reef *shell* package (≈30 KB)
 - `nautilus-X.Y.Z.tar.zst` — source archive (≈30 KB)
 
-Both are produced once by the tag-triggered release workflow and uploaded
-directly from that tagged checkout. Package outputs under `dist/` are ignored;
-only the separately generated `dist/stability.json` API inventory is committed.
-The release workflow and normal package CI run
+The tag-triggered release workflow builds a matching pair from its checkout and
+uploads both files together. A successful rerun rebuilds the pair and explicitly
+replaces the same-named attached assets; because chelis#970 makes rebuild bytes
+unstable, the currently attached matching pair is the release identity.
+
+New package outputs under `dist/` are ignored. Two historical bootstrap
+artifacts, `dist/nautilus-0.1.4.chb` and
+`dist/nautilus-0.1.4.tar.zst`, remain tracked alongside the separately
+generated `dist/stability.json` API inventory; they are not the current release
+inputs. The release workflow and normal package CI run
 `scripts/check_release_artifacts.py` after the build to validate the archive
 contents and the archive↔shell hash pair through Reef's installer.
 

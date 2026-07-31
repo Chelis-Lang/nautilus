@@ -83,3 +83,7 @@ jobs:
             dist/${{ env.PACKAGE_NAME }}-${{ env.PACKAGE_VERSION }}.chb
           generate_release_notes: true
           fail_on_unmatched_files: true
+          # Re-running this tag workflow rebuilds a new matching pair. Until
+          # chelis#970 makes those bytes reproducible, the attached pair is the
+          # release identity and a successful rerun explicitly replaces it.
+          overwrite_files: true
