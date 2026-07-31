@@ -207,7 +207,7 @@ differences (`eps=1e-5`) and solves the damped normal equations with
 `tol` is accepted but the current routine executes exactly `max_iters`, and
 lambda is fixed at `0.01`.
 
-**Current 0.17.4 candidate blocker, re-probed 2026-07-30:**
+**Current 0.17.4 release blocker, re-probed 2026-07-30:**
 
 The former outer chelis#847 checker collapse is fixed. Both the exact generic
 wrapper and the concrete `n=2`, `m=6` arbitrary-model wrapper now reach the

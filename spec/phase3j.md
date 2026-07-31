@@ -11,8 +11,8 @@ with the monorepo section.
 
 ## 3j: Nautilus — Numerical Methods, Statistics, and Optimization
 
-**Status:** shipped in the downstream Nautilus repo. `Nautilus v0.7.34` is the
-current published shell release as of 2026-07-15; the downstream `reef.toml` and
+**Status:** shipped in the downstream Nautilus repo. `Nautilus v0.7.35` is the
+current published shell release as of 2026-07-23; the downstream `reef.toml` and
 release gate remain authoritative for its compiler pin and validation state.
 
 **Goal:** A Reef package providing the numerical methods between raw tensor
