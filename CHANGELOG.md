@@ -4,7 +4,14 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.7.36] - 2026-07-31
+
+Compiler and release-artifact hardening release for Chelis v0.17.4. The
+compiler pin advanced from `=0.17.1` to `=0.17.4`, and the Nautilus package
+version advanced from 0.7.35 to 0.7.36. The official Linux glibc-2.31 asset was
+validated end to end: 463 native tests, 3 negative contracts, 2 blocked probes,
+216 strict SciPy parity samples, and all 25 source modules passed with a
+type-check score of 1 and no errors.
 
 ### Changed
 

@@ -5,14 +5,17 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
-> **Current candidate pin: `chelis 0.17.4`.** The two CurveFit wrapper shapes,
+> **Current release pin: `chelis 0.17.4`.** The two CurveFit wrapper shapes,
 > the manual `eval --file` residue, and the linearity/copy controls were re-run
-> with the exact local 0.17.4 release candidate on 2026-07-30. Artifact
-> de-narrowing was re-run with the cascade-integration candidate on 2026-07-31:
+> against the release source on 2026-07-30. On 2026-07-31, the published Linux
+> glibc-2.31 asset (release SHA-256
+> `6b7f477d65b2dea4e85b5107a51ae5714a5113138a6791361b74205f9448a121`;
+> source commit `0b0c92f9916163b05a483fba70473496923730e6`) ran the complete local
+> gate. Artifact
+> de-narrowing passed with that official compiler:
 > `chelis reef verify-artifact` accepts the generated pair, rejects an archive
 > byte mutation and a CHB trailing byte, and two unchanged builds produce
-> identical archive and CHB bytes. Final official-asset validation remains
-> pending upstream publication. The former generic `n`/`m` checker collapse
+> identical archive and CHB bytes. The former generic `n`/`m` checker collapse
 > (chelis#847) is
 > fixed: the generic wrapper now reaches the same malformed backward-DAG
 > verifier layer as the concrete wrapper (chelis#676), so both blocked probes
@@ -40,7 +43,7 @@ release.
     - **Minimal reproducer:** `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`,
       a concrete `n=2`, `m=6` linear model with expected first Jacobian row
       `[1, 1]`.
-    - **0.17.4 candidate result per surface:** both
+    - **0.17.4 release result per surface:** both
       `tests_blocked/curvefit/lm_jacobian_generic_dims.ch` and the concrete
       wrapper fail while verifying the backward DAG with
       `mismatched dimension count: 0 vs 1`; the blocked runner pins both
@@ -66,7 +69,7 @@ release.
     - **Minimal reproducer:** from the Reef root, evaluate an extensionless file
       containing `import Nautilus.Special (erf)` and an independent
       `bench = cast(0, f32)` via `chelis eval --file <path> bench`.
-    - **0.17.4 candidate result:** all 15 import-only shapes still fail after
+    - **0.17.4 release-source result:** all 15 import-only shapes still fail after
       compilation with `missing required input 'a' for symbolic dimension 'k'`
       (re-probed 2026-07-30, rc=1, not a hang). Real imported calls used by
       strict parity pass —
@@ -100,7 +103,7 @@ reported or a current narrowing still cites the old behavior.
 
 ### chelis#972 — canonical Reef artifact validation is compiler-owned
 
-- **Resolution in the 0.17.4 integration candidate:** the public
+- **Resolution in the 0.17.4 release:** the public
   `chelis reef verify-artifact --archive ... --shell ... --json` command fully
   consumes the CHB, enforces canonical encoding and metadata order, and checks
   the archive digest embedded in the shell. Reef installation uses the same
@@ -112,12 +115,12 @@ reported or a current narrowing still cites the old behavior.
 - **Retained boundary:** the independently transported SHA-256 manifest remains
   because canonical parsing does not authenticate a publisher that can replace
   both payloads and their manifest.
-- **Final release gate:** repeat the same checks with the downloaded official
-  v0.17.4 toolchain asset before publishing Nautilus 0.7.36.
+- **Official-asset gate:** the downloaded Linux glibc-2.31 v0.17.4 asset passed
+  the same checks on 2026-07-31.
 
 ### chelis#970 — unchanged Reef builds are byte-reproducible
 
-- **Resolution in the 0.17.4 integration candidate:** Reef canonicalizes
+- **Resolution in the 0.17.4 release:** Reef canonicalizes
   archive member order, paths, regular-file metadata, and timestamps; the CHB
   embeds the canonical archive digest. Two consecutive Nautilus builds from
   the unchanged checkout produced byte-identical `.tar.zst` and `.chb` files.
@@ -127,8 +130,8 @@ reported or a current narrowing still cites the old behavior.
 - **Claim boundary:** this proves unchanged-build identity on each executing
   platform. The jobs do not compare Linux output directly with Darwin output,
   so no separate measured cross-platform identity claim is made.
-- **Final release gate:** repeat the two-build comparison with the downloaded
-  official v0.17.4 toolchain asset before publishing Nautilus 0.7.36.
+- **Official-asset gate:** the downloaded Linux glibc-2.31 v0.17.4 asset passed
+  the two-build comparison on 2026-07-31.
 
 ### chelis#847 — generic vector-model wrapper no longer collapses `n` and `m`
 

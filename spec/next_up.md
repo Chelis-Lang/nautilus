@@ -10,11 +10,11 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Status snapshot (2026-07-30, `chelis 0.17.4` release candidate).**
+**Status snapshot (2026-07-31, published `chelis 0.17.4`).**
 
-- Current candidate pin is `chelis 0.17.4` (Nautilus `0.7.36`). Official
-  release acceptance remains pending upstream asset publication. The local acceptance
-  gate passes 463 native tests in parallel and serial modes, 3 negative
+- Current pin is `chelis 0.17.4` (Nautilus `0.7.36`). The official Linux
+  glibc-2.31 asset passed the local acceptance gate: 463 native tests,
+  3 negative
   contracts, 2 expected-failure blocker probes, and 216/216 reviewed scipy
   parity samples.
 - The canonical Phase 3j architecture now describes the shipped package:
@@ -22,7 +22,7 @@ pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
   hand-written adjoint registry. Broad solver AD and QP/SOCP/LP remain explicit
   later scope rather than hidden completion requirements.
 - Multi-parameter Levenberg-Marquardt's exact AD replacement was re-probed on
-  0.17.4 candidate. The former generic `n`/`m` checker collapse remains resolved; both the
+  0.17.4. The former generic `n`/`m` checker collapse remains resolved; both the
   generic and concrete arbitrary vector-model wrappers now reach one live
   malformed backward-DAG layer (chelis#676). Both shapes are pinned under
   `tests_blocked/curvefit/`; tensor-wrt and direct capture-free multi-argument

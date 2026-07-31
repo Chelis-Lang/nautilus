@@ -33,8 +33,7 @@ only through a `chelis reef conform bump` PR (never a direct edit to `main`).
   Chelis release by default. Treat stale pins as drift, not as a reason
   to stay on an older compiler.
 - `reef.toml` should pin the currently validated release exactly. As of
-  this repo state, that is the `chelis 0.17.4` release candidate pending
-  publication of the matching upstream assets.
+  this repo state, that is the published `chelis 0.17.4` release.
 - If the latest published Chelis release fails Nautilus validation,
   document the blocker clearly and pin the newest known-good release
   until the blocker is resolved.

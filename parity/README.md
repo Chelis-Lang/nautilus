@@ -18,7 +18,7 @@ uv sync --project parity --frozen
 uv run --project parity --frozen python parity/run_parity.py --strict
 ```
 
-Set `CHELIS_BIN=/path/to/chelis` to validate an explicit candidate binary;
+Set `CHELIS_BIN=/path/to/chelis` to validate an explicit toolchain binary;
 otherwise the runner resolves `chelis` from `PATH`.
 
 Inside the Devenv shell, the equivalent convenience command is:

@@ -1,7 +1,7 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the `chelis 0.17.4` release candidate
+repository state on the published `chelis 0.17.4` release
 (Nautilus `0.7.36`).
 
 ## Scope
@@ -121,9 +121,9 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to the `chelis 0.17.4` candidate exactly via `reef.toml`.
-Official release acceptance remains pending publication of the upstream
-v0.17.4 assets. Historical
+Nautilus is pinned to the published `chelis 0.17.4` release exactly via
+`reef.toml`. The official Linux glibc-2.31 asset passed the complete local
+acceptance gate on 2026-07-31. Historical
 compiler/runtime bugs discovered during Nautilus P0-P3 and current narrowed
 limitations are documented in `docs/UPSTREAM_BUGS.md`.
 
@@ -144,8 +144,8 @@ For the pinned toolchain:
 - The release gate uses the compiler-owned canonical artifact verifier,
   adversarially requires archive-mutation and CHB-trailing-byte rejection, and
   requires two unchanged builds to produce byte-identical archive and CHB
-  payloads. These checks de-narrow chelis#970 and chelis#972 on the integration
-  candidate; the downloaded official v0.17.4 asset remains the final oracle.
+  payloads. The downloaded official v0.17.4 asset passed these checks,
+  completing the chelis#970 and chelis#972 de-narrowing milestone.
 - The old `redundant-linearity-call` false positive is fixed. The 131 copies it
   now identifies in `src/linalg.ch` were removed with a green package build;
   11 semantically required copies remain.

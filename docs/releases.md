@@ -33,8 +33,8 @@ mutation after the workflow seals the release. It does not distinguish a
 malicious or compromised release authority that can replace both payloads and
 their checksum manifest: a checksum created at the same trust boundary cannot
 provide that stronger provenance claim. The compiler-owned canonical validator
-closes [chelis#972](https://github.com/Chelis-Lang/chelis/issues/972) at the
-0.17.4 integration candidate; the checksum manifest remains necessary for
+closes [chelis#972](https://github.com/Chelis-Lang/chelis/issues/972) at
+Chelis 0.17.4; the checksum manifest remains necessary for
 transport integrity and publisher identification.
 
 ## These artifacts are platform-agnostic by design
@@ -47,7 +47,7 @@ consumer's chelis compiler reads.
 
 The `.tar.zst` is the source tree (`reef.toml`, `reef.lock`, every
 `src/*.ch` file). Its contents and build metadata are platform-neutral. Chelis
-0.17.4's integration candidate canonicalizes archive member order, paths,
+0.17.4 canonicalizes archive member order, paths,
 modes, ownership, and timestamps; the `.chb` embeds the resulting archive
 digest. The Linux release job and both Linux and Darwin CI jobs now build twice
 from the same checkout and require byte-identical archive and CHB bytes,
@@ -76,15 +76,14 @@ sha256sum -c nautilus-X.Y.Z.sha256
 On macOS, use `shasum -a 256 -c nautilus-X.Y.Z.sha256`. Do not accept a
 checksum manifest transported from a different release or channel.
 
-> **Pre-publication guard:** the repository is validated against the local
-> Chelis 0.17.4 cascade-integration candidate. The final merged source SHA and
-> official checksummed platform-asset SHA-256 values are deliberately pending
-> until upstream main is green and the v0.17.4 release assets exist; no local
-> candidate digest is presented as a release digest.
-> The commands below are the exact post-publication consumer flow; do not run
-> them until those official assets are published. Until then, the latest
-> installable upstream release remains v0.17.2 (the `v0.17.3` source tag exists
-> without matching release assets).
+> **Validated release identity:** Chelis v0.17.4 resolves to source commit
+> `0b0c92f9916163b05a483fba70473496923730e6`. The published Linux glibc-2.31
+> tarball has SHA-256
+> `6b7f477d65b2dea4e85b5107a51ae5714a5113138a6791361b74205f9448a121`;
+> its compiler payload has SHA-256
+> `d08ebfe67fed11f4458251d47e732de3249d93a3d700c87991a39e219887cc7e`.
+> That exact payload passed Nautilus's complete local acceptance gate on
+> 2026-07-31.
 
 ### Linux (x86_64)
 
@@ -121,13 +120,13 @@ chelis reef install --from-monorepo /path/to/nautilus-checkout nautilus
 chelis reef build
 ```
 
-After the official assets publish, CI's `mac-smoke` job builds, seals, and
+CI's `mac-smoke` job builds, seals, and
 validates a Darwin artifact pair from its current checkout as proof-of-life for
 that toolchain.
 It enforces unchanged-build byte identity on Darwin but does not compare the
 Darwin-built bytes with the Linux release pair.
-Pre-publication acceptance uses the exact local candidate binary and does not
-claim that the release-download path or official asset pair is live.
+The local official-asset milestone validates the Linux release-download path;
+Darwin remains independently validated by `mac-smoke`.
 
 ## Non-goal: do NOT add platform suffixes to Nautilus release artifacts
 
