@@ -57,10 +57,12 @@ with Darwin-built bytes, so it does not claim a separately measured
 cross-platform identity result.
 
 The platform boundary lives **upstream of Nautilus** — in the chelis
-toolchain itself, which ships separate `linux-x86_64` and `darwin-arm64`
-tarballs because it contains a Rust-compiled binary and a static
-runtime archive. Reef *packages* like Nautilus and chelis-std do not
-need that split.
+toolchain itself, which ships separate `linux-x86_64-glibc2.31` and
+`darwin-arm64` tarballs because it contains a Rust-compiled binary and a static
+runtime archive. Linux automation selects the glibc-2.31 build so it runs on
+the oldest supported Linux baseline. Both platform paths download the matching
+publisher-generated `.sha256` sidecar and verify it before extraction. Reef
+*packages* like Nautilus and chelis-std do not need that split.
 
 ## Consumer flow
 
@@ -88,9 +90,11 @@ checksum manifest transported from a different release or channel.
 
 ```sh
 gh release download v0.17.4 --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.17.4-linux-x86_64.tar.gz'
-tar xzf chelis-v0.17.4-linux-x86_64.tar.gz
-export PATH="$PWD/chelis-v0.17.4-linux-x86_64/bin:$PATH"
+  --pattern 'chelis-v0.17.4-linux-x86_64-glibc2.31.tar.gz' \
+  --pattern 'chelis-v0.17.4-linux-x86_64-glibc2.31.tar.gz.sha256'
+sha256sum -c chelis-v0.17.4-linux-x86_64-glibc2.31.tar.gz.sha256
+tar xzf chelis-v0.17.4-linux-x86_64-glibc2.31.tar.gz
+export PATH="$PWD/chelis-v0.17.4-linux-x86_64-glibc2.31/bin:$PATH"
 
 # In your Chelis project's reef.toml:
 #   nautilus = "0.7.36"
@@ -104,7 +108,9 @@ Identical except for the toolchain download:
 
 ```sh
 gh release download v0.17.4 --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.17.4-darwin-arm64.tar.gz'
+  --pattern 'chelis-v0.17.4-darwin-arm64.tar.gz' \
+  --pattern 'chelis-v0.17.4-darwin-arm64.tar.gz.sha256'
+shasum -a 256 -c chelis-v0.17.4-darwin-arm64.tar.gz.sha256
 tar xzf chelis-v0.17.4-darwin-arm64.tar.gz
 export PATH="$PWD/chelis-v0.17.4-darwin-arm64/bin:$PATH"
 
@@ -126,7 +132,7 @@ claim that the release-download path or official asset pair is live.
 ## Non-goal: do NOT add platform suffixes to Nautilus release artifacts
 
 A future contributor reading the chelis release page may notice that
-chelis ships `chelis-vX.Y.Z-linux-x86_64.tar.gz` AND
+chelis ships `chelis-vX.Y.Z-linux-x86_64-glibc2.31.tar.gz` AND
 `chelis-vX.Y.Z-darwin-arm64.tar.gz` and feel that Nautilus is missing
 something. **It is not.** The two-platform split exists in chelis
 because the chelis tarball is a compiled binary. Nautilus's reef

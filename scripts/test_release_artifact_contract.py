@@ -366,6 +366,26 @@ class ReleaseArtifactContractTests(unittest.TestCase):
             2,
         )
 
+    def test_release_workflow_verifies_glibc231_toolchain_before_extracting(
+        self,
+    ) -> None:
+        release = (ROOT / ".github" / "workflows" / "release.yml").read_text()
+        download = release.split("- name: Download chelis toolchain", 1)[1].split(
+            "- name: Verify toolchain", 1
+        )[0]
+
+        self.assertIn(
+            'asset="chelis-${CHELIS_TAG}-linux-x86_64-glibc2.31.tar.gz"',
+            download,
+        )
+        self.assertIn('--pattern "$asset"', download)
+        self.assertIn('--pattern "$asset.sha256"', download)
+        self.assertLess(download.index("sha256sum -c"), download.index("tar -xzf"))
+        self.assertIn(
+            "chelis-${CHELIS_TAG}-linux-x86_64-glibc2.31/bin",
+            download,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
