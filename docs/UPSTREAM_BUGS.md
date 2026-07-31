@@ -55,6 +55,23 @@ release.
 
 **Re-probe cadence:** at every compiler pin bump.
 
+- **Reef package bytes are not reproducible across unchanged builds** —
+  `chelis#970`
+  ([Chelis-Lang/chelis#970](https://github.com/Chelis-Lang/chelis/issues/970)).
+    - **Minimal reproducer:** run `chelis reef build` twice without changing
+      package inputs and compare both `dist/*.tar.zst` and `dist/*.chb`
+      SHA-256 values. Setting `SOURCE_DATE_EPOCH=0` does not stabilize them.
+    - **0.17.4 candidate result:** both hashes change. `reef.lock` is rewritten
+      with a new mtime, archive entry metadata preserves that mtime, and the
+      shell correctly changes because it embeds the archive hash.
+    - **Affected Nautilus surface:** release documentation cannot claim
+      byte-identical cross-host rebuilds. The tag workflow instead produces one
+      official pair and validates its archive contents plus archive↔shell
+      integrity with `scripts/check_release_artifacts.py`.
+    - **Re-probe trigger:** a Chelis release that canonicalizes Reef archive
+      metadata or documents `SOURCE_DATE_EPOCH` support. Promote the local gate
+      to a two-build hash comparison before restoring any reproducibility claim.
+
 - **Import-only `eval --file` leaks an unrelated symbolic input** —
   `chelis#848`
   ([Chelis-Lang/chelis#848](https://github.com/Chelis-Lang/chelis/issues/848)).
@@ -85,8 +102,9 @@ release.
 is met.
 
 - **No inactive limitation is parked.** The remaining filed issues are
-  chelis#676 (backward-DAG wrapper shapes) and chelis#848 (import-only eval
-  residue); chelis#847's downstream symptom is archived below.
+  chelis#676 (backward-DAG wrapper shapes), chelis#848 (import-only eval
+  residue), and chelis#970 (Reef artifact reproducibility); chelis#847's
+  downstream symptom is archived below.
 
 ## Archived
 

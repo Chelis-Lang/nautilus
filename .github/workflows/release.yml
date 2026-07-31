@@ -64,6 +64,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
         run: chelis reef build
 
+      - name: Validate reef asset pair
+        run: python3 scripts/check_release_artifacts.py
+
       - name: Verify release assets
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         run: |

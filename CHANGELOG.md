@@ -12,6 +12,11 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   installation. The shared installer now resolves and verifies the exact
   compiler pin itself; workflow pin variables remain audit-only mirrors as
   required by the shell contract.
+- Corrected the release-artifact contract: versioned Reef package outputs are
+  built once from the tag and uploaded, not committed. CI now rejects native
+  source-archive members and asks Reef to validate/install the exact generated
+  archive↔shell pair. Cross-build byte reproducibility remains explicitly
+  unclaimed and tracked upstream as chelis#970.
 
 ## [0.7.34] - 2026-07-15
 

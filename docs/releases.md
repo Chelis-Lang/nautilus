@@ -5,8 +5,12 @@ Nautilus publishes two artifacts per tag:
 - `nautilus-X.Y.Z.chb` — Reef *shell* package (≈30 KB)
 - `nautilus-X.Y.Z.tar.zst` — source archive (≈30 KB)
 
-Both are produced by `chelis reef build` and committed under `dist/` in
-the repo. `gh release create` uploads them as assets at tag time.
+Both are produced once by the tag-triggered release workflow and uploaded
+directly from that tagged checkout. Package outputs under `dist/` are ignored;
+only the separately generated `dist/stability.json` API inventory is committed.
+The release workflow and normal package CI run
+`scripts/check_release_artifacts.py` after the build to validate the archive
+contents and the archive↔shell hash pair through Reef's installer.
 
 ## These artifacts are platform-agnostic by design
 
@@ -17,7 +21,13 @@ no `.a`. The format is IR-level metadata that the *downstream*
 consumer's chelis compiler reads.
 
 The `.tar.zst` is the source tree (`reef.toml`, `reef.lock`, every
-`src/*.ch` file). Identical bytes regardless of build host.
+`src/*.ch` file). Its contents are platform-neutral, but this is not currently
+a reproducible-build guarantee: unchanged builds can produce different bytes
+because archive metadata includes filesystem mtimes, and the `.chb` correctly
+changes with the archive hash. Chelis tracks canonical archive metadata and
+cross-build byte identity as chelis#970. Consumers identify the one official
+asset pair attached to a release; they must not substitute an independently
+rebuilt pair by filename alone.
 
 The platform boundary lives **upstream of Nautilus** — in the chelis
 toolchain itself, which ships separate `linux-x86_64` and `darwin-arm64`
@@ -60,17 +70,19 @@ gh release download v0.17.4 --repo Chelis-Lang/chelis \
 tar xzf chelis-v0.17.4-darwin-arm64.tar.gz
 export PATH="$PWD/chelis-v0.17.4-darwin-arm64/bin:$PATH"
 
-# Same steps from here on. The Nautilus .chb + .tar.zst are
-# the same files used on Linux. The Darwin chelis compiler
-# reads the IR + sources and lowers to Mach-O.
+# Same steps from here on. Nautilus uses the same unsuffixed,
+# platform-neutral artifact names on every platform. The Darwin
+# chelis compiler reads the IR + sources and lowers to Mach-O.
 chelis reef install --from-monorepo /path/to/nautilus-checkout nautilus
 chelis reef build
 ```
 
-After the official assets publish, CI's `mac-smoke` job runs this exact flow on
-every push as proof-of-life that the Nautilus reef package builds under the
-Darwin chelis toolchain. Pre-publication acceptance uses the exact local
-candidate binary and does not claim that the release-download path is live.
+After the official assets publish, CI's `mac-smoke` job builds and validates a
+Darwin artifact pair from its current checkout as proof-of-life for that toolchain.
+It does not compare the Darwin-built bytes with the Linux release pair; that
+stronger reproducibility guarantee remains blocked by chelis#970.
+Pre-publication acceptance uses the exact local candidate binary and does not
+claim that the release-download path or official asset pair is live.
 
 ## Non-goal: do NOT add platform suffixes to Nautilus release artifacts
 
@@ -82,7 +94,8 @@ because the chelis tarball is a compiled binary. Nautilus's reef
 artifacts contain only language-level IR + source — there is no
 platform-specific code to vary.
 
-If a regression ever causes Nautilus's `.chb` to embed native code, the
-`mac-smoke` CI job will fail (the artifact built on Linux won't load
-under Darwin chelis). Treat that signal as a chelis upstream bug to
-fix, not a "Nautilus needs a darwin variant" problem.
+`scripts/check_release_artifacts.py` rejects native-code members in the source
+archive and asks Reef to deserialize and install the exact generated pair.
+The `mac-smoke` job repeats that validation on Darwin. Treat a failure as an
+upstream packaging bug to fix, not evidence that Nautilus needs platform
+suffixes.
