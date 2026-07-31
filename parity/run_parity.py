@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import subprocess
 import sys
@@ -39,6 +40,7 @@ PARITY_ROOT = Path(__file__).resolve().parent
 GOLDENS_ROOT = PARITY_ROOT / "goldens"
 GOLDEN_SCHEMA = "nautilus-parity-goldens/1"
 PROBE_PATH = PKG / "src" / "probe.ch"
+DEFAULT_CHELIS_BIN = "chelis"
 
 # Result line format from `chelis eval --file`:
 #   result_<index> = <float>
@@ -91,8 +93,9 @@ def chelis_eval_batch(
     )
     PROBE_PATH.write_text(body)
     try:
+        chelis_bin = os.environ.get("CHELIS_BIN", DEFAULT_CHELIS_BIN)
         completed = subprocess.run(
-            ["chelis", "eval", "--file", str(PROBE_PATH.relative_to(PKG))],
+            [chelis_bin, "eval", "--file", str(PROBE_PATH.relative_to(PKG))],
             cwd=str(PKG),
             capture_output=True,
             text=True,

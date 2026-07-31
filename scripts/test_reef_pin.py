@@ -59,6 +59,33 @@ class ReefPinTests(unittest.TestCase):
         self.assertIn("steps.reef-pin.outputs.chelis-tag", action)
         self.assertIn("steps.reef-pin.outputs.chelis-version", action)
 
+    def test_installer_defaults_to_verified_glibc231_asset(self) -> None:
+        action_path = reef_pin.REPO_ROOT / ".github/actions/install-chelis/action.yml"
+        action = action_path.read_text(encoding="utf-8")
+        inputs = action.split("inputs:\n", 1)[1].split("outputs:\n", 1)[0]
+        download = action.split(
+            "- name: Download chelis toolchain (cache miss)", 1
+        )[1].split("- name: Put chelis on PATH", 1)[0]
+
+        self.assertIn("default: linux-x86_64-glibc2.31", inputs)
+        self.assertIn(
+            'asset="chelis-${{ steps.reef-pin.outputs.chelis-tag }}-',
+            download,
+        )
+        self.assertIn('${{ inputs.platform }}.tar.gz"', download)
+        self.assertIn('--pattern "$asset"', download)
+        self.assertIn('--pattern "$asset.sha256"', download)
+        self.assertIn(
+            'if [ "${{ inputs.platform }}" = "darwin-arm64" ]', download
+        )
+        self.assertIn('shasum -a 256 -c "$asset.sha256"', download)
+        self.assertLess(download.index("sha256sum -c"), download.index("tar -xzf"))
+        self.assertIn(
+            "chelis-toolchain-sha256-v1-${{ steps.reef-pin.outputs.chelis-tag }}-",
+            action,
+        )
+        self.assertIn("${{ inputs.platform }}/bin", action)
+
 
 if __name__ == "__main__":
     unittest.main()

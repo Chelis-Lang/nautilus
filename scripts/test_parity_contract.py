@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -47,6 +48,34 @@ class ParityContractTests(unittest.TestCase):
             "uv run --project parity --frozen python parity/run_parity.py --strict",
             workflow,
         )
+
+    def test_parity_honors_chelis_bin_override(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="nautilus-parity-bin-test-") as tmp:
+            package_root = Path(tmp)
+            probe_path = package_root / "src" / "probe.ch"
+            probe_path.parent.mkdir()
+            completed = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="result_0 = 1.0\n", stderr=""
+            )
+
+            with (
+                mock.patch.object(run_parity, "PKG", package_root),
+                mock.patch.object(run_parity, "PROBE_PATH", probe_path),
+                mock.patch.dict("os.environ", {"CHELIS_BIN": "/candidate/chelis"}),
+                mock.patch.object(
+                    run_parity.subprocess, "run", return_value=completed
+                ) as run,
+            ):
+                self.assertEqual(
+                    run_parity.chelis_eval_batch(
+                        "import Nautilus.Special exposing (erf)\n",
+                        ["result_0 = erf(cast(0.0, f32))"],
+                    ),
+                    {0: 1.0},
+                )
+
+            self.assertEqual(run.call_args.args[0][0], "/candidate/chelis")
+            self.assertFalse(probe_path.exists())
 
 
 if __name__ == "__main__":

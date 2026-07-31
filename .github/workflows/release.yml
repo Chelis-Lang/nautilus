@@ -13,8 +13,8 @@ env:
   PACKAGE_NAME: nautilus
   # Audit-only mirror required by the shell contract. The detection step below
   # overwrites these values from reef.toml before runtime installation.
-  CHELIS_TAG: v0.17.1
-  CHELIS_VERSION: 0.17.1
+  CHELIS_TAG: v0.17.4
+  CHELIS_VERSION: 0.17.4
 
 jobs:
   build-reef-assets:
@@ -42,13 +42,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
         run: |
+          set -euo pipefail
+          asset="chelis-${CHELIS_TAG}-linux-x86_64-glibc2.31.tar.gz"
+          rm -rf /tmp/chelis-toolchain
+          mkdir -p /tmp/chelis-toolchain
           gh release download "${CHELIS_TAG}" \
             --repo Chelis-Lang/chelis \
-            --pattern "chelis-${CHELIS_TAG}-linux-x86_64.tar.gz" \
+            --pattern "$asset" \
+            --pattern "$asset.sha256" \
             --dir /tmp/chelis-toolchain
-          tar -xzf "/tmp/chelis-toolchain/chelis-${CHELIS_TAG}-linux-x86_64.tar.gz" \
+          (
+            cd /tmp/chelis-toolchain
+            sha256sum -c "$asset.sha256"
+          )
+          tar -xzf "/tmp/chelis-toolchain/$asset" \
             -C /tmp/chelis-toolchain
-          echo "/tmp/chelis-toolchain/chelis-${CHELIS_TAG}-linux-x86_64/bin" >> "$GITHUB_PATH"
+          echo "/tmp/chelis-toolchain/chelis-${CHELIS_TAG}-linux-x86_64-glibc2.31/bin" >> "$GITHUB_PATH"
 
       - name: Verify toolchain
         run: test "$(chelis --version)" = "chelis ${CHELIS_VERSION}"
@@ -64,12 +73,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
         run: chelis reef build
 
+      - name: Seal and validate Reef release payloads
+        run: |
+          python3 scripts/check_release_artifacts.py --write-checksums
+          chelis reef build
+          python3 scripts/check_release_artifacts.py
+
       - name: Verify release assets
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         run: |
           test "${GITHUB_REF_NAME#v}" = "${PACKAGE_VERSION}"
           test -f "dist/${PACKAGE_NAME}-${PACKAGE_VERSION}.tar.zst"
           test -f "dist/${PACKAGE_NAME}-${PACKAGE_VERSION}.chb"
+          test -f "dist/${PACKAGE_NAME}-${PACKAGE_VERSION}.sha256"
 
       - name: Publish GitHub Release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -78,5 +94,9 @@ jobs:
           files: |
             dist/${{ env.PACKAGE_NAME }}-${{ env.PACKAGE_VERSION }}.tar.zst
             dist/${{ env.PACKAGE_NAME }}-${{ env.PACKAGE_VERSION }}.chb
+            dist/${{ env.PACKAGE_NAME }}-${{ env.PACKAGE_VERSION }}.sha256
           generate_release_notes: true
           fail_on_unmatched_files: true
+          # A successful rerun deterministically rebuilds the same bytes, then
+          # explicitly replaces the complete payload set.
+          overwrite_files: true

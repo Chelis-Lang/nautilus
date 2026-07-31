@@ -36,13 +36,13 @@ decomposition.
 
 ## Getting started
 
-Requires the latest validated Chelis release, currently
-[chelis 0.17.1](https://github.com/Chelis-Lang/chelis/releases/tag/v0.17.1).
+Targets the published
+[Chelis v0.17.4 release](https://github.com/Chelis-Lang/chelis/releases/tag/v0.17.4).
 Install it through `chelisup`; do not replace the pin-resolving shim with a
 version-specific symlink.
 
 ```sh
-chelisup install 0.17.1
+chelisup install 0.17.4
 chelis reef setup
 chelis reef build
 chelis test tests/ --jobs auto

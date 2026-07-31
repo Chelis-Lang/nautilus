@@ -10,10 +10,11 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Status snapshot (2026-07-23, `chelis 0.17.1`).**
+**Status snapshot (2026-07-31, published `chelis 0.17.4`).**
 
-- Current pin is `chelis 0.17.1` (Nautilus `0.7.35`). The current acceptance
-  gate passes 463 native tests in parallel and serial modes, 3 negative
+- Current pin is `chelis 0.17.4` (Nautilus `0.7.36`). The official Linux
+  glibc-2.31 asset passed the local acceptance gate: 463 native tests,
+  3 negative
   contracts, 2 expected-failure blocker probes, and 216/216 reviewed scipy
   parity samples.
 - The canonical Phase 3j architecture now describes the shipped package:
@@ -21,10 +22,11 @@ pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
   hand-written adjoint registry. Broad solver AD and QP/SOCP/LP remain explicit
   later scope rather than hidden completion requirements.
 - Multi-parameter Levenberg-Marquardt's exact AD replacement was re-probed on
-  0.16.1 and narrowed to two live layers: generic `n`/`m` dimension collapse
-  and malformed backward-DAG lowering for the arbitrary vector-model wrapper.
-  Both are pinned under `tests_blocked/curvefit/`; tensor-wrt and direct
-  capture-free multi-argument grad controls pass.
+  0.17.4. The former generic `n`/`m` checker collapse remains resolved; both the
+  generic and concrete arbitrary vector-model wrappers now reach one live
+  malformed backward-DAG layer (chelis#676). Both shapes are pinned under
+  `tests_blocked/curvefit/`; tensor-wrt and direct capture-free multi-argument
+  grad controls pass.
 
 Historical snapshot (2026-04-22, `chelis v0.1.18`):
 
@@ -205,29 +207,25 @@ differences (`eps=1e-5`) and solves the damped normal equations with
 `tol` is accepted but the current routine executes exactly `max_iters`, and
 lambda is fixed at `0.01`.
 
-**Current 0.16.1 blocker chain, re-probed 2026-07-14:**
+**Current 0.17.4 release blocker, re-probed 2026-07-30:**
 
-1. The exact generic wrapper collapses independently declared `n` and `m` at
-   check time. Citation and reproducer: `chelis#847` and
-   `tests_blocked/curvefit/lm_jacobian_generic_dims.ch`.
-2. With dimensions concretized to `n=2`, `m=6`, the same arbitrary-model
-   wrapper checks at score 1 but eval and C build reject its malformed backward
-   DAG (`mismatched dimension count: 0 vs 1`). Citation and reproducer:
-   `chelis#676` and `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`; the
-   function-valued-model capture is filed there as a witness of the same
-   backward-DAG verifier class.
+The former outer chelis#847 checker collapse is fixed. Both the exact generic
+wrapper and the concrete `n=2`, `m=6` arbitrary-model wrapper now reach the
+same malformed backward DAG (`mismatched dimension count: 0 vs 1`).
+Citation: `chelis#676`; executable shapes:
+`tests_blocked/curvefit/lm_jacobian_generic_dims.ch` and
+`lm_jacobian_model_wrapper.ch`.
 
 A capture-free direct multi-argument tensor objective is the positive control:
 it checks, evaluates to the correct gradient, C-builds, and compiles. The
 narrowing is therefore the function-valued vector-model Jacobian boundary, not
 a claim that tensor-wrt grad is generally unavailable.
 
-**De-narrowing instructions.** When both probes clear, promote their exact-value
+**De-narrowing instructions.** When both shapes clear, promote their exact-value
 witnesses, replace `lm_jcol` with AD Jacobian assembly, compare linear and
 exponential recovery trajectories against the current implementation, remove
-the finite-difference scaling caveat, and archive both upstream entries in the
-same pin-bump change. Do not remove the workaround on a checker-only fix that
-merely exposes the backend layer.
+the finite-difference scaling caveat, and archive chelis#676 in the same
+pin-bump change.
 
 **Acceptance oracle:** `chelis test tests/curvefit.ch` retains the scalar and
 multi-parameter recovery cases; the promoted Jacobian tests prove exact rows;
