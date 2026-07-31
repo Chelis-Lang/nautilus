@@ -4,14 +4,17 @@
 
 Nautilus requires:
 
-- the published [Chelis 0.17.4](https://github.com/Chelis-Lang/chelis/releases/tag/v0.17.4) toolchain
+- Chelis 0.17.5 for the Nautilus 0.7.37 release preparation; it is not yet
+  published or validated, so Nautilus 0.7.36 with the published
+  [Chelis 0.17.4](https://github.com/Chelis-Lang/chelis/releases/tag/v0.17.4)
+  toolchain remains the installable baseline
 - GCC (for compiling generated C code)
 - uv and Python 3.12 for the isolated parity project
 
 ## Install the Chelis toolchain
 
 ```sh
-chelisup install 0.17.4
+chelisup install 0.17.5  # only after the official release is published
 ```
 
 `chelisup` installs releases side by side. Its `chelis` shim resolves the
@@ -26,7 +29,7 @@ chelis reef setup
 chelis reef build
 ```
 
-This produces `dist/nautilus-0.7.36.chb`, the reef package that other
+This produces `dist/nautilus-0.7.37.chb`, the reef package that other
 Chelis projects can depend on.
 
 ## Verify the installation

@@ -5,7 +5,11 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
-> **Current release pin: `chelis 0.17.4`.** The two CurveFit wrapper shapes,
+> **Release-preparation pin: `chelis 0.17.5` (unpublished).** No 0.17.5 tag or
+> release asset exists as of 2026-07-31, so every verdict below remains the
+> explicitly labeled 0.17.4 result. Do not reclassify a limitation until the
+> official 0.17.5 asset is installed and the per-surface probe is rerun. The
+> two CurveFit wrapper shapes,
 > the manual `eval --file` residue, and the linearity/copy controls were re-run
 > against the release source on 2026-07-30. On 2026-07-31, the published Linux
 > glibc-2.31 asset (release SHA-256

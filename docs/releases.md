@@ -1,5 +1,12 @@
 # Nautilus release artifacts
 
+> **0.7.37 release preparation:** `reef.toml` targets Chelis 0.17.5, which has
+> no published tag or release assets as of 2026-07-31. The validated identity
+> and download commands below deliberately remain the 0.17.4/0.7.36 baseline;
+> they must be replaced with publisher-generated 0.17.5 hashes and commands
+> only after those assets exist and pass the complete gate. Do not tag or
+> publish Nautilus 0.7.37 from this preparation state.
+
 Nautilus publishes three assets per tag:
 
 - `nautilus-X.Y.Z.chb` — Reef *shell* package (≈30 KB)

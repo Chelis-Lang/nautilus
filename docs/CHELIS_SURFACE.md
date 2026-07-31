@@ -1,6 +1,6 @@
 # Chelis Capability Surface (this shell)
 
-<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.17.4 (sha256:28011bed9ccb5778) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.17.5 (sha256:28011bed9ccb5778) -->
 This file is a domain-scoped view of the canonical Chelis capability surface,
 generated for the pinned toolchain. Each capability row is marked `@pin` (usable
 at the current pin) or `@upstream` (lands at the next bump). **Read it before
@@ -14,24 +14,26 @@ in `Chelis-Lang/chelis`.
 
 | Item | Value |
 |---|---|
-| Pinned compiler | Published `chelis 0.17.4` (`reef.toml`: `=0.17.4`) |
-| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.17.4` in `reef.lock` |
-| Upstream release identity | Source commit `0b0c92f9916163b05a483fba70473496923730e6`; Linux glibc-2.31 asset SHA-256 `6b7f477d65b2dea4e85b5107a51ae5714a5113138a6791361b74205f9448a121` |
+| Preparation pin | Unpublished `chelis 0.17.5` target (`reef.toml`: `=0.17.5`); no tag, asset, or validation claim yet |
+| Last validated compiler | Published `chelis 0.17.4`; source commit `0b0c92f9916163b05a483fba70473496923730e6`; Linux glibc-2.31 asset SHA-256 `6b7f477d65b2dea4e85b5107a51ae5714a5113138a6791361b74205f9448a121` |
+| Bundled standard library | `chelis-std 0.4.0`; its 0.17.5 compiler-bound state cannot be regenerated until the release bundle exists |
+| Validation status | **Blocked on publication of the official Chelis v0.17.5 release and checksum sidecar** |
 | Last refreshed | 2026-07-31 |
 
-`@pin` means the row describes behavior available (or a limitation verified)
-on the exact pinned release. `@upstream` means a capability exists in a newer
-published release and will arrive at the next pin bump. There are no
-`@upstream` rows in this snapshot because the 0.17.4 release adds no
-Nautilus-facing capability beyond the re-probed pin surface. Planned Phase 5
-work is not mislabeled as `@upstream`.
+During this release preparation, `@pin` rows retain the last executable 0.17.4
+evidence; they are not assertions that 0.17.5 has been tested. Every
+version-sensitive row must be re-probed against the published 0.17.5 asset
+before release. `@upstream` still means a capability exists in a newer
+published release. No unvalidated 0.17.5 behavior has been promoted into this
+inventory, and planned Phase 5 work is not mislabeled as `@upstream`.
 
 This is the Nautilus-scoped view of the canonical Chelis inventory. The
 published Linux glibc-2.31 asset was checked against its release sidecar, then
 its byte-identical compiler payload (SHA-256
 `d08ebfe67fed11f4458251d47e732de3249d93a3d700c87991a39e219887cc7e`)
-ran the full local gate. Version-sensitive statements resolve to the executable
-0.17.4 probes cited in
+ran the full local gate. That remains the provenance baseline while v0.17.5 is
+unpublished. Version-sensitive statements resolve to the executable 0.17.4
+probes cited in
 [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
 
 ## Capability inventory

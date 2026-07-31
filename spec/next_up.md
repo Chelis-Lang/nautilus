@@ -10,9 +10,12 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Status snapshot (2026-07-31, published `chelis 0.17.4`).**
+**Release-preparation snapshot (2026-07-31).**
 
-- Current pin is `chelis 0.17.4` (Nautilus `0.7.36`). The official Linux
+- The manifest targets unpublished `chelis 0.17.5` (Nautilus `0.7.37`). There
+  is no v0.17.5 tag or official asset yet, so no validation or de-narrowing
+  claim is made for that target.
+- The last validated baseline is `chelis 0.17.4` (Nautilus `0.7.36`). Its official Linux
   glibc-2.31 asset passed the local acceptance gate: 463 native tests,
   3 negative
   contracts, 2 expected-failure blocker probes, and 216/216 reviewed scipy

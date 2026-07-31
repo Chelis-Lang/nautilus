@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.37] - Unreleased
+
+Release preparation for Chelis v0.17.5. The required
+`chelis reef conform bump 0.17.5` command advanced the compiler pin and all
+workflow audit mirrors, and the Nautilus package version advanced from 0.7.36
+to 0.7.37.
+
+Chelis v0.17.5 has no published tag or release asset as of 2026-07-31. No
+0.17.5 compiler, probe, numerical, parity, package, or release-artifact result
+is claimed here. Before this entry can be dated and released, validate the
+official asset and sidecar, regenerate compiler-bound dependency state, re-run
+both blocked probes and every due manual surface, refresh the recorded release
+identity, and pass the complete local and hosted gates.
+
 ## [0.7.36] - 2026-07-31
 
 Compiler and release-artifact hardening release for Chelis v0.17.4. The

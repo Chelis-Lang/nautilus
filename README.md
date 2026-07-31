@@ -36,13 +36,16 @@ decomposition.
 
 ## Getting started
 
-Targets the published
-[Chelis v0.17.4 release](https://github.com/Chelis-Lang/chelis/releases/tag/v0.17.4).
-Install it through `chelisup`; do not replace the pin-resolving shim with a
+The `release/v0.7.37` preparation targets Chelis v0.17.5. That compiler is not
+published yet, so this branch is intentionally not installable or validated
+until the official release and checksum sidecar exist. Nautilus v0.7.36 on the
+[Chelis v0.17.4 release](https://github.com/Chelis-Lang/chelis/releases/tag/v0.17.4)
+remains the latest validated combination. After v0.17.5 is published, install
+it through `chelisup`; do not replace the pin-resolving shim with a
 version-specific symlink.
 
 ```sh
-chelisup install 0.17.4
+chelisup install 0.17.5  # only after the official release is published
 chelis reef setup
 chelis reef build
 chelis test tests/ --jobs auto

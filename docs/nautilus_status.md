@@ -1,8 +1,10 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-repository state on the published `chelis 0.17.4` release
-(Nautilus `0.7.36`).
+`release/v0.7.37` preparation state, whose manifest targets unpublished
+`chelis 0.17.5` (Nautilus `0.7.37`). The last executable, validation-clean
+baseline remains published `chelis 0.17.4` with Nautilus `0.7.36`; no 0.17.5
+result is claimed before its official release asset exists.
 
 ## Scope
 
@@ -53,7 +55,9 @@ Totals:
 
 ## Verification Gates
 
-Clean `HEAD` is expected to pass these repo-local gates:
+Once the official 0.17.5 release is published, clean `HEAD` must pass these
+repo-local gates. In the current preparation state, compiler-dependent gates
+are blocked before execution because the exact pinned toolchain is unavailable:
 
 ```sh
 chelis reef build
@@ -69,7 +73,8 @@ python3 scripts/validate_book_examples.py
 mdbook build docs/book
 ```
 
-Expected results on a clean run:
+The following are the last validated 0.17.4 baseline results, not 0.17.5
+expectations inferred without execution:
 
 ```text
 chelis test tests/ --jobs auto -> 463 passed, 0 failed
@@ -121,13 +126,14 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus is pinned to the published `chelis 0.17.4` release exactly via
-`reef.toml`. The official Linux glibc-2.31 asset passed the complete local
-acceptance gate on 2026-07-31. Historical
+Nautilus's release-preparation manifest targets `chelis 0.17.5` exactly via
+`reef.toml`, but that release is not published. The official 0.17.4 Linux
+glibc-2.31 asset remains the latest toolchain that passed the complete local
+acceptance gate, on 2026-07-31. Historical
 compiler/runtime bugs discovered during Nautilus P0-P3 and current narrowed
 limitations are documented in `docs/UPSTREAM_BUGS.md`.
 
-For the pinned toolchain:
+For the last validated 0.17.4 toolchain:
 
 - The shipped finite-difference `lm_scalar_nparam` surface remains
   runtime-verified. The positive native gate is `463 / 463`, strict parity is
