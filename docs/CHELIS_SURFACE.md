@@ -28,8 +28,8 @@ work is not mislabeled as `@upstream`.
 
 This is the Nautilus-scoped view of the
 [canonical Chelis inventory at the latest tagged source commit](https://github.com/Chelis-Lang/chelis/blob/fdfb1e3f3f57a91ce44024d944e46cd33fcfee7f/docs/CHELIS_SURFACE.md).
-The tested 0.17.4 candidate binary was built from local source commit
-`7061e0b27006dc6ee31ef90b3011710526815ada`; its tag and release assets remain
+The tested 0.17.4 candidate binary was built from source commit
+`9a58c5781105bbe07d37afbb6ecfc7b3a879e0de`; its tag and release assets remain
 unpublished. Version-sensitive statements resolve to the executable 0.17.4
 candidate probes cited in
 [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).

@@ -28,8 +28,8 @@ need that split.
 ## Consumer flow
 
 > **Pre-publication guard:** the repository is validated against the local
-> Chelis 0.17.4 release candidate, built from local source commit
-> `7061e0b27006dc6ee31ef90b3011710526815ada`. Its source tag, GitHub Release,
+> Chelis 0.17.4 release candidate, built from source commit
+> `9a58c5781105bbe07d37afbb6ecfc7b3a879e0de`. Its source tag, GitHub Release,
 > and checksummed platform assets do not yet exist.
 > The commands below are the exact post-publication consumer flow; do not run
 > them until those official assets are published. Until then, the latest
