@@ -68,6 +68,67 @@ def zstd_compress(raw: bytes) -> bytes:
 
 
 class ReleaseArtifactContractTests(unittest.TestCase):
+    def test_checksum_seal_rejects_shell_byte_flip_and_appended_junk(self) -> None:
+        for label, mutate in (
+            ("byte flip", lambda payload: bytes([payload[0] ^ 1]) + payload[1:]),
+            ("appended junk", lambda payload: payload + b"junk"),
+        ):
+            with self.subTest(label=label):
+                with tempfile.TemporaryDirectory(
+                    prefix="nautilus-checksum-test-"
+                ) as raw_tmp:
+                    root = Path(raw_tmp)
+                    archive = root / "nautilus-1.0.0.tar.zst"
+                    shell = root / "nautilus-1.0.0.chb"
+                    checksums = root / "nautilus-1.0.0.sha256"
+                    archive.write_bytes(b"archive payload")
+                    shell.write_bytes(b"shell payload")
+                    payloads = (archive, shell)
+                    artifacts.write_checksum_manifest(checksums, payloads)
+                    artifacts.validate_checksum_manifest(checksums, payloads)
+
+                    shell.write_bytes(mutate(shell.read_bytes()))
+                    with self.assertRaisesRegex(
+                        RuntimeError, "SHA-256 mismatch.*\\.chb"
+                    ):
+                        artifacts.validate_checksum_manifest(checksums, payloads)
+
+    def test_resealing_replacement_marks_release_authority_boundary(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="nautilus-checksum-boundary-"
+        ) as raw_tmp:
+            root = Path(raw_tmp)
+            archive = root / "nautilus-1.0.0.tar.zst"
+            shell = root / "nautilus-1.0.0.chb"
+            checksums = root / "nautilus-1.0.0.sha256"
+            archive.write_bytes(b"archive payload")
+            shell.write_bytes(b"original shell payload")
+            payloads = (archive, shell)
+            artifacts.write_checksum_manifest(checksums, payloads)
+
+            shell.write_bytes(b"replacement shell payload")
+            artifacts.write_checksum_manifest(checksums, payloads)
+            artifacts.validate_checksum_manifest(checksums, payloads)
+
+    def test_checksum_manifest_rejects_noncanonical_or_extra_records(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="nautilus-checksum-shape-"
+        ) as raw_tmp:
+            root = Path(raw_tmp)
+            archive = root / "nautilus-1.0.0.tar.zst"
+            shell = root / "nautilus-1.0.0.chb"
+            checksums = root / "nautilus-1.0.0.sha256"
+            archive.write_bytes(b"archive payload")
+            shell.write_bytes(b"shell payload")
+            payloads = (archive, shell)
+            artifacts.write_checksum_manifest(checksums, payloads)
+            checksums.write_text(
+                checksums.read_text()
+                + f"{'0' * 64}  unexpected-payload\n"
+            )
+            with self.assertRaisesRegex(RuntimeError, "filenames/order"):
+                artifacts.validate_checksum_manifest(checksums, payloads)
+
     def test_structured_tar_contract_accepts_regular_language_sources(self) -> None:
         core = tarfile.TarInfo("src/core.ch")
         stats = tarfile.TarInfo("src/stats.ch")
@@ -146,24 +207,42 @@ class ReleaseArtifactContractTests(unittest.TestCase):
                 check=True,
             )
 
-    def test_release_workflow_enforces_matching_pair_validation_before_overwrite(
+    def test_release_workflow_seals_and_validates_payloads_before_overwrite(
         self,
     ) -> None:
         release = (ROOT / ".github" / "workflows" / "release.yml").read_text()
         build = release.index("run: chelis reef build")
-        validate = release.index("python3 scripts/check_release_artifacts.py")
+        seal = release.index(
+            "python3 scripts/check_release_artifacts.py --write-checksums"
+        )
+        validate = release.index(
+            "python3 scripts/check_release_artifacts.py", seal + 1
+        )
         publish = release.index("uses: softprops/action-gh-release@v2")
-        self.assertLess(build, validate)
+        self.assertLess(build, seal)
+        self.assertLess(seal, validate)
         self.assertLess(validate, publish)
+        self.assertIn(
+            "dist/${{ env.PACKAGE_NAME }}-${{ env.PACKAGE_VERSION }}.sha256",
+            release[publish:],
+        )
         self.assertIn("overwrite_files: true", release[publish:])
 
         docs = (ROOT / "docs" / "releases.md").read_text()
         self.assertIn("successful rerun", docs)
-        self.assertIn("currently attached matching pair", docs)
+        self.assertIn("sealed payload", docs)
+        self.assertIn("set is the release identity", docs)
+        self.assertIn("release authority", docs)
 
         ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
         self.assertGreaterEqual(
-            ci.count("python3 scripts/check_release_artifacts.py"), 2
+            ci.count(
+                "python3 scripts/check_release_artifacts.py --write-checksums"
+            ),
+            2,
+        )
+        self.assertGreaterEqual(
+            ci.count("python3 scripts/check_release_artifacts.py\n"), 2
         )
 
 

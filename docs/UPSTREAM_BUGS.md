@@ -55,6 +55,25 @@ release.
 
 **Re-probe cadence:** at every compiler pin bump.
 
+- **Reef accepts CHB trailing bytes and lacks a canonical validator** —
+  `chelis#972`
+  ([Chelis-Lang/chelis#972](https://github.com/Chelis-Lang/chelis/issues/972)).
+    - **Minimal reproducer:** append arbitrary bytes to a generated `.chb`,
+      leave its matching `.tar.zst` unchanged, and install the pair with
+      `chelis reef install --from-monorepo`.
+    - **0.17.4 candidate result:** Reef accepts and copies the modified shell
+      because the consumed envelope still contains the correct source-archive
+      hash. Some one-byte mutations outside consumed fields are also accepted.
+    - **Affected Nautilus surface:** Reef install alone is not full-payload
+      release validation. The release gate therefore seals both payloads with
+      an independently transported SHA-256 manifest, verifies byte-identical
+      installation, and compiles a dependent import. The manifest detects
+      post-seal mutation but cannot authenticate against a release authority
+      able to replace both payloads and manifest.
+    - **Re-probe trigger:** every pin bump and the release resolving
+      chelis#972. On pass, add canonical CHB validation to the release gate;
+      retain the checksum manifest as transport integrity.
+
 - **Reef package bytes are not reproducible across unchanged builds** —
   `chelis#970`
   ([Chelis-Lang/chelis#970](https://github.com/Chelis-Lang/chelis/issues/970)).

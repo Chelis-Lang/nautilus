@@ -17,6 +17,11 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   source-archive members and asks Reef to validate/install the exact generated
   archive↔shell pair. Cross-build byte reproducibility remains explicitly
   unclaimed and tracked upstream as chelis#970.
+- Sealed the complete release payload set with an independently transported
+  SHA-256 manifest, added byte-flip and appended-junk regressions, and compiled
+  a fresh dependent package through the installed shell. Reef's lack of
+  canonical full-CHB validation is tracked as chelis#972; the checksum's
+  release-authority trust boundary is explicit.
 
 ## [0.7.34] - 2026-07-15
 

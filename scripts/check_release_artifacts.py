@@ -7,8 +7,10 @@ Chelis#970 tracks byte instability between otherwise identical builds.
 
 from __future__ import annotations
 
+import argparse
 import ctypes
 import ctypes.util
+import hashlib
 import io
 import os
 import re
@@ -35,6 +37,7 @@ NATIVE_SUFFIXES = {
 MAX_ARCHIVE_BYTES = 64 * 1024 * 1024
 ZSTD_CONTENTSIZE_ERROR = (1 << 64) - 2
 ZSTD_CONTENTSIZE_UNKNOWN = (1 << 64) - 1
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def package_identity(manifest: Path) -> tuple[str, str]:
@@ -186,6 +189,78 @@ def archive_members(archive: Path) -> list[str]:
     return validate_tar_bytes(decompress_zstd(archive.read_bytes()))
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def checksum_manifest_bytes(artifacts: tuple[Path, ...]) -> bytes:
+    ordered = sorted(artifacts, key=lambda path: path.name)
+    return "".join(
+        f"{sha256_file(artifact)}  {artifact.name}\n" for artifact in ordered
+    ).encode()
+
+
+def write_checksum_manifest(checksums: Path, artifacts: tuple[Path, ...]) -> None:
+    payload = checksum_manifest_bytes(artifacts)
+    checksums.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        dir=checksums.parent, prefix=f".{checksums.name}.", delete=False
+    ) as output:
+        temporary = Path(output.name)
+        output.write(payload)
+        output.flush()
+        os.fsync(output.fileno())
+    try:
+        temporary.replace(checksums)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+
+
+def validate_checksum_manifest(
+    checksums: Path, artifacts: tuple[Path, ...]
+) -> None:
+    if not checksums.is_file():
+        raise RuntimeError(f"missing checksum manifest: {checksums}")
+    try:
+        payload = checksums.read_bytes()
+        text = payload.decode("ascii")
+    except UnicodeDecodeError as error:
+        raise RuntimeError("checksum manifest must be ASCII") from error
+
+    expected_names = sorted(artifact.name for artifact in artifacts)
+    lines = text.splitlines(keepends=True)
+    if not lines or any(not line.endswith("\n") for line in lines):
+        raise RuntimeError("checksum manifest must end every record with LF")
+    records: dict[str, str] = {}
+    for line in lines:
+        match = re.fullmatch(r"([0-9a-f]{64})  ([^\r\n/]+)\n", line)
+        if not match:
+            raise RuntimeError(f"malformed checksum record: {line!r}")
+        digest, filename = match.groups()
+        if not SHA256_RE.fullmatch(digest):
+            raise RuntimeError(f"invalid SHA-256 digest for {filename}")
+        if filename in records:
+            raise RuntimeError(f"duplicate checksum record for {filename}")
+        records[filename] = digest
+
+    if list(records) != expected_names:
+        raise RuntimeError(
+            "checksum manifest filenames/order disagree with release payloads: "
+            f"expected {expected_names}, found {list(records)}"
+        )
+    for artifact in artifacts:
+        actual = sha256_file(artifact)
+        if records[artifact.name] != actual:
+            raise RuntimeError(f"SHA-256 mismatch for {artifact.name}")
+    if payload != checksum_manifest_bytes(artifacts):
+        raise RuntimeError("checksum manifest is not in canonical form")
+
+
 def resolve_chelis() -> str:
     configured = os.environ.get("CHELIS_BIN")
     if configured:
@@ -236,6 +311,47 @@ def validate_pair_with_chelis(
             if not target.is_file() or source.read_bytes() != target.read_bytes():
                 raise RuntimeError(f"installed artifact is not byte-identical to {source}")
 
+        consumer = root / "consumer"
+        consumer_src = consumer / "src"
+        consumer_src.mkdir(parents=True)
+        (consumer / "reef.toml").write_text(
+            "[package]\n"
+            'name = "nautilus-artifact-consumer"\n'
+            'version = "0.0.0"\n'
+            f'compiler = "={_compiler_pin(manifest)}"\n'
+            'module_prefix = "ArtifactConsumer"\n'
+            "\n"
+            "[dependencies]\n"
+            f'{name} = {{ version = "{version}" }}\n'
+        )
+        (consumer_src / "main.ch").write_text(
+            "module ArtifactConsumer.Main\n"
+            "import Nautilus.Special (erf)\n"
+            "export (artifact_smoke)\n"
+            "def artifact_smoke(x: f32) -> f32 = erf(x)\n"
+        )
+        result = subprocess.run(
+            [chelis, "reef", "build"],
+            cwd=consumer,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                "installed artifact failed dependent package compilation:\n"
+                f"{result.stdout}{result.stderr}"
+            )
+
+
+def _compiler_pin(manifest: Path) -> str:
+    match = re.search(
+        r'(?m)^compiler\s*=\s*"=?([^"]+)"', manifest.read_text()
+    )
+    if not match:
+        raise RuntimeError(f"cannot read compiler pin from {manifest}")
+    return match.group(1)
+
 
 def require_tampered_archive_rejection(
     chelis: str, manifest: Path, archive: Path, shell: Path, name: str, version: str
@@ -258,14 +374,31 @@ def require_tampered_archive_rejection(
         raise RuntimeError("Reef accepted an archive with a mismatched shell hash")
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="validate and seal Nautilus release artifacts"
+    )
+    parser.add_argument(
+        "--write-checksums",
+        action="store_true",
+        help="atomically seal the validated payload pair with a SHA-256 manifest",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_args()
     manifest = REPO_ROOT / "reef.toml"
     name, version = package_identity(manifest)
     archive = REPO_ROOT / "dist" / f"{name}-{version}.tar.zst"
     shell = REPO_ROOT / "dist" / f"{name}-{version}.chb"
-    for artifact in (archive, shell):
+    artifacts = (archive, shell)
+    checksums = REPO_ROOT / "dist" / f"{name}-{version}.sha256"
+    for artifact in artifacts:
         if not artifact.is_file() or artifact.stat().st_size == 0:
             raise RuntimeError(f"missing or empty release artifact: {artifact}")
+    if not args.write_checksums:
+        validate_checksum_manifest(checksums, artifacts)
 
     names = archive_members(archive)
     chelis = resolve_chelis()
@@ -273,9 +406,13 @@ def main() -> int:
     require_tampered_archive_rejection(
         chelis, manifest, archive, shell, name, version
     )
+    if args.write_checksums:
+        write_checksum_manifest(checksums, artifacts)
+        validate_checksum_manifest(checksums, artifacts)
     print(
-        f"release artifacts OK: {archive.name} + {shell.name}; "
-        f"{len(names) - 2} source modules; Reef pair + tamper rejection passed"
+        f"release artifacts OK: {archive.name} + {shell.name} + {checksums.name}; "
+        f"{len(names) - 2} source modules; SHA-256 seal + Reef install + "
+        "dependent compile + archive-tamper rejection passed"
     )
     return 0
 

@@ -133,8 +133,10 @@ jobs:
       - name: chelis reef build
         run: chelis reef build
 
-      - name: Validate Reef release-artifact pair
-        run: python3 scripts/check_release_artifacts.py
+      - name: Seal and validate Reef release payloads
+        run: |
+          python3 scripts/check_release_artifacts.py --write-checksums
+          python3 scripts/check_release_artifacts.py
 
       # One chelis check as a smoke that the binary works + the score=1
       # field is still emitted. Rotates through the alphabet by day to
@@ -272,8 +274,10 @@ jobs:
       - name: chelis reef build (proof-of-life)
         run: chelis reef build
 
-      - name: Validate Darwin-built Reef artifact pair
-        run: python3 scripts/check_release_artifacts.py
+      - name: Seal and validate Darwin-built Reef payloads
+        run: |
+          python3 scripts/check_release_artifacts.py --write-checksums
+          python3 scripts/check_release_artifacts.py
 
   # legacy-harness moved to .github/workflows/nightly.yml — runs on a
   # schedule, not on every PR. It's the dual-run safety net during the
