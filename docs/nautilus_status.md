@@ -1,10 +1,9 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-`release/v0.7.37` preparation state, whose manifest targets unpublished
-`chelis 0.17.5` (Nautilus `0.7.37`). The last executable, validation-clean
-baseline remains published `chelis 0.17.4` with Nautilus `0.7.36`; no 0.17.5
-result is claimed before its official release asset exists.
+`release/v0.7.37` candidate on the published `chelis 0.17.5` release
+(Nautilus `0.7.37`). The official Linux glibc-2.31 payload passed the complete
+local gate; publication remains gated on the milestone red team.
 
 ## Scope
 
@@ -55,9 +54,7 @@ Totals:
 
 ## Verification Gates
 
-Once the official 0.17.5 release is published, clean `HEAD` must pass these
-repo-local gates. In the current preparation state, compiler-dependent gates
-are blocked before execution because the exact pinned toolchain is unavailable:
+Clean `HEAD` passes these repo-local gates with the official 0.17.5 compiler:
 
 ```sh
 chelis reef build
@@ -73,8 +70,7 @@ python3 scripts/validate_book_examples.py
 mdbook build docs/book
 ```
 
-The following are the last validated 0.17.4 baseline results, not 0.17.5
-expectations inferred without execution:
+Validated 0.17.5 results:
 
 ```text
 chelis test tests/ --jobs auto -> 463 passed, 0 failed
@@ -126,31 +122,30 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus's release-preparation manifest targets `chelis 0.17.5` exactly via
-`reef.toml`, but that release is not published. The official 0.17.4 Linux
-glibc-2.31 asset remains the latest toolchain that passed the complete local
-acceptance gate, on 2026-07-31. Historical
+Nautilus pins the published `chelis 0.17.5` release exactly via `reef.toml`.
+The official Linux glibc-2.31 asset passed the complete local acceptance gate
+on 2026-07-31. Historical
 compiler/runtime bugs discovered during Nautilus P0-P3 and current narrowed
 limitations are documented in `docs/UPSTREAM_BUGS.md`.
 
-For the last validated 0.17.4 toolchain:
+For the validated 0.17.5 toolchain:
 
 - The shipped finite-difference `lm_scalar_nparam` surface remains
   runtime-verified. The positive native gate is `463 / 463`, strict parity is
   `216 / 216`, and two shapes of the current AD replacement blocker are
   executable under `tests_blocked/curvefit/`.
 - Tensor-wrt and capture-free multi-argument grad now evaluate and C-build.
-  Chelis 0.17.4 retains the fix for the former generic `n`/`m` checker collapse
+  Chelis 0.17.5 retains the fix for the former generic `n`/`m` checker collapse
   (chelis#847). The exact permanent Jacobian path remains blocked at one
   malformed backward-DAG layer (chelis#676), reproduced by both generic and
   concrete arbitrary vector-model wrappers.
-- Package-aware `eval --file` calls used by parity pass. The historical hang is
-  fixed; the import-only startup benchmark instead exposes a tracked symbolic-
-  input residue and no longer uses a 5-second timeout.
+- Package-aware `eval --file` calls used by parity pass. All 15 import-only
+  startup shapes also execute, resolving the chelis#848 symbolic-input
+  narrowing.
 - The release gate uses the compiler-owned canonical artifact verifier,
   adversarially requires archive-mutation and CHB-trailing-byte rejection, and
   requires two unchanged builds to produce byte-identical archive and CHB
-  payloads. The downloaded official v0.17.4 asset passed these checks,
+  payloads. The downloaded official v0.17.5 asset passed these checks,
   completing the chelis#970 and chelis#972 de-narrowing milestone.
 - The old `redundant-linearity-call` false positive is fixed. The 131 copies it
   now identifies in `src/linalg.ch` were removed with a green package build;

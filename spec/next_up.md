@@ -10,22 +10,19 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Release-preparation snapshot (2026-07-31).**
+**Release-candidate snapshot (2026-07-31).**
 
-- The manifest targets unpublished `chelis 0.17.5` (Nautilus `0.7.37`). There
-  is no v0.17.5 tag or official asset yet, so no validation or de-narrowing
-  claim is made for that target.
-- The last validated baseline is `chelis 0.17.4` (Nautilus `0.7.36`). Its official Linux
-  glibc-2.31 asset passed the local acceptance gate: 463 native tests,
-  3 negative
-  contracts, 2 expected-failure blocker probes, and 216/216 reviewed scipy
-  parity samples.
+- The manifest pins published `chelis 0.17.5` (Nautilus `0.7.37`). Its official
+  Linux glibc-2.31 asset passed the local acceptance gate: 463 native tests,
+  3 negative contracts, 2 expected-failure blocker probes, and 216/216
+  reviewed scipy parity samples. Publication still requires the milestone red
+  team.
 - The canonical Phase 3j architecture now describes the shipped package:
   pure-Chelis composition throughout, including LinAlg, with no nalgebra FFI or
   hand-written adjoint registry. Broad solver AD and QP/SOCP/LP remain explicit
   later scope rather than hidden completion requirements.
 - Multi-parameter Levenberg-Marquardt's exact AD replacement was re-probed on
-  0.17.4. The former generic `n`/`m` checker collapse remains resolved; both the
+  0.17.5. The former generic `n`/`m` checker collapse remains resolved; both the
   generic and concrete arbitrary vector-model wrappers now reach one live
   malformed backward-DAG layer (chelis#676). Both shapes are pinned under
   `tests_blocked/curvefit/`; tensor-wrt and direct capture-free multi-argument
@@ -210,7 +207,7 @@ differences (`eps=1e-5`) and solves the damped normal equations with
 `tol` is accepted but the current routine executes exactly `max_iters`, and
 lambda is fixed at `0.01`.
 
-**Current 0.17.4 release blocker, re-probed 2026-07-30:**
+**Current 0.17.5 release blocker, re-probed 2026-07-31:**
 
 The former outer chelis#847 checker collapse is fixed. Both the exact generic
 wrapper and the concrete `n=2`, `m=6` arbitrary-model wrapper now reach the

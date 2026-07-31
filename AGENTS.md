@@ -32,11 +32,8 @@ only through a `chelis reef conform bump` PR (never a direct edit to `main`).
 - Nautilus should track the latest **published and validation-clean**
   Chelis release by default. Treat stale pins as drift, not as a reason
   to stay on an older compiler.
-- `reef.toml` should pin the currently validated release exactly. The
-  `release/v0.7.37` preparation branch targets `chelis 0.17.5`; until that
-  release is published and passes the gates below, `chelis 0.17.4` remains the
-  latest published, validation-clean baseline. Do not describe 0.17.5 as
-  released or validated merely because the preparation pin is present.
+- `reef.toml` should pin the currently validated release exactly. As of this
+  repo state, that is the published `chelis 0.17.5` release.
 - If the latest published Chelis release fails Nautilus validation,
   document the blocker clearly and pin the newest known-good release
   until the blocker is resolved.
