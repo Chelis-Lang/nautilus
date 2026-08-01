@@ -5,24 +5,26 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
-> **Current release pin: `chelis 0.17.5`.** The published Linux glibc-2.31
+> **Current release pin: `chelis 0.18.1`.** The published Linux glibc-2.31
 > asset (release SHA-256
-> `65f5949a540a547aacbee9845b3d40d2a02d1b28e3c8d608fc7af140fafd6ccf`;
+> `88a1a53b47b7168e4df614e66a6d9313176174b1dc3a25a43db5f73a3ee8f0cd`;
 > compiler payload SHA-256
-> `9728e7824cd5d8aba26daf5189f95b90c98f9636b8aa0b6ca2fe9cc286c44801`;
-> source commit `333cb4d3688573036d37828eba68416c11c5d1b4`) ran the complete local
-> gate on 2026-07-31. Artifact
+> `0d7a46262b4ba2975702d5ed2def5d54b79b5d68258602da59069b6715cc690b`;
+> source commit `c8db387d06d538ce8039ac37645a43def48373c9`) ran the complete local
+> gate on 2026-08-01. The extracted compiler reports `chelis 0.18.1` and
+> discharges the release producer-obligation probe through cvc5. Artifact
 > de-narrowing passed with that official compiler:
 > `chelis reef verify-artifact` accepts the generated pair, rejects an archive
 > byte mutation and a CHB trailing byte, and two unchanged builds produce
 > identical archive and CHB bytes. The former generic `n`/`m` checker collapse
 > (chelis#847) is
-> fixed: the generic wrapper now reaches the same malformed backward-DAG
+> fixed: the generic wrapper still reaches the same malformed backward-DAG
 > verifier layer as the concrete wrapper (chelis#676), so both blocked probes
 > are pinned to `mismatched dimension count: 0 vs 1`
-> (`chelis test tests_blocked/ --expect blocked` → 2 ok). The
-> import-only residue is fixed: all 15 module and all-module benchmark shapes
-> now execute, so chelis#848 is archived below. Real `Special.erf(1)` remains
+> (`chelis test tests_blocked/ --expect blocked` → 2 ok). Both probes also
+> type-check at score 1 and fail C lowering at that exact diagnostic. The
+> import-only residue stays fixed: all 15 module and all-module benchmark shapes
+> execute, so chelis#848 remains archived below. Real `Special.erf(1)` remains
 > green at `0.8427007`. Chelis 0.17.1 made `chelis eval` output
 > dtype-faithful, so f32 reads now print at f32 precision (e.g. `erf(1)` →
 > `0.8427007`, previously `0.842700719833374`); the strict parity tolerances
@@ -43,12 +45,13 @@ release.
     - **Minimal reproducer:** `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`,
       a concrete `n=2`, `m=6` linear model with expected first Jacobian row
       `[1, 1]`.
-    - **0.17.5 release result per surface:** both
+    - **0.18.1 release result per surface:** both
       `tests_blocked/curvefit/lm_jacobian_generic_dims.ch` and the concrete
       wrapper fail while verifying the backward DAG with
       `mismatched dimension count: 0 vs 1`; the blocked runner pins both
-      shapes to this one live class. This is real progress: the generic shape
-      formerly stopped at chelis#847's outer checker error. A direct
+      shapes to this one live class. Both separately type-check at score 1 and
+      fail the C build at that diagnostic. The generic shape formerly stopped
+      at chelis#847's outer checker error. A direct
       capture-free tensor objective evaluates, C-builds, and compiles
       correctly.
     - **Affected Nautilus surface:** same AD replacement for `lm_scalar_nparam`;

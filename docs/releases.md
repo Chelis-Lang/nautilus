@@ -1,8 +1,8 @@
 # Nautilus release artifacts
 
-> **0.7.37 release candidate:** `reef.toml` pins the published Chelis 0.17.5
+> **0.7.38 release candidate:** `reef.toml` pins the published Chelis 0.18.1
 > release. The official Linux glibc-2.31 payload and regenerated compiler-bound
-> lock passed the complete local gate. Do not tag or publish Nautilus 0.7.37
+> lock passed the complete local gate. Do not tag or publish Nautilus 0.7.38
 > until the fresh milestone red team passes.
 
 Nautilus publishes three assets per tag:
@@ -81,27 +81,27 @@ sha256sum -c nautilus-X.Y.Z.sha256
 On macOS, use `shasum -a 256 -c nautilus-X.Y.Z.sha256`. Do not accept a
 checksum manifest transported from a different release or channel.
 
-> **Validated release identity:** Chelis v0.17.5 resolves to source commit
-> `333cb4d3688573036d37828eba68416c11c5d1b4`. The published Linux glibc-2.31
+> **Validated release identity:** Chelis v0.18.1 resolves to source commit
+> `c8db387d06d538ce8039ac37645a43def48373c9`. The published Linux glibc-2.31
 > tarball has SHA-256
-> `65f5949a540a547aacbee9845b3d40d2a02d1b28e3c8d608fc7af140fafd6ccf`;
+> `88a1a53b47b7168e4df614e66a6d9313176174b1dc3a25a43db5f73a3ee8f0cd`;
 > its compiler payload has SHA-256
-> `9728e7824cd5d8aba26daf5189f95b90c98f9636b8aa0b6ca2fe9cc286c44801`.
+> `0d7a46262b4ba2975702d5ed2def5d54b79b5d68258602da59069b6715cc690b`.
 > That exact payload passed Nautilus's complete local acceptance gate on
-> 2026-07-31.
+> 2026-08-01, including a real cvc5 SMT discharge.
 
 ### Linux (x86_64)
 
 ```sh
-gh release download v0.17.5 --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.17.5-linux-x86_64-glibc2.31.tar.gz' \
-  --pattern 'chelis-v0.17.5-linux-x86_64-glibc2.31.tar.gz.sha256'
-sha256sum -c chelis-v0.17.5-linux-x86_64-glibc2.31.tar.gz.sha256
-tar xzf chelis-v0.17.5-linux-x86_64-glibc2.31.tar.gz
-export PATH="$PWD/chelis-v0.17.5-linux-x86_64-glibc2.31/bin:$PATH"
+gh release download v0.18.1 --repo Chelis-Lang/chelis \
+  --pattern 'chelis-v0.18.1-linux-x86_64-glibc2.31.tar.gz' \
+  --pattern 'chelis-v0.18.1-linux-x86_64-glibc2.31.tar.gz.sha256'
+sha256sum -c chelis-v0.18.1-linux-x86_64-glibc2.31.tar.gz.sha256
+tar xzf chelis-v0.18.1-linux-x86_64-glibc2.31.tar.gz
+export PATH="$PWD/chelis-v0.18.1-linux-x86_64-glibc2.31/bin:$PATH"
 
 # In your Chelis project's reef.toml:
-#   nautilus = "0.7.37"
+#   nautilus = "0.7.38"
 chelis reef install --from-monorepo /path/to/nautilus-checkout nautilus
 chelis reef build
 ```
@@ -111,12 +111,12 @@ chelis reef build
 Identical except for the toolchain download:
 
 ```sh
-gh release download v0.17.5 --repo Chelis-Lang/chelis \
-  --pattern 'chelis-v0.17.5-darwin-arm64.tar.gz' \
-  --pattern 'chelis-v0.17.5-darwin-arm64.tar.gz.sha256'
-shasum -a 256 -c chelis-v0.17.5-darwin-arm64.tar.gz.sha256
-tar xzf chelis-v0.17.5-darwin-arm64.tar.gz
-export PATH="$PWD/chelis-v0.17.5-darwin-arm64/bin:$PATH"
+gh release download v0.18.1 --repo Chelis-Lang/chelis \
+  --pattern 'chelis-v0.18.1-darwin-arm64.tar.gz' \
+  --pattern 'chelis-v0.18.1-darwin-arm64.tar.gz.sha256'
+shasum -a 256 -c chelis-v0.18.1-darwin-arm64.tar.gz.sha256
+tar xzf chelis-v0.18.1-darwin-arm64.tar.gz
+export PATH="$PWD/chelis-v0.18.1-darwin-arm64/bin:$PATH"
 
 # Same steps from here on. Nautilus uses the same unsuffixed,
 # platform-neutral artifact names on every platform. The Darwin

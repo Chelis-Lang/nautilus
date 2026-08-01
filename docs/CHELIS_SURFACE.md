@@ -1,6 +1,6 @@
 # Chelis Capability Surface (this shell)
 
-<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.17.5 (sha256:28011bed9ccb5778) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.18.1 (sha256:28011bed9ccb5778) -->
 This file is a domain-scoped view of the canonical Chelis capability surface,
 generated for the pinned toolchain. Each capability row is marked `@pin` (usable
 at the current pin) or `@upstream` (lands at the next bump). **Read it before
@@ -14,12 +14,12 @@ in `Chelis-Lang/chelis`.
 
 | Item | Value |
 |---|---|
-| Pinned compiler | Published `chelis 0.17.5` (`reef.toml`: `=0.17.5`) |
-| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.17.5` in the regenerated `reef.lock` |
-| Upstream release identity | Source commit `333cb4d3688573036d37828eba68416c11c5d1b4`; Linux glibc-2.31 asset SHA-256 `65f5949a540a547aacbee9845b3d40d2a02d1b28e3c8d608fc7af140fafd6ccf` |
-| Installed compiler payload | SHA-256 `9728e7824cd5d8aba26daf5189f95b90c98f9636b8aa0b6ca2fe9cc286c44801` |
+| Pinned compiler | Published `chelis 0.18.1` (`reef.toml`: `=0.18.1`) |
+| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.1` in the regenerated local `reef.lock` |
+| Upstream release identity | Source commit `c8db387d06d538ce8039ac37645a43def48373c9`; Linux glibc-2.31 asset SHA-256 `88a1a53b47b7168e4df614e66a6d9313176174b1dc3a25a43db5f73a3ee8f0cd` |
+| Installed compiler payload | SHA-256 `0d7a46262b4ba2975702d5ed2def5d54b79b5d68258602da59069b6715cc690b` |
 | Validation status | Complete local gate passed on the official release payload; Nautilus publication remains gated on the milestone red team |
-| Last refreshed | 2026-07-31 |
+| Last refreshed | 2026-08-01 |
 
 `@pin` means the row describes behavior available (or a limitation verified)
 on the exact pinned release. `@upstream` means a capability exists in a newer
@@ -29,9 +29,9 @@ rows in this snapshot; planned Phase 5 work is not mislabeled as upstream.
 This is the Nautilus-scoped view of the canonical Chelis inventory. The
 published Linux glibc-2.31 asset was checked against its release sidecar, then
 its byte-identical compiler payload (SHA-256
-`9728e7824cd5d8aba26daf5189f95b90c98f9636b8aa0b6ca2fe9cc286c44801`)
+`0d7a46262b4ba2975702d5ed2def5d54b79b5d68258602da59069b6715cc690b`)
 ran the full local gate. Version-sensitive statements resolve to the executable
-0.17.5 probes cited in
+0.18.1 probes cited in
 [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
 
 ## Capability inventory
@@ -87,7 +87,7 @@ entire reached body must lower into a supported transform lane.
 | `floor_div` and integer/index arithmetic | Piecewise-constant/index math is non-differentiable or a stop-gradient boundary; unsupported differentiation fails closed. | Not an advertised AD path. | `@pin` |
 | `uniform_like` | Random source; zero gradient and handled `Random` effect. | Sampling exports are not advertised as reparameterized gradients. | `@pin` |
 | Host-list and host-tensor operations (`map`, `fold`, `sort`, `einsum`, general `to_list`/`to_tensor`) | No general host-lane adjoint. The compiler has narrow documented boundary rewrites, but Nautilus does not infer package-wide differentiability from them. | Solvers/decompositions need an executable gradient oracle before being advertised as differentiable. | `@pin` |
-| Multi-parameter CurveFit Jacobian wrapper | Plain tensor-wrt and capture-free multi-argument controls pass. The former generic-dimension checker collapse remains resolved at 0.17.5, but both the generic and concrete arbitrary-model wrappers still reach malformed backward-DAG lowering (chelis#676). | `lm_scalar_nparam` retains its finite-difference Jacobian. Both exact wrapper shapes are executable in `tests_blocked/curvefit/`. | `@pin` |
+| Multi-parameter CurveFit Jacobian wrapper | Plain tensor-wrt and capture-free multi-argument controls pass. The former generic-dimension checker collapse remains resolved at 0.18.1, but both the generic and concrete arbitrary-model wrappers still reach malformed backward-DAG lowering (chelis#676). | `lm_scalar_nparam` retains its finite-difference Jacobian. Both exact wrapper shapes are executable in `tests_blocked/curvefit/`. | `@pin` |
 
 No broad LinAlg, solver, distribution, or special-function AD promise is made
 by this inventory. The acceptance rule in
@@ -102,7 +102,7 @@ specified in the two ready-to-file drafts linked from
 |---|---|---|
 | `Random` | `uniform_like` introduces `Random`; all sampling exports declare it. `with seed(42i64) { ... }` is the handler (seed literals require an explicit `i64` suffix). | `@pin` |
 | `Io`, `Test`, and resources | Library `src/` introduces no I/O or device-resource effect. `Std.Test` assertions in `tests/` introduce the test effect. | `@pin` |
-| Package-aware `eval --file` | Real imported Nautilus calls pass, strict parity batches 216 reviewed samples through this route, and all 15 import-only startup shapes now execute. The former symbolic-input leak tracked by chelis#848 is resolved at 0.17.5. | `@pin` |
+| Package-aware `eval --file` | Real imported Nautilus calls pass, strict parity batches 216 reviewed samples through this route, and all 15 import-only startup shapes execute at 0.18.1. The former symbolic-input leak tracked by chelis#848 remains resolved. | `@pin` |
 | C/package build | `chelis reef build` packages the full pure-Chelis surface successfully. Host-lane list/tensor operations are supported by the C host emitter. | `@pin` |
 | Canonical artifact verification | `chelis reef verify-artifact` fully consumes the CHB, enforces canonical metadata, and checks its paired archive digest. Nautilus's release gate also proves archive-mutation and CHB-trailing-byte rejection plus unchanged-build byte identity. | `@pin` |
 | HIP/Metal | Upstream DAG subsets exist, but Nautilus's host-lane algorithms and lack of a package-level GPU oracle mean no Nautilus GPU support claim is made. | `@pin` |
@@ -133,14 +133,14 @@ shipped library modules themselves do not import a runtime `Std.*` module.
 
 | Authoritative source | Relevance to this view |
 |---|---|
-| [Canonical capability surface](https://github.com/Chelis-Lang/chelis/blob/333cb4d3688573036d37828eba68416c11c5d1b4/docs/CHELIS_SURFACE.md) | Complete builtin vocabulary, DAG/host lanes, backends, effects, and chelis-std inventory. |
-| [spec/04 — type system](https://github.com/Chelis-Lang/chelis/blob/333cb4d3688573036d37828eba68416c11c5d1b4/spec/04-type-system.md) | Precisions, literals, dimensions, no broadcasting, runtime shapes, effects, and linearity. |
-| [spec/05 — RISC primitives](https://github.com/Chelis-Lang/chelis/blob/333cb4d3688573036d37828eba68416c11c5d1b4/spec/05-risc-primitives.md) | Primitive semantics, movement, reductions, and per-op adjoints. |
-| [spec/06 — transformations](https://github.com/Chelis-Lang/chelis/blob/333cb4d3688573036d37828eba68416c11c5d1b4/spec/06-transformations.md) | `grad` result shape, `wrt`, symbolic adjoints, and tensor/host transform boundaries. |
-| [spec/08 — backends](https://github.com/Chelis-Lang/chelis/blob/333cb4d3688573036d37828eba68416c11c5d1b4/spec/08-backends.md) | C, HIP, and Metal backend scope and rejection rules. |
-| [Rank polymorphism design](https://github.com/Chelis-Lang/chelis/blob/333cb4d3688573036d37828eba68416c11c5d1b4/spec/design/rank_polymorphism.md) | Name-preserving `..r` support and body discipline. |
-| [Implicit linearity design](https://github.com/Chelis-Lang/chelis/blob/333cb4d3688573036d37828eba68416c11c5d1b4/spec/design/implicit_linearity.md) | Inserted copy/drop behavior and preserved hard errors. |
-| [Differentiable-language design](https://github.com/Chelis-Lang/chelis/blob/333cb4d3688573036d37828eba68416c11c5d1b4/spec/design/differentiable_language.md) | Shipped AD slices versus later control/ADT/effect/implicit-diff scope. |
-| [Shell repo contract](https://github.com/Chelis-Lang/chelis/blob/333cb4d3688573036d37828eba68416c11c5d1b4/spec/design/shell_repo_contract.md#3-capability-surface-doc--docschelis_surfacemd-must) | Required downstream `@pin`/`@upstream` inventory contract. |
+| [Canonical capability surface](https://github.com/Chelis-Lang/chelis/blob/c8db387d06d538ce8039ac37645a43def48373c9/docs/CHELIS_SURFACE.md) | Complete builtin vocabulary, DAG/host lanes, backends, effects, and chelis-std inventory. |
+| [spec/04 — type system](https://github.com/Chelis-Lang/chelis/blob/c8db387d06d538ce8039ac37645a43def48373c9/spec/04-type-system.md) | Precisions, literals, dimensions, no broadcasting, runtime shapes, effects, and linearity. |
+| [spec/05 — RISC primitives](https://github.com/Chelis-Lang/chelis/blob/c8db387d06d538ce8039ac37645a43def48373c9/spec/05-risc-primitives.md) | Primitive semantics, movement, reductions, and per-op adjoints. |
+| [spec/06 — transformations](https://github.com/Chelis-Lang/chelis/blob/c8db387d06d538ce8039ac37645a43def48373c9/spec/06-transformations.md) | `grad` result shape, `wrt`, symbolic adjoints, and tensor/host transform boundaries. |
+| [spec/08 — backends](https://github.com/Chelis-Lang/chelis/blob/c8db387d06d538ce8039ac37645a43def48373c9/spec/08-backends.md) | C, HIP, and Metal backend scope and rejection rules. |
+| [Rank polymorphism design](https://github.com/Chelis-Lang/chelis/blob/c8db387d06d538ce8039ac37645a43def48373c9/spec/design/rank_polymorphism.md) | Name-preserving `..r` support and body discipline. |
+| [Implicit linearity design](https://github.com/Chelis-Lang/chelis/blob/c8db387d06d538ce8039ac37645a43def48373c9/spec/design/implicit_linearity.md) | Inserted copy/drop behavior and preserved hard errors. |
+| [Differentiable-language design](https://github.com/Chelis-Lang/chelis/blob/c8db387d06d538ce8039ac37645a43def48373c9/spec/design/differentiable_language.md) | Shipped AD slices versus later control/ADT/effect/implicit-diff scope. |
+| [Shell repo contract](https://github.com/Chelis-Lang/chelis/blob/c8db387d06d538ce8039ac37645a43def48373c9/spec/design/shell_repo_contract.md#3-capability-surface-doc--docschelis_surfacemd-must) | Required downstream `@pin`/`@upstream` inventory contract. |
 | [`spec/phase3j.md`](../spec/phase3j.md) | Nautilus architecture, acceptance rules, and dated deferrals. |
-| [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) | Executable 0.17.5 re-probes, current residues, workarounds, and triggers. |
+| [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) | Executable 0.18.1 re-probes, current residues, workarounds, and triggers. |
