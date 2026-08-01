@@ -1,8 +1,8 @@
 # Nautilus — Current Status
 
 Prepared for external review. This document reflects the current
-`release/v0.7.37` candidate on the published `chelis 0.17.5` release
-(Nautilus `0.7.37`). The official Linux glibc-2.31 payload passed the complete
+`release/0.7.38-chelis-0.18.1` candidate on the published `chelis 0.18.1`
+release (Nautilus `0.7.38`). The official Linux glibc-2.31 payload passed the complete
 local gate; publication remains gated on the milestone red team.
 
 ## Scope
@@ -54,7 +54,7 @@ Totals:
 
 ## Verification Gates
 
-Clean `HEAD` passes these repo-local gates with the official 0.17.5 compiler:
+Clean `HEAD` passes these repo-local gates with the official 0.18.1 compiler:
 
 ```sh
 chelis reef build
@@ -70,7 +70,7 @@ python3 scripts/validate_book_examples.py
 mdbook build docs/book
 ```
 
-Validated 0.17.5 results:
+Validated 0.18.1 results:
 
 ```text
 chelis test tests/ --jobs auto -> 463 passed, 0 failed
@@ -122,20 +122,20 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus pins the published `chelis 0.17.5` release exactly via `reef.toml`.
+Nautilus pins the published `chelis 0.18.1` release exactly via `reef.toml`.
 The official Linux glibc-2.31 asset passed the complete local acceptance gate
-on 2026-07-31. Historical
+on 2026-08-01. Historical
 compiler/runtime bugs discovered during Nautilus P0-P3 and current narrowed
 limitations are documented in `docs/UPSTREAM_BUGS.md`.
 
-For the validated 0.17.5 toolchain:
+For the validated 0.18.1 toolchain:
 
 - The shipped finite-difference `lm_scalar_nparam` surface remains
   runtime-verified. The positive native gate is `463 / 463`, strict parity is
   `216 / 216`, and two shapes of the current AD replacement blocker are
   executable under `tests_blocked/curvefit/`.
 - Tensor-wrt and capture-free multi-argument grad now evaluate and C-build.
-  Chelis 0.17.5 retains the fix for the former generic `n`/`m` checker collapse
+  Chelis 0.18.1 retains the fix for the former generic `n`/`m` checker collapse
   (chelis#847). The exact permanent Jacobian path remains blocked at one
   malformed backward-DAG layer (chelis#676), reproduced by both generic and
   concrete arbitrary vector-model wrappers.
@@ -145,7 +145,7 @@ For the validated 0.17.5 toolchain:
 - The release gate uses the compiler-owned canonical artifact verifier,
   adversarially requires archive-mutation and CHB-trailing-byte rejection, and
   requires two unchanged builds to produce byte-identical archive and CHB
-  payloads. The downloaded official v0.17.5 asset passed these checks,
+  payloads. The downloaded official v0.18.1 asset passed these checks,
   completing the chelis#970 and chelis#972 de-narrowing milestone.
 - The old `redundant-linearity-call` false positive is fixed. The 131 copies it
   now identifies in `src/linalg.ch` were removed with a green package build;

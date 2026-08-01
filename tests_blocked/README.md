@@ -24,9 +24,8 @@ Verdicts are fail-closed:
 | `curvefit/lm_jacobian_generic_dims.ch` | Generic vector-model wrapper reaches malformed backward-DAG verification after chelis#847's checker fix; `chelis#676` | Every pin bump and the release resolving chelis#676 |
 | `curvefit/lm_jacobian_model_wrapper.ch` | Concrete arbitrary-model wrapper emits a malformed backward DAG; `chelis#676` (function-valued-capture witness, same verifier class) | Every pin bump and the release resolving the issue |
 
-## Manual-only current probe
+## Manual-only current probes
 
-The unused-Reef-import `eval --file` residue (`chelis#848`) is CLI-context
-only and cannot be represented by the `chelis test` expected-failure harness.
-Re-run the exact temporary-file command in `docs/UPSTREAM_BUGS.md` at every pin
-bump. Real imported calls used by parity are positive and must remain green.
+None. The former unused-Reef-import `eval --file` residue (`chelis#848`) is
+archived after its 0.17.5 release-asset re-probe passed all 15 import shapes.
+The benchmark remains positive regression coverage, not a current blocker.

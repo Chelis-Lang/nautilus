@@ -10,9 +10,9 @@ Priorities below are ordered **P0 → P2** by leverage on downstream
 consumers (Shoals, School, Octant) and on the Phase 4 AI training
 pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
 
-**Release-candidate snapshot (2026-07-31).**
+**Release-candidate snapshot (2026-08-01).**
 
-- The manifest pins published `chelis 0.17.5` (Nautilus `0.7.37`). Its official
+- The manifest pins published `chelis 0.18.1` (Nautilus `0.7.38`). Its official
   Linux glibc-2.31 asset passed the local acceptance gate: 463 native tests,
   3 negative contracts, 2 expected-failure blocker probes, and 216/216
   reviewed scipy parity samples. Publication still requires the milestone red
@@ -22,7 +22,7 @@ pipeline. Nothing in here is a toolchain regression; v0.1.0 ships.
   hand-written adjoint registry. Broad solver AD and QP/SOCP/LP remain explicit
   later scope rather than hidden completion requirements.
 - Multi-parameter Levenberg-Marquardt's exact AD replacement was re-probed on
-  0.17.5. The former generic `n`/`m` checker collapse remains resolved; both the
+  0.18.1. The former generic `n`/`m` checker collapse remains resolved; both the
   generic and concrete arbitrary vector-model wrappers now reach one live
   malformed backward-DAG layer (chelis#676). Both shapes are pinned under
   `tests_blocked/curvefit/`; tensor-wrt and direct capture-free multi-argument
@@ -207,7 +207,7 @@ differences (`eps=1e-5`) and solves the damped normal equations with
 `tol` is accepted but the current routine executes exactly `max_iters`, and
 lambda is fixed at `0.01`.
 
-**Current 0.17.5 release blocker, re-probed 2026-07-31:**
+**Current 0.18.1 release blocker, re-probed 2026-08-01:**
 
 The former outer chelis#847 checker collapse is fixed. Both the exact generic
 wrapper and the concrete `n=2`, `m=6` arbitrary-model wrapper now reach the

@@ -62,7 +62,7 @@ and updates the `n` parameters. The current implementation executes exactly
 `max_iters`; `tol` is reserved for API compatibility and does not stop early.
 
 The Jacobian currently uses forward differences with `eps=1e-5`. This is a
-cited temporary narrowing: in the Chelis 0.17.5 release the former generic
+cited temporary narrowing: in the Chelis 0.18.1 release the former generic
 checker collapse (chelis#847) is fixed, but both the generic and concrete arbitrary
 model wrappers reach
 [`chelis#676`](https://github.com/Chelis-Lang/chelis/issues/676)'s malformed

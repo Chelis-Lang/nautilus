@@ -37,12 +37,12 @@ decomposition.
 ## Getting started
 
 Targets the published
-[Chelis v0.17.5 release](https://github.com/Chelis-Lang/chelis/releases/tag/v0.17.5).
+[Chelis v0.18.1 release](https://github.com/Chelis-Lang/chelis/releases/tag/v0.18.1).
 Install it through `chelisup`; do not replace the pin-resolving shim with a
 version-specific symlink.
 
 ```sh
-chelisup install 0.17.5
+chelisup install 0.18.1
 chelis reef setup
 chelis reef build
 chelis test tests/ --jobs auto

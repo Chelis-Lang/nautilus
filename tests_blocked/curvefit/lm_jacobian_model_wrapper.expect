@@ -1,6 +1,6 @@
 mismatched dimension count: 0 vs 1
-Blocker: docs/issue_drafts/grad_vector_model_wrapper_backward_dag.md; same
-verifier class as chelis#676, pending upstream scope confirmation.
+Blocker: chelis#676; the function-valued-model witness is recorded on that
+issue and reaches the same malformed backward-DAG verifier class.
 On pass, promote this exact-value Jacobian-row witness to positive coverage,
 re-run the generic-dimension probe, replace `lm_jcol` finite differences with
 the supported AD path, compare LM recovery trajectories, and archive the
