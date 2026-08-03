@@ -20,7 +20,7 @@ def linear_interp_uniform[n](ys: &tensor[n, f32], x_min: f32, x_max: f32, x_quer
   u_raw = div(sub(x_query, x_min), h)
   u_lo_clamped = if lt(u_raw, interp_zero_f()) then interp_zero_f() else u_raw
   u_clamped = if gt(u_lo_clamped, n_minus_1_f) then n_minus_1_f else u_lo_clamped
-  k_trunc_i = cast(u_clamped, int64)
+  k_trunc_i = cast(floor(u_clamped), int64)
   k_i_pre = interp_min_i64(k_trunc_i, sub(n_minus_1_i, interp_one_i()))
   k_i = interp_max_i64(k_i_pre, interp_zero_i())
   k_f = cast(k_i, f32)
