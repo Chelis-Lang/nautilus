@@ -273,7 +273,7 @@ def betai(a: f32, b: f32, x: f32) -> f32 = {
   }
 }
 def is_integer_f32(x: f32) -> bool = {
-  xi = cast(cast(x, int64), f32)
+  xi = cast(cast(floor(x), int64), f32)
   eq(x, xi)
 }
 def poisson_pmf(k: f32, lambda: f32) -> f32 = {
