@@ -1,6 +1,6 @@
 # Chelis Capability Surface (this shell)
 
-<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.18.2 (sha256:28011bed9ccb5778) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.18.3 (sha256:28011bed9ccb5778) -->
 This file is a domain-scoped view of the canonical Chelis capability surface,
 generated for the pinned toolchain. Each capability row is marked `@pin` (usable
 at the current pin) or `@upstream` (lands at the next bump). **Read it before
@@ -14,12 +14,12 @@ in `Chelis-Lang/chelis`.
 
 | Item | Value |
 |---|---|
-| Pinned compiler | Published `chelis 0.18.1` (`reef.toml`: `=0.18.1`) |
-| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.1` in the regenerated local `reef.lock` |
-| Upstream release identity | Source commit `c8db387d06d538ce8039ac37645a43def48373c9`; Linux glibc-2.31 asset SHA-256 `88a1a53b47b7168e4df614e66a6d9313176174b1dc3a25a43db5f73a3ee8f0cd` |
-| Installed compiler payload | SHA-256 `0d7a46262b4ba2975702d5ed2def5d54b79b5d68258602da59069b6715cc690b` |
-| Validation status | Complete local gate passed on the official release payload; Nautilus publication remains gated on the milestone red team |
-| Last refreshed | 2026-08-01 |
+| Pinned compiler | Published `chelis 0.18.3` (`reef.toml`: `=0.18.3`) |
+| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.3` in the regenerated local `reef.lock` |
+| Upstream release identity | Source commit `29700dd73c0e35b672bdd384493054b3107ce308`; Linux glibc-2.31 asset SHA-256 `36789e3a260c61b5082bc8842ba7b975899796ddf17c7b971815a2ed112904a3` (compiler payload SHA-256 `ea0ba326b190366f905445b4996c3993fe6c5cc7214f14cf5d862a615b78badf`) |
+| Installed compiler payload | Darwin arm64 SHA-256 `3a14b0d7e0a46a49c9b25f3dc61573d5972a91b411021672e09b8e3e0e9e1eba`, byte-identical to the released `chelis-v0.18.3-darwin-arm64.tar.gz` (asset SHA-256 `cc8737adf8c21040432d94b96635ef48895bd7ac8cdf94bd7696046c44bc7371`, checked against its release sidecar) |
+| Validation status | Complete local gate passed on the official Darwin arm64 release payload (463 positive, 3 negative, 2 blocked, 216/216 strict SciPy parity); the Linux glibc-2.31 asset was verified against its sidecar but its gate run is CI's. Nautilus publication remains gated on the milestone red team |
+| Last refreshed | 2026-08-04 |
 
 `@pin` means the row describes behavior available (or a limitation verified)
 on the exact pinned release. `@upstream` means a capability exists in a newer
