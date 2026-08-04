@@ -4,7 +4,54 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.7.38] - Unreleased
+## [0.7.40] - Unreleased
+
+Compiler-pin and de-narrowing release for Chelis v0.18.3. The required
+`chelis reef conform bump 0.18.3` command advanced the compiler pin and all
+workflow audit mirrors, and the Nautilus package version advanced from 0.7.39
+to 0.7.40.
+
+The official Darwin arm64 asset was verified at SHA-256
+`cc8737adf8c21040432d94b96635ef48895bd7ac8cdf94bd7696046c44bc7371`; its
+installed compiler payload was
+`3a14b0d7e0a46a49c9b25f3dc61573d5972a91b411021672e09b8e3e0e9e1eba`, byte-identical
+to the release tarball. The upstream source commit is
+`29700dd73c0e35b672bdd384493054b3107ce308`.
+
+**Retired the chelis#759 `floor` workaround.** Chelis 0.18.3 ships `cast_trunc`
+([05-OP-6]) as the named truncating float-to-integer cast on the Surf, eval, and
+compiled-C surfaces. The five fractional cast sites that 0.7.39 wrapped in
+`floor(...)` — in `distributions.ch` (`is_integer_f32`), `interpolation.ch`
+(`linear_interp_uniform`), `special.ch` (`is_nonpositive_integer`), and
+`stats.ch` (`quantile_vec`, `trimmed_mean_vec`) — now call `cast_trunc`
+directly. This is behavior-preserving at every site: three operate on values
+clamped non-negative, where floor and truncation agree, and the other two are
+is-integer predicates, where `floor(x) == x` and `trunc(x) == x` are the same
+test. It also unbreaks downstream compiled-lane consumers, since `floor` has no
+`chelis build` expression identity and 0.7.39 therefore failed Coral's native
+build.
+
+**Adopted the 0.18.3 extent-dtype rules** ([05-DIM-1]/[05-DIM-2],
+chelis#1130/chelis#1145): `sort` axis arguments are now int32 via a new
+`zero_axis()` helper in `stats.ch` (five call sites), and the two
+`tests_blocked/curvefit/` probes had their `expand` extents widened to int64.
+Both blocked probes retain their exact chelis#676 malformed backward-DAG
+diagnostic, so the finite-difference Jacobian remains.
+
+The complete local gate passed: 463 positive tests, 3 negative contracts, 2
+blocked probes, and 216/216 strict SciPy parity. Publishing remains gated on the
+milestone red team.
+
+## [0.7.39] - 2026-08-03
+
+Compiler-pin release for Chelis v0.18.2, published as `v0.7.39`. The
+`chelis reef conform bump 0.18.2` command advanced the compiler pin and all
+workflow audit mirrors, and the Nautilus package version advanced from 0.7.38
+to 0.7.39. Five fractional float-to-integer casts were wrapped in `floor(...)`
+to work around the chelis#759 numeric trap; that workaround is retired in
+0.7.40 in favour of `cast_trunc`.
+
+## [0.7.38] - 2026-08-01
 
 Compiler-pin and de-narrowing release for Chelis v0.18.1. The required
 `chelis reef conform bump 0.18.1` command advanced the compiler pin and all

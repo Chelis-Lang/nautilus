@@ -4,7 +4,7 @@ def abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def is_nonpositive_integer(x: f32) -> bool = {
   zero = cast(0.0, f32)
   if gt(x, zero) then false else {
-    xi_i = cast(floor(x), int64)
+    xi_i = cast_trunc(x, int64)
     xi = cast(xi_i, f32)
     eq(x, xi)
   }

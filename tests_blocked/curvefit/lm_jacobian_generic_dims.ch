@@ -5,8 +5,8 @@ def lm_generic_linear_model(theta: &tensor[2, f32], x_data: &tensor[6, f32]) -> 
   b_basis = to_tensor([cast(0.0, f32), cast(1.0, f32)])
   a = tensor_to_scalar(sum(mul(theta, a_basis), cast(0, int32)))
   b = tensor_to_scalar(sum(mul(theta, b_basis), cast(0, int32)))
-  a_vec = expand(scalar_to_tensor(a), cast(0, int32), cast(6, int32))
-  b_vec = expand(scalar_to_tensor(b), cast(0, int32), cast(6, int32))
+  a_vec = expand(scalar_to_tensor(a), cast(0, int32), cast(6, int64))
+  b_vec = expand(scalar_to_tensor(b), cast(0, int32), cast(6, int64))
   add(mul(x_data, a_vec), b_vec)
 }
 def lm_generic_jacobian_row[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32], theta: tensor[n, f32], x_data: tensor[m, f32], output_seed: tensor[m, f32]) -> tensor[n, f32] = {

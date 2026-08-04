@@ -8,6 +8,7 @@ def three_f() -> f32 = cast(3.0, f32)
 def pos_inf_f() -> f32 = 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
 def neg_inf_f() -> f32 = -1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
 def zero_i() -> int64 = cast(0, int64)
+def zero_axis() -> int32 = cast(0, int32)
 def one_i() -> int64 = cast(1, int64)
 def two_i() -> int64 = cast(2, int64)
 def mean_vec[n](v: &tensor[n, f32]) -> f32 = {
@@ -71,7 +72,7 @@ def kurtosis_vec[n](v: &tensor[n, f32]) -> f32 = {
 }
 def median_vec[n](v: &tensor[n, f32]) -> f32 = {
   n_i = numel(v)
-  sorted_pair = sort(v, zero_i())
+  sorted_pair = sort(v, zero_axis())
   sorted_v = sorted_pair.0
   lst = to_list(sorted_v)
   enum_lst = enumerate(lst)
@@ -130,14 +131,14 @@ def quantile_vec[n](v: &tensor[n, f32], q: f32) -> f32 = {
   n_i = numel(v)
   n_f = cast(n_i, f32)
   q_clamped = if lt(q, zero_f()) then zero_f() else if gt(q, one_f()) then one_f() else q
-  sorted_pair = sort(v, 0)
+  sorted_pair = sort(v, zero_axis())
   sorted_v = sorted_pair.0
   lst = to_list(sorted_v)
   enum_lst = enumerate(lst)
   pos = mul(q_clamped, sub(n_f, one_f()))
   lo_idx_f = pos
   hi_idx_f = add(pos, one_f())
-  lo_idx_i = cast(floor(lo_idx_f), int64)
+  lo_idx_i = cast_trunc(lo_idx_f, int64)
   lo_idx_back = cast(lo_idx_i, f32)
   frac = sub(pos, lo_idx_back)
   hi_idx_i = add(lo_idx_i, one_i())
@@ -164,12 +165,12 @@ def trimmed_mean_vec[n](v: &tensor[n, f32], proportion: f32) -> f32 = {
   if bad_prop then div(zero_f(), zero_f()) else {
     n_i = numel(v)
     n_f = cast(n_i, f32)
-    sorted_pair = sort(v, 0)
+    sorted_pair = sort(v, zero_axis())
     sorted_v = sorted_pair.0
     lst = to_list(sorted_v)
     enum_lst = enumerate(lst)
     trim_count_f = mul(proportion, n_f)
-    trim_count_i = cast(floor(trim_count_f), int64)
+    trim_count_i = cast_trunc(trim_count_f, int64)
     lo_bound = trim_count_i
     hi_bound_excl = sub(n_i, trim_count_i)
     kept_sum_pair = fold(fn (acc: (f32, int64), pair: (int64, f32)) -> {
@@ -201,7 +202,7 @@ def stat_holm_adjust_one[n](sorted_p: &tensor[n, f32], p: f32, m: f32) -> f32 = 
   stats_min_one(raw)
 }
 def stat_holm_adjust[n](p_values: &tensor[n, f32]) -> tensor[n, f32] = {
-  sorted_pair = sort(p_values, zero_i())
+  sorted_pair = sort(p_values, zero_axis())
   sorted_p = sorted_pair.0
   m = cast(numel(p_values), f32)
   to_tensor(map(fn (p: f32) -> stat_holm_adjust_one(sorted_p, p, m), to_list(p_values)))
@@ -217,7 +218,7 @@ def bh_adjust_one[n](sorted_p: &tensor[n, f32], p: f32, m: f32) -> f32 = {
   stats_min_one(raw)
 }
 def benjamini_hochberg_adjust[n](p_values: &tensor[n, f32]) -> tensor[n, f32] = {
-  sorted_pair = sort(p_values, zero_i())
+  sorted_pair = sort(p_values, zero_axis())
   sorted_p = sorted_pair.0
   m = cast(numel(p_values), f32)
   to_tensor(map(fn (p: f32) -> bh_adjust_one(sorted_p, p, m), to_list(p_values)))
