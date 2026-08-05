@@ -14,12 +14,12 @@ in `Chelis-Lang/chelis`.
 
 | Item | Value |
 |---|---|
-| Pinned compiler | Published `chelis 0.18.3` (`reef.toml`: `=0.18.3`) |
-| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.3` in the regenerated local `reef.lock` |
-| Upstream release identity | Source commit `29700dd73c0e35b672bdd384493054b3107ce308`; Linux glibc-2.31 asset SHA-256 `36789e3a260c61b5082bc8842ba7b975899796ddf17c7b971815a2ed112904a3` (compiler payload SHA-256 `ea0ba326b190366f905445b4996c3993fe6c5cc7214f14cf5d862a615b78badf`) |
-| Installed compiler payload | Darwin arm64 SHA-256 `3a14b0d7e0a46a49c9b25f3dc61573d5972a91b411021672e09b8e3e0e9e1eba`, byte-identical to the released `chelis-v0.18.3-darwin-arm64.tar.gz` (asset SHA-256 `cc8737adf8c21040432d94b96635ef48895bd7ac8cdf94bd7696046c44bc7371`, checked against its release sidecar) |
-| Validation status | Complete local gate passed on the official Darwin arm64 release payload (463 positive, 3 negative, 2 blocked, 216/216 strict SciPy parity); the Linux glibc-2.31 asset was verified against its sidecar but its gate run is CI's. Nautilus publication remains gated on the milestone red team |
-| Last refreshed | 2026-08-04 |
+| Pinned compiler | Published `chelis 0.18.4` (`reef.toml`: `=0.18.4`) |
+| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.4` in the regenerated local `reef.lock` |
+| Upstream release identity | Source commit `c0138c828bf2c42e1c8941e824f16616bd974fd5`; Linux glibc-2.31 asset SHA-256 `c31b59a830ca232fa4e0a454e1314810026b5ec4f2b1a6e54d024eb049f65902` (compiler payload SHA-256 `314e840b7bf483caae985e663d27d0d2ccab85c003776bdd7689c5832cb3addf`) |
+| Installed compiler payload | Darwin arm64 SHA-256 `b6b80d65bf1822f6ad926915b4c5d4b3c94e414a9afcafa0bc02f9fc29a48037`, byte-identical to the released `chelis-v0.18.4-darwin-arm64.tar.gz` (asset SHA-256 `ac905d2a2d471ff09a46e39c7ae78ede85aab2f97515553b445ffd0dc0d29fea`, checked against its release sidecar) |
+| Validation status | Complete local gate passed on the official Darwin arm64 release payload (463 positive, 3 negative, 2 blocked); strict SciPy parity ran green in PR #40 CI. The Linux glibc-2.31 asset was verified against its sidecar but its gate run is CI's |
+| Last refreshed | 2026-08-05 |
 
 `@pin` means the row describes behavior available (or a limitation verified)
 on the exact pinned release. `@upstream` means a capability exists in a newer

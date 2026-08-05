@@ -4,7 +4,45 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.7.40] - Unreleased
+## [0.7.41] - 2026-08-05
+
+Compiler-pin and grammar-migration release for Chelis v0.18.4. The
+`chelis reef conform bump 0.18.4` command advanced the compiler pin and all
+workflow audit mirrors, and the Nautilus package version advanced from 0.7.40
+to 0.7.41. The version bump lands in a follow-up to PR #40, which carried the
+pin and migration; the published 0.7.40 artifact pins `=0.18.3` and is
+unchanged.
+
+**The entire Surf corpus migrated to canonical Surf v0.19 (chelis#1031).**
+Chelis 0.18.4 defines one canonical written form for Surf and its style gate
+runs `chelis fmt --check` ahead of the front-end pipeline, so this migration
+and the pin bump are one atomic change: 5 of 12 sampled migrated files fail
+`fmt --check` under 0.18.3, and unmigrated files fail it under 0.18.4. Most
+of the rewrite is `chelis migrate surf --from 0.18` output; the residue was
+repaired from the compiler's own diagnostics (float literals respelled to
+exponent form, redundant one-expression block braces dropped, explicit
+first-argument pipe lambdas rewritten to canonical call-stage sugar). The
+migrator was driven per file because its batch mode aborts entirely on the
+first file it cannot resugar (chelis#1197).
+
+The official Darwin arm64 asset was verified at SHA-256
+`ac905d2a2d471ff09a46e39c7ae78ede85aab2f97515553b445ffd0dc0d29fea`; its
+installed compiler payload was
+`b6b80d65bf1822f6ad926915b4c5d4b3c94e414a9afcafa0bc02f9fc29a48037`,
+byte-identical to the release tarball. The upstream source commit is
+`c0138c828bf2c42e1c8941e824f16616bd974fd5`.
+
+**Validation on 0.18.4:** `chelis reef conform audit` conformant with no MUST
+failures; 463 positive tests passed, 0 failed; 3 negative sidecars ok; both
+chelis#676 blocked probes still fail at the backward-DAG verifier with the
+pinned `mismatched dimension count: 0 vs 1`, so that narrowing is unchanged
+(no movement on chelis#676 at 0.18.4, and no probe source drift this cycle).
+
+Nautilus is unaffected by chelis#1200 (the 0.18.4 `_ = f(x)`
+wildcard-discard consume regression): its suite is fully green, and it has no
+record-destructuring callee reached through a discarded result.
+
+## [0.7.40] - 2026-08-04
 
 Compiler-pin and de-narrowing release for Chelis v0.18.3. The required
 `chelis reef conform bump 0.18.3` command advanced the compiler pin and all
