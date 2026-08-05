@@ -25,7 +25,7 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
   two_i = cast(2, int64)
-  tol_floor = cast(0.000001, f32)
+  tol_floor = cast(1e-6, f32)
   tol_eff = if lt(tol, tol_floor) then tol_floor else tol
   if lte(iters, zero_i) then u else {
     width = sub(b, a)
@@ -62,7 +62,7 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
         num = sub(num1, num2)
         den = sub(den1, den2)
         aden = opt_abs_f32(den)
-        too_flat = lt(aden, cast(0.000000000000000000000000000001, f32))
+        too_flat = lt(aden, cast(1e-30, f32))
         if too_flat then {
           phi = opt_phi()
           gap = mul(phi, width)
@@ -132,7 +132,7 @@ def opt_gd_rec(f: f32 -> f32, df: f32 -> f32, x: f32, lr: f32, iters: int64) -> 
   if lte(iters, zero_i) then x else {
     g = df(x)
     ag = opt_abs_f32(g)
-    if lt(ag, cast(0.0000000001, f32)) then x else {
+    if lt(ag, cast(1e-10, f32)) then x else {
       x_next = sub(x, mul(lr, g))
       x_next_abs = opt_abs_f32(x_next)
       runaway = gt(x_next_abs, cast(1000000000000000.0, f32))
@@ -157,7 +157,7 @@ def opt_nmin_rec(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x: f32, tol: f3
     } else {
       h = ddf(x)
       ah = opt_abs_f32(h)
-      if lt(ah, cast(0.000000000000000000000000000001, f32)) then opt_nan_f32() else {
+      if lt(ah, cast(1e-30, f32)) then opt_nan_f32() else {
         step = div(g, h)
         x_next = sub(x, step)
         if eq(x_next, x) then x_next else opt_nmin_rec(f, df, ddf, x_next, tol, sub(iters, one_i))

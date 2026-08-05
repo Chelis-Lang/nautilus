@@ -41,7 +41,7 @@ def newton_rec(f: f32 -> f32, df: f32 -> f32, x: f32, tol: f32, iters: int64) ->
     if lt(afx, tol) then x else {
       dfx = df(x)
       adfx = r_abs_f32(dfx)
-      if lt(adfx, cast(0.000000000000000000000000000001, f32)) then r_nan_f32() else {
+      if lt(adfx, cast(1e-30, f32)) then r_nan_f32() else {
         step = div(fx, dfx)
         x_next = sub(x, step)
         if eq(x_next, x) then x_next else newton_rec(f, df, x_next, tol, sub(iters, one_i))
@@ -59,7 +59,7 @@ def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, f
   one_i = cast(1, int64)
   zero_f = cast(0.0, f32)
   half = cast(0.5, f32)
-  tol_floor = cast(0.000001, f32)
+  tol_floor = cast(1e-6, f32)
   tol_eff = if lt(tol, tol_floor) then tol_floor else tol
   if lte(iters, zero_i) then r_nan_f32() else {
     afa = r_abs_f32(fa)
