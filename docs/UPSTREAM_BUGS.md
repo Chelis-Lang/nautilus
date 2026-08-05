@@ -56,6 +56,13 @@ release.
     - **Minimal reproducer:** `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`,
       a concrete `n=2`, `m=6` linear model with expected first Jacobian row
       `[1, 1]`.
+    - **0.18.4 release result per surface:** unchanged. Both probes still
+      fail while verifying the backward DAG with
+      `mismatched dimension count: 0 vs 1` (the conform blocked runner
+      matched both `.expect` pins at the 0.18.4 bump: 2 ok, 0 failing).
+      No probe source drift this cycle -- the canonical Surf v0.19
+      migration rewrote both probes and they still reach the same
+      verifier layer. No movement on chelis#676.
     - **0.18.3 release result per surface:** both
       `tests_blocked/curvefit/lm_jacobian_generic_dims.ch` and the concrete
       wrapper fail while verifying the backward DAG with
