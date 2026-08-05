@@ -23,6 +23,6 @@ def erf_projectile(theta: f32) -> f32 = {
   d = cast(30.0, f32)
   sub(mul(div(v_sq, g), s), d)
 }
-def example_sqrt2() -> f32 = brent(erf_poly1, cast(1.0, f32), cast(2.0, f32), cast(0.0000000001, f32), cast(100, int64))
-def example_cos_minus_x() -> f32 = newton(erf_cosmx, erf_dcosmx, cast(0.5, f32), cast(0.0000000001, f32), cast(50, int64))
-def example_projectile_angle() -> f32 = bisection(erf_projectile, cast(0.1, f32), cast(0.7, f32), cast(0.00000001, f32), cast(100, int64))
+def example_sqrt2() -> f32 = brent(erf_poly1, cast(1.0, f32), cast(2.0, f32), cast(1e-10, f32), cast(100, int64))
+def example_cos_minus_x() -> f32 = newton(erf_cosmx, erf_dcosmx, cast(0.5, f32), cast(1e-10, f32), cast(50, int64))
+def example_projectile_angle() -> f32 = bisection(erf_projectile, cast(0.1, f32), cast(0.7, f32), cast(1e-8, f32), cast(100, int64))

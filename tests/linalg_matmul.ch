@@ -51,11 +51,11 @@ def test_aat_identity_is_identity() -> unit ! { Test } = {
 }
 def test_frobenius_norm_zero_matrix() -> unit ! { Test } = {
   z = mk_2x2(cast(0.0, f32), cast(0.0, f32), cast(0.0, f32), cast(0.0, f32))
-  assert_close(frobenius_norm(z), cast(0.0, f32), cast(0.000001, f32), "||0||_F = 0")
+  assert_close(frobenius_norm(z), cast(0.0, f32), cast(1e-6, f32), "||0||_F = 0")
 }
-def test_frobenius_norm_identity_is_sqrt_n() -> unit ! { Test } = { assert_close(frobenius_norm(eye3()), cast(1.7320508, f32), cast(0.0001, f32), "||I_3||_F = sqrt(3)") }
-def test_frobenius_sq_identity_is_n() -> unit ! { Test } = { assert_close(frobenius_sq(eye3()), cast(3.0, f32), cast(0.00001, f32), "||I_3||^2 = 3") }
-def test_det_2x2_identity() -> unit ! { Test } = assert_close(det_2x2(eye2()), cast(1.0, f32), cast(0.000001, f32), "det(I_2) = 1")
+def test_frobenius_norm_identity_is_sqrt_n() -> unit ! { Test } = assert_close(frobenius_norm(eye3()), cast(1.7320508, f32), cast(0.0001, f32), "||I_3||_F = sqrt(3)")
+def test_frobenius_sq_identity_is_n() -> unit ! { Test } = assert_close(frobenius_sq(eye3()), cast(3.0, f32), cast(0.00001, f32), "||I_3||^2 = 3")
+def test_det_2x2_identity() -> unit ! { Test } = assert_close(det_2x2(eye2()), cast(1.0, f32), cast(1e-6, f32), "det(I_2) = 1")
 def test_det_2x2_known() -> unit ! { Test } = {
   a = mk_2x2(cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32))
   assert_close(det_2x2(a), cast(-2.0, f32), cast(0.00001, f32), "det([[1,2],[3,4]]) = -2")

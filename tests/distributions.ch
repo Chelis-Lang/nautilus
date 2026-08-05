@@ -8,17 +8,17 @@ def test_normal_pdf_at_mean_is_one_over_sqrt_2pi() -> unit ! { Test } = {
 def test_normal_pdf_symmetric_unit() -> unit ! { Test } = {
   l = normal_pdf(cast(0.5, f32), cast(0.0, f32), cast(1.0, f32))
   r = normal_pdf(cast(-0.5, f32), cast(0.0, f32), cast(1.0, f32))
-  assert_close(l, r, cast(0.0000001, f32), "N(0.5;0,1) = N(-0.5;0,1)")
+  assert_close(l, r, cast(1e-7, f32), "N(0.5;0,1) = N(-0.5;0,1)")
 }
 def test_normal_pdf_symmetric_two() -> unit ! { Test } = {
   l = normal_pdf(cast(2.3, f32), cast(0.0, f32), cast(1.0, f32))
   r = normal_pdf(cast(-2.3, f32), cast(0.0, f32), cast(1.0, f32))
-  assert_close(l, r, cast(0.0000001, f32), "N(2.3;0,1) = N(-2.3;0,1)")
+  assert_close(l, r, cast(1e-7, f32), "N(2.3;0,1) = N(-2.3;0,1)")
 }
 def test_normal_pdf_symmetric_about_nonzero_mean() -> unit ! { Test } = {
   l = normal_pdf(cast(3.7, f32), cast(2.0, f32), cast(1.5, f32))
   r = normal_pdf(cast(0.3, f32), cast(2.0, f32), cast(1.5, f32))
-  assert_close(l, r, cast(0.000001, f32), "N(mu+d) = N(mu-d)")
+  assert_close(l, r, cast(1e-6, f32), "N(mu+d) = N(mu-d)")
 }
 def test_normal_cdf_at_mean_is_half() -> unit ! { Test } = {
   v = normal_cdf(cast(0.0, f32), cast(0.0, f32), cast(1.0, f32))
@@ -68,72 +68,72 @@ def test_normal_inv_cdf_round_trip_neg_x() -> unit ! { Test } = {
 def test_normal_pdf_scale_invariance() -> unit ! { Test } = {
   v = normal_pdf(cast(3.0, f32), cast(2.0, f32), cast(1.0, f32))
   ref = normal_pdf(cast(1.0, f32), cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, ref, cast(0.000001, f32), "N(mu+s;mu,s) = N(1;0,1) when s=1")
+  assert_close(v, ref, cast(1e-6, f32), "N(mu+s;mu,s) = N(1;0,1) when s=1")
 }
 def test_uniform_pdf_unit_density() -> unit ! { Test } = {
   v = uniform_pdf(cast(0.5, f32), cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.0000001, f32), "U(0,1) pdf = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-7, f32), "U(0,1) pdf = 1")
 }
 def test_uniform_pdf_constant_density() -> unit ! { Test } = {
   a = uniform_pdf(cast(3.0, f32), cast(2.0, f32), cast(7.0, f32))
   b = uniform_pdf(cast(5.5, f32), cast(2.0, f32), cast(7.0, f32))
-  _ = assert_close(a, cast(0.2, f32), cast(0.0000001, f32), "U(2,7) pdf at 3 = 0.2")
-  _ = assert_close(b, cast(0.2, f32), cast(0.0000001, f32), "U(2,7) pdf at 5.5 = 0.2")
-  assert_close(a, b, cast(0.0000001, f32), "U(2,7) pdf is constant in support")
+  _ = assert_close(a, cast(0.2, f32), cast(1e-7, f32), "U(2,7) pdf at 3 = 0.2")
+  _ = assert_close(b, cast(0.2, f32), cast(1e-7, f32), "U(2,7) pdf at 5.5 = 0.2")
+  assert_close(a, b, cast(1e-7, f32), "U(2,7) pdf is constant in support")
 }
 def test_uniform_pdf_outside_support_below() -> unit ! { Test } = {
   v = uniform_pdf(cast(-1.0, f32), cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "U pdf below = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "U pdf below = 0")
 }
 def test_uniform_pdf_outside_support_above() -> unit ! { Test } = {
   v = uniform_pdf(cast(2.0, f32), cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "U pdf above = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "U pdf above = 0")
 }
 def test_uniform_cdf_at_lower_bound() -> unit ! { Test } = {
   v = uniform_cdf(cast(2.0, f32), cast(2.0, f32), cast(7.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "U_cdf(a;a,b) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "U_cdf(a;a,b) = 0")
 }
 def test_uniform_cdf_at_upper_bound() -> unit ! { Test } = {
   v = uniform_cdf(cast(7.0, f32), cast(2.0, f32), cast(7.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.0000001, f32), "U_cdf(b;a,b) = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-7, f32), "U_cdf(b;a,b) = 1")
 }
 def test_uniform_cdf_at_midpoint_is_half() -> unit ! { Test } = {
   v = uniform_cdf(cast(5.0, f32), cast(2.0, f32), cast(8.0, f32))
-  assert_close(v, cast(0.5, f32), cast(0.0000001, f32), "U_cdf((a+b)/2) = 0.5")
+  assert_close(v, cast(0.5, f32), cast(1e-7, f32), "U_cdf((a+b)/2) = 0.5")
 }
 def test_uniform_cdf_below_support_zero() -> unit ! { Test } = {
   v = uniform_cdf(cast(-5.0, f32), cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "U_cdf below = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "U_cdf below = 0")
 }
 def test_uniform_cdf_above_support_one() -> unit ! { Test } = {
   v = uniform_cdf(cast(5.0, f32), cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.0000001, f32), "U_cdf above = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-7, f32), "U_cdf above = 1")
 }
 def test_uniform_inv_cdf_round_trip() -> unit ! { Test } = {
   q = cast(0.3, f32)
   x = uniform_inv_cdf(q, cast(2.0, f32), cast(8.0, f32))
   back = uniform_cdf(x, cast(2.0, f32), cast(8.0, f32))
-  assert_close(back, q, cast(0.000001, f32), "U inv_cdf round-trip")
+  assert_close(back, q, cast(1e-6, f32), "U inv_cdf round-trip")
 }
 def test_exponential_pdf_at_zero_is_rate() -> unit ! { Test } = {
   v = exponential_pdf(cast(0.0, f32), cast(2.5, f32))
-  assert_close(v, cast(2.5, f32), cast(0.000001, f32), "Exp pdf at 0 = rate")
+  assert_close(v, cast(2.5, f32), cast(1e-6, f32), "Exp pdf at 0 = rate")
 }
 def test_exponential_pdf_at_zero_unit_rate() -> unit ! { Test } = {
   v = exponential_pdf(cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.0000001, f32), "Exp(1) pdf at 0 = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-7, f32), "Exp(1) pdf at 0 = 1")
 }
 def test_exponential_pdf_below_zero() -> unit ! { Test } = {
   v = exponential_pdf(cast(-1.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "Exp pdf below 0 = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "Exp pdf below 0 = 0")
 }
 def test_exponential_cdf_at_zero() -> unit ! { Test } = {
   v = exponential_cdf(cast(0.0, f32), cast(1.5, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "Exp_cdf(0) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "Exp_cdf(0) = 0")
 }
 def test_exponential_cdf_far_right() -> unit ! { Test } = {
   v = exponential_cdf(cast(50.0, f32), cast(1.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "Exp_cdf(large) = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "Exp_cdf(large) = 1")
 }
 def test_exponential_cdf_monotone() -> unit ! { Test } = {
   a = exponential_cdf(cast(0.5, f32), cast(1.0, f32))
@@ -150,7 +150,7 @@ def test_exponential_inv_cdf_round_trip() -> unit ! { Test } = {
 }
 def test_exponential_inv_cdf_at_zero() -> unit ! { Test } = {
   v = exponential_inv_cdf(cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "Exp inv_cdf(0) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "Exp inv_cdf(0) = 0")
 }
 def test_lognormal_pdf_positive_for_positive_x() -> unit ! { Test } = {
   v = lognormal_pdf(cast(1.0, f32), cast(0.0, f32), cast(1.0, f32))
@@ -158,15 +158,15 @@ def test_lognormal_pdf_positive_for_positive_x() -> unit ! { Test } = {
 }
 def test_lognormal_pdf_at_zero_is_zero() -> unit ! { Test } = {
   v = lognormal_pdf(cast(0.0, f32), cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "LogN pdf(0) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "LogN pdf(0) = 0")
 }
 def test_lognormal_pdf_below_zero_is_zero() -> unit ! { Test } = {
   v = lognormal_pdf(cast(-1.0, f32), cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "LogN pdf(-1) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "LogN pdf(-1) = 0")
 }
 def test_lognormal_cdf_at_zero_is_zero() -> unit ! { Test } = {
   v = lognormal_cdf(cast(0.0, f32), cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "LogN cdf(0) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "LogN cdf(0) = 0")
 }
 def test_lognormal_cdf_at_one_is_half() -> unit ! { Test } = {
   v = lognormal_cdf(cast(1.0, f32), cast(0.0, f32), cast(1.0, f32))
@@ -180,11 +180,11 @@ def test_lognormal_inv_cdf_round_trip() -> unit ! { Test } = {
 }
 def test_gamma_pdf_at_zero_with_shape_gt_one() -> unit ! { Test } = {
   v = gamma_pdf(cast(0.0, f32), cast(2.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "Gamma pdf(0;2,1) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "Gamma pdf(0;2,1) = 0")
 }
 def test_gamma_cdf_at_zero() -> unit ! { Test } = {
   v = gamma_cdf(cast(0.0, f32), cast(2.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "Gamma cdf(0) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "Gamma cdf(0) = 0")
 }
 def test_gamma_cdf_far_right() -> unit ! { Test } = {
   v = gamma_cdf(cast(60.0, f32), cast(2.0, f32), cast(1.0, f32))
@@ -223,11 +223,11 @@ def test_gamma_cdf_monotone() -> unit ! { Test } = {
 }
 def test_chi2_pdf_at_zero_with_k_gt_two() -> unit ! { Test } = {
   v = chi_squared_pdf(cast(0.0, f32), cast(4.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "Chi2 pdf(0;4) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "Chi2 pdf(0;4) = 0")
 }
 def test_chi2_cdf_at_zero() -> unit ! { Test } = {
   v = chi_squared_cdf(cast(0.0, f32), cast(3.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "Chi2 cdf(0;3) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "Chi2 cdf(0;3) = 0")
 }
 def test_chi2_k2_reduces_to_exponential_pdf() -> unit ! { Test } = {
   x = cast(1.5, f32)
@@ -248,12 +248,12 @@ def test_chi2_cdf_far_right() -> unit ! { Test } = {
 def test_student_t_pdf_symmetric() -> unit ! { Test } = {
   l = student_t_pdf(cast(0.6, f32), cast(5.0, f32))
   r = student_t_pdf(cast(-0.6, f32), cast(5.0, f32))
-  assert_close(l, r, cast(0.000001, f32), "t pdf symmetric about 0")
+  assert_close(l, r, cast(1e-6, f32), "t pdf symmetric about 0")
 }
 def test_student_t_pdf_symmetric_df1() -> unit ! { Test } = {
   l = student_t_pdf(cast(2.0, f32), cast(1.0, f32))
   r = student_t_pdf(cast(-2.0, f32), cast(1.0, f32))
-  assert_close(l, r, cast(0.000001, f32), "t(df=1) pdf symmetric")
+  assert_close(l, r, cast(1e-6, f32), "t(df=1) pdf symmetric")
 }
 def test_student_t_cdf_at_zero_is_half() -> unit ! { Test } = {
   v = student_t_cdf(cast(0.0, f32), cast(5.0, f32))
@@ -283,17 +283,17 @@ def test_poisson_pmf_at_zero_is_exp_neg_lambda() -> unit ! { Test } = {
   lam = cast(2.0, f32)
   v = poisson_pmf(cast(0.0, f32), lam)
   expected = exp(neg(lam))
-  assert_close(v, expected, cast(0.000001, f32), "P(0;lam) = exp(-lam)")
+  assert_close(v, expected, cast(1e-6, f32), "P(0;lam) = exp(-lam)")
 }
 def test_poisson_pmf_at_zero_lambda_one() -> unit ! { Test } = {
   v = poisson_pmf(cast(0.0, f32), cast(1.0, f32))
   expected = exp(neg(cast(1.0, f32)))
-  assert_close(v, expected, cast(0.000001, f32), "P(0;1) = 1/e")
+  assert_close(v, expected, cast(1e-6, f32), "P(0;1) = 1/e")
 }
 def test_poisson_pmf_at_zero_lambda_three() -> unit ! { Test } = {
   v = poisson_pmf(cast(0.0, f32), cast(3.0, f32))
   expected = exp(neg(cast(3.0, f32)))
-  assert_close(v, expected, cast(0.000001, f32), "P(0;3) = exp(-3)")
+  assert_close(v, expected, cast(1e-6, f32), "P(0;3) = exp(-3)")
 }
 def test_poisson_pmf_sum_equals_cdf() -> unit ! { Test } = {
   lam = cast(2.0, f32)
@@ -309,11 +309,11 @@ def test_poisson_pmf_sum_equals_cdf_lambda_one() -> unit ! { Test } = {
 }
 def test_poisson_pmf_lambda_zero_at_zero() -> unit ! { Test } = {
   v = poisson_pmf(cast(0.0, f32), cast(0.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.0000001, f32), "P(0;0) = 1 (degenerate)")
+  assert_close(v, cast(1.0, f32), cast(1e-7, f32), "P(0;0) = 1 (degenerate)")
 }
 def test_poisson_pmf_lambda_zero_at_one() -> unit ! { Test } = {
   v = poisson_pmf(cast(1.0, f32), cast(0.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "P(1;0) = 0 (degenerate)")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "P(1;0) = 0 (degenerate)")
 }
 def test_poisson_cdf_monotone() -> unit ! { Test } = {
   a = poisson_cdf(cast(0.0, f32), cast(2.0, f32))
@@ -324,19 +324,19 @@ def test_poisson_cdf_monotone() -> unit ! { Test } = {
 }
 def test_binomial_pmf_p_zero_at_zero() -> unit ! { Test } = {
   v = binomial_pmf(cast(0.0, f32), cast(5.0, f32), cast(0.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.0000001, f32), "Bin(0;n,0) = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-7, f32), "Bin(0;n,0) = 1")
 }
 def test_binomial_pmf_p_zero_at_one() -> unit ! { Test } = {
   v = binomial_pmf(cast(1.0, f32), cast(5.0, f32), cast(0.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "Bin(1;n,0) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "Bin(1;n,0) = 0")
 }
 def test_binomial_pmf_p_one_at_n() -> unit ! { Test } = {
   v = binomial_pmf(cast(5.0, f32), cast(5.0, f32), cast(1.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.0000001, f32), "Bin(n;n,1) = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-7, f32), "Bin(n;n,1) = 1")
 }
 def test_binomial_pmf_p_one_at_zero() -> unit ! { Test } = {
   v = binomial_pmf(cast(0.0, f32), cast(5.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "Bin(0;n,1) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "Bin(0;n,1) = 0")
 }
 def test_binomial_pmf_zero_successes_equals_one_minus_p_pow_n() -> unit ! { Test } = {
   n = cast(4.0, f32)
@@ -357,33 +357,33 @@ def test_binomial_pmf_zero_successes_n3() -> unit ! { Test } = {
 def test_binomial_pmf_symmetric_p_half_k1() -> unit ! { Test } = {
   l = binomial_pmf(cast(1.0, f32), cast(5.0, f32), cast(0.5, f32))
   r = binomial_pmf(cast(4.0, f32), cast(5.0, f32), cast(0.5, f32))
-  assert_close(l, r, cast(0.000001, f32), "Bin(1;5,0.5) = Bin(4;5,0.5)")
+  assert_close(l, r, cast(1e-6, f32), "Bin(1;5,0.5) = Bin(4;5,0.5)")
 }
 def test_binomial_pmf_symmetric_p_half_k2() -> unit ! { Test } = {
   l = binomial_pmf(cast(2.0, f32), cast(6.0, f32), cast(0.5, f32))
   r = binomial_pmf(cast(4.0, f32), cast(6.0, f32), cast(0.5, f32))
-  assert_close(l, r, cast(0.000001, f32), "Bin(2;6,0.5) = Bin(4;6,0.5)")
+  assert_close(l, r, cast(1e-6, f32), "Bin(2;6,0.5) = Bin(4;6,0.5)")
 }
 def test_binomial_pmf_symmetric_p_half_k0() -> unit ! { Test } = {
   l = binomial_pmf(cast(0.0, f32), cast(5.0, f32), cast(0.5, f32))
   r = binomial_pmf(cast(5.0, f32), cast(5.0, f32), cast(0.5, f32))
-  assert_close(l, r, cast(0.000001, f32), "Bin(0;5,0.5) = Bin(5;5,0.5)")
+  assert_close(l, r, cast(1e-6, f32), "Bin(0;5,0.5) = Bin(5;5,0.5)")
 }
 def test_binomial_cdf_at_n_is_one() -> unit ! { Test } = {
   v = binomial_cdf(cast(5.0, f32), cast(5.0, f32), cast(0.4, f32))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "Bin_cdf(n;n,p) = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "Bin_cdf(n;n,p) = 1")
 }
 def test_beta_pdf_uniform_at_half() -> unit ! { Test } = {
   v = beta_pdf(cast(0.5, f32), cast(1.0, f32), cast(1.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "Beta(1,1) pdf at 0.5 = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "Beta(1,1) pdf at 0.5 = 1")
 }
 def test_beta_pdf_uniform_at_quarter() -> unit ! { Test } = {
   v = beta_pdf(cast(0.25, f32), cast(1.0, f32), cast(1.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "Beta(1,1) pdf at 0.25 = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "Beta(1,1) pdf at 0.25 = 1")
 }
 def test_beta_pdf_uniform_at_three_quarter() -> unit ! { Test } = {
   v = beta_pdf(cast(0.75, f32), cast(1.0, f32), cast(1.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "Beta(1,1) pdf at 0.75 = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "Beta(1,1) pdf at 0.75 = 1")
 }
 def test_beta_pdf_symmetry() -> unit ! { Test } = {
   l = beta_pdf(cast(0.3, f32), cast(2.0, f32), cast(5.0, f32))
@@ -397,11 +397,11 @@ def test_beta_pdf_symmetry_two() -> unit ! { Test } = {
 }
 def test_beta_cdf_at_zero() -> unit ! { Test } = {
   v = beta_cdf(cast(0.0, f32), cast(2.0, f32), cast(3.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "Beta_cdf(0) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "Beta_cdf(0) = 0")
 }
 def test_beta_cdf_at_one() -> unit ! { Test } = {
   v = beta_cdf(cast(1.0, f32), cast(2.0, f32), cast(3.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "Beta_cdf(1) = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "Beta_cdf(1) = 1")
 }
 def test_beta_cdf_symmetry() -> unit ! { Test } = {
   a = beta_cdf(cast(0.4, f32), cast(2.0, f32), cast(3.0, f32))
@@ -419,11 +419,11 @@ def test_f_pdf_nonnegative_two() -> unit ! { Test } = {
 }
 def test_f_pdf_at_zero() -> unit ! { Test } = {
   v = f_pdf(cast(0.0, f32), cast(5.0, f32), cast(10.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "F pdf(0;5,10) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "F pdf(0;5,10) = 0")
 }
 def test_f_cdf_at_zero() -> unit ! { Test } = {
   v = f_cdf(cast(0.0, f32), cast(5.0, f32), cast(10.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "F cdf(0;5,10) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "F cdf(0;5,10) = 0")
 }
 def test_f_cdf_far_right() -> unit ! { Test } = {
   v = f_cdf(cast(1000.0, f32), cast(5.0, f32), cast(10.0, f32))
@@ -438,7 +438,7 @@ def test_f_cdf_monotone() -> unit ! { Test } = {
 }
 def test_weibull_pdf_at_zero_shape_gt_one() -> unit ! { Test } = {
   v = weibull_pdf(cast(0.0, f32), cast(2.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "Weibull pdf(0;k>1) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "Weibull pdf(0;k>1) = 0")
 }
 def test_weibull_cdf_at_scale_is_one_minus_one_over_e() -> unit ! { Test } = {
   v = weibull_cdf(cast(2.5, f32), cast(1.0, f32), cast(2.5, f32))
@@ -450,11 +450,11 @@ def test_weibull_cdf_at_scale_shape_two() -> unit ! { Test } = {
 }
 def test_weibull_cdf_at_zero() -> unit ! { Test } = {
   v = weibull_cdf(cast(0.0, f32), cast(2.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.0000001, f32), "W_cdf(0) = 0")
+  assert_close(v, cast(0.0, f32), cast(1e-7, f32), "W_cdf(0) = 0")
 }
 def test_weibull_cdf_far_right() -> unit ! { Test } = {
   v = weibull_cdf(cast(50.0, f32), cast(2.0, f32), cast(1.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "W_cdf(large) = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "W_cdf(large) = 1")
 }
 def test_weibull_inv_cdf_round_trip() -> unit ! { Test } = {
   x = cast(1.5, f32)

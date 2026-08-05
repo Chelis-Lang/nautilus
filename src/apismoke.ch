@@ -96,9 +96,9 @@ def smoke_linalg[m, k, n](a: tensor[m, k, f32], b: tensor[k, n, f32], v: tensor[
   add(add(add(inner, n2), d2), d3)
 }
 def smoke_roots() -> f32 = {
-  r1 = bisection(smoke_poly, cast(1.0, f32), cast(2.0, f32), cast(0.0000000001, f32), cast(100, int64))
-  r2 = newton(smoke_poly, smoke_dpoly, cast(1.5, f32), cast(0.000000000001, f32), cast(50, int64))
-  r3 = brent(smoke_poly, cast(1.0, f32), cast(2.0, f32), cast(0.0000000001, f32), cast(100, int64))
+  r1 = bisection(smoke_poly, cast(1.0, f32), cast(2.0, f32), cast(1e-10, f32), cast(100, int64))
+  r2 = newton(smoke_poly, smoke_dpoly, cast(1.5, f32), cast(1e-12, f32), cast(50, int64))
+  r3 = brent(smoke_poly, cast(1.0, f32), cast(2.0, f32), cast(1e-10, f32), cast(100, int64))
   add(add(r1, r2), r3)
 }
 def smoke_ode() -> f32 = {
@@ -106,7 +106,7 @@ def smoke_ode() -> f32 = {
   b = rk4_step(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(0.01, f32))
   c = euler_solve(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(100, int64))
   d = rk4_solve(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(100, int64))
-  e = rk45_adaptive_solve(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(0.000001, f32), cast(0.00000001, f32))
+  e = rk45_adaptive_solve(smoke_decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(1e-6, f32), cast(1e-8, f32))
   add(add(add(add(a, b), c), d), e)
 }
 def smoke_stats[n](v: tensor[n, f32], w: tensor[n, f32]) -> f32 = {
@@ -157,10 +157,10 @@ def smoke_optim_parab(x: f32) -> f32 = {
 def smoke_optim_dparab(x: f32) -> f32 = mul(cast(2.0, f32), sub(x, cast(2.0, f32)))
 def smoke_optim_ddparab(x: f32) -> f32 = cast(2.0, f32)
 def smoke_optim() -> f32 = {
-  g = golden_section_search(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(0.00000001, f32), cast(200, int64))
-  b = brent_minimize(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(0.00000001, f32), cast(200, int64))
+  g = golden_section_search(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(1e-8, f32), cast(200, int64))
+  b = brent_minimize(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(1e-8, f32), cast(200, int64))
   gd = gradient_descent_1d(smoke_optim_parab, smoke_optim_dparab, cast(0.0, f32), cast(0.1, f32), cast(500, int64))
-  nm = newton_minimize_1d(smoke_optim_parab, smoke_optim_dparab, smoke_optim_ddparab, cast(0.0, f32), cast(0.0000000001, f32), cast(50, int64))
+  nm = newton_minimize_1d(smoke_optim_parab, smoke_optim_dparab, smoke_optim_ddparab, cast(0.0, f32), cast(1e-10, f32), cast(50, int64))
   add(add(add(g, b), gd), nm)
 }
 def smoke_interpolation[n](ys: tensor[n, f32]) -> f32 = {
@@ -170,7 +170,7 @@ def smoke_interpolation[n](ys: tensor[n, f32]) -> f32 = {
   add(lu, ch)
 }
 def smoke_cg_solve[n](a_mat: tensor[n, n, f32], b: tensor[n, f32], x0: tensor[n, f32]) -> f32 = {
-  x = cg_solve(a_mat, b, x0, cast(0.0000000001, f32), cast(100, int64))
+  x = cg_solve(a_mat, b, x0, cast(1e-10, f32), cast(100, int64))
   l2_norm_vec(x)
 }
 def smoke_lu_solve(a3: tensor[3, 3, f32], b3: tensor[3, f32]) -> f32 = {
@@ -204,7 +204,7 @@ def smoke_linalg_inv(a2: tensor[2, 2, f32], a3: tensor[3, 3, f32], b2: tensor[2,
 }
 def smoke_integrate_adaptive_fn(x: f32) -> f32 = mul(x, x)
 def smoke_integrate_adaptive() -> f32 = {
-  a = adaptive_simpson(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32), cast(0.0000000001, f32), cast(20, int64))
+  a = adaptive_simpson(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32), cast(1e-10, f32), cast(20, int64))
   r = romberg_5(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32))
   g = gauss_legendre_10(smoke_integrate_adaptive_fn, cast(0.0, f32), cast(1.0, f32))
   add(add(a, r), g)
@@ -217,7 +217,7 @@ def smoke_integrate_hl() -> f32 = {
 }
 def smoke_cf_model(x: f32, theta: f32) -> f32 = mul(theta, x)
 def smoke_cf_dmodel(x: f32, theta: f32) -> f32 = x
-def smoke_curvefit[n](xs: tensor[n, f32], ys: tensor[n, f32]) -> f32 = lm_scalar_1param(smoke_cf_model, smoke_cf_dmodel, xs, ys, cast(0.5, f32), cast(0.001, f32), cast(0.00000001, f32), cast(50, int64))
+def smoke_curvefit[n](xs: tensor[n, f32], ys: tensor[n, f32]) -> f32 = lm_scalar_1param(smoke_cf_model, smoke_cf_dmodel, xs, ys, cast(0.5, f32), cast(0.001, f32), cast(1e-8, f32), cast(50, int64))
 def smoke_distributions_p4() -> f32 = {
   pp = poisson_pmf(cast(3.0, f32), cast(3.0, f32))
   pc = poisson_cdf(cast(3.0, f32), cast(3.0, f32))
@@ -273,7 +273,7 @@ def smoke_eig_n(a3: tensor[3, 3, f32]) -> f32 = {
 }
 def smoke_ode_grid_f(y: tensor[1, f32], t: f32) -> tensor[1, f32] = neg(y)
 def smoke_ode_grid(y0: tensor[1, f32], t_out: tensor[4, f32]) -> f32 = {
-  grid = rk45_adaptive_solve_grid(smoke_ode_grid_f, cast(0.0, f32), y0, cast(2.0, f32), cast(0.000001, f32), cast(0.00000001, f32), t_out)
+  grid = rk45_adaptive_solve_grid(smoke_ode_grid_f, cast(0.0, f32), y0, cast(2.0, f32), cast(1e-6, f32), cast(1e-8, f32), t_out)
   frobenius_norm(grid)
 }
 def smoke_spline(xs: tensor[5, f32], ys: tensor[5, f32]) -> f32 = {
@@ -282,8 +282,8 @@ def smoke_spline(xs: tensor[5, f32], ys: tensor[5, f32]) -> f32 = {
   add(v, l2_norm_vec(m))
 }
 def smoke_optimize() -> f32 = {
-  mn = minimize(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(0.00000001, f32), cast(200, int64))
-  rt = root(smoke_poly, cast(1.0, f32), cast(2.0, f32), cast(0.0000001, f32), cast(100, int64))
+  mn = minimize(smoke_optim_parab, cast(0.0, f32), cast(5.0, f32), cast(1e-8, f32), cast(200, int64))
+  rt = root(smoke_poly, cast(1.0, f32), cast(2.0, f32), cast(1e-7, f32), cast(100, int64))
   ad = optimize_ad_smoke(cast(2.5, f32))
   add(add(mn, rt), ad)
 }

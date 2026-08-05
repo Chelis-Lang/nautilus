@@ -111,7 +111,7 @@ def la_qr_hh_step_r[n](a_curr: tensor[n, n, f32], j: int64) -> tensor[n, n, f32]
   shift = la_basis_n_f32(j, mul(sign_xj, norm_x), template)
   v = la_vec_add(masked_col, shift)
   norm_v = l2_norm_vec(v)
-  safe_norm_v = if lt(norm_v, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else norm_v
+  safe_norm_v = if lt(norm_v, cast(1e-30, f32)) then cast(1.0, f32) else norm_v
   v_hat = scale_vec(v, 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(safe_norm_v))
   vt_A = vecmat(v_hat, a_curr)
   rank1 = einsum("i,j->ij", scale_vec(v_hat, cast(2.0, f32)), vt_A)
@@ -130,7 +130,7 @@ def la_qr_hh_step_q[n](a_orig: tensor[n, n, f32], q_curr: tensor[n, n, f32], j: 
   shift = la_basis_n_f32(j, mul(sign_xj, norm_x), template)
   v = la_vec_add(masked_col, shift)
   norm_v = l2_norm_vec(v)
-  safe_norm_v = if lt(norm_v, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else norm_v
+  safe_norm_v = if lt(norm_v, cast(1e-30, f32)) then cast(1.0, f32) else norm_v
   v_hat = scale_vec(v, 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(safe_norm_v))
   qv = matvec(q_curr, v_hat)
   qv2 = scale_vec(qv, cast(2.0, f32))
@@ -202,7 +202,7 @@ def la_tridiag_fwd_diag[n](lower: tensor[n, f32], diag_in: tensor[n, f32], upper
     upper_im1 = inner_product(upper, e_im1_upper)
     diag_i = inner_product(dacc, e_i)
     abs_d = if lt(diag_im1, cast(0.0, f32)) then neg(diag_im1) else diag_im1
-    safe_d = if lt(abs_d, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else diag_im1
+    safe_d = if lt(abs_d, cast(1e-30, f32)) then cast(1.0, f32) else diag_im1
     w = div(lower_i, safe_d)
     new_diag_i = sub(diag_i, mul(w, upper_im1))
     corr_d = sub(new_diag_i, diag_i)
@@ -220,7 +220,7 @@ def la_tridiag_fwd_b[n](lower: tensor[n, f32], diag_f: tensor[n, f32], upper: te
     b_im1 = inner_product(bacc, e_im1_b)
     b_i = inner_product(bacc, e_i)
     abs_d = if lt(diag_im1, cast(0.0, f32)) then neg(diag_im1) else diag_im1
-    safe_d = if lt(abs_d, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else diag_im1
+    safe_d = if lt(abs_d, cast(1e-30, f32)) then cast(1.0, f32) else diag_im1
     w = div(lower_i, safe_d)
     new_b_i = sub(b_i, mul(w, b_im1))
     corr_b = sub(new_b_i, b_i)
@@ -238,7 +238,7 @@ def la_tridiag_bwd[n](upper: tensor[n, f32], diag_f: tensor[n, f32], b_f: tensor
     upper_i = inner_product(upper, e_i)
     x_ip1 = inner_product(x_acc, i |> add(cast(1, int64)) |> la_basis_n_f32(cast(1.0, f32), tpl))
     abs_di = if lt(diag_i, cast(0.0, f32)) then neg(diag_i) else diag_i
-    safe_di = if lt(abs_di, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else diag_i
+    safe_di = if lt(abs_di, cast(1e-30, f32)) then cast(1.0, f32) else diag_i
     is_last = eq(i, n_len_m1)
     rhs = if is_last then b_i else sub(b_i, mul(upper_i, x_ip1))
     x_i = div(rhs, safe_di)
@@ -273,12 +273,12 @@ def la_svd_rot_g[n](g: tensor[n, n, f32], p: int64, q: int64, tpl: tensor[n, f32
   gqq = inner_product(gcq, eq)
   gpq = inner_product(gcp, eq)
   absgpq = if lt(gpq, cast(0.0, f32)) then neg(gpq) else gpq
-  safegpq = if lt(absgpq, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else gpq
+  safegpq = if lt(absgpq, cast(1e-30, f32)) then cast(1.0, f32) else gpq
   tauraw = div(sub(gpp, gqq), mul(cast(2.0, f32), safegpq))
   abstau = if lt(tauraw, cast(0.0, f32)) then neg(tauraw) else tauraw
   signtau = if lt(tauraw, cast(0.0, f32)) then cast(-1.0, f32) else cast(1.0, f32)
   traw = div(signtau, add(abstau, sqrt(add(cast(1.0, f32), mul(tauraw, tauraw)))))
-  t = if lt(absgpq, cast(0.000000000000000000000000000001, f32)) then cast(0.0, f32) else traw
+  t = if lt(absgpq, cast(1e-30, f32)) then cast(0.0, f32) else traw
   c = div(cast(1.0, f32), sqrt(add(cast(1.0, f32), mul(t, t))))
   s = mul(t, c)
   cm1 = sub(c, cast(1.0, f32))
@@ -300,12 +300,12 @@ def la_svd_rot_v[n](v: tensor[n, n, f32], g: tensor[n, n, f32], p: int64, q: int
   gqq = inner_product(gcq, eq)
   gpq = inner_product(gcp, eq)
   absgpq = if lt(gpq, cast(0.0, f32)) then neg(gpq) else gpq
-  safegpq = if lt(absgpq, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else gpq
+  safegpq = if lt(absgpq, cast(1e-30, f32)) then cast(1.0, f32) else gpq
   tauraw = div(sub(gpp, gqq), mul(cast(2.0, f32), safegpq))
   abstau = if lt(tauraw, cast(0.0, f32)) then neg(tauraw) else tauraw
   signtau = if lt(tauraw, cast(0.0, f32)) then cast(-1.0, f32) else cast(1.0, f32)
   traw = div(signtau, add(abstau, sqrt(add(cast(1.0, f32), mul(tauraw, tauraw)))))
-  t = if lt(absgpq, cast(0.000000000000000000000000000001, f32)) then cast(0.0, f32) else traw
+  t = if lt(absgpq, cast(1e-30, f32)) then cast(0.0, f32) else traw
   c = div(cast(1.0, f32), sqrt(add(cast(1.0, f32), mul(t, t))))
   s = mul(t, c)
   cm1 = sub(c, cast(1.0, f32))
@@ -320,21 +320,19 @@ def la_svd_g_ip[n](g: tensor[n, n, f32], p: int64, nlen: int64, tpl: tensor[n, f
 def la_svd_g_sw[n](g: tensor[n, n, f32], sw: int64, nsw: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] = if gte(sw, nsw) then g else la_svd_g_sw(la_svd_g_ip(g, cast(0, int64), nlen, tpl), add(sw, cast(1, int64)), nsw, nlen, tpl)
 def la_svd_g_replay_q[n](g: tensor[n, n, f32], p: int64, q: int64, qtarget: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] = if gte(q, qtarget) then g else la_svd_g_replay_q(la_svd_rot_g(g, p, q, tpl), p, add(q, cast(1, int64)), qtarget, tpl)
 def la_svd_g_replay_p[n](g: tensor[n, n, f32], p: int64, ptarget: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] = if gte(p, ptarget) then g else la_svd_g_replay_p(la_svd_g_iq(g, p, add(p, cast(1, int64)), nlen, tpl), add(p, cast(1, int64)), ptarget, nlen, tpl)
-def la_svd_v_iq[n](v: tensor[n, n, f32], g_sw_init: tensor[n, n, f32], p: int64, q: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] = {
+def la_svd_v_iq[n](v: tensor[n, n, f32], g_sw_init: tensor[n, n, f32], p: int64, q: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
   if gte(q, nlen) then v else {
     g_at_pq = la_svd_g_replay_q(la_svd_g_replay_p(g_sw_init, cast(0, int64), p, nlen, tpl), p, add(p, cast(1, int64)), q, tpl)
     v2 = la_svd_rot_v(v, g_at_pq, p, q, tpl)
     la_svd_v_iq(v2, g_sw_init, p, add(q, cast(1, int64)), nlen, tpl)
   }
-}
 def la_svd_v_ip[n](v: tensor[n, n, f32], g_sw_init: tensor[n, n, f32], p: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] = if gte(p, sub(nlen, cast(1, int64))) then v else la_svd_v_ip(la_svd_v_iq(v, g_sw_init, p, add(p, cast(1, int64)), nlen, tpl), g_sw_init, add(p, cast(1, int64)), nlen, tpl)
-def la_svd_v_sw[n](v: tensor[n, n, f32], g0: tensor[n, n, f32], sw: int64, nsw: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] = {
+def la_svd_v_sw[n](v: tensor[n, n, f32], g0: tensor[n, n, f32], sw: int64, nsw: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] =
   if gte(sw, nsw) then v else {
     g_sw_init = la_svd_g_sw(g0, cast(0, int64), sw, nlen, tpl)
     v2 = la_svd_v_ip(v, g_sw_init, cast(0, int64), nlen, tpl)
     la_svd_v_sw(v2, g0, add(sw, cast(1, int64)), nsw, nlen, tpl)
   }
-}
 def svd_n[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor[n, n, f32]) = {
   svd_tpl = diag(a)
   svd_nlen = len(to_list(svd_tpl))
@@ -358,7 +356,7 @@ def svd_n[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tenso
     svd_ei = la_basis_n_f32(i, cast(1.0, f32), svd_tpl)
     svd_gii = inner_product(matvec(svd_gf2, svd_ei), svd_ei)
     svd_si = sqrt(if lt(svd_gii, cast(0.0, f32)) then cast(0.0, f32) else svd_gii)
-    svd_safe = if lt(svd_si, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else svd_si
+    svd_safe = if lt(svd_si, cast(1e-30, f32)) then cast(1.0, f32) else svd_si
     svd_vi = matvec(svd_vf2, svd_ei)
     svd_avc = matvec(a, svd_vi)
     svd_uc = scale_vec(svd_avc, div(cast(1.0, f32), svd_safe))
@@ -377,12 +375,12 @@ def la_eig_rot_a[n](a: &tensor[n, n, f32], p: int64, q: int64, tpl: &tensor[n, f
   aqq = inner_product(acq, eq)
   apq = inner_product(acp, eq)
   absapq = if lt(apq, cast(0.0, f32)) then neg(apq) else apq
-  safeapq = if lt(absapq, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else apq
+  safeapq = if lt(absapq, cast(1e-30, f32)) then cast(1.0, f32) else apq
   tauraw = div(sub(app, aqq), mul(cast(2.0, f32), safeapq))
   abstau = if lt(tauraw, cast(0.0, f32)) then neg(tauraw) else tauraw
   signtau = if lt(tauraw, cast(0.0, f32)) then cast(-1.0, f32) else cast(1.0, f32)
   traw = div(signtau, add(abstau, sqrt(add(cast(1.0, f32), mul(tauraw, tauraw)))))
-  t = if lt(absapq, cast(0.000000000000000000000000000001, f32)) then cast(0.0, f32) else traw
+  t = if lt(absapq, cast(1e-30, f32)) then cast(0.0, f32) else traw
   c = div(cast(1.0, f32), sqrt(add(cast(1.0, f32), mul(t, t))))
   s = mul(t, c)
   cm1 = sub(c, cast(1.0, f32))
@@ -404,12 +402,12 @@ def la_eig_rot_q[n](q: &tensor[n, n, f32], a: &tensor[n, n, f32], p: int64, q_id
   aqq = inner_product(acq, eq)
   apq = inner_product(acp, eq)
   absapq = if lt(apq, cast(0.0, f32)) then neg(apq) else apq
-  safeapq = if lt(absapq, cast(0.000000000000000000000000000001, f32)) then cast(1.0, f32) else apq
+  safeapq = if lt(absapq, cast(1e-30, f32)) then cast(1.0, f32) else apq
   tauraw = div(sub(app, aqq), mul(cast(2.0, f32), safeapq))
   abstau = if lt(tauraw, cast(0.0, f32)) then neg(tauraw) else tauraw
   signtau = if lt(tauraw, cast(0.0, f32)) then cast(-1.0, f32) else cast(1.0, f32)
   traw = div(signtau, add(abstau, sqrt(add(cast(1.0, f32), mul(tauraw, tauraw)))))
-  t = if lt(absapq, cast(0.000000000000000000000000000001, f32)) then cast(0.0, f32) else traw
+  t = if lt(absapq, cast(1e-30, f32)) then cast(0.0, f32) else traw
   c = div(cast(1.0, f32), sqrt(add(cast(1.0, f32), mul(t, t))))
   s = mul(t, c)
   cm1 = sub(c, cast(1.0, f32))
@@ -422,27 +420,24 @@ def la_eig_rot_q[n](q: &tensor[n, n, f32], a: &tensor[n, n, f32], p: int64, q_id
 def la_eig_a_iq[n](a: tensor[n, n, f32], p: int64, q: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] = if gte(q, nlen) then a else la_eig_a_iq(la_eig_rot_a(a, p, q, tpl), p, add(q, cast(1, int64)), nlen, tpl)
 def la_eig_a_ip[n](a: tensor[n, n, f32], p: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] = if gte(p, sub(nlen, cast(1, int64))) then a else la_eig_a_ip(la_eig_a_iq(a, p, add(p, cast(1, int64)), nlen, tpl), add(p, cast(1, int64)), nlen, tpl)
 def la_eig_a_sw[n](a: tensor[n, n, f32], sw: int64, nsw: int64, nlen: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] = if gte(sw, nsw) then a else la_eig_a_sw(la_eig_a_ip(a, cast(0, int64), nlen, tpl), add(sw, cast(1, int64)), nsw, nlen, tpl)
-def la_eig_aq_iq[n](a: &tensor[n, n, f32], q: tensor[n, n, f32], p: int64, q_idx: int64, nlen: int64, tpl: &tensor[n, f32]) -> tensor[n, n, f32] = {
-  if gte(q_idx, nlen) then { q } else {
+def la_eig_aq_iq[n](a: &tensor[n, n, f32], q: tensor[n, n, f32], p: int64, q_idx: int64, nlen: int64, tpl: &tensor[n, f32]) -> tensor[n, n, f32] =
+  if gte(q_idx, nlen) then q else {
     q2 = la_eig_rot_q(q, a, p, q_idx, tpl)
     a2 = la_eig_rot_a(a, p, q_idx, tpl)
     la_eig_aq_iq(a2, q2, p, add(q_idx, cast(1, int64)), nlen, tpl)
   }
-}
-def la_eig_aq_ip[n](a: &tensor[n, n, f32], q: tensor[n, n, f32], p: int64, nlen: int64, tpl: &tensor[n, f32]) -> tensor[n, n, f32] = {
-  if gte(p, sub(nlen, cast(1, int64))) then { q } else {
+def la_eig_aq_ip[n](a: &tensor[n, n, f32], q: tensor[n, n, f32], p: int64, nlen: int64, tpl: &tensor[n, f32]) -> tensor[n, n, f32] =
+  if gte(p, sub(nlen, cast(1, int64))) then q else {
     q2 = la_eig_aq_iq(a, q, p, add(p, cast(1, int64)), nlen, tpl)
     a2 = la_eig_a_iq(copy(a), p, add(p, cast(1, int64)), nlen, copy(tpl))
     la_eig_aq_ip(a2, q2, add(p, cast(1, int64)), nlen, tpl)
   }
-}
-def la_eig_aq_sw[n](a: &tensor[n, n, f32], q: tensor[n, n, f32], sw: int64, nsw: int64, nlen: int64, tpl: &tensor[n, f32]) -> tensor[n, n, f32] = {
-  if gte(sw, nsw) then { q } else {
+def la_eig_aq_sw[n](a: &tensor[n, n, f32], q: tensor[n, n, f32], sw: int64, nsw: int64, nlen: int64, tpl: &tensor[n, f32]) -> tensor[n, n, f32] =
+  if gte(sw, nsw) then q else {
     q2 = la_eig_aq_ip(a, q, cast(0, int64), nlen, tpl)
     a2 = la_eig_a_ip(copy(a), cast(0, int64), nlen, copy(tpl))
     la_eig_aq_sw(a2, q2, add(sw, cast(1, int64)), nsw, nlen, tpl)
   }
-}
 def eig_n[n](a: &tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32]) = {
   eig_tpl = diag(a)
   eig_nlen = len(to_list(eig_tpl))
@@ -551,7 +546,7 @@ def inv_2x2(a: &tensor[2, 2, f32]) -> tensor[2, 2, f32] = {
   zero_f = cast(0.0, f32)
   one_f = cast(1.0, f32)
   abs_det = if lt(det, zero_f) then neg(det) else det
-  eps = cast(0.000000000000000000000000000001, f32)
+  eps = cast(1e-30, f32)
   bad = lt(abs_det, eps)
   nan_v = la_nan_f32()
   det_safe = if bad then one_f else det
@@ -570,7 +565,7 @@ def inv_3x3(a: &tensor[3, 3, f32]) -> tensor[3, 3, f32] = {
   zero_f = cast(0.0, f32)
   one_f = cast(1.0, f32)
   abs_det = if lt(det, zero_f) then neg(det) else det
-  eps = cast(0.000000000000000000000000000001, f32)
+  eps = cast(1e-30, f32)
   bad = lt(abs_det, eps)
   nan_v = la_nan_f32()
   det_safe = if bad then one_f else det
@@ -626,7 +621,7 @@ def cholesky_2x2(a: &tensor[2, 2, f32]) -> tensor[2, 2, f32] = {
   one_f = cast(1.0, f32)
   asym_diff = sub(a01, a10)
   asym_abs = if lt(asym_diff, zero_f) then neg(asym_diff) else asym_diff
-  sym_eps = cast(0.000001, f32)
+  sym_eps = cast(1e-6, f32)
   not_sym = gt(asym_abs, sym_eps)
   bad_a00 = lte(a00, zero_f)
   a00_safe = if bad_a00 then one_f else a00

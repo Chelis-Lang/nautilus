@@ -46,22 +46,22 @@ def test_fftfreq_preserves_length() -> unit ! { Test } = {
 def test_fftfreq_dc_bin_zero() -> unit ! { Test } = {
   freqs = fftfreq(sample4(), cast(8.0, f32))
   f0 = inner_product(freqs, basis4(cast(0, int64)))
-  assert_close(f0, cast(0.0, f32), cast(0.0000001, f32), "fftfreq[0] = 0 (DC bin)")
+  assert_close(f0, cast(0.0, f32), cast(1e-7, f32), "fftfreq[0] = 0 (DC bin)")
 }
 def test_fftfreq_first_positive_bin() -> unit ! { Test } = {
   freqs = fftfreq(sample4(), cast(8.0, f32))
   f1 = inner_product(freqs, basis4(cast(1, int64)))
-  assert_close(f1, cast(2.0, f32), cast(0.000001, f32), "fftfreq[1] = fs/N = 2.0")
+  assert_close(f1, cast(2.0, f32), cast(1e-6, f32), "fftfreq[1] = fs/N = 2.0")
 }
 def test_fftfreq_last_bin_negative() -> unit ! { Test } = {
   freqs = fftfreq(sample4(), cast(8.0, f32))
   f3 = inner_product(freqs, basis4(cast(3, int64)))
-  assert_close(f3, cast(-2.0, f32), cast(0.000001, f32), "fftfreq[N-1] = -fs/N = -2.0 (negative wrap)")
+  assert_close(f3, cast(-2.0, f32), cast(1e-6, f32), "fftfreq[N-1] = -fs/N = -2.0 (negative wrap)")
 }
 def test_fftfreq_scales_with_sample_rate() -> unit ! { Test } = {
   f_a = fftfreq(sample4(), cast(2.0, f32))
   f_b = fftfreq(sample4(), cast(4.0, f32))
   v_a = inner_product(f_a, basis4(cast(1, int64)))
   v_b = inner_product(f_b, basis4(cast(1, int64)))
-  assert_close(mul(cast(2.0, f32), v_a), v_b, cast(0.000001, f32), "fftfreq scales linearly with sample_rate")
+  assert_close(mul(cast(2.0, f32), v_a), v_b, cast(1e-6, f32), "fftfreq scales linearly with sample_rate")
 }
