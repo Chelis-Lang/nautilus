@@ -24,8 +24,8 @@ concurrency:
 env:
   # Audit-only mirror required by the shell contract. Runtime installation
   # resolves the exact compiler pin directly from reef.toml.
-  CHELIS_TAG: v0.18.3
-  CHELIS_VERSION: 0.18.3
+  CHELIS_TAG: v0.18.4
+  CHELIS_VERSION: 0.18.4
 
 jobs:
   documentation-gates:
