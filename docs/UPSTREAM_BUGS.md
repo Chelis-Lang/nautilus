@@ -5,43 +5,52 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
-> **Current release pin: `chelis 0.18.3`.** The published Darwin arm64 asset
+> **Current release pin: `chelis 0.18.5`.** The published Darwin arm64 asset
 > (release SHA-256
-> `cc8737adf8c21040432d94b96635ef48895bd7ac8cdf94bd7696046c44bc7371`;
+> `0ff7b4e168d8b51277e05d44bfa658364630176d56d79c9cf8aceaea15335551`;
 > compiler payload SHA-256
-> `3a14b0d7e0a46a49c9b25f3dc61573d5972a91b411021672e09b8e3e0e9e1eba`;
-> source commit `29700dd73c0e35b672bdd384493054b3107ce308`) ran the complete
-> local gate on 2026-08-04: 463 positive tests, 3 negative contracts, 2 blocked
+> `bcf8da8bd2df9acb8816194f9251b26e23ec57527d4fc928bea6e1f6120628b2`;
+> source commit `6602f01719f55b8d4c7f52ee70e7c7b58f136107`) ran the complete
+> local gate on 2026-08-22: 463 positive tests, 3 negative contracts, 2 blocked
 > probes, and 216/216 strict SciPy parity. The installed payload is
 > byte-identical to the release tarball, which was checked against its release
 > sidecar. The Linux glibc-2.31 asset for the same tag (SHA-256
-> `36789e3a260c61b5082bc8842ba7b975899796ddf17c7b971815a2ed112904a3`; compiler
+> `6b9b944ccd96b0053fc071de0ecfbb9e80e02a07a6a176e87056267ae8e0c26a`; compiler
 > payload SHA-256
-> `ea0ba326b190366f905445b4996c3993fe6c5cc7214f14cf5d862a615b78badf`) was
+> `fc544b9362c9ff0c244c03216a6e44fbf4d36665802d11b5cf3514d017c1e29a`) was
 > verified against its sidecar but its gate run is CI's, not this one.
 >
-> **0.18.3 re-probe results.** chelis#676 remains **live**: both
+> **0.18.5 re-probe results.** chelis#676 remains **live**: both
 > `tests_blocked/curvefit/` shapes still fail while verifying the backward DAG
 > with `mismatched dimension count: 0 vs 1`
-> (`chelis test tests_blocked/ --expect blocked` → 2 ok), so the
-> finite-difference Jacobian narrowing stays. Reaching that diagnostic again at
-> this pin required a source migration, not a de-narrowing: 0.18.3's extent-dtype
-> rules ([05-DIM-1]/[05-DIM-2], chelis#1130/chelis#1145) made `expand` sizes
-> int64 and `sort` axes int32 fail-closed, so both probes first reported
-> `expand expects an int64 size` and were re-pinned by widening their `expand`
-> extents to int64. This was a DRIFTED verdict investigated to source drift, not
-> a FIX. The import-only residue stays fixed, so chelis#848 remains archived
-> below. Real `Special.erf(1)` remains green at `0.8427007`; the strict parity
-> tolerances continue to absorb dtype-faithful f32 printing (216/216). Prior
-> 0.16.1 per-verb evidence is in the OpenSpec remediation change under
+> (`chelis test tests_blocked/ --expect blocked` → 2 ok, 0 failing), so the
+> finite-difference Jacobian narrowing stays. No probe source drift this cycle:
+> both probes reached the pinned diagnostic unmodified, so the verdict is a
+> clean OK rather than the DRIFTED-then-repinned result 0.18.3 produced. Real
+> `Special.erf(1)` remains green at `0.8427007`; the strict parity tolerances
+> continue to absorb dtype-faithful f32 printing (216/216). Prior 0.16.1
+> per-verb evidence is in the OpenSpec remediation change under
 > `evidence/2026-07-14-chelis-0.16.1-reprobes.md`.
 >
-> **Retired at this pin:** the chelis#759 float-to-integer trap workaround. The
-> 0.18.2 bump wrapped five fractional `cast(..., int64)` sites in `floor(...)`;
-> 0.18.3 ships the named `cast_trunc` ([05-OP-6]) on the Surf, eval, and
-> compiled-C surfaces, and all five sites now use it directly. `floor` had no
-> compiled-lane expression identity, so the workaround was also breaking
-> downstream `chelis build` consumers of Nautilus 0.7.39.
+> **Nothing is retired at this pin.** 0.18.5's fixes (chelis#1200 destructure
+> linearity, chelis#1197 per-file `migrate surf` batching, chelis#1209 alias
+> generation) resolve upstream issues that Nautilus never had to work around in
+> source, so no narrowing is lifted here. chelis#1197 was filed from this repo
+> during the 0.18.4 migration and is recorded in the CHANGELOG entry for 0.7.41;
+> it was a one-time migration-tooling limitation with no shipped workaround to
+> revert. chelis#1209/chelis#1254 covered the aliased-closure generation path
+> that `Nautilus.LinAlg.lu_solve` depends on (`lu_fwd = lu`, one closure per
+> name); that spelling is re-verified green at this pin and is unchanged.
+>
+> **0.18.5 breaking changes, and why Nautilus is unexposed.** Polymorphic
+> recursion is now rejected at check time; integer literals in bare *type*
+> positions are parse errors (expression literals are unaffected); and `>`
+> evaluates its operands left to right. `chelis reef build` type-checks the
+> whole package and the full suite passes unchanged, which rules out the first
+> two by construction. The third is unobservable here: every Nautilus comparison
+> operand is a pure f32 expression, so operand order has no effect, and both the
+> 463-test suite and the 216-sample strict parity gate are numerically unchanged
+> from 0.18.4.
 
 ## Actively blocking
 
@@ -56,6 +65,13 @@ release.
     - **Minimal reproducer:** `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`,
       a concrete `n=2`, `m=6` linear model with expected first Jacobian row
       `[1, 1]`.
+    - **0.18.5 release result per surface:** unchanged. Both probes still
+      fail while verifying the backward DAG with
+      `mismatched dimension count: 0 vs 1` (`chelis test tests_blocked/
+      --expect blocked` → 2 ok, 0 failing, run twice: once by
+      `chelis reef conform bump 0.18.5` and once standalone). Neither probe
+      needed a source edit to reach that layer, so this is a clean OK with no
+      drift. No movement on chelis#676.
     - **0.18.4 release result per surface:** unchanged. Both probes still
       fail while verifying the backward DAG with
       `mismatched dimension count: 0 vs 1` (the conform blocked runner
