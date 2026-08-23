@@ -661,10 +661,9 @@ export (main)
 def linear_model(x: f32, theta: f32) -> f32 = mul(theta, x)
 def linear_dmodel(x: f32, theta: f32) -> f32 = x
 
-def demo_fit[n](xs: tensor[n, f32], ys: tensor[n, f32]) -> f32 = {
+def demo_fit[n](xs: tensor[n, f32], ys: tensor[n, f32]) -> f32 =
   lm_scalar_1param(linear_model, linear_dmodel, xs, ys,
     cast(0.0, f32), cast(0.01, f32), cast(1.0e-8, f32), cast(100, int64))
-}
 
 def main() -> f32 = cast(0.0, f32)
 ```
@@ -733,10 +732,9 @@ export (main)
 def em_drift(y: f32, t: f32) -> f32 = neg(y)
 def em_diffusion(y: f32, t: f32) -> f32 = cast(0.1, f32)
 
-def demo_em[n](noise: tensor[n, f32]) -> f32 = {
+def demo_em[n](noise: tensor[n, f32]) -> f32 =
   euler_maruyama_fixed(em_drift, em_diffusion,
     cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), noise)
-}
 
 def main() -> f32 = cast(0.0, f32)
 ```
@@ -846,7 +844,7 @@ export (main)
 
 def main() -> f32 = {
   f = fn (x: f32) -> sin(x)
-  pi = cast(3.1415926535897932, f32)
+  pi = cast(3.141592653589793, f32)
   gauss_legendre_10(f, cast(0.0, f32), pi)
 }
 ```
