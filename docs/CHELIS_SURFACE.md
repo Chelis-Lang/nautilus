@@ -1,6 +1,6 @@
 # Chelis Capability Surface (this shell)
 
-<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.18.4 (sha256:28011bed9ccb5778) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.18.5 (sha256:28011bed9ccb5778) -->
 This file is a domain-scoped view of the canonical Chelis capability surface,
 generated for the pinned toolchain. Each capability row is marked `@pin` (usable
 at the current pin) or `@upstream` (lands at the next bump). **Read it before
@@ -14,25 +14,24 @@ in `Chelis-Lang/chelis`.
 
 | Item | Value |
 |---|---|
-| Pinned compiler | Published `chelis 0.18.4` (`reef.toml`: `=0.18.4`) |
-| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.4` in the regenerated local `reef.lock` |
-| Upstream release identity | Source commit `c0138c828bf2c42e1c8941e824f16616bd974fd5`; Linux glibc-2.31 asset SHA-256 `c31b59a830ca232fa4e0a454e1314810026b5ec4f2b1a6e54d024eb049f65902` (compiler payload SHA-256 `314e840b7bf483caae985e663d27d0d2ccab85c003776bdd7689c5832cb3addf`) |
-| Installed compiler payload | Darwin arm64 SHA-256 `b6b80d65bf1822f6ad926915b4c5d4b3c94e414a9afcafa0bc02f9fc29a48037`, byte-identical to the released `chelis-v0.18.4-darwin-arm64.tar.gz` (asset SHA-256 `ac905d2a2d471ff09a46e39c7ae78ede85aab2f97515553b445ffd0dc0d29fea`, checked against its release sidecar) |
-| Validation status | Complete local gate passed on the official Darwin arm64 release payload (463 positive, 3 negative, 2 blocked); strict SciPy parity ran green in PR #40 CI. The Linux glibc-2.31 asset was verified against its sidecar but its gate run is CI's |
-| Last refreshed | 2026-08-05 |
+| Pinned compiler | Published `chelis 0.18.5` (`reef.toml`: `=0.18.5`) |
+| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.5` in the regenerated local `reef.lock` |
+| Upstream release identity | Source commit `6602f01719f55b8d4c7f52ee70e7c7b58f136107`; Linux glibc-2.31 asset SHA-256 `6b9b944ccd96b0053fc071de0ecfbb9e80e02a07a6a176e87056267ae8e0c26a` (compiler payload SHA-256 `fc544b9362c9ff0c244c03216a6e44fbf4d36665802d11b5cf3514d017c1e29a`) |
+| Installed compiler payload | Darwin arm64 SHA-256 `bcf8da8bd2df9acb8816194f9251b26e23ec57527d4fc928bea6e1f6120628b2`, byte-identical to the released `chelis-v0.18.5-darwin-arm64.tar.gz` (asset SHA-256 `0ff7b4e168d8b51277e05d44bfa658364630176d56d79c9cf8aceaea15335551`, checked against its release sidecar) |
+| Validation status | Complete local gate passed on the official Darwin arm64 release payload: 463 positive, 3 negative, 2 blocked, 216/216 strict SciPy parity, 15/15 SKILL.md and 4/4 mdBook examples, `lint --check .` clean, `reef build` green, `conform audit` conformant, `conform bump-check` green. The Linux glibc-2.31 asset was verified against its sidecar but its gate run is CI's |
+| Last refreshed | 2026-08-22 |
 
 `@pin` means the row describes behavior available (or a limitation verified)
 on the exact pinned release. `@upstream` means a capability exists in a newer
 published release and will arrive at the next bump. There are no `@upstream`
 rows in this snapshot; planned Phase 5 work is not mislabeled as upstream.
 
-This is the Nautilus-scoped view of the canonical Chelis inventory. The
-published Linux glibc-2.31 asset was checked against its release sidecar, then
-its byte-identical compiler payload (SHA-256
-`0d7a46262b4ba2975702d5ed2def5d54b79b5d68258602da59069b6715cc690b`)
-ran the full local gate. Version-sensitive statements resolve to the executable
-0.18.1 probes cited in
-[`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
+This is the Nautilus-scoped view of the canonical Chelis inventory. The gate
+that backs it ran on the published Darwin arm64 asset: the tarball was checked
+against its release sidecar and its extracted compiler payload is byte-identical
+to the installed toolchain, so every result below comes from official release
+bytes. Version-sensitive statements resolve to the executable 0.18.5 re-probes
+cited in [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
 
 ## Capability inventory
 

@@ -4,6 +4,58 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.42] - 2026-08-22
+
+Compiler-pin release for Chelis v0.18.5. `chelis reef conform bump 0.18.5`
+advanced the compiler pin and all workflow audit mirrors, and the Nautilus
+package version advanced from 0.7.41 to 0.7.42. **No Nautilus source change was
+required by the compiler:** the whole-package build, the 463-test suite, the
+negative sidecars, and the strict SciPy parity gate are all green on 0.18.5
+exactly as they were on 0.18.4.
+
+The official Darwin arm64 asset was verified at SHA-256
+`0ff7b4e168d8b51277e05d44bfa658364630176d56d79c9cf8aceaea15335551`; its
+installed compiler payload was
+`bcf8da8bd2df9acb8816194f9251b26e23ec57527d4fc928bea6e1f6120628b2`,
+byte-identical to the release tarball. The upstream source commit is
+`6602f01719f55b8d4c7f52ee70e7c7b58f136107`.
+
+**Repaired the last of the canonical Surf v0.19 residue in prose docs.** The
+0.7.41 migration converted `src/` and `tests/` but not the Chelis examples
+embedded in `SKILL.md` and the mdBook, which are extracted and type-checked by
+the nightly documentation gates. Three `SKILL.md` blocks and one
+`docs/book/src/solvers/roots.md` block still used pre-v0.19 spellings and had
+been failing since 0.18.4: two redundant one-expression block braces, and two
+float literals that are no longer accepted spellings (`3.1415926535897932` and
+`0.0000000001`, respelled to `3.141592653589793` and `1e-10`). Both gates are
+now clean at 15/15 and 4/4. This is the cause of the currently open
+`nightly-failure` issue #42.
+
+**Nothing was de-narrowed at this pin.** 0.18.5 fixes chelis#1200, chelis#1197,
+and chelis#1209, none of which Nautilus works around in shipped source.
+chelis#1197 (`chelis migrate surf` aborting a whole batch on the first file it
+cannot resugar) was filed from this repo during the 0.7.41 migration; it was a
+one-time tooling limitation, so there is nothing to revert. chelis#1209 and its
+fix in chelis#1254 covered the aliased-closure generation path that
+`Nautilus.LinAlg.lu_solve` depends on (`lu_fwd = lu`, one closure per name);
+that spelling is explicitly re-verified green at this pin.
+
+Nautilus is unexposed to all three 0.18.5 breaking changes. Polymorphic
+recursion now rejects at check time and integer literals in bare *type*
+positions are now parse errors; `chelis reef build` type-checks the whole
+package and passes, which rules both out by construction. `>` now evaluates its
+operands left to right; every Nautilus comparison operand is a pure f32
+expression, so operand order is unobservable, and both the suite and the
+216-sample parity gate are numerically unchanged.
+
+**Validation on 0.18.5:** `chelis reef conform audit` conformant with no MUST
+failures and `bump-check --base origin/main` green; `chelis reef build` green;
+463 positive tests passed, 0 failed; 3 negative sidecars ok; both chelis#676
+blocked probes still fail at the backward-DAG verifier with the pinned
+`mismatched dimension count: 0 vs 1`, with no probe source drift, so that
+narrowing is unchanged; 216/216 strict SciPy parity; `chelis lint --check .`
+clean; 36 script unit tests ok.
+
 ## [0.7.41] - 2026-08-05
 
 Compiler-pin and grammar-migration release for Chelis v0.18.4. The
