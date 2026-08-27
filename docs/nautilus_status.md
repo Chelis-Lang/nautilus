@@ -41,7 +41,7 @@ Totals:
 - Library surface: 192 exports across all modules: 185 numerical/library
   entries, 1 `Nautilus.Core.version` metadata helper, and 6 NaN-returning
   `Nautilus.Signal` stubs.
-- The 463-test native gate exercises every shipped module family through
+- The 472-test native gate exercises every shipped module family through
   identities, invariants, solver recovery, tensor paths, edge cases, and
   callability. The external checked-golden subset covers 45 Special and
   Distributions labels across 216 configurations; it intentionally does not

@@ -1,5 +1,5 @@
 module Nautilus.Tests.Special
-import Nautilus.Special (erf, erfinv, log_gamma, digamma, beta, lbeta, trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1, bessel_j0, bessel_j1, bessel_y0, bessel_y1, airy_ai, airy_bi, ellipk, ellipe)
+import Nautilus.Special (erf, erfinv, erf_t, erfinv_t, log_gamma, digamma, beta, lbeta, trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1, bessel_j0, bessel_j1, bessel_y0, bessel_y1, airy_ai, airy_bi, ellipk, ellipe)
 import Std.Test (assert_close, assert_true, assert_eq)
 def test_erf_zero() -> unit ! { Test } = assert_eq(erf(cast(0.0, f32)), cast(0.0, f32), "erf(0) = 0")
 def test_erf_odd_symmetry() -> unit ! { Test } = {
@@ -176,4 +176,48 @@ def test_lbeta_matches_log_beta() -> unit ! { Test } = {
   lhs = lbeta(a, b)
   rhs = log(beta(a, b))
   assert_close(lhs, rhs, cast(0.00001, f32), "lbeta = log(beta)")
+}
+-- nautilus#45: the tensor forms must agree with the scalar reference
+-- elementwise. That is the whole contract -- they exist so a caller need not
+-- leave tensor rank, not to compute something different.
+def sp_probe_points() -> tensor[5, f32] = to_tensor([cast(-1.3, f32), cast(-0.4, f32), cast(1e-6, f32), cast(0.4, f32), cast(2.1, f32)])
+def test_erf_t_matches_scalar_elementwise() -> unit ! { Test } = {
+  xs = sp_probe_points()
+  ys = to_list(erf_t(xs))
+  tol = cast(1e-9, f32)
+  _ = assert_close(index(ys, cast(0, int64)), erf(cast(-1.3, f32)), tol, "erf_t[0] matches erf(-1.3)")
+  _ = assert_close(index(ys, cast(1, int64)), erf(cast(-0.4, f32)), tol, "erf_t[1] matches erf(-0.4)")
+  _ = assert_close(index(ys, cast(2, int64)), erf(cast(1e-6, f32)), tol, "erf_t[2] matches erf near zero")
+  _ = assert_close(index(ys, cast(3, int64)), erf(cast(0.4, f32)), tol, "erf_t[3] matches erf(0.4)")
+  assert_close(index(ys, cast(4, int64)), erf(cast(2.1, f32)), tol, "erf_t[4] matches erf(2.1)")
+}
+def test_erf_t_takes_the_small_x_branch() -> unit ! { Test } = {
+  -- Below 1e-5 the scalar `erf` switches to the leading Taylor term. If the
+  -- tensor port dropped that `where`, this point would still be close in
+  -- absolute terms, so assert the branch by relative agreement instead.
+  xs = to_tensor([cast(1e-6, f32), cast(-1e-6, f32)])
+  ys = to_list(erf_t(xs))
+  two_over_sqrt_pi = cast(1.1283791670955126, f32)
+  _ = assert_close(index(ys, cast(0, int64)), mul(cast(1e-6, f32), two_over_sqrt_pi), cast(1e-12, f32), "erf_t small-x branch is the Taylor term")
+  assert_close(index(ys, cast(1, int64)), neg(mul(cast(1e-6, f32), two_over_sqrt_pi)), cast(1e-12, f32), "erf_t small-x branch is odd")
+}
+def test_erfinv_t_matches_scalar_elementwise() -> unit ! { Test } = {
+  qs = to_tensor([cast(-0.9, f32), cast(-0.2, f32), cast(0.0, f32), cast(0.2, f32), cast(0.9, f32)])
+  ys = to_list(erfinv_t(qs))
+  tol = cast(1e-9, f32)
+  _ = assert_close(index(ys, cast(0, int64)), erfinv(cast(-0.9, f32)), tol, "erfinv_t[0] matches erfinv(-0.9)")
+  _ = assert_close(index(ys, cast(1, int64)), erfinv(cast(-0.2, f32)), tol, "erfinv_t[1] matches erfinv(-0.2)")
+  _ = assert_close(index(ys, cast(2, int64)), erfinv(cast(0.0, f32)), tol, "erfinv_t[2] matches erfinv(0)")
+  _ = assert_close(index(ys, cast(3, int64)), erfinv(cast(0.2, f32)), tol, "erfinv_t[3] matches erfinv(0.2)")
+  assert_close(index(ys, cast(4, int64)), erfinv(cast(0.9, f32)), tol, "erfinv_t[4] matches erfinv(0.9)")
+}
+def test_erfinv_t_covers_both_acklam_tails() -> unit ! { Test } = {
+  -- q = (x+1)/2 crosses Acklam's 0.02425 / 0.97575 breakpoints at
+  -- x = -0.9515 and x = +0.9515, so these two points exercise the low and
+  -- high tail branches the central rational form does not cover.
+  xs = to_tensor([cast(-0.98, f32), cast(0.98, f32)])
+  ys = to_list(erfinv_t(xs))
+  tol = cast(1e-9, f32)
+  _ = assert_close(index(ys, cast(0, int64)), erfinv(cast(-0.98, f32)), tol, "erfinv_t low tail matches scalar")
+  assert_close(index(ys, cast(1, int64)), erfinv(cast(0.98, f32)), tol, "erfinv_t high tail matches scalar")
 }

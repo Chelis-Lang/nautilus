@@ -1,6 +1,6 @@
 module Nautilus.Distributions
-import Nautilus.Special (erf, erfinv, log_gamma)
-export (uniform_pdf, uniform_cdf, uniform_inv_cdf, uniform_sample, exponential_pdf, exponential_cdf, exponential_inv_cdf, exponential_sample, normal_pdf, normal_cdf, normal_inv_cdf, normal_sample, lognormal_pdf, lognormal_cdf, lognormal_inv_cdf, lognormal_sample, gamma_pdf, chi_squared_pdf, student_t_pdf, gamma_cdf, chi_squared_cdf, gamma_inv_cdf, chi_squared_inv_cdf, chi_squared_sample, student_t_sample, gamma_sample, student_t_cdf, poisson_pmf, poisson_cdf, binomial_pmf, binomial_cdf, beta_pdf, beta_cdf, f_pdf, f_cdf, weibull_pdf, weibull_cdf, weibull_inv_cdf)
+import Nautilus.Special (erf, erfinv, erf_t, erfinv_t, log_gamma)
+export (uniform_pdf, uniform_cdf, uniform_inv_cdf, uniform_sample, exponential_pdf, exponential_cdf, exponential_inv_cdf, exponential_sample, normal_pdf, normal_cdf, normal_inv_cdf, normal_sample, lognormal_pdf, lognormal_cdf, lognormal_inv_cdf, lognormal_sample, gamma_pdf, chi_squared_pdf, student_t_pdf, gamma_cdf, chi_squared_cdf, gamma_inv_cdf, chi_squared_inv_cdf, chi_squared_sample, student_t_sample, gamma_sample, student_t_cdf, poisson_pmf, poisson_cdf, binomial_pmf, binomial_cdf, beta_pdf, beta_cdf, f_pdf, f_cdf, weibull_pdf, weibull_cdf, weibull_inv_cdf, normal_cdf_t, normal_inv_cdf_t, normal_pdf_t)
 def zero_f() -> f32 = cast(0.0, f32)
 def one_f() -> f32 = cast(1.0, f32)
 def two_f() -> f32 = cast(2.0, f32)
@@ -497,4 +497,46 @@ def student_t_sample[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! {
     s = sqrt(ratio)
     div(zi, s)
   }, zip(to_list(z), to_list(v))))
+}
+-- Tensor-domain normal family (nautilus#45).
+--
+-- The scalar `normal_cdf` / `normal_inv_cdf` / `normal_pdf` above are the
+-- reference; these evaluate the same formulas at tensor rank. A Monte Carlo or
+-- option-pricing caller holding a tensor of paths can reach Phi and Phi-inverse
+-- without dropping to `List` and back, which the `*_sample` functions still do.
+def dist_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = expand(scalar_to_tensor(c), 0, shape(template, cast(0, int32)))
+def normal_cdf_t[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] = {
+  means = dist_lift_t(x, mean)
+  denom = dist_lift_t(x, mul(std, sqrt_two_f()))
+  halves = dist_lift_t(x, half_f())
+  ones = dist_lift_t(x, one_f())
+  z = div(sub(x, means), denom)
+  mul(halves, add(ones, erf_t(z)))
+}
+def normal_pdf_t[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] = {
+  means = dist_lift_t(x, mean)
+  stds = dist_lift_t(x, std)
+  halves = dist_lift_t(x, half_f())
+  denoms = dist_lift_t(x, mul(std, sqrt_2pi_f()))
+  z = div(sub(x, means), stds)
+  div(exp(neg(mul(halves, mul(z, z)))), denoms)
+}
+def normal_inv_cdf_t[n](q: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] = {
+  zeros = dist_lift_t(q, zero_f())
+  ones = dist_lift_t(q, one_f())
+  twos = dist_lift_t(q, two_f())
+  means = dist_lift_t(q, mean)
+  stds = dist_lift_t(q, std)
+  sqrt_twos = dist_lift_t(q, sqrt_two_f())
+  nans = dist_lift_t(q, nan_d())
+  pinfs = dist_lift_t(q, pos_inf_d())
+  ninfs = dist_lift_t(q, neg(pos_inf_d()))
+  -- The interior value is computed for every lane; `where` then reinstates the
+  -- scalar guards in the same order `normal_inv_cdf` applies them, so the two
+  -- agree on the boundary cases as well as the interior.
+  interior = add(means, mul(stds, mul(sqrt_twos, erfinv_t(sub(mul(twos, q), ones)))))
+  with_high = where(gte(q, ones), pinfs, interior)
+  with_low = where(lte(q, zeros), ninfs, with_high)
+  out_of_range = or(lt(q, zeros), gt(q, ones))
+  where(out_of_range, nans, with_low)
 }
