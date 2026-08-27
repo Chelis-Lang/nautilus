@@ -42,7 +42,10 @@ def cosine_distance[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> f32 = {
   sim = cosine_similarity(a, b)
   cast(1.0, f32) |> sub(sim)
 }
-def vec_sub[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (pair: (f32, f32)) -> sub(pair.0, pair.1), zip(to_list(a), to_list(b))))
+-- nautilus#47: native elementwise `sub`. The previous `to_tensor(map(...,
+-- zip(to_list a, to_list b)))` form boxed every element through the host
+-- list runtime; measured 221x-823x slower in the compiled lane.
+def vec_sub[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[n, f32] = sub(a, b)
 def mahalanobis_squared[n](a: &tensor[n, f32], b: &tensor[n, f32], cov_inv: &tensor[n, n, f32]) -> f32 = {
   diff = vec_sub(a, b)
   mv = matvec(cov_inv, copy(diff))

@@ -28,8 +28,9 @@ def uniform_inv_cdf(q: f32, lo: f32, hi: f32) -> f32 = {
 }
 def uniform_sample[n](template: tensor[n, f32], lo: f32, hi: f32) -> tensor[n, f32] ! { Random } = {
   u = uniform_like(template, 0.0, 1.0)
-  width = sub(hi, lo)
-  to_tensor(map(fn (x: f32) -> add(lo, mul(width, x)), to_list(u)))
+  widths = dist_lift_t(u, sub(hi, lo))
+  los = dist_lift_t(u, lo)
+  add(los, mul(widths, u))
 }
 def exponential_pdf(x: f32, rate: f32) -> f32 =
   if lt(x, zero_f()) then zero_f() else {
@@ -51,11 +52,8 @@ def exponential_inv_cdf(q: f32, rate: f32) -> f32 =
   }
 def exponential_sample[n](template: tensor[n, f32], rate: f32) -> tensor[n, f32] ! { Random } = {
   u = uniform_like(template, 1e-7, 1.0)
-  to_tensor(map(fn (x: f32) -> {
-    l = log(x)
-    nl = neg(l)
-    div(nl, rate)
-  }, to_list(u)))
+  rates = dist_lift_t(u, rate)
+  div(neg(log(u)), rates)
 }
 def normal_pdf(x: f32, mean: f32, std: f32) -> f32 = {
   z = div(sub(x, mean), std)
@@ -80,18 +78,14 @@ def normal_inv_cdf(q: f32, mean: f32, std: f32) -> f32 =
 def normal_sample[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random } = {
   u1 = uniform_like(copy(template), 1e-7, 1.0)
   u2 = uniform_like(template, 0.0, 1.0)
-  to_tensor(map(fn (pair: (f32, f32)) -> {
-    a = pair.0
-    b = pair.1
-    two_pi_b = mul(two_pi_f(), b)
-    half_pi = mul(half_f(), pi_f())
-    cos_term = sin(sub(half_pi, two_pi_b))
-    la = log(a)
-    minus_two_la = neg(mul(two_f(), la))
-    radius = sqrt(minus_two_la)
-    z = mul(radius, cos_term)
-    add(mean, mul(std, z))
-  }, zip(to_list(u1), to_list(u2))))
+  two_pis = dist_lift_t(u2, two_pi_f())
+  half_pis = dist_lift_t(u2, mul(half_f(), pi_f()))
+  twos = dist_lift_t(u1, two_f())
+  means = dist_lift_t(u1, mean)
+  stds = dist_lift_t(u1, std)
+  cos_term = sin(sub(half_pis, mul(two_pis, u2)))
+  radius = sqrt(neg(mul(twos, log(u1))))
+  add(means, mul(stds, mul(radius, cos_term)))
 }
 def lognormal_pdf(x: f32, mu: f32, sigma: f32) -> f32 =
   if lte(x, zero_f()) then zero_f() else {
@@ -115,7 +109,7 @@ def lognormal_inv_cdf(q: f32, mu: f32, sigma: f32) -> f32 = {
 }
 def lognormal_sample[n](template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32] ! { Random } = {
   z = normal_sample(template, mu, sigma)
-  to_tensor(map(fn (x: f32) -> exp(x), to_list(z)))
+  exp(z)
 }
 def gamma_pdf(x: f32, shape: f32, scale: f32) -> f32 =
   if lt(x, zero_f()) then zero_f() else if eq(x, zero_f()) then if gt(shape, one_f()) then zero_f() else if eq(shape, one_f()) then div(one_f(), scale) else pos_inf_d() else {
