@@ -1,5 +1,5 @@
 module Nautilus.Special
-export (erf, erfc, erfinv, gamma, log_gamma, digamma, beta, lbeta, trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1, bessel_j0, bessel_j1, bessel_y0, bessel_y1, airy_ai, airy_bi, ellipk, ellipe)
+export (erf, erfc, erfinv, erf_t, erfinv_t, gamma, log_gamma, digamma, beta, lbeta, trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1, bessel_j0, bessel_j1, bessel_y0, bessel_y1, airy_ai, airy_bi, ellipk, ellipe)
 def abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def is_nonpositive_integer(x: f32) -> bool = {
   zero = cast(0.0, f32)
@@ -707,4 +707,98 @@ def ellipe(m: f32) -> f32 = {
     k = div(half_pi, a_inf)
     mul(k, sub(one, c_sum))
   }
+}
+-- Tensor-domain special functions (nautilus#45).
+--
+-- The scalar `erf` / `erfinv` above are the reference; these compute the same
+-- approximations at tensor rank so a caller holding a tensor of values never
+-- has to leave tensor rank to reach them. Chelis has no implicit
+-- tensor-scalar broadcasting, so every constant is lifted to rank `n` with
+-- `sp_lift_t`, and every scalar `if` becomes an elementwise `where`.
+def sp_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = c |> scalar_to_tensor |> expand(0, shape(template, cast(0, int32)))
+def sp_abs_t[n](x: &tensor[n, f32]) -> tensor[n, f32] = {
+  zeros = sp_lift_t(x, cast(0.0, f32))
+  x |> lt(zeros) |> where(neg(x), x)
+}
+def erf_t[n](x: &tensor[n, f32]) -> tensor[n, f32] = {
+  a1 = sp_lift_t(x, cast(0.254829592, f32))
+  a2 = sp_lift_t(x, cast(-0.284496736, f32))
+  a3 = sp_lift_t(x, cast(1.421413741, f32))
+  a4 = sp_lift_t(x, cast(-1.453152027, f32))
+  a5 = sp_lift_t(x, cast(1.061405429, f32))
+  p = sp_lift_t(x, cast(0.3275911, f32))
+  one = sp_lift_t(x, cast(1.0, f32))
+  zero = sp_lift_t(x, cast(0.0, f32))
+  ax = sp_abs_t(x)
+  t = div(one, add(one, mul(p, ax)))
+  poly = mul(t, add(a1, mul(t, add(a2, mul(t, add(a3, mul(t, add(a4, mul(t, a5)))))))))
+  x2 = mul(ax, ax)
+  e = x2 |> neg |> exp
+  y = sub(one, mul(poly, e))
+  signed = x |> lt(zero) |> where(neg(y), y)
+  -- Near zero the rational form loses relative accuracy; the scalar `erf`
+  -- switches to the leading Taylor term below 1e-5, so mirror that here.
+  small = sp_lift_t(x, cast(0.00001, f32))
+  two_over_sqrt_pi = sp_lift_t(x, cast(1.1283791670955126, f32))
+  ax |> lt(small) |> where(mul(x, two_over_sqrt_pi), signed)
+}
+def acklam_central_t[n](q: &tensor[n, f32]) -> tensor[n, f32] = {
+  a1 = sp_lift_t(q, cast(-39.69683028665376, f32))
+  a2 = sp_lift_t(q, cast(220.9460984245205, f32))
+  a3 = sp_lift_t(q, cast(-275.9285104469687, f32))
+  a4 = sp_lift_t(q, cast(138.357751867269, f32))
+  a5 = sp_lift_t(q, cast(-30.66479806614716, f32))
+  a6 = sp_lift_t(q, cast(2.506628277459239, f32))
+  b1 = sp_lift_t(q, cast(-54.47609879822406, f32))
+  b2 = sp_lift_t(q, cast(161.5858368580409, f32))
+  b3 = sp_lift_t(q, cast(-155.6989798598866, f32))
+  b4 = sp_lift_t(q, cast(66.80131188771972, f32))
+  b5 = sp_lift_t(q, cast(-13.28068155288572, f32))
+  one = sp_lift_t(q, cast(1.0, f32))
+  half = sp_lift_t(q, cast(0.5, f32))
+  u = sub(q, half)
+  r = mul(u, u)
+  num = mul(add(mul(r, add(mul(r, add(mul(r, add(mul(r, add(mul(r, a1), a2)), a3)), a4)), a5)), a6), u)
+  den = add(mul(r, add(mul(r, add(mul(r, add(mul(r, add(mul(r, b1), b2)), b3)), b4)), b5)), one)
+  div(num, den)
+}
+def acklam_tail_t[n](u: &tensor[n, f32]) -> tensor[n, f32] = {
+  c1 = sp_lift_t(u, cast(-0.007784894002430293, f32))
+  c2 = sp_lift_t(u, cast(-0.3223964580411365, f32))
+  c3 = sp_lift_t(u, cast(-2.400758277161838, f32))
+  c4 = sp_lift_t(u, cast(-2.549732539343734, f32))
+  c5 = sp_lift_t(u, cast(4.374664141464968, f32))
+  c6 = sp_lift_t(u, cast(2.938163982698783, f32))
+  d1 = sp_lift_t(u, cast(0.007784695709041462, f32))
+  d2 = sp_lift_t(u, cast(0.3224671290700398, f32))
+  d3 = sp_lift_t(u, cast(2.445134137142996, f32))
+  d4 = sp_lift_t(u, cast(3.754408661907416, f32))
+  one = sp_lift_t(u, cast(1.0, f32))
+  num = add(mul(u, add(mul(u, add(mul(u, add(mul(u, add(mul(u, c1), c2)), c3)), c4)), c5)), c6)
+  den = add(one, mul(u, u |> mul(add(mul(u, add(mul(u, d1), d2)), d3)) |> add(d4)))
+  div(num, den)
+}
+def norminv_t[n](q: &tensor[n, f32]) -> tensor[n, f32] = {
+  plow = sp_lift_t(q, cast(0.02425, f32))
+  one = sp_lift_t(q, cast(1.0, f32))
+  two = sp_lift_t(q, cast(2.0, f32))
+  phigh = sub(one, plow)
+  -- Every lane computes all three branches and `where` discards two. For any
+  -- `q` in (0, 1) both `log(q)` and `log(1 - q)` are finite and negative, so
+  -- neither discarded lane can contaminate the selected one; at the domain
+  -- edges both forms degenerate exactly as the scalar `norminv` does.
+  low_u = sqrt(neg(mul(two, log(q))))
+  low = acklam_tail_t(low_u)
+  high_u = sqrt(neg(mul(two, log(sub(one, q)))))
+  high = high_u |> acklam_tail_t |> neg
+  central = acklam_central_t(q)
+  upper = q |> lte(phigh) |> where(central, high)
+  q |> lt(plow) |> where(low, upper)
+}
+def erfinv_t[n](x: &tensor[n, f32]) -> tensor[n, f32] = {
+  half = sp_lift_t(x, cast(0.5, f32))
+  sqrt_half = sp_lift_t(x, cast(0.7071067811865476, f32))
+  one = sp_lift_t(x, cast(1.0, f32))
+  q = x |> add(one) |> mul(half)
+  q |> norminv_t |> mul(sqrt_half)
 }

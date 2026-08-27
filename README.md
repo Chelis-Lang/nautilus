@@ -58,7 +58,7 @@ corpus is checked in under `parity/goldens/`; normal CI validation never
 regenerates it.
 
 ```sh
-chelis test tests/ --jobs auto                         # 463 native tests
+chelis test tests/ --jobs auto                         # 472 native tests
 chelis test tests_neg/ --expect neg                    # rejection contracts
 chelis test tests_blocked/ --expect blocked            # upstream blocker probes
 chelis test tests/ --jobs 1                            # serial fallback
