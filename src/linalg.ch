@@ -37,7 +37,11 @@ def frobenius_norm[m, n](a: &tensor[m, n, f32]) -> f32 = {
   s = fold(fn (acc: f32, x: f32) -> add(acc, x), cast(0.0, f32), rows)
   sqrt(s)
 }
-def scale_vec[n](v: &tensor[n, f32], s: f32) -> tensor[n, f32] = to_tensor(map(fn (x: f32) -> mul(s, x), to_list(v)))
+-- nautilus#47: lift a scalar to rank `n` so an elementwise tensor op can
+-- take it. Chelis has no implicit tensor-scalar broadcasting; `expand`
+-- lowers to a stride-0 view, so this costs no per-element storage.
+def la_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = c |> scalar_to_tensor |> expand(0, shape(template, cast(0, int32)))
+def scale_vec[n](v: &tensor[n, f32], s: f32) -> tensor[n, f32] = v |> la_lift_t(s) |> mul(v)
 def matvec[m, n](a: &tensor[m, n, f32], v: &tensor[n, f32]) -> tensor[m, f32] = einsum("ij,j->i", a, v)
 def vecmat[m, n](v: &tensor[m, f32], a: &tensor[m, n, f32]) -> tensor[n, f32] = einsum("i,ij->j", v, a)
 def det_2x2(a: &tensor[2, 2, f32]) -> f32 = {
@@ -47,9 +51,9 @@ def det_2x2(a: &tensor[2, 2, f32]) -> f32 = {
   half = cast(0.5, f32)
   mul(half, t |> mul(t) |> sub(t2))
 }
-def la_vec_add[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (pair: (f32, f32)) -> add(pair.0, pair.1), zip(to_list(a), to_list(b))))
-def la_vec_sub[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (pair: (f32, f32)) -> sub(pair.0, pair.1), zip(to_list(a), to_list(b))))
-def la_vec_saxpy[n](alpha: f32, x: &tensor[n, f32], y: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (pair: (f32, f32)) -> add(pair.0, mul(alpha, pair.1)), zip(to_list(x), to_list(y))))
+def la_vec_add[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[n, f32] = add(a, b)
+def la_vec_sub[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[n, f32] = sub(a, b)
+def la_vec_saxpy[n](alpha: f32, x: &tensor[n, f32], y: &tensor[n, f32]) -> tensor[n, f32] = add(x, y |> la_lift_t(alpha) |> mul(y))
 def cg_step_rec[n](a_mat: tensor[n, n, f32], x: tensor[n, f32], r: tensor[n, f32], p: tensor[n, f32], rs_old: f32, tol: f32, iters: int64) -> tensor[n, f32] = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
@@ -89,7 +93,7 @@ def la_mask_gt_j_f32[n](j: int64, template: &tensor[n, f32]) -> tensor[n, f32] =
   idxs = 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(items_len)
   to_tensor(map(fn (i: int64) -> if gt(i, j) then cast(1.0, f32) else cast(0.0, f32), idxs))
 }
-def la_elementwise_mul_vec[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (pair: (f32, f32)) -> mul(pair.0, pair.1), zip(to_list(a), to_list(b))))
+def la_elementwise_mul_vec[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[n, f32] = mul(a, b)
 def la_identity_n[n](template: &tensor[n, f32]) -> tensor[n, n, f32] = {
   n_len = template |> to_list |> len
   outer = einsum("i,j->ij", template, template)
