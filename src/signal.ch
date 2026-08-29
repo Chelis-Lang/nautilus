@@ -3,7 +3,17 @@ export (fft_magnitude_stub, ifft_magnitude_stub, stft_magnitude_stub, lowpass_st
 -- Dated deferral accepted 2026-07-14: spec/phase3j.md § Explicit Deferrals.
 -- Applies to all six exported *_stub definitions below; each remains a NaN
 -- sentinel until Phase 5f complex-number support. fftfreq is functional.
+-- chelis:provenance/v1 authority
+-- id = NAUT-MOD-SIGNAL
+-- kind = behavioral
+-- scopes = nautilus
+-- statement = Nautilus.Signal MUST keep its six transform and filter entry points as typed stubs under the Phase 5f deferral until that deferral is lifted.
 def signal_stub_nan() -> f32 = 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
+-- chelis:provenance/v1 implementation-link
+-- id = NAUT-LINK-SIGNAL-STUBS
+-- atoms = NAUT-MOD-SIGNAL@xxh3-128:6a1b10484def2dcd1098ffe84895e0df
+-- item-digest = xxh3-128:18b3fc0c6efde3dd469f98b8b2f3a943
+-- navigation = implements
 def fft_magnitude_stub[n](x: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
 def ifft_magnitude_stub[n](x: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
 def stft_magnitude_stub[n](x: &tensor[n, f32], window_size: int64, hop_size: int64) -> tensor[n, f32] = {

@@ -1,0 +1,13 @@
+schema = "chelis-adapter-config/v1"
+
+[[selector]]
+root = "src"
+dialect = "surf"
+
+[[selector]]
+root = "tests"
+dialect = "surf"
+
+[[selector]]
+root = "tests_neg"
+dialect = "surf"

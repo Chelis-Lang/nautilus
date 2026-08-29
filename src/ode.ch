@@ -1,6 +1,11 @@
 module Nautilus.Ode
 import Nautilus.LinAlg (scale_vec, la_vec_add, la_basis_n_f32, inner_product)
 export (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve, rk45_adaptive_solve_grid)
+-- chelis:provenance/v1 authority
+-- id = NAUT-MOD-ODE
+-- kind = behavioral
+-- scopes = nautilus
+-- statement = Nautilus.Ode MUST provide the ODE-solver surface listed in the module support table.
 def ode_zero_f() -> f32 = cast(0.0, f32)
 def ode_one_f() -> f32 = cast(1.0, f32)
 def ode_nan_f() -> f32 = div(cast(0.0, f32), cast(0.0, f32))

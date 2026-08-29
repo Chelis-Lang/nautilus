@@ -1,5 +1,10 @@
 module Nautilus.Integrate
 export (trapezoidal, simpsons, gauss_legendre_5, adaptive_simpson, romberg_5, gauss_legendre_10, gauss_hermite_10, gauss_laguerre_10)
+-- chelis:provenance/v1 authority
+-- id = NAUT-MOD-INTEGRATE
+-- kind = behavioral
+-- scopes = nautilus
+-- statement = Nautilus.Integrate MUST provide the quadrature surface listed in the module support table.
 def trap_rec(f: f32 -> f32, x: f32, h: f32, k: int64, acc: f32) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)

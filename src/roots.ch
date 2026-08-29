@@ -1,5 +1,10 @@
 module Nautilus.Roots
 export (bisection, newton, brent)
+-- chelis:provenance/v1 authority
+-- id = NAUT-MOD-ROOTS
+-- kind = behavioral
+-- scopes = nautilus
+-- statement = Nautilus.Roots MUST provide the root-finding surface listed in the module support table.
 def r_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def r_nan_f32() -> f32 = 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
 def bisection_rec(f: f32 -> f32, lo: f32, hi: f32, flo: f32, tol: f32, iters: int64) -> f32 = {

@@ -1,7 +1,17 @@
 module Nautilus.Stats
 import Nautilus.Distributions (chi_squared_cdf)
 export (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, likelihood_ratio_p_value, covariance_2x2, correlation_2x2, covariance_matrix_2, correlation_matrix_2)
+-- chelis:provenance/v1 authority
+-- id = NAUT-MOD-STATS
+-- kind = behavioral
+-- scopes = nautilus
+-- statement = Nautilus.Stats MUST provide the descriptive-statistics surface listed in the module support table.
 def zero_f() -> f32 = cast(0.0, f32)
+-- chelis:provenance/v1 implementation-link
+-- id = NAUT-LINK-STATS-HELPERS
+-- atoms = NAUT-MOD-STATS@xxh3-128:83e4d24feb0b0af7a179db04db8ace9b
+-- item-digest = xxh3-128:ecddac0920c0392a7d5330490f5c9114
+-- navigation = implements
 def one_f() -> f32 = cast(1.0, f32)
 def two_f() -> f32 = cast(2.0, f32)
 def three_f() -> f32 = cast(3.0, f32)

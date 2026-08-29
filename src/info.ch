@@ -1,5 +1,10 @@
 module Nautilus.Info
 export (entropy, cross_entropy, kl_divergence)
+-- chelis:provenance/v1 authority
+-- id = NAUT-MOD-INFO
+-- kind = behavioral
+-- scopes = nautilus
+-- statement = Nautilus.Info MUST provide the information-theory surface listed in the module support table.
 def info_zero() -> f32 = cast(0.0, f32)
 def entropy[n](p: &tensor[n, f32]) -> f32 = {
   total = fold(fn (acc: f32, x: f32) -> {
