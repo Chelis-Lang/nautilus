@@ -5,7 +5,80 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
-> **Current release pin: `chelis 0.18.5`.** The published Darwin arm64 asset
+> **Current release pin: `chelis 0.18.6`.** The published Darwin arm64 asset
+> (release SHA-256
+> `08580435570c6fd44716f4d5c64117e973e379808cefeaaa97c8faefa2588f6c`;
+> compiler payload SHA-256
+> `1c88c737d7d3740eb4adbe7b50ea31d29ee64498b9d74b35664255ca16aea8d4`;
+> source commit `cf49f85bf0d1bca2c87c88a3e459c446912189c0`) ran the complete
+> local gate on 2026-08-29: 472 positive tests, 3 negative contracts, 2 blocked
+> probes still blocked, and 216/216 strict SciPy parity. The tarball was
+> checked against its release sidecar and the installed payload is
+> byte-identical to the `bin/chelis` inside it. The Linux glibc-2.31 asset for
+> the same tag (SHA-256
+> `fb9ef6701fbf0ef2532bcbafb213ca80c21d7b13da0b341b55c64ba89aa8e8fa`) and the
+> Linux x86_64 asset (SHA-256
+> `c9ed1239ea51a02899a9c6d6cfac0580b8708602d72e9a2b7618037c31720b1a`) were not
+> exercised here; their gate run is CI's, not this one.
+>
+> **0.18.6 re-probe results.** chelis#676 remains **live**: both
+> `tests_blocked/curvefit/` shapes still fail while verifying the backward DAG
+> (`chelis test tests_blocked/ --expect blocked` -> 2 ok, 0 failing), so the
+> finite-difference Jacobian narrowing stays. No probe source drift this cycle;
+> both probes reached their pinned diagnostics unmodified. Real `Special.erf(1)`
+> remains green and the strict parity gate is numerically unchanged at 216/216.
+>
+> **Nothing is retired at this pin.** 0.18.6 is a large release, but every one
+> of its user-visible breaks lands on a surface Nautilus does not touch. It
+> carries no fix for chelis#676, which is the only live narrowing here.
+>
+> **0.18.6 breaking changes, and why Nautilus is unexposed.** The published C
+> numeric ABI is replaced with exact tagged carriers and `bool` narrows to one
+> byte (Nautilus links no C runtime and ships no native code); package schema
+> and CHB advance to v2 and WireDag to exact-only v6 with a schema-2 Beacon
+> envelope (Nautilus republishes its own artifacts as part of this bump and
+> drives no proof/Beacon lane); the exported stdlib drops the duplicate prelude
+> JSON representation, the legacy JSON and assertion builtin aliases, and
+> `init/xavier::sample`. Those aliases are **compiler builtins**, distinct from
+> the `Std.Test` module functions Nautilus imports: `Std.Test` still exports
+> `assert_true`, `assert_false`, `assert_eq`, `assert_close`,
+> `assert_close_tensor`, `assert_eq_tensor`, `assert_shape`, and `fail`
+> unchanged, and Nautilus uses no removed name (verified by grep over `src/`
+> and `tests/`, and by the suite passing). `Std.Test.assert_close_tensor` now
+> requires one shared active-float dtype across both tensors and the tolerance;
+> its two callers, `tests/curvefit.ch` and `tests/ode.ch`, already pass f32
+> tensors with an f32 tolerance, so both type-check unchanged.
+> `JsonBigInt(string)` joins the `Json` ADT (Nautilus has no `Json` reference
+> at all). HIP rejects materialized bool tensors (Nautilus does not target
+> HIP). And `diagonal`/`trace` are repaired for every axis pair except
+> `(rank-2, rank-1)` (chelis#1349). Nautilus reaches both builtins, in
+> `src/linalg.ch`: `diag` and `trace_mat`/`trace_scalar` call
+> `diagonal(a, 0, 1)` and `trace(a, 0, 1)` on `tensor[n, n, f32]`. At rank 2,
+> `(0, 1)` **is** `(rank-2, rank-1)` -- the single pair that was already
+> correct -- so every Nautilus result is unchanged, which `tests/linalg.ch`
+> confirms still green. A future Nautilus verb taking a non-default axis pair
+> would have been silently wrong before this release and is correct now. The
+> whole-package
+> `chelis reef build` type-checks every module and the full suite passes
+> unchanged, which is the construction proof for the source-level items.
+>
+> Nautilus also carries **no dependency cascade**: its only dependency is the
+> compiler-bundled `chelis-std 0.4.0`, so unlike coral and shoals this bump is
+> not blocked on a sibling release.
+>
+> **One conformance repair this pin forced.** chelis#1270 (shipped in chelis PR
+> #1279) widened the §4 narrowing-citation grammar so that `<sibling>#NNN`, not
+> only `chelis#NNN`, counts as a citation needing coverage. Nautilus used
+> `nautilus#45` / `nautilus#47` in four `src/` comments as **provenance notes
+> for its own feature PRs**, not as narrowings against anything, and the widened
+> grammar read them as uncovered citations -- `conform audit` row 9 fails at
+> the new pin. The four notes are rewritten to the non-citation form
+> `nautilus PR 45` / `nautilus PR 47`, which preserves the provenance without
+> claiming a blocked upstream probe that does not exist. Recording the shape
+> because it will recur for any shell that references its own issues in source:
+> the widened grammar does not exempt a repo's self-reference.
+
+> **Previous pin: `chelis 0.18.5`.** The published Darwin arm64 asset
 > (release SHA-256
 > `0ff7b4e168d8b51277e05d44bfa658364630176d56d79c9cf8aceaea15335551`;
 > compiler payload SHA-256

@@ -497,7 +497,7 @@ def student_t_sample[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! {
     div(zi, s)
   }, zip(to_list(z), to_list(v))))
 }
--- Tensor-domain normal family (nautilus#45).
+-- Tensor-domain normal family (nautilus PR 45).
 --
 -- The scalar `normal_cdf` / `normal_inv_cdf` / `normal_pdf` above are the
 -- reference; these evaluate the same formulas at tensor rank. A Monte Carlo or
