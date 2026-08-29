@@ -5,17 +5,21 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
-> **Current release pin: `chelis 0.18.6`.** The complete local gate ran on
-> 2026-08-29 against a **from-source build of the release commit**
-> `cf49f85bf0d1bca2c87c88a3e459c446912189c0` (tag `v0.18.6`), not a published
-> asset: the tag-triggered release workflow was still building when this bump
-> was prepared, so no asset SHA-256 or compiler-payload SHA-256 exists to
-> verify yet. Results at that build: 472 positive tests, 3 negative contracts,
-> 2 blocked probes still blocked, and 216/216 strict SciPy parity.
-> **Asset verification is owed** — once `v0.18.6` publishes, record the Darwin
-> arm64 and Linux glibc-2.31 release SHA-256 and installed-payload SHA-256 here
-> the way the 0.18.5 block below does, and confirm the installed payload is
-> byte-identical to the release tarball.
+> **Current release pin: `chelis 0.18.6`.** The published Darwin arm64 asset
+> (release SHA-256
+> `08580435570c6fd44716f4d5c64117e973e379808cefeaaa97c8faefa2588f6c`;
+> compiler payload SHA-256
+> `1c88c737d7d3740eb4adbe7b50ea31d29ee64498b9d74b35664255ca16aea8d4`;
+> source commit `cf49f85bf0d1bca2c87c88a3e459c446912189c0`) ran the complete
+> local gate on 2026-08-29: 472 positive tests, 3 negative contracts, 2 blocked
+> probes still blocked, and 216/216 strict SciPy parity. The tarball was
+> checked against its release sidecar and the installed payload is
+> byte-identical to the `bin/chelis` inside it. The Linux glibc-2.31 asset for
+> the same tag (SHA-256
+> `fb9ef6701fbf0ef2532bcbafb213ca80c21d7b13da0b341b55c64ba89aa8e8fa`) and the
+> Linux x86_64 asset (SHA-256
+> `c9ed1239ea51a02899a9c6d6cfac0580b8708602d72e9a2b7618037c31720b1a`) were not
+> exercised here; their gate run is CI's, not this one.
 >
 > **0.18.6 re-probe results.** chelis#676 remains **live**: both
 > `tests_blocked/curvefit/` shapes still fail while verifying the backward DAG

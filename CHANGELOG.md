@@ -45,13 +45,15 @@ not exist. No behaviour changes; the affected lines are comments in
 backward-DAG verification at this pin with no probe-source drift, so the
 finite-difference Jacobian narrowing stays. Nothing is retired this cycle.
 
-**Release-asset verification is owed.** The gate above ran against a
-from-source build of the release commit
-`cf49f85bf0d1bca2c87c88a3e459c446912189c0` (tag `v0.18.6`) because the
-tag-triggered release workflow was still building when this bump was prepared.
-The published Darwin arm64 and Linux glibc-2.31 asset SHA-256 values, and the
-byte-identity check of the installed compiler payload against its release
-tarball, must be recorded in `docs/UPSTREAM_BUGS.md` once `v0.18.6` publishes.
+**Verified against the published toolchain.** Every gate above was run with
+the installed `chelis 0.18.6` Darwin arm64 release asset (release SHA-256
+`08580435570c6fd44716f4d5c64117e973e379808cefeaaa97c8faefa2588f6c`, compiler
+payload SHA-256
+`1c88c737d7d3740eb4adbe7b50ea31d29ee64498b9d74b35664255ca16aea8d4`, source
+commit `cf49f85bf0d1bca2c87c88a3e459c446912189c0`). The tarball matches its
+release sidecar and the installed payload is byte-identical to the `bin/chelis`
+inside it. `docs/UPSTREAM_BUGS.md` carries the same record plus the Linux
+asset hashes.
 
 ## [0.7.42] - 2026-08-22
 
