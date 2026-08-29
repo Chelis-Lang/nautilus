@@ -1,5 +1,10 @@
 module Nautilus.Sde
 export (euler_maruyama_fixed, milstein_fixed)
+-- chelis:provenance/v1 authority
+-- id = NAUT-MOD-SDE
+-- kind = behavioral
+-- scopes = nautilus
+-- statement = Nautilus.Sde MUST provide the SDE-stepping surface listed in the module support table.
 def sde_zero_f() -> f32 = cast(0.0, f32)
 def sde_nan_f() -> f32 = 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
 def euler_maruyama_fixed[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32 = {

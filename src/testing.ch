@@ -2,6 +2,11 @@ module Nautilus.Testing
 import Nautilus.Special (erf, erfinv)
 import Nautilus.Distributions (normal_cdf, normal_inv_cdf, chi_squared_cdf, student_t_cdf)
 export (z_statistic, z_p_value_two_sided, z_p_value_upper, z_p_value_lower, normal_ci_half_width, chi_squared_p_value, t_statistic_one_sample, t_statistic_two_sample_pooled, t_p_value_two_sided, t_p_value_upper, t_p_value_lower, welch_t_statistic, welch_t_df)
+-- chelis:provenance/v1 authority
+-- id = NAUT-MOD-TESTING
+-- kind = behavioral
+-- scopes = nautilus
+-- statement = Nautilus.Testing MUST provide the hypothesis-testing surface listed in the module support table.
 def t_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def z_statistic(sample_mean: f32, pop_mean: f32, pop_std: f32, sample_n: f32) -> f32 = {
   diff = sub(sample_mean, pop_mean)

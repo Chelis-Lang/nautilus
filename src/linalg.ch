@@ -1,6 +1,16 @@
 module Nautilus.LinAlg
 export (transpose, matmul_wrap, gram, aat, diag, trace_mat, trace_scalar, l2_norm_vec, inner_product, frobenius_sq, frobenius_norm, scale_vec, matvec, vecmat, det_2x2, det_3x3, la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve, inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2, cholesky_n, lu_solve, qr_decompose, svd_n, eig_n)
+-- chelis:provenance/v1 authority
+-- id = NAUT-MOD-LINALG
+-- kind = behavioral
+-- scopes = nautilus
+-- statement = Nautilus.LinAlg MUST provide the linear-algebra surface listed in the module support table.
 def transpose[m, n](a: &tensor[m, n, f32]) -> tensor[n, m, f32] = permute(a, 1, 0)
+-- chelis:provenance/v1 implementation-link
+-- id = NAUT-LINK-LINALG-MATMUL
+-- atoms = NAUT-MOD-LINALG@xxh3-128:49dca51dd2b5269319d41eaa1523c417
+-- item-digest = xxh3-128:f7982de4ccc8070ef94b82dde14aa6cf
+-- navigation = implements
 def matmul_wrap[m, k, n](a: &tensor[m, k, f32], b: &tensor[k, n, f32]) -> tensor[m, n, f32] = matmul(a, b)
 def gram[m, n](a: &tensor[m, n, f32]) -> tensor[n, n, f32] = {
   at = permute(a, 1, 0)

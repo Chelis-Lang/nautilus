@@ -1,7 +1,31 @@
 module Nautilus.Tests.LinAlg
 import Std.Test (assert_close)
 import Nautilus.LinAlg (matvec, vecmat, inner_product, l2_norm_vec, scale_vec, la_vec_add, la_vec_sub, la_vec_saxpy, diag, trace_scalar)
+-- chelis:provenance/v1 oracle
+-- id = NAUT-GATE-CHELIS-TEST
+-- oracle-kind = test
+-- runner-id = chelis-test
+-- runner-version = 0.18.5
+-- runner-digest = xxh3-128:cb9c68f2993c94b098afedeb8d7044b1
+-- runner-configuration-digest = xxh3-128:42fb84f4054d7d0ad4b6c8e19e015c02
+-- selection-schema = nautilus-oracle-selection/v1
+-- selection = chelis test tests/ --timeout 600 --jobs auto
+-- normalization-schema = nautilus-oracle-normalization/v1
+-- normalization = chelis test exit status; zero is pass, nonzero is fail
+-- configuration-digest = xxh3-128:ae3dfc4c0cfdd00cc99d50805da0931e
+-- scope-schema = nautilus-oracle-scope/v1
+-- scope = the committed Chelis-native positive corpus under tests/
 def basis2(k: int64) -> tensor[2, f32] = to_tensor(map(fn (i: int64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, int64), cast(2, int64))))
+-- chelis:provenance/v1 carrier
+-- id = NAUT-CARRIER-LINALG-TESTS
+-- role = positive
+-- atoms = NAUT-MOD-LINALG@xxh3-128:49dca51dd2b5269319d41eaa1523c417
+-- item-digest = xxh3-128:184f1cf13b5e64d7ac8c1af5a2dd1a69
+-- oracle-id = NAUT-GATE-CHELIS-TEST
+-- oracle-digest = xxh3-128:a6bf22d60ac853d26caa1417a727cd42
+-- configuration-digest = xxh3-128:ae3dfc4c0cfdd00cc99d50805da0931e
+-- scope-schema = nautilus-carrier-scope/v1
+-- scope = the exact linear-algebra assertions in tests/linalg.ch
 def basis3(k: int64) -> tensor[3, f32] = to_tensor(map(fn (i: int64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, int64), cast(3, int64))))
 def mk_2x2(a: f32, b: f32, c: f32, d: f32) -> tensor[2, 2, f32] = {
   e0 = basis2(cast(0, int64))

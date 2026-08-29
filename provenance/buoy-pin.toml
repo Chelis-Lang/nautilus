@@ -1,0 +1,21 @@
+schema = "nautilus-buoy-pin/v1"
+
+[buoy]
+repository = "git@github.com:Chelis-Lang/buoy.git"
+revision = "f41fd5015a11ab4791f5e8363afb4e9a156a49fe"
+consumer_package = "nix/consumer-package-v1.nix"
+declared_source = "nix/tools/declared-source.nix"
+reviewed_source_content_hash = "sha256-OIRUm337KPlxK/VcZOkUYv6jOp425RHEGbXBYOPi0hw="
+reviewed_source_note = "Nautilus-reviewed content hash of the declared source filter applied to the clean fetched tree at the pinned revision. The upstream committed constant covers a development worktree that carries ambient devenv files, so it does not hold for a clean checkout; an upstream follow-up is recorded in the trust-boundary document."
+digest_feature = "xxh3-128"
+provenance_command = "chelis-provenance"
+provenance_command_source = "pinned source build (nix/chelis-provenance.nix); the upstream consumer package at this revision builds only the root buoy package. Upstream follow-up: expose chelis-provenance in consumer-package-v1, then retire the fallback."
+
+[chelis]
+version = "0.18.5"
+version_skew = "the chelis:provenance/v1 record grammar is comment-based and attaches to top-level def and type declarations; both are stable from Chelis 0.16 through 0.18.1, so the frozen adapter parser identity from the Buoy pin applies unchanged"
+
+[policy]
+enforcement = "advisory"
+floating_references = "forbidden; the revision must be one full 40-hex commit"
+vendoring = "forbidden; Buoy resolves only through the pinned consumer package"

@@ -1,0 +1,1 @@
+{"schema":"chelis-static-report/v1","objects":{"atoms":["NAUT-FIX-DEMO"],"carriers":[],"derivations":[],"links":[],"oracles":[],"policies":[],"surfaces":["NAUT-FIX-SURFACE"]},"diagnostics":[],"verdict":"accept"}

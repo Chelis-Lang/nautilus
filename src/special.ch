@@ -1,5 +1,10 @@
 module Nautilus.Special
 export (erf, erfc, erfinv, erf_t, erfinv_t, gamma, log_gamma, digamma, beta, lbeta, trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1, bessel_j0, bessel_j1, bessel_y0, bessel_y1, airy_ai, airy_bi, ellipk, ellipe)
+-- chelis:provenance/v1 authority
+-- id = NAUT-MOD-SPECIAL
+-- kind = behavioral
+-- scopes = nautilus
+-- statement = Nautilus.Special MUST provide the special-function surface listed in the module support table.
 def abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def is_nonpositive_integer(x: f32) -> bool = {
   zero = cast(0.0, f32)

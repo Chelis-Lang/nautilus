@@ -1,0 +1,9 @@
+[[oracle]]
+id = "FIX-PASS"
+program = "builtin:pass"
+timeout_ms = 1000
+
+[[oracle]]
+id = "FIX-FAIL"
+program = "builtin:fail"
+timeout_ms = 1000

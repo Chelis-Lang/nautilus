@@ -1,5 +1,10 @@
 module Nautilus.Optim
 export (golden_section_search, brent_minimize, gradient_descent_1d, newton_minimize_1d)
+-- chelis:provenance/v1 authority
+-- id = NAUT-MOD-OPTIM
+-- kind = behavioral
+-- scopes = nautilus
+-- statement = Nautilus.Optim MUST provide the scalar-optimization surface listed in the module support table.
 def opt_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def opt_nan_f32() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
 def opt_phi() -> f32 = cast(0.6180339887, f32)

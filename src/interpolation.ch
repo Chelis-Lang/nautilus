@@ -1,5 +1,10 @@
 module Nautilus.Interpolation
 export (linear_interp_uniform, linear_interp_sorted, cubic_hermite, spline_fit, spline_eval)
+-- chelis:provenance/v1 authority
+-- id = NAUT-MOD-INTERPOLATION
+-- kind = behavioral
+-- scopes = nautilus
+-- statement = Nautilus.Interpolation MUST provide the interpolation surface listed in the module support table.
 def interp_zero_f() -> f32 = cast(0.0, f32)
 def interp_one_f() -> f32 = cast(1.0, f32)
 def interp_two_f() -> f32 = cast(2.0, f32)

@@ -1033,6 +1033,8 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `erf` | `(x: f32) -> f32` | `stable` | Horner rational approx, ~1e-7 relative, all reals |
 | `erfc` | `(x: f32) -> f32` | `stable` | `1 - erf(x)`, same precision domain as `erf` |
 | `erfinv` | `(x: f32) -> f32` | `stable` | Acklam inverse normal + rescale, ~1e-8, domain (-1, 1) |
+| `erf_t` | `[n](x: &tensor[n, f32]) -> tensor[n, f32]` | `stable` | tensor-lane erf without the host List round-trip |
+| `erfinv_t` | `[n](x: &tensor[n, f32]) -> tensor[n, f32]` | `stable` | tensor-lane erfinv without the host List round-trip |
 | `gamma` | `(x: f32) -> f32` | `stable` | Lanczos (g=7) with reflection, ~1e-7 relative, +inf at non-positive integers |
 | `log_gamma` | `(x: f32) -> f32` | `stable` | Lanczos (g=7) with reflection, ~1e-9, +inf at non-positive integers |
 | `digamma` | `(x: f32) -> f32` | `stable` | Recurrence + asymptotic (x>=6), ~1e-7, NaN at non-positive integers |
@@ -1067,6 +1069,9 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `normal_pdf` | `(x: f32, mean: f32, std: f32) -> f32` | `stable` | (mean, std) parameterization |
 | `normal_cdf` | `(x: f32, mean: f32, std: f32) -> f32` | `stable` | Via erf |
 | `normal_inv_cdf` | `(q: f32, mean: f32, std: f32) -> f32` | `stable` | Acklam rational approx via erfinv |
+| `normal_cdf_t` | `[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane normal CDF via erf_t |
+| `normal_pdf_t` | `[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane normal PDF |
+| `normal_inv_cdf_t` | `[n](q: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane inverse CDF via erfinv_t |
 | `normal_sample` | `[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random; Box-Muller |
 | `lognormal_pdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | `stable` | (mu, sigma) of underlying normal |
 | `lognormal_cdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | `stable` | Via normal_cdf |
