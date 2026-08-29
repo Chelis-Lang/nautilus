@@ -1,6 +1,6 @@
 module Nautilus.Distributions
-import Nautilus.Special (erf, erfinv, log_gamma)
-export (uniform_pdf, uniform_cdf, uniform_inv_cdf, uniform_sample, exponential_pdf, exponential_cdf, exponential_inv_cdf, exponential_sample, normal_pdf, normal_cdf, normal_inv_cdf, normal_sample, lognormal_pdf, lognormal_cdf, lognormal_inv_cdf, lognormal_sample, gamma_pdf, chi_squared_pdf, student_t_pdf, gamma_cdf, chi_squared_cdf, gamma_inv_cdf, chi_squared_inv_cdf, chi_squared_sample, student_t_sample, gamma_sample, student_t_cdf, poisson_pmf, poisson_cdf, binomial_pmf, binomial_cdf, beta_pdf, beta_cdf, f_pdf, f_cdf, weibull_pdf, weibull_cdf, weibull_inv_cdf)
+import Nautilus.Special (erf, erfinv, erf_t, erfinv_t, log_gamma)
+export (uniform_pdf, uniform_cdf, uniform_inv_cdf, uniform_sample, exponential_pdf, exponential_cdf, exponential_inv_cdf, exponential_sample, normal_pdf, normal_cdf, normal_inv_cdf, normal_sample, lognormal_pdf, lognormal_cdf, lognormal_inv_cdf, lognormal_sample, gamma_pdf, chi_squared_pdf, student_t_pdf, gamma_cdf, chi_squared_cdf, gamma_inv_cdf, chi_squared_inv_cdf, chi_squared_sample, student_t_sample, gamma_sample, student_t_cdf, poisson_pmf, poisson_cdf, binomial_pmf, binomial_cdf, beta_pdf, beta_cdf, f_pdf, f_cdf, weibull_pdf, weibull_cdf, weibull_inv_cdf, normal_cdf_t, normal_inv_cdf_t, normal_pdf_t)
 -- chelis:provenance/v1 authority
 -- id = NAUT-MOD-DISTRIBUTIONS
 -- kind = behavioral
@@ -33,37 +33,32 @@ def uniform_inv_cdf(q: f32, lo: f32, hi: f32) -> f32 = {
 }
 def uniform_sample[n](template: tensor[n, f32], lo: f32, hi: f32) -> tensor[n, f32] ! { Random } = {
   u = uniform_like(template, 0.0, 1.0)
-  width = sub(hi, lo)
-  to_tensor(map(fn (x: f32) -> add(lo, mul(width, x)), to_list(u)))
+  widths = dist_lift_t(u, sub(hi, lo))
+  los = dist_lift_t(u, lo)
+  add(los, mul(widths, u))
 }
-def exponential_pdf(x: f32, rate: f32) -> f32 = {
+def exponential_pdf(x: f32, rate: f32) -> f32 =
   if lt(x, zero_f()) then zero_f() else {
     neg_rx = neg(mul(rate, x))
     e = exp(neg_rx)
     mul(rate, e)
   }
-}
-def exponential_cdf(x: f32, rate: f32) -> f32 = {
+def exponential_cdf(x: f32, rate: f32) -> f32 =
   if lt(x, zero_f()) then zero_f() else {
     neg_rx = neg(mul(rate, x))
     e = exp(neg_rx)
     sub(one_f(), e)
   }
-}
-def exponential_inv_cdf(q: f32, rate: f32) -> f32 = {
+def exponential_inv_cdf(q: f32, rate: f32) -> f32 =
   if or(lt(q, zero_f()), gt(q, one_f())) then nan_d() else if eq(q, one_f()) then pos_inf_d() else if eq(q, zero_f()) then zero_f() else {
     omq = sub(one_f(), q)
     l = log(omq)
     neg(div(l, rate))
   }
-}
 def exponential_sample[n](template: tensor[n, f32], rate: f32) -> tensor[n, f32] ! { Random } = {
-  u = uniform_like(template, 0.0000001, 1.0)
-  to_tensor(map(fn (x: f32) -> {
-    l = log(x)
-    nl = neg(l)
-    div(nl, rate)
-  }, to_list(u)))
+  u = uniform_like(template, 1e-7, 1.0)
+  rates = dist_lift_t(u, rate)
+  div(neg(log(u)), rates)
 }
 def normal_pdf(x: f32, mean: f32, std: f32) -> f32 = {
   z = div(sub(x, mean), std)
@@ -79,30 +74,25 @@ def normal_cdf(x: f32, mean: f32, std: f32) -> f32 = {
   e = erf(z)
   mul(half_f(), add(one_f(), e))
 }
-def normal_inv_cdf(q: f32, mean: f32, std: f32) -> f32 = {
+def normal_inv_cdf(q: f32, mean: f32, std: f32) -> f32 =
   if or(lt(q, zero_f()), gt(q, one_f())) then nan_d() else if lte(q, zero_f()) then neg(pos_inf_d()) else if gte(q, one_f()) then pos_inf_d() else {
     two_q_minus_one = sub(mul(two_f(), q), one_f())
     z = erfinv(two_q_minus_one)
     add(mean, mul(std, mul(sqrt_two_f(), z)))
   }
-}
 def normal_sample[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random } = {
-  u1 = uniform_like(copy(template), 0.0000001, 1.0)
+  u1 = uniform_like(copy(template), 1e-7, 1.0)
   u2 = uniform_like(template, 0.0, 1.0)
-  to_tensor(map(fn (pair: (f32, f32)) -> {
-    a = pair.0
-    b = pair.1
-    two_pi_b = mul(two_pi_f(), b)
-    half_pi = mul(half_f(), pi_f())
-    cos_term = sin(sub(half_pi, two_pi_b))
-    la = log(a)
-    minus_two_la = neg(mul(two_f(), la))
-    radius = sqrt(minus_two_la)
-    z = mul(radius, cos_term)
-    add(mean, mul(std, z))
-  }, zip(to_list(u1), to_list(u2))))
+  two_pis = dist_lift_t(u2, two_pi_f())
+  half_pis = dist_lift_t(u2, mul(half_f(), pi_f()))
+  twos = dist_lift_t(u1, two_f())
+  means = dist_lift_t(u1, mean)
+  stds = dist_lift_t(u1, std)
+  cos_term = sin(sub(half_pis, mul(two_pis, u2)))
+  radius = sqrt(neg(mul(twos, log(u1))))
+  add(means, mul(stds, mul(radius, cos_term)))
 }
-def lognormal_pdf(x: f32, mu: f32, sigma: f32) -> f32 = {
+def lognormal_pdf(x: f32, mu: f32, sigma: f32) -> f32 =
   if lte(x, zero_f()) then zero_f() else {
     lx = log(x)
     z = div(sub(lx, mu), sigma)
@@ -113,23 +103,21 @@ def lognormal_pdf(x: f32, mu: f32, sigma: f32) -> f32 = {
     denom = mul(x, mul(sigma, sqrt_2pi_f()))
     div(e, denom)
   }
-}
-def lognormal_cdf(x: f32, mu: f32, sigma: f32) -> f32 = {
+def lognormal_cdf(x: f32, mu: f32, sigma: f32) -> f32 =
   if lte(x, zero_f()) then zero_f() else {
     lx = log(x)
     normal_cdf(lx, mu, sigma)
   }
-}
 def lognormal_inv_cdf(q: f32, mu: f32, sigma: f32) -> f32 = {
   y = normal_inv_cdf(q, mu, sigma)
   exp(y)
 }
 def lognormal_sample[n](template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32] ! { Random } = {
   z = normal_sample(template, mu, sigma)
-  to_tensor(map(fn (x: f32) -> exp(x), to_list(z)))
+  exp(z)
 }
-def gamma_pdf(x: f32, shape: f32, scale: f32) -> f32 = {
-  if lt(x, zero_f()) then zero_f() else if eq(x, zero_f()) then { if gt(shape, one_f()) then zero_f() else if eq(shape, one_f()) then div(one_f(), scale) else pos_inf_d() } else {
+def gamma_pdf(x: f32, shape: f32, scale: f32) -> f32 =
+  if lt(x, zero_f()) then zero_f() else if eq(x, zero_f()) then if gt(shape, one_f()) then zero_f() else if eq(shape, one_f()) then div(one_f(), scale) else pos_inf_d() else {
     lx = log(x)
     lscale = log(scale)
     k_minus_one = sub(shape, one_f())
@@ -140,7 +128,6 @@ def gamma_pdf(x: f32, shape: f32, scale: f32) -> f32 = {
     log_pdf = sub(sub(sub(term1, xs), term2), lgk)
     exp(log_pdf)
   }
-}
 def chi_squared_pdf(x: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_pdf(x, half_df, two_f())
@@ -171,12 +158,12 @@ def gammainc_series(a: f32, x: f32, term: f32, acc: f32, ap: f32, iters: int64) 
     abs_acc = abs_f32_inner(acc_next)
     floor = cast(1.0, f32)
     scale = if gt(abs_acc, floor) then abs_acc else floor
-    tol = cast(0.0000001, f32)
+    tol = cast(1e-7, f32)
     converged = lt(abs_term, mul(tol, scale))
     if converged then acc_next else gammainc_series(a, x, term_next, acc_next, ap_next, sub(iters, one_i))
   }
 }
-def gammap(a: f32, x: f32) -> f32 = {
+def gammap(a: f32, x: f32) -> f32 =
   if lte(x, zero_f()) then zero_f() else {
     la = log_gamma(a)
     lx = log(x)
@@ -187,7 +174,6 @@ def gammap(a: f32, x: f32) -> f32 = {
     series = gammainc_series(a, x, inv_a, inv_a, a, cast(200, int64))
     mul(front, series)
   }
-}
 def gammaq_cf_rec(a: f32, x: f32, b: f32, c: f32, d: f32, h: f32, i: int64) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
@@ -197,13 +183,13 @@ def gammaq_cf_rec(a: f32, x: f32, b: f32, c: f32, d: f32, h: f32, i: int64) -> f
     an = mul(neg(j), sub(j, a))
     b_next = add(b, two_f())
     d_raw = add(mul(an, d), b_next)
-    d_guard = if lt(abs_f32_inner(d_raw), cast(0.000000000000000000000000000001, f32)) then cast(0.000000000000000000000000000001, f32) else d_raw
+    d_guard = if lt(abs_f32_inner(d_raw), cast(1e-30, f32)) then cast(1e-30, f32) else d_raw
     c_raw = add(b_next, div(an, c))
-    c_guard = if lt(abs_f32_inner(c_raw), cast(0.000000000000000000000000000001, f32)) then cast(0.000000000000000000000000000001, f32) else c_raw
+    c_guard = if lt(abs_f32_inner(c_raw), cast(1e-30, f32)) then cast(1e-30, f32) else c_raw
     d_inv = div(one_f(), d_guard)
     delta = mul(c_guard, d_inv)
     h_next = mul(h, delta)
-    cf_tol = cast(0.0000001, f32)
+    cf_tol = cast(1e-7, f32)
     delta_err = abs_f32_inner(sub(delta, one_f()))
     converged = lt(delta_err, cf_tol)
     if converged then h_next else gammaq_cf_rec(a, x, b_next, c_guard, d_inv, h_next, sub(i, one_i))
@@ -213,7 +199,7 @@ def abs_f32_inner(x: f32) -> f32 = if lt(x, zero_f()) then neg(x) else x
 def betacf_rec(a: f32, b: f32, x: f32, c: f32, d: f32, h: f32, m: int64, max_m: int64) -> f32 = {
   one_i = cast(1, int64)
   if gt(m, max_m) then h else {
-    eps = cast(0.000000000000000000000000000001, f32)
+    eps = cast(1e-30, f32)
     m_f = cast(m, f32)
     m2_f = mul(cast(2.0, f32), m_f)
     qab = add(a, b)
@@ -238,14 +224,14 @@ def betacf_rec(a: f32, b: f32, x: f32, c: f32, d: f32, h: f32, m: int64, max_m: 
     d2_inv = div(one_f(), d2)
     delta = mul(d2_inv, c2)
     h2 = mul(h1, delta)
-    bcf_tol = cast(0.0000001, f32)
+    bcf_tol = cast(1e-7, f32)
     delta_err = abs_f32_inner(sub(delta, one_f()))
     converged = lt(delta_err, bcf_tol)
     if converged then h2 else betacf_rec(a, b, x, c2, d2_inv, h2, add(m, one_i), max_m)
   }
 }
 def betacf(a: f32, b: f32, x: f32) -> f32 = {
-  eps = cast(0.000000000000000000000000000001, f32)
+  eps = cast(1e-30, f32)
   qab = add(a, b)
   qap = add(a, one_f())
   d0_raw = sub(one_f(), div(mul(qab, x), qap))
@@ -254,7 +240,7 @@ def betacf(a: f32, b: f32, x: f32) -> f32 = {
   c0 = one_f()
   betacf_rec(a, b, x, c0, d0_inv, d0_inv, cast(1, int64), cast(200, int64))
 }
-def betai(a: f32, b: f32, x: f32) -> f32 = {
+def betai(a: f32, b: f32, x: f32) -> f32 =
   if lte(x, zero_f()) then zero_f() else if gte(x, one_f()) then one_f() else {
     lg_ab = log_gamma(add(a, b))
     lg_a = log_gamma(a)
@@ -276,29 +262,26 @@ def betai(a: f32, b: f32, x: f32) -> f32 = {
       sub(one_f(), val)
     }
   }
-}
 def is_integer_f32(x: f32) -> bool = {
-  xi = cast(cast(x, int64), f32)
+  xi = cast(cast_trunc(x, int64), f32)
   eq(x, xi)
 }
-def poisson_pmf(k: f32, lambda: f32) -> f32 = {
-  if lt(lambda, zero_f()) then nan_d() else if lt(k, zero_f()) then zero_f() else if not(is_integer_f32(k)) then zero_f() else if eq(lambda, zero_f()) then { if eq(k, zero_f()) then one_f() else zero_f() } else {
+def poisson_pmf(k: f32, lambda: f32) -> f32 =
+  if lt(lambda, zero_f()) then nan_d() else if lt(k, zero_f()) then zero_f() else if not(is_integer_f32(k)) then zero_f() else if eq(lambda, zero_f()) then if eq(k, zero_f()) then one_f() else zero_f() else {
     lk = log(lambda)
     k_lk = mul(k, lk)
     lg_k1 = log_gamma(add(k, one_f()))
     log_pmf = sub(sub(k_lk, lambda), lg_k1)
     exp(log_pmf)
   }
-}
-def poisson_cdf(k: f32, lambda: f32) -> f32 = {
+def poisson_cdf(k: f32, lambda: f32) -> f32 =
   if lt(lambda, zero_f()) then nan_d() else if lt(k, zero_f()) then zero_f() else if eq(lambda, zero_f()) then one_f() else {
     k_plus_one = add(k, one_f())
     gc = gamma_cdf(lambda, k_plus_one, one_f())
     sub(one_f(), gc)
   }
-}
-def binomial_pmf(k: f32, n: f32, p: f32) -> f32 = {
-  if or(lt(k, zero_f()), gt(k, n)) then zero_f() else if not(is_integer_f32(k)) then zero_f() else if not(is_integer_f32(n)) then nan_d() else if or(lt(p, zero_f()), gt(p, one_f())) then nan_d() else if eq(p, zero_f()) then { if eq(k, zero_f()) then one_f() else zero_f() } else if eq(p, one_f()) then { if eq(k, n) then one_f() else zero_f() } else {
+def binomial_pmf(k: f32, n: f32, p: f32) -> f32 =
+  if or(lt(k, zero_f()), gt(k, n)) then zero_f() else if not(is_integer_f32(k)) then zero_f() else if not(is_integer_f32(n)) then nan_d() else if or(lt(p, zero_f()), gt(p, one_f())) then nan_d() else if eq(p, zero_f()) then if eq(k, zero_f()) then one_f() else zero_f() else if eq(p, one_f()) then if eq(k, n) then one_f() else zero_f() else {
     lg_n1 = log_gamma(add(n, one_f()))
     lg_k1 = log_gamma(add(k, one_f()))
     lg_nmk1 = log_gamma(add(sub(n, k), one_f()))
@@ -310,16 +293,14 @@ def binomial_pmf(k: f32, n: f32, p: f32) -> f32 = {
     log_pmf = add(add(log_choose, k_lp), nmk_l1mp)
     exp(log_pmf)
   }
-}
-def binomial_cdf(k: f32, n: f32, p: f32) -> f32 = {
+def binomial_cdf(k: f32, n: f32, p: f32) -> f32 =
   if or(lt(p, zero_f()), gt(p, one_f())) then nan_d() else if lt(k, zero_f()) then zero_f() else if gte(k, n) then one_f() else {
     a = sub(n, k)
     b = add(k, one_f())
     betai(a, b, sub(one_f(), p))
   }
-}
-def beta_pdf(x: f32, a: f32, b: f32) -> f32 = {
-  if or(lte(a, zero_f()), lte(b, zero_f())) then nan_d() else if or(lt(x, zero_f()), gt(x, one_f())) then zero_f() else if eq(x, zero_f()) then { if gt(a, one_f()) then zero_f() else if eq(a, one_f()) then b else pos_inf_d() } else if eq(x, one_f()) then { if gt(b, one_f()) then zero_f() else if eq(b, one_f()) then a else pos_inf_d() } else {
+def beta_pdf(x: f32, a: f32, b: f32) -> f32 =
+  if or(lte(a, zero_f()), lte(b, zero_f())) then nan_d() else if or(lt(x, zero_f()), gt(x, one_f())) then zero_f() else if eq(x, zero_f()) then if gt(a, one_f()) then zero_f() else if eq(a, one_f()) then b else pos_inf_d() else if eq(x, one_f()) then if gt(b, one_f()) then zero_f() else if eq(b, one_f()) then a else pos_inf_d() else {
     lx = log(x)
     l1mx = log(sub(one_f(), x))
     lg_a = log_gamma(a)
@@ -330,10 +311,9 @@ def beta_pdf(x: f32, a: f32, b: f32) -> f32 = {
     log_pdf = add(add(sub(lg_ab, add(lg_a, lg_b)), mul(a_m1, lx)), mul(b_m1, l1mx))
     exp(log_pdf)
   }
-}
 def nan_guard_b_const(b: f32) -> f32 = b
-def beta_cdf(x: f32, a: f32, b: f32) -> f32 = { if or(lte(a, zero_f()), lte(b, zero_f())) then nan_d() else betai(a, b, x) }
-def f_pdf(x: f32, d1: f32, d2: f32) -> f32 = {
+def beta_cdf(x: f32, a: f32, b: f32) -> f32 = if or(lte(a, zero_f()), lte(b, zero_f())) then nan_d() else betai(a, b, x)
+def f_pdf(x: f32, d1: f32, d2: f32) -> f32 =
   if lte(x, zero_f()) then zero_f() else if or(lte(d1, zero_f()), lte(d2, zero_f())) then nan_d() else {
     half = half_f()
     half_d1 = mul(half, d1)
@@ -353,8 +333,7 @@ def f_pdf(x: f32, d1: f32, d2: f32) -> f32 = {
     ignore_unused = log_inv_x
     exp(log_pdf)
   }
-}
-def f_cdf(x: f32, d1: f32, d2: f32) -> f32 = {
+def f_cdf(x: f32, d1: f32, d2: f32) -> f32 =
   if lte(x, zero_f()) then zero_f() else if or(lte(d1, zero_f()), lte(d2, zero_f())) then nan_d() else {
     half = half_f()
     half_d1 = mul(half, d1)
@@ -364,9 +343,8 @@ def f_cdf(x: f32, d1: f32, d2: f32) -> f32 = {
     u = div(d1x, denom)
     betai(half_d1, half_d2, u)
   }
-}
-def weibull_pdf(x: f32, shape: f32, scale: f32) -> f32 = {
-  if lt(x, zero_f()) then zero_f() else if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else if eq(x, zero_f()) then { if gt(shape, one_f()) then zero_f() else if eq(shape, one_f()) then div(one_f(), scale) else pos_inf_d() } else {
+def weibull_pdf(x: f32, shape: f32, scale: f32) -> f32 =
+  if lt(x, zero_f()) then zero_f() else if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else if eq(x, zero_f()) then if gt(shape, one_f()) then zero_f() else if eq(shape, one_f()) then div(one_f(), scale) else pos_inf_d() else {
     k = shape
     lam = scale
     xl = div(x, lam)
@@ -379,8 +357,7 @@ def weibull_pdf(x: f32, shape: f32, scale: f32) -> f32 = {
     log_pdf = add(lkl, add(mul(km1, lxl), nxlk))
     exp(log_pdf)
   }
-}
-def weibull_cdf(x: f32, shape: f32, scale: f32) -> f32 = {
+def weibull_cdf(x: f32, shape: f32, scale: f32) -> f32 =
   if lt(x, zero_f()) then zero_f() else if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else {
     xl = div(x, scale)
     lxl = log(xl)
@@ -389,8 +366,7 @@ def weibull_cdf(x: f32, shape: f32, scale: f32) -> f32 = {
     e = exp(nxlk)
     sub(one_f(), e)
   }
-}
-def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 = {
+def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
   if or(lt(q, zero_f()), gt(q, one_f())) then nan_d() else if eq(q, zero_f()) then zero_f() else if eq(q, one_f()) then pos_inf_d() else if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else {
     omq = sub(one_f(), q)
     l = log(omq)
@@ -401,8 +377,7 @@ def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 = {
     factor = exp(exp_arg)
     mul(scale, factor)
   }
-}
-def student_t_cdf(t: f32, df: f32) -> f32 = {
+def student_t_cdf(t: f32, df: f32) -> f32 =
   if lte(df, zero_f()) then nan_d() else {
     half_df = mul(half_f(), df)
     half = half_f()
@@ -413,8 +388,7 @@ def student_t_cdf(t: f32, df: f32) -> f32 = {
     half_bi = mul(half, bi)
     if gte(t, zero_f()) then sub(one_f(), half_bi) else half_bi
   }
-}
-def gammaq(a: f32, x: f32) -> f32 = {
+def gammaq(a: f32, x: f32) -> f32 =
   if lte(x, zero_f()) then one_f() else {
     la = log_gamma(a)
     lx = log(x)
@@ -422,14 +396,13 @@ def gammaq(a: f32, x: f32) -> f32 = {
     front_exp_arg = sub(sub(a_lx, x), la)
     front = exp(front_exp_arg)
     b0 = add(sub(x, a), one_f())
-    tiny = cast(0.000000000000000000000000000001, f32)
+    tiny = cast(1e-30, f32)
     c0 = div(one_f(), tiny)
     d0 = div(one_f(), b0)
     h0 = d0
     h = gammaq_cf_rec(a, x, b0, c0, d0, h0, cast(200, int64))
     mul(front, h)
   }
-}
 def gamma_cdf(x: f32, shape: f32, scale: f32) -> f32 = {
   xs = div(x, scale)
   if lt(xs, add(shape, one_f())) then gammap(shape, xs) else sub(one_f(), gammaq(shape, xs))
@@ -445,7 +418,7 @@ def gamma_inv_cdf_newton(target: f32, shape: f32, scale: f32, x: f32, iters: int
     cur = gamma_cdf(x, shape, scale)
     resid = sub(cur, target)
     pdf_v = gamma_pdf(x, shape, scale)
-    floor_pdf = cast(0.000000000000000000000000000001, f32)
+    floor_pdf = cast(1e-30, f32)
     pdf_safe = if lt(pdf_v, floor_pdf) then floor_pdf else pdf_v
     step = div(resid, pdf_safe)
     x_next_raw = sub(x, step)
@@ -453,7 +426,7 @@ def gamma_inv_cdf_newton(target: f32, shape: f32, scale: f32, x: f32, iters: int
     gamma_inv_cdf_newton(target, shape, scale, x_next, sub(iters, one_i))
   }
 }
-def gamma_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 = {
+def gamma_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
   if or(lt(q, zero_f()), gt(q, one_f())) then nan_d() else if lte(q, zero_f()) then zero_f() else if gte(q, one_f()) then pos_inf_d() else {
     z = normal_inv_cdf(q, zero_f(), one_f())
     inv_9k = div(one_f(), mul(cast(9.0, f32), shape))
@@ -463,11 +436,10 @@ def gamma_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 = {
     b = mul(z, sqrt_inv_9k)
     s = add(a, b)
     s_cubed = mul(s, mul(s, s))
-    wh_safe = if gt(s_cubed, cast(0.000000000000000000000000000001, f32)) then s_cubed else cast(0.000000000000000000000000000001, f32)
+    wh_safe = if gt(s_cubed, cast(1e-30, f32)) then s_cubed else cast(1e-30, f32)
     x0 = mul(shape, mul(scale, wh_safe))
     gamma_inv_cdf_newton(q, shape, scale, x0, cast(80, int64))
   }
-}
 def chi_squared_inv_cdf(q: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_inv_cdf(q, half_df, two_f())
@@ -476,7 +448,7 @@ def gamma_sample_ge1_try[n](template: tensor[n, f32], d: f32, c: f32, attempts: 
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
   z_t = normal_sample(copy(template), zero_f(), one_f())
-  u_t = uniform_like(copy(template), 0.0000001, 1.0)
+  u_t = uniform_like(copy(template), 1e-7, 1.0)
   z_list = to_list(z_t)
   u_list = to_list(u_t)
   head_z = fold(fn (acc: f32, x: f32) -> acc, zero_f(), z_list)
@@ -524,4 +496,46 @@ def student_t_sample[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! {
     s = sqrt(ratio)
     div(zi, s)
   }, zip(to_list(z), to_list(v))))
+}
+-- Tensor-domain normal family (nautilus#45).
+--
+-- The scalar `normal_cdf` / `normal_inv_cdf` / `normal_pdf` above are the
+-- reference; these evaluate the same formulas at tensor rank. A Monte Carlo or
+-- option-pricing caller holding a tensor of paths can reach Phi and Phi-inverse
+-- without dropping to `List` and back, which the `*_sample` functions still do.
+def dist_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = expand(scalar_to_tensor(c), 0, shape(template, cast(0, int32)))
+def normal_cdf_t[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] = {
+  means = dist_lift_t(x, mean)
+  denom = dist_lift_t(x, mul(std, sqrt_two_f()))
+  halves = dist_lift_t(x, half_f())
+  ones = dist_lift_t(x, one_f())
+  z = div(sub(x, means), denom)
+  mul(halves, add(ones, erf_t(z)))
+}
+def normal_pdf_t[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] = {
+  means = dist_lift_t(x, mean)
+  stds = dist_lift_t(x, std)
+  halves = dist_lift_t(x, half_f())
+  denoms = dist_lift_t(x, mul(std, sqrt_2pi_f()))
+  z = div(sub(x, means), stds)
+  div(exp(neg(mul(halves, mul(z, z)))), denoms)
+}
+def normal_inv_cdf_t[n](q: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] = {
+  zeros = dist_lift_t(q, zero_f())
+  ones = dist_lift_t(q, one_f())
+  twos = dist_lift_t(q, two_f())
+  means = dist_lift_t(q, mean)
+  stds = dist_lift_t(q, std)
+  sqrt_twos = dist_lift_t(q, sqrt_two_f())
+  nans = dist_lift_t(q, nan_d())
+  pinfs = dist_lift_t(q, pos_inf_d())
+  ninfs = dist_lift_t(q, neg(pos_inf_d()))
+  -- The interior value is computed for every lane; `where` then reinstates the
+  -- scalar guards in the same order `normal_inv_cdf` applies them, so the two
+  -- agree on the boundary cases as well as the interior.
+  interior = add(means, mul(stds, mul(sqrt_twos, erfinv_t(sub(mul(twos, q), ones)))))
+  with_high = where(gte(q, ones), pinfs, interior)
+  with_low = where(lte(q, zeros), ninfs, with_high)
+  out_of_range = or(lt(q, zeros), gt(q, ones))
+  where(out_of_range, nans, with_low)
 }

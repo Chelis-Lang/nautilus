@@ -13,6 +13,6 @@ def eop_quartic(x: f32) -> f32 = {
   x4 = mul(x2, x2)
   add(sub(x4, mul(cast(4.0, f32), x2)), cast(5.0, f32))
 }
-def example_min_parabola_gss() -> f32 = golden_section_search(eop_parabola, cast(0.0, f32), cast(10.0, f32), cast(0.00000001, f32), cast(200, int64))
-def example_min_parabola_brent() -> f32 = brent_minimize(eop_quartic, cast(0.5, f32), cast(3.0, f32), cast(0.00000001, f32), cast(200, int64))
-def example_min_rosenbrock_1d_newton() -> f32 = newton_minimize_1d(eop_parabola, eop_dparabola, eop_ddparabola, cast(0.0, f32), cast(0.0000000001, f32), cast(50, int64))
+def example_min_parabola_gss() -> f32 = golden_section_search(eop_parabola, cast(0.0, f32), cast(10.0, f32), cast(1e-8, f32), cast(200, int64))
+def example_min_parabola_brent() -> f32 = brent_minimize(eop_quartic, cast(0.5, f32), cast(3.0, f32), cast(1e-8, f32), cast(200, int64))
+def example_min_rosenbrock_1d_newton() -> f32 = newton_minimize_1d(eop_parabola, eop_dparabola, eop_ddparabola, cast(0.0, f32), cast(1e-10, f32), cast(50, int64))

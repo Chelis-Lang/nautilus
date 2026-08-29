@@ -194,6 +194,47 @@ flip to wins. See Upstream asks below.
   harness runtime. Current limitation history is tracked in
   [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
 
+## Host `List` round-trip vs native tensor ops (nautilus#47, 2026-08-27)
+
+Measured on the pinned chelis 0.18.5, darwin-arm64, `clang -O2 -march=native`,
+in the **compiled C lane**. Two defs with identical signatures, one native and
+one in the `to_tensor(map(..., zip(to_list a, to_list b)))` form that 44
+tensor-returning defs currently use:
+
+```chelis
+def lane_native_add[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[n, f32] = add(a, b)
+def lane_listform_add[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[n, f32] =
+  to_tensor(map(fn (pair: (f32, f32)) -> add(pair.0, pair.1), zip(to_list(a), to_list(b))))
+```
+
+Both built with `chelis build --target c`, linked against the emitted
+`libchelis_runtime.a`, and driven from a C `main` that calls each in a loop and
+divides by the repetition count. Same inputs, same allocator state (both paths
+warmed once first).
+
+| n | native | List round-trip | ratio |
+|---:|---:|---:|---:|
+| 10,000 | 0.007 ms | 1.647 ms | **221x** |
+| 100,000 | 0.027 ms | 15.040 ms | **565x** |
+| 1,000,000 | 0.206 ms | 169.357 ms | **823x** |
+| 10,000,000 | 3.044 ms | 2,228.796 ms | **732x** |
+
+The gap is structural, not constant-factor tuning. The emitted C for the
+round-trip form calls `chelis_list_from_tensor` twice, allocates a zip, boxes
+and unboxes every element through `chelis_value_as_f` / `chelis_value_from_f` /
+`chelis_value_as_tuple`, grows the result with `chelis_list_push`, and converts
+back; the native form emits none of that.
+
+At the 20 M element scale reported in nautilus#45's corpus, one vector add in
+the round-trip form costs roughly 4.5 s against roughly 6 ms native.
+
+Note that this is **not** visible through `chelis test`: at 300 k elements the
+two forms measured 2.97 s vs 2.94 s there, because the test harness is
+dominated by fixed costs (`uniform_like`, `to_list` of the result, and
+interpreter startup at ~2.87 s). An earlier attempt to size this in the
+evaluator concluded there was no difference. The compiled lane is the one to
+measure.
+
 ## Reproduction status
 
 The original benchmark harness was retired when Nautilus consolidated all

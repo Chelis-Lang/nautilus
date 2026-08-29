@@ -661,10 +661,9 @@ export (main)
 def linear_model(x: f32, theta: f32) -> f32 = mul(theta, x)
 def linear_dmodel(x: f32, theta: f32) -> f32 = x
 
-def demo_fit[n](xs: tensor[n, f32], ys: tensor[n, f32]) -> f32 = {
+def demo_fit[n](xs: tensor[n, f32], ys: tensor[n, f32]) -> f32 =
   lm_scalar_1param(linear_model, linear_dmodel, xs, ys,
     cast(0.0, f32), cast(0.01, f32), cast(1.0e-8, f32), cast(100, int64))
-}
 
 def main() -> f32 = cast(0.0, f32)
 ```
@@ -733,10 +732,9 @@ export (main)
 def em_drift(y: f32, t: f32) -> f32 = neg(y)
 def em_diffusion(y: f32, t: f32) -> f32 = cast(0.1, f32)
 
-def demo_em[n](noise: tensor[n, f32]) -> f32 = {
+def demo_em[n](noise: tensor[n, f32]) -> f32 =
   euler_maruyama_fixed(em_drift, em_diffusion,
     cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), noise)
-}
 
 def main() -> f32 = cast(0.0, f32)
 ```
@@ -846,7 +844,7 @@ export (main)
 
 def main() -> f32 = {
   f = fn (x: f32) -> sin(x)
-  pi = cast(3.1415926535897932, f32)
+  pi = cast(3.141592653589793, f32)
   gauss_legendre_10(f, cast(0.0, f32), pi)
 }
 ```
@@ -1035,6 +1033,8 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `erf` | `(x: f32) -> f32` | `stable` | Horner rational approx, ~1e-7 relative, all reals |
 | `erfc` | `(x: f32) -> f32` | `stable` | `1 - erf(x)`, same precision domain as `erf` |
 | `erfinv` | `(x: f32) -> f32` | `stable` | Acklam inverse normal + rescale, ~1e-8, domain (-1, 1) |
+| `erf_t` | `[n](x: &tensor[n, f32]) -> tensor[n, f32]` | `stable` | tensor-lane erf without the host List round-trip |
+| `erfinv_t` | `[n](x: &tensor[n, f32]) -> tensor[n, f32]` | `stable` | tensor-lane erfinv without the host List round-trip |
 | `gamma` | `(x: f32) -> f32` | `stable` | Lanczos (g=7) with reflection, ~1e-7 relative, +inf at non-positive integers |
 | `log_gamma` | `(x: f32) -> f32` | `stable` | Lanczos (g=7) with reflection, ~1e-9, +inf at non-positive integers |
 | `digamma` | `(x: f32) -> f32` | `stable` | Recurrence + asymptotic (x>=6), ~1e-7, NaN at non-positive integers |
@@ -1069,6 +1069,9 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `normal_pdf` | `(x: f32, mean: f32, std: f32) -> f32` | `stable` | (mean, std) parameterization |
 | `normal_cdf` | `(x: f32, mean: f32, std: f32) -> f32` | `stable` | Via erf |
 | `normal_inv_cdf` | `(q: f32, mean: f32, std: f32) -> f32` | `stable` | Acklam rational approx via erfinv |
+| `normal_cdf_t` | `[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane normal CDF via erf_t |
+| `normal_pdf_t` | `[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane normal PDF |
+| `normal_inv_cdf_t` | `[n](q: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane inverse CDF via erfinv_t |
 | `normal_sample` | `[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random; Box-Muller |
 | `lognormal_pdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | `stable` | (mu, sigma) of underlying normal |
 | `lognormal_cdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | `stable` | Via normal_cdf |

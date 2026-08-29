@@ -1,6 +1,6 @@
 # Chelis Capability Surface (this shell)
 
-<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.18.1 (sha256:28011bed9ccb5778) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.18.5 (sha256:28011bed9ccb5778) -->
 This file is a domain-scoped view of the canonical Chelis capability surface,
 generated for the pinned toolchain. Each capability row is marked `@pin` (usable
 at the current pin) or `@upstream` (lands at the next bump). **Read it before
@@ -14,25 +14,24 @@ in `Chelis-Lang/chelis`.
 
 | Item | Value |
 |---|---|
-| Pinned compiler | Published `chelis 0.18.1` (`reef.toml`: `=0.18.1`) |
-| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.1` in the regenerated local `reef.lock` |
-| Upstream release identity | Source commit `c8db387d06d538ce8039ac37645a43def48373c9`; Linux glibc-2.31 asset SHA-256 `88a1a53b47b7168e4df614e66a6d9313176174b1dc3a25a43db5f73a3ee8f0cd` |
-| Installed compiler payload | SHA-256 `0d7a46262b4ba2975702d5ed2def5d54b79b5d68258602da59069b6715cc690b` |
-| Validation status | Complete local gate passed on the official release payload; Nautilus publication remains gated on the milestone red team |
-| Last refreshed | 2026-08-01 |
+| Pinned compiler | Published `chelis 0.18.5` (`reef.toml`: `=0.18.5`) |
+| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.5` in the regenerated local `reef.lock` |
+| Upstream release identity | Source commit `6602f01719f55b8d4c7f52ee70e7c7b58f136107`; Linux glibc-2.31 asset SHA-256 `6b9b944ccd96b0053fc071de0ecfbb9e80e02a07a6a176e87056267ae8e0c26a` (compiler payload SHA-256 `fc544b9362c9ff0c244c03216a6e44fbf4d36665802d11b5cf3514d017c1e29a`) |
+| Installed compiler payload | Darwin arm64 SHA-256 `bcf8da8bd2df9acb8816194f9251b26e23ec57527d4fc928bea6e1f6120628b2`, byte-identical to the released `chelis-v0.18.5-darwin-arm64.tar.gz` (asset SHA-256 `0ff7b4e168d8b51277e05d44bfa658364630176d56d79c9cf8aceaea15335551`, checked against its release sidecar) |
+| Validation status | Complete local gate passed on the official Darwin arm64 release payload: 463 positive, 3 negative, 2 blocked, 216/216 strict SciPy parity, 15/15 SKILL.md and 4/4 mdBook examples, `lint --check .` clean, `reef build` green, `conform audit` conformant, `conform bump-check` green. The Linux glibc-2.31 asset was verified against its sidecar but its gate run is CI's |
+| Last refreshed | 2026-08-22 |
 
 `@pin` means the row describes behavior available (or a limitation verified)
 on the exact pinned release. `@upstream` means a capability exists in a newer
 published release and will arrive at the next bump. There are no `@upstream`
 rows in this snapshot; planned Phase 5 work is not mislabeled as upstream.
 
-This is the Nautilus-scoped view of the canonical Chelis inventory. The
-published Linux glibc-2.31 asset was checked against its release sidecar, then
-its byte-identical compiler payload (SHA-256
-`0d7a46262b4ba2975702d5ed2def5d54b79b5d68258602da59069b6715cc690b`)
-ran the full local gate. Version-sensitive statements resolve to the executable
-0.18.1 probes cited in
-[`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
+This is the Nautilus-scoped view of the canonical Chelis inventory. The gate
+that backs it ran on the published Darwin arm64 asset: the tarball was checked
+against its release sidecar and its extracted compiler payload is byte-identical
+to the installed toolchain, so every result below comes from official release
+bytes. Version-sensitive statements resolve to the executable 0.18.5 re-probes
+cited in [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
 
 ## Capability inventory
 
@@ -63,6 +62,7 @@ the compiler lacks f64. See the
 | Tensor/host bridges and queries | `to_tensor`, `to_list`, `numel` | Pure-Chelis algorithms convert between tensors and host lists and read element counts. These are valid for eval and C/package build, but a general bridge-crossing reverse pass is not assumed. | `@pin` |
 | Higher-order sequences | `map`, `fold`, `scan`, `zip`, `enumerate`, `range`, `len` | Many solver and factorization implementations are host-lane compositions or recursive drivers. They are supported by the C package path and are outside the general tensor-DAG AD/GPU contract. | `@pin` |
 | Explicit precision and ownership | `cast`, `copy` | Casts implement the f32/int64 boundary explicitly. Remaining copies express real ownership needs after the 0.16.1 linearity cleanup; they are not the archived redundant-linearity workaround. | `@pin` |
+| Elementwise selection and shape-sourced lifting | `where`, `expand`, `scalar_to_tensor`, `shape` | Tensor-domain formulas reach a scalar constant or a branch without dropping to `List`. Chelis has no implicit tensor-scalar broadcasting, so a constant is lifted as `expand(scalar_to_tensor(c), 0, shape(t, cast(0, int32)))` -- the spec/04 §4.7.2 Form-3 shape-sourced extent, since a bare runtime scalar has no shape source the backend can emit -- and a scalar `if` becomes an elementwise `where`. Introduced by the tensor-domain normal family (nautilus#45). | `@pin` |
 | Random tensor generation | `uniform_like` | Sampling exports declare `! { Random }`; callers handle the effect with `with seed(42i64)` (seed literals require an explicit `i64` suffix). `uniform_like` has zero gradient with respect to generated values/seed and is not an implicit source of differentiable randomness. | `@pin` |
 | Control flow and functions | `if`, recursion, closures, and function-valued solver/model parameters | Forward eval and C package build support the patterns shipped here. AD supports only the transformable tensor-DAG subset and documented static-control slices; recursive/fold-based solver bodies are not automatically differentiable. | `@pin` |
 

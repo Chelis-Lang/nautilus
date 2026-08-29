@@ -7,7 +7,7 @@ import Std.Test (assert_close)
 -- atoms = NAUT-MOD-LINALG@xxh3-128:49dca51dd2b5269319d41eaa1523c417
 -- item-digest = xxh3-128:5ac56cd4d01ef98ab4922ce007877912
 -- oracle-id = NAUT-GATE-CHELIS-TEST
--- oracle-digest = xxh3-128:54c0926b513a84a4d629da3f1b6d6af1
+-- oracle-digest = xxh3-128:a6bf22d60ac853d26caa1417a727cd42
 -- configuration-digest = xxh3-128:ae3dfc4c0cfdd00cc99d50805da0931e
 -- scope-schema = nautilus-carrier-scope/v1
 -- scope = the pinned unsupported-element-type rejection in tests_neg/linalg

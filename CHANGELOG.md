@@ -4,7 +4,144 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.7.38] - Unreleased
+## [0.7.42] - 2026-08-22
+
+Compiler-pin release for Chelis v0.18.5. `chelis reef conform bump 0.18.5`
+advanced the compiler pin and all workflow audit mirrors, and the Nautilus
+package version advanced from 0.7.41 to 0.7.42. **No Nautilus source change was
+required by the compiler:** the whole-package build, the 463-test suite, the
+negative sidecars, and the strict SciPy parity gate are all green on 0.18.5
+exactly as they were on 0.18.4.
+
+The official Darwin arm64 asset was verified at SHA-256
+`0ff7b4e168d8b51277e05d44bfa658364630176d56d79c9cf8aceaea15335551`; its
+installed compiler payload was
+`bcf8da8bd2df9acb8816194f9251b26e23ec57527d4fc928bea6e1f6120628b2`,
+byte-identical to the release tarball. The upstream source commit is
+`6602f01719f55b8d4c7f52ee70e7c7b58f136107`.
+
+**Repaired the last of the canonical Surf v0.19 residue in prose docs.** The
+0.7.41 migration converted `src/` and `tests/` but not the Chelis examples
+embedded in `SKILL.md` and the mdBook, which are extracted and type-checked by
+the nightly documentation gates. Three `SKILL.md` blocks and one
+`docs/book/src/solvers/roots.md` block still used pre-v0.19 spellings and had
+been failing since 0.18.4: two redundant one-expression block braces, and two
+float literals that are no longer accepted spellings (`3.1415926535897932` and
+`0.0000000001`, respelled to `3.141592653589793` and `1e-10`). Both gates are
+now clean at 15/15 and 4/4. This is the cause of the currently open
+`nightly-failure` issue #42.
+
+**Nothing was de-narrowed at this pin.** 0.18.5 fixes chelis#1200, chelis#1197,
+and chelis#1209, none of which Nautilus works around in shipped source.
+chelis#1197 (`chelis migrate surf` aborting a whole batch on the first file it
+cannot resugar) was filed from this repo during the 0.7.41 migration; it was a
+one-time tooling limitation, so there is nothing to revert. chelis#1209 and its
+fix in chelis#1254 covered the aliased-closure generation path that
+`Nautilus.LinAlg.lu_solve` depends on (`lu_fwd = lu`, one closure per name);
+that spelling is explicitly re-verified green at this pin.
+
+Nautilus is unexposed to all three 0.18.5 breaking changes. Polymorphic
+recursion now rejects at check time and integer literals in bare *type*
+positions are now parse errors; `chelis reef build` type-checks the whole
+package and passes, which rules both out by construction. `>` now evaluates its
+operands left to right; every Nautilus comparison operand is a pure f32
+expression, so operand order is unobservable, and both the suite and the
+216-sample parity gate are numerically unchanged.
+
+**Validation on 0.18.5:** `chelis reef conform audit` conformant with no MUST
+failures and `bump-check --base origin/main` green; `chelis reef build` green;
+463 positive tests passed, 0 failed; 3 negative sidecars ok; both chelis#676
+blocked probes still fail at the backward-DAG verifier with the pinned
+`mismatched dimension count: 0 vs 1`, with no probe source drift, so that
+narrowing is unchanged; 216/216 strict SciPy parity; `chelis lint --check .`
+clean; 36 script unit tests ok.
+
+## [0.7.41] - 2026-08-05
+
+Compiler-pin and grammar-migration release for Chelis v0.18.4. The
+`chelis reef conform bump 0.18.4` command advanced the compiler pin and all
+workflow audit mirrors, and the Nautilus package version advanced from 0.7.40
+to 0.7.41. The version bump lands in a follow-up to PR #40, which carried the
+pin and migration; the published 0.7.40 artifact pins `=0.18.3` and is
+unchanged.
+
+**The entire Surf corpus migrated to canonical Surf v0.19 (chelis#1031).**
+Chelis 0.18.4 defines one canonical written form for Surf and its style gate
+runs `chelis fmt --check` ahead of the front-end pipeline, so this migration
+and the pin bump are one atomic change: 5 of 12 sampled migrated files fail
+`fmt --check` under 0.18.3, and unmigrated files fail it under 0.18.4. Most
+of the rewrite is `chelis migrate surf --from 0.18` output; the residue was
+repaired from the compiler's own diagnostics (float literals respelled to
+exponent form, redundant one-expression block braces dropped, explicit
+first-argument pipe lambdas rewritten to canonical call-stage sugar). The
+migrator was driven per file because its batch mode aborts entirely on the
+first file it cannot resugar (chelis#1197).
+
+The official Darwin arm64 asset was verified at SHA-256
+`ac905d2a2d471ff09a46e39c7ae78ede85aab2f97515553b445ffd0dc0d29fea`; its
+installed compiler payload was
+`b6b80d65bf1822f6ad926915b4c5d4b3c94e414a9afcafa0bc02f9fc29a48037`,
+byte-identical to the release tarball. The upstream source commit is
+`c0138c828bf2c42e1c8941e824f16616bd974fd5`.
+
+**Validation on 0.18.4:** `chelis reef conform audit` conformant with no MUST
+failures; 463 positive tests passed, 0 failed; 3 negative sidecars ok; both
+chelis#676 blocked probes still fail at the backward-DAG verifier with the
+pinned `mismatched dimension count: 0 vs 1`, so that narrowing is unchanged
+(no movement on chelis#676 at 0.18.4, and no probe source drift this cycle).
+
+Nautilus is unaffected by chelis#1200 (the 0.18.4 `_ = f(x)`
+wildcard-discard consume regression): its suite is fully green, and it has no
+record-destructuring callee reached through a discarded result.
+
+## [0.7.40] - 2026-08-04
+
+Compiler-pin and de-narrowing release for Chelis v0.18.3. The required
+`chelis reef conform bump 0.18.3` command advanced the compiler pin and all
+workflow audit mirrors, and the Nautilus package version advanced from 0.7.39
+to 0.7.40.
+
+The official Darwin arm64 asset was verified at SHA-256
+`cc8737adf8c21040432d94b96635ef48895bd7ac8cdf94bd7696046c44bc7371`; its
+installed compiler payload was
+`3a14b0d7e0a46a49c9b25f3dc61573d5972a91b411021672e09b8e3e0e9e1eba`, byte-identical
+to the release tarball. The upstream source commit is
+`29700dd73c0e35b672bdd384493054b3107ce308`.
+
+**Retired the chelis#759 `floor` workaround.** Chelis 0.18.3 ships `cast_trunc`
+([05-OP-6]) as the named truncating float-to-integer cast on the Surf, eval, and
+compiled-C surfaces. The five fractional cast sites that 0.7.39 wrapped in
+`floor(...)` — in `distributions.ch` (`is_integer_f32`), `interpolation.ch`
+(`linear_interp_uniform`), `special.ch` (`is_nonpositive_integer`), and
+`stats.ch` (`quantile_vec`, `trimmed_mean_vec`) — now call `cast_trunc`
+directly. This is behavior-preserving at every site: three operate on values
+clamped non-negative, where floor and truncation agree, and the other two are
+is-integer predicates, where `floor(x) == x` and `trunc(x) == x` are the same
+test. It also unbreaks downstream compiled-lane consumers, since `floor` has no
+`chelis build` expression identity and 0.7.39 therefore failed Coral's native
+build.
+
+**Adopted the 0.18.3 extent-dtype rules** ([05-DIM-1]/[05-DIM-2],
+chelis#1130/chelis#1145): `sort` axis arguments are now int32 via a new
+`zero_axis()` helper in `stats.ch` (five call sites), and the two
+`tests_blocked/curvefit/` probes had their `expand` extents widened to int64.
+Both blocked probes retain their exact chelis#676 malformed backward-DAG
+diagnostic, so the finite-difference Jacobian remains.
+
+The complete local gate passed: 463 positive tests, 3 negative contracts, 2
+blocked probes, and 216/216 strict SciPy parity. Publishing remains gated on the
+milestone red team.
+
+## [0.7.39] - 2026-08-03
+
+Compiler-pin release for Chelis v0.18.2, published as `v0.7.39`. The
+`chelis reef conform bump 0.18.2` command advanced the compiler pin and all
+workflow audit mirrors, and the Nautilus package version advanced from 0.7.38
+to 0.7.39. Five fractional float-to-integer casts were wrapped in `floor(...)`
+to work around the chelis#759 numeric trap; that workaround is retired in
+0.7.40 in favour of `cast_trunc`.
+
+## [0.7.38] - 2026-08-01
 
 Compiler-pin and de-narrowing release for Chelis v0.18.1. The required
 `chelis reef conform bump 0.18.1` command advanced the compiler pin and all

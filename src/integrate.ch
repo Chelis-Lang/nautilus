@@ -15,7 +15,7 @@ def trap_rec(f: f32 -> f32, x: f32, h: f32, k: int64, acc: f32) -> f32 = {
     trap_rec(f, x_next, h, sub(k, one_i), acc_next)
   }
 }
-def trapezoidal(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = {
+def trapezoidal(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 =
   if lte(n_steps, cast(0, int64)) then 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32)) else {
     n_f = cast(n_steps, f32)
     h = sub(b, a) |> div(n_f)
@@ -29,7 +29,6 @@ def trapezoidal(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = {
     total = add(endpoint_sum, inner_sum)
     mul(h, total)
   }
-}
 def simpson_rec(f: f32 -> f32, x: f32, h: f32, k: int64, is_odd_step: bool, acc: f32) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
@@ -91,7 +90,7 @@ def adaptive_simpson_rec(f: f32 -> f32, a: f32, b: f32, fa: f32, fb: f32, fm: f3
     correction = div(diff, cast(15.0, f32))
     add(sum_lr, correction)
   } else {
-    tol_floor = cast(0.0000001, f32)
+    tol_floor = cast(1e-7, f32)
     raw_half_tol = mul(half_f, tol)
     half_tol = if lt(raw_half_tol, tol_floor) then tol_floor else raw_half_tol
     depth_next = sub(depth, one_i)
@@ -188,7 +187,7 @@ def gauss_hermite_10(f: f32 -> f32) -> f32 = {
   x8 = cast(1.7566836492998816, f32)
   x9 = cast(2.5327316742327897, f32)
   x10 = cast(3.4361591188377374, f32)
-  w1 = cast(0.000007640432855232609, f32)
+  w1 = cast(7.640432855232609e-6, f32)
   w2 = cast(0.0013436457467812326, f32)
   w3 = cast(0.033874394455481065, f32)
   w4 = cast(0.24013861108231468, f32)
@@ -197,7 +196,7 @@ def gauss_hermite_10(f: f32 -> f32) -> f32 = {
   w7 = cast(0.24013861108231468, f32)
   w8 = cast(0.033874394455481065, f32)
   w9 = cast(0.0013436457467812326, f32)
-  w10 = cast(0.000007640432855232609, f32)
+  w10 = cast(7.640432855232609e-6, f32)
   s1 = mul(w1, f(x1))
   s2 = mul(w2, f(x2))
   s3 = mul(w3, f(x3))
@@ -231,9 +230,9 @@ def gauss_laguerre_10(f: f32 -> f32) -> f32 = {
   w5 = cast(0.0095015169751811, f32)
   w6 = cast(0.0007530083885875388, f32)
   w7 = cast(0.00002825923349599566, f32)
-  w8 = cast(0.00000042493139849626863, f32)
-  w9 = cast(0.0000000018395648239796308, f32)
-  w10 = cast(0.0000000000009911827219609008, f32)
+  w8 = cast(4.2493139849626863e-7, f32)
+  w9 = cast(1.8395648239796308e-9, f32)
+  w10 = cast(9.911827219609008e-13, f32)
   s1 = mul(w1, f(x1))
   s2 = mul(w2, f(x2))
   s3 = mul(w3, f(x3))

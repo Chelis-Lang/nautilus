@@ -25,7 +25,7 @@ def lm1_step[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs: &tensor
   jtj = sums.0
   jtr = sums.1
   damped = mul(jtj, add(cf_one_f(), lambda))
-  tiny = cast(0.000000000000000000000000000001, f32)
+  tiny = cast(1e-30, f32)
   bad = lt(cf_abs(damped), tiny)
   if bad then theta else add(theta, div(jtr, damped))
 }
@@ -52,16 +52,15 @@ def lm_jcol[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32], x
   pred_plus = model(theta_plus, x)
   scale_vec(la_vec_sub(pred_plus, base_pred), div(cast(1.0, f32), eps))
 }
-def lm_jtr_sum[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32], x: &tensor[m, f32], theta: &tensor[n, f32], base_pred: &tensor[m, f32], r: &tensor[m, f32], tpl_n: &tensor[n, f32], i: int64, n_params: int64, eps: f32) -> tensor[n, f32] = {
-  if gte(i, n_params) then { to_tensor(map(fn (t: f32) -> cast(0.0, f32), to_list(tpl_n))) } else {
+def lm_jtr_sum[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32], x: &tensor[m, f32], theta: &tensor[n, f32], base_pred: &tensor[m, f32], r: &tensor[m, f32], tpl_n: &tensor[n, f32], i: int64, n_params: int64, eps: f32) -> tensor[n, f32] =
+  if gte(i, n_params) then to_tensor(map(fn (t: f32) -> cast(0.0, f32), to_list(tpl_n))) else {
     j_col = lm_jcol(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), i, eps)
     jtr_i = inner_product(copy(j_col), copy(r))
     e_i = la_basis_n_f32(i, jtr_i, copy(tpl_n))
     rest = lm_jtr_sum(model, x, theta, base_pred, r, tpl_n, add(i, cast(1, int64)), n_params, eps)
     la_vec_add(e_i, rest)
   }
-}
-def lm_jtj_row_sum[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32], x: &tensor[m, f32], theta: &tensor[n, f32], base_pred: &tensor[m, f32], tpl_n: &tensor[n, f32], j_col_i: &tensor[m, f32], e_i: &tensor[n, f32], j: int64, n_params: int64, eps: f32) -> tensor[n, n, f32] = {
+def lm_jtj_row_sum[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32], x: &tensor[m, f32], theta: &tensor[n, f32], base_pred: &tensor[m, f32], tpl_n: &tensor[n, f32], j_col_i: &tensor[m, f32], e_i: &tensor[n, f32], j: int64, n_params: int64, eps: f32) -> tensor[n, n, f32] =
   if gte(j, n_params) then {
     ztj = scale_vec(copy(tpl_n), cast(0.0, f32))
     einsum("i,j->ij", copy(ztj), ztj)
@@ -73,8 +72,7 @@ def lm_jtj_row_sum[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, 
     rest = lm_jtj_row_sum(model, x, theta, base_pred, tpl_n, j_col_i, e_i, add(j, cast(1, int64)), n_params, eps)
     add(this_entry, rest)
   }
-}
-def lm_jtj_sum[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32], x: &tensor[m, f32], theta: &tensor[n, f32], base_pred: &tensor[m, f32], tpl_n: &tensor[n, f32], i: int64, n_params: int64, eps: f32) -> tensor[n, n, f32] = {
+def lm_jtj_sum[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32], x: &tensor[m, f32], theta: &tensor[n, f32], base_pred: &tensor[m, f32], tpl_n: &tensor[n, f32], i: int64, n_params: int64, eps: f32) -> tensor[n, n, f32] =
   if gte(i, n_params) then {
     ztj = scale_vec(copy(tpl_n), cast(0.0, f32))
     einsum("i,j->ij", copy(ztj), ztj)
@@ -85,7 +83,6 @@ def lm_jtj_sum[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32]
     rest = lm_jtj_sum(model, x, theta, base_pred, tpl_n, add(i, cast(1, int64)), n_params, eps)
     add(row_i, rest)
   }
-}
 def lm_nparam_step[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32], x: &tensor[m, f32], y: &tensor[m, f32], theta: tensor[n, f32], lambda: f32, eps: f32) -> tensor[n, f32] = {
   tpl_n = to_tensor(map(fn (t: f32) -> cast(0.0, f32), to_list(copy(theta))))
   n_params = len(to_list(copy(tpl_n)))
@@ -100,7 +97,7 @@ def lm_nparam_step[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, 
     add(acc, einsum("i,j->ij", le_i, ue_i))
   }, la_zeros_mat_like(copy(jtj)), range(cast(0, int64), n_params))
   h = add(jtj, lamb_i)
-  delta = cg_solve(h, jtr, zero_n, cast(0.000001, f32), cast(50, int64))
+  delta = cg_solve(h, jtr, zero_n, cast(1e-6, f32), cast(50, int64))
   la_vec_add(theta, delta)
 }
 def lm_scalar_nparam[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32], x: &tensor[m, f32], y: &tensor[m, f32], theta0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32] = fold(fn (th: tensor[n, f32], iter_idx: int64) -> lm_nparam_step(model, x, y, th, cast(0.01, f32), cast(0.00001, f32)), theta0, range(cast(0, int64), max_iters))

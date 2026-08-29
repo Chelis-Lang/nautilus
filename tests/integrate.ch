@@ -10,51 +10,51 @@ def f_exp(x: f32) -> f32 = exp(x)
 def f_recip(x: f32) -> f32 = div(cast(1.0, f32), x)
 def test_trap_const_one() -> unit ! { Test } = {
   v = trapezoidal(f_one, cast(0.0, f32), cast(1.0, f32), cast(10, int64))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "trapezoidal: integral of 1 over [0,1] = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "trapezoidal: integral of 1 over [0,1] = 1")
 }
 def test_simp_const_one() -> unit ! { Test } = {
   v = simpsons(f_one, cast(0.0, f32), cast(1.0, f32), cast(10, int64))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "simpsons: integral of 1 over [0,1] = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "simpsons: integral of 1 over [0,1] = 1")
 }
 def test_gl5_const_one() -> unit ! { Test } = {
   v = gauss_legendre_5(f_one, cast(0.0, f32), cast(1.0, f32), cast(5, int64))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "gauss_legendre_5: integral of 1 over [0,1] = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "gauss_legendre_5: integral of 1 over [0,1] = 1")
 }
 def test_gl10_const_one() -> unit ! { Test } = {
   v = gauss_legendre_10(f_one, cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "gauss_legendre_10: integral of 1 over [0,1] = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "gauss_legendre_10: integral of 1 over [0,1] = 1")
 }
 def test_romberg_const_one() -> unit ! { Test } = {
   v = romberg_5(f_one, cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "romberg_5: integral of 1 over [0,1] = 1")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "romberg_5: integral of 1 over [0,1] = 1")
 }
 def test_trap_x() -> unit ! { Test } = {
   v = trapezoidal(f_x, cast(0.0, f32), cast(1.0, f32), cast(10, int64))
-  assert_close(v, cast(0.5, f32), cast(0.000001, f32), "trapezoidal: integral of x over [0,1] = 0.5 (trap exact for linear)")
+  assert_close(v, cast(0.5, f32), cast(1e-6, f32), "trapezoidal: integral of x over [0,1] = 0.5 (trap exact for linear)")
 }
 def test_simp_x() -> unit ! { Test } = {
   v = simpsons(f_x, cast(0.0, f32), cast(1.0, f32), cast(10, int64))
-  assert_close(v, cast(0.5, f32), cast(0.000001, f32), "simpsons: integral of x over [0,1] = 0.5")
+  assert_close(v, cast(0.5, f32), cast(1e-6, f32), "simpsons: integral of x over [0,1] = 0.5")
 }
 def test_gl5_x() -> unit ! { Test } = {
   v = gauss_legendre_5(f_x, cast(0.0, f32), cast(1.0, f32), cast(5, int64))
-  assert_close(v, cast(0.5, f32), cast(0.000001, f32), "gauss_legendre_5: integral of x over [0,1] = 0.5")
+  assert_close(v, cast(0.5, f32), cast(1e-6, f32), "gauss_legendre_5: integral of x over [0,1] = 0.5")
 }
 def test_gl10_x() -> unit ! { Test } = {
   v = gauss_legendre_10(f_x, cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.5, f32), cast(0.000001, f32), "gauss_legendre_10: integral of x over [0,1] = 0.5")
+  assert_close(v, cast(0.5, f32), cast(1e-6, f32), "gauss_legendre_10: integral of x over [0,1] = 0.5")
 }
 def test_trap_x_0_2() -> unit ! { Test } = {
   v = trapezoidal(f_x, cast(0.0, f32), cast(2.0, f32), cast(10, int64))
-  assert_close(v, cast(2.0, f32), cast(0.000001, f32), "trapezoidal: integral of x over [0,2] = 2 (1/2 * 2^2)")
+  assert_close(v, cast(2.0, f32), cast(1e-6, f32), "trapezoidal: integral of x over [0,2] = 2 (1/2 * 2^2)")
 }
 def test_simp_x_symmetric() -> unit ! { Test } = {
   v = simpsons(f_x, cast(-1.0, f32), cast(1.0, f32), cast(10, int64))
-  assert_close(v, cast(0.0, f32), cast(0.000001, f32), "simpsons: integral of x over [-1,1] = 0 (odd on symmetric)")
+  assert_close(v, cast(0.0, f32), cast(1e-6, f32), "simpsons: integral of x over [-1,1] = 0 (odd on symmetric)")
 }
 def test_gl10_x_symmetric() -> unit ! { Test } = {
   v = gauss_legendre_10(f_x, cast(-1.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.000001, f32), "gauss_legendre_10: integral of x over [-1,1] = 0 (odd on symmetric)")
+  assert_close(v, cast(0.0, f32), cast(1e-6, f32), "gauss_legendre_10: integral of x over [-1,1] = 0 (odd on symmetric)")
 }
 def test_simp_xsq_symmetric_bracket() -> unit ! { Test } = {
   v = simpsons(f_xsq, cast(-1.0, f32), cast(1.0, f32), cast(10, int64))
@@ -94,11 +94,11 @@ def test_simp_xcube() -> unit ! { Test } = {
 }
 def test_gl5_xcube() -> unit ! { Test } = {
   v = gauss_legendre_5(f_xcube, cast(0.0, f32), cast(1.0, f32), cast(5, int64))
-  assert_close(v, cast(0.25, f32), cast(0.000001, f32), "gauss_legendre_5: integral of x^3 over [0,1] = 0.25")
+  assert_close(v, cast(0.25, f32), cast(1e-6, f32), "gauss_legendre_5: integral of x^3 over [0,1] = 0.25")
 }
 def test_gl10_xcube() -> unit ! { Test } = {
   v = gauss_legendre_10(f_xcube, cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.25, f32), cast(0.000001, f32), "gauss_legendre_10: integral of x^3 over [0,1] = 0.25")
+  assert_close(v, cast(0.25, f32), cast(1e-6, f32), "gauss_legendre_10: integral of x^3 over [0,1] = 0.25")
 }
 def test_simp_sin_0_pi() -> unit ! { Test } = {
   pi = cast(3.1415927, f32)
@@ -117,7 +117,7 @@ def test_romberg_sin_0_pi() -> unit ! { Test } = {
 }
 def test_adapt_sin_0_pi() -> unit ! { Test } = {
   pi = cast(3.1415927, f32)
-  v = adaptive_simpson(f_sin, cast(0.0, f32), pi, cast(0.000001, f32), cast(20, int64))
+  v = adaptive_simpson(f_sin, cast(0.0, f32), pi, cast(1e-6, f32), cast(20, int64))
   assert_close(v, cast(2.0, f32), cast(0.0001, f32), "adaptive_simpson: integral of sin over [0,pi] = 2")
 }
 def test_gl10_sin_halfpi_pi() -> unit ! { Test } = {
@@ -143,7 +143,7 @@ def test_gl10_exp_0_1() -> unit ! { Test } = {
   assert_close(v, cast(1.7182818, f32), cast(0.00001, f32), "gauss_legendre_10: integral of exp over [0,1] = e - 1")
 }
 def test_adapt_exp_0_1() -> unit ! { Test } = {
-  v = adaptive_simpson(f_exp, cast(0.0, f32), cast(1.0, f32), cast(0.000001, f32), cast(20, int64))
+  v = adaptive_simpson(f_exp, cast(0.0, f32), cast(1.0, f32), cast(1e-6, f32), cast(20, int64))
   assert_close(v, cast(1.7182818, f32), cast(0.00001, f32), "adaptive_simpson: integral of exp over [0,1] = e - 1")
 }
 def test_gl10_recip_1_e() -> unit ! { Test } = {
@@ -175,7 +175,7 @@ def test_consistency_gl10_romberg_sin() -> unit ! { Test } = {
 }
 def test_consistency_gl10_adapt_exp() -> unit ! { Test } = {
   vg = gauss_legendre_10(f_exp, cast(0.0, f32), cast(1.0, f32))
-  va = adaptive_simpson(f_exp, cast(0.0, f32), cast(1.0, f32), cast(0.000001, f32), cast(20, int64))
+  va = adaptive_simpson(f_exp, cast(0.0, f32), cast(1.0, f32), cast(1e-6, f32), cast(20, int64))
   assert_close(vg, va, cast(0.00001, f32), "gauss_legendre_10 vs adaptive_simpson agree within 1e-5 on smooth exp over [0,1]")
 }
 def test_hermite_const_one() -> unit ! { Test } = {
@@ -188,7 +188,7 @@ def test_hermite_xsq_identity() -> unit ! { Test } = {
 }
 def test_hermite_x_odd() -> unit ! { Test } = {
   v = gauss_hermite_10(f_x)
-  assert_close(v, cast(0.0, f32), cast(0.000001, f32), "gauss_hermite_10(x) = 0 (odd integrand)")
+  assert_close(v, cast(0.0, f32), cast(1e-6, f32), "gauss_hermite_10(x) = 0 (odd integrand)")
 }
 def test_laguerre_const_one() -> unit ! { Test } = {
   v = gauss_laguerre_10(f_one)
@@ -204,5 +204,5 @@ def test_laguerre_xsq_identity() -> unit ! { Test } = {
 }
 def test_adapt_sub_ulp_tol_plateau_terminates_sum() -> unit ! { Test } = {
   v = adaptive_simpson(f_one, cast(0.0, f32), cast(1.0, f32), cast(0.0, f32), cast(30, int64))
-  assert_close(v, cast(1.0, f32), cast(0.000001, f32), "adaptive_simpson: plateau-stop terminates accumulated sum when sum_lr == whole bit-exact under zero tol (sub-f32-ULP regime)")
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "adaptive_simpson: plateau-stop terminates accumulated sum when sum_lr == whole bit-exact under zero tol (sub-f32-ULP regime)")
 }

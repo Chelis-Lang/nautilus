@@ -23,13 +23,12 @@ def euler_step(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32 = {
   add(y, mul(dt, k))
 }
 def euler_solve_rec(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32, k: int64) -> f32 = if lte(k, ode_zero_i()) then y else euler_solve_rec(f, euler_step(f, y, t, dt), add(t, dt), dt, sub(k, ode_one_i()))
-def euler_solve(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32 = {
+def euler_solve(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32 =
   if lte(n_steps, cast(0, int64)) then div(cast(0.0, f32), cast(0.0, f32)) else {
     n_f = cast(n_steps, f32)
     dt = div(sub(t1, t0), n_f)
     euler_solve_rec(f, y0, t0, dt, n_steps)
   }
-}
 def rk4_step(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32 = {
   half_dt = mul(ode_half_f(), dt)
   t_mid = add(t, half_dt)
@@ -50,13 +49,12 @@ def rk4_step(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32 = {
   add(y, mul(scale, sum_k))
 }
 def rk4_solve_rec(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32, k: int64) -> f32 = if lte(k, ode_zero_i()) then y else rk4_solve_rec(f, rk4_step(f, y, t, dt), add(t, dt), dt, sub(k, ode_one_i()))
-def rk4_solve(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32 = {
+def rk4_solve(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32 =
   if lte(n_steps, cast(0, int64)) then div(cast(0.0, f32), cast(0.0, f32)) else {
     n_f = cast(n_steps, f32)
     dt = div(sub(t1, t0), n_f)
     rk4_solve_rec(f, y0, t0, dt, n_steps)
   }
-}
 def rk45_dopri_step(f: f32 -> f32 -> f32, y: f32, t: f32, h: f32) -> (f32, f32) = {
   c2 = cast(0.2, f32)
   c3 = cast(0.3, f32)
@@ -106,7 +104,7 @@ def rk45_dopri_step(f: f32 -> f32 -> f32, y: f32, t: f32, h: f32) -> (f32, f32) 
   (y_high, err)
 }
 def rk45_next_step(h: f32, err_ratio: f32) -> f32 = {
-  tiny = cast(0.00000001, f32)
+  tiny = cast(1e-8, f32)
   safety = cast(0.9, f32)
   grow_max = cast(5.0, f32)
   shrink_min = cast(0.2, f32)
@@ -115,11 +113,11 @@ def rk45_next_step(h: f32, err_ratio: f32) -> f32 = {
   factor = if lt(err_ratio, tiny) then grow_max else ode_clamp_f(raw, shrink_min, grow_max)
   mul(h, factor)
 }
-def rk45_adaptive_rec(f: f32 -> f32 -> f32, y: f32, t: f32, t_end: f32, h: f32, rtol: f32, atol: f32, steps_left: int64) -> f32 = {
+def rk45_adaptive_rec(f: f32 -> f32 -> f32, y: f32, t: f32, t_end: f32, h: f32, rtol: f32, atol: f32, steps_left: int64) -> f32 =
   if lte(steps_left, ode_zero_i()) then y else {
     remaining = sub(t_end, t)
     abs_remaining = ode_abs_f(remaining)
-    tiny_h = cast(0.000001, f32)
+    tiny_h = cast(1e-6, f32)
     if lt(abs_remaining, tiny_h) then rk4_step(f, y, t, remaining) else {
       abs_h = ode_abs_f(h)
       h_capped = if gt(abs_h, abs_remaining) then remaining else h
@@ -127,16 +125,15 @@ def rk45_adaptive_rec(f: f32 -> f32 -> f32, y: f32, t: f32, t_end: f32, h: f32, 
       y_next = step.0
       err = step.1
       scale = add(atol, mul(rtol, ode_max_f(ode_abs_f(y), ode_abs_f(y_next))))
-      scale_safe = if lt(scale, cast(0.00000001, f32)) then cast(0.00000001, f32) else scale
+      scale_safe = if lt(scale, cast(1e-8, f32)) then cast(1e-8, f32) else scale
       err_ratio = div(err, scale_safe)
       next_h = rk45_next_step(h_capped, err_ratio)
       if lte(err_ratio, ode_one_f()) then {
         t_next = add(t, h_capped)
         if lt(ode_abs_f(sub(t_end, t_next)), tiny_h) then y_next else if eq(y_next, y) then y_next else rk45_adaptive_rec(f, y_next, t_next, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()))
-      } else { rk45_adaptive_rec(f, y, t, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i())) }
+      } else rk45_adaptive_rec(f, y, t, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()))
     }
   }
-}
 def rk45_adaptive_solve(f: f32 -> f32 -> f32, y0: f32, t0: f32, t_end: f32, rtol: f32, atol: f32) -> f32 = {
   span = sub(t_end, t0)
   abs_span = ode_abs_f(span)
@@ -211,7 +208,7 @@ def rk45_hermite_interp[n](y_n: tensor[n, f32], y_high: tensor[n, f32], k1: tens
   t4 = scale_vec(scale_vec(copy(k7), h), h11)
   la_vec_add(la_vec_add(la_vec_add(t1, t2), t3), t4)
 }
-def rk45_grid_inner_rec[n, p](t_out: &tensor[p, f32], template_p: &tensor[p, f32], y_n: tensor[n, f32], y_high: tensor[n, f32], k1: tensor[n, f32], k7: tensor[n, f32], t_n: f32, h_accepted: f32, output: tensor[n, p, f32], j: int64, p_len: int64) -> tensor[n, p, f32] = {
+def rk45_grid_inner_rec[n, p](t_out: &tensor[p, f32], template_p: &tensor[p, f32], y_n: tensor[n, f32], y_high: tensor[n, f32], k1: tensor[n, f32], k7: tensor[n, f32], t_n: f32, h_accepted: f32, output: tensor[n, p, f32], j: int64, p_len: int64) -> tensor[n, p, f32] =
   if gte(j, p_len) then output else {
     t_j = inner_product(copy(t_out), la_basis_n_f32(j, cast(1.0, f32), copy(template_p)))
     t_step_end = add(t_n, h_accepted)
@@ -225,9 +222,8 @@ def rk45_grid_inner_rec[n, p](t_out: &tensor[p, f32], template_p: &tensor[p, f32
     } else copy(output)
     rk45_grid_inner_rec(t_out, template_p, copy(y_n), copy(y_high), copy(k1), copy(k7), t_n, h_accepted, new_output, add(j, cast(1, int64)), p_len)
   }
-}
 def rk45_vec_next_step(h: f32, err_ratio: f32) -> f32 = {
-  tiny = cast(0.00000001, f32)
+  tiny = cast(1e-8, f32)
   safety = cast(0.9, f32)
   grow_max = cast(5.0, f32)
   shrink_min = cast(0.2, f32)
@@ -244,17 +240,17 @@ def rk45_vec_scale_err[n](y: tensor[n, f32], y_next: tensor[n, f32], rtol: f32, 
     abs_yi = ode_abs_f(yi)
     abs_yn = ode_abs_f(yi_n)
     sc = add(atol, mul(rtol, ode_max_f(abs_yi, abs_yn)))
-    sc_safe = if lt(sc, cast(0.00000001, f32)) then cast(0.00000001, f32) else sc
+    sc_safe = if lt(sc, cast(1e-8, f32)) then cast(1e-8, f32) else sc
     add(acc, mul(sc_safe, sc_safe))
   }, cast(0.0, f32), pairs)
   n_f = cast(len(to_list(copy(y))), f32)
   if gt(n_f, cast(0.0, f32)) then sqrt(div(sum_sq, n_f)) else cast(1.0, f32)
 }
-def rk45_adaptive_grid_rec[n, p](f: tensor[n, f32] -> f32 -> tensor[n, f32], y: tensor[n, f32], t: f32, t_end: f32, h: f32, rtol: f32, atol: f32, steps_left: int64, output: tensor[n, p, f32], t_out: &tensor[p, f32], template_p: &tensor[p, f32]) -> tensor[n, p, f32] = {
+def rk45_adaptive_grid_rec[n, p](f: tensor[n, f32] -> f32 -> tensor[n, f32], y: tensor[n, f32], t: f32, t_end: f32, h: f32, rtol: f32, atol: f32, steps_left: int64, output: tensor[n, p, f32], t_out: &tensor[p, f32], template_p: &tensor[p, f32]) -> tensor[n, p, f32] =
   if lte(steps_left, ode_zero_i()) then output else {
     remaining = sub(t_end, t)
     abs_remaining = ode_abs_f(remaining)
-    tiny_h = cast(0.000001, f32)
+    tiny_h = cast(1e-6, f32)
     p_len = cast(len(to_list(copy(template_p))), int64)
     if lt(abs_remaining, tiny_h) then output else {
       abs_h = ode_abs_f(h)
@@ -272,10 +268,9 @@ def rk45_adaptive_grid_rec[n, p](f: tensor[n, f32] -> f32 -> tensor[n, f32], y: 
         t_start = sub(t_next, h_capped)
         new_output = rk45_grid_inner_rec(t_out, template_p, y_step, copy(y_next), copy(k1), copy(k7), t_start, h_capped, copy(output), cast(0, int64), p_len)
         if lt(ode_abs_f(sub(t_end, t_next)), tiny_h) then new_output else rk45_adaptive_grid_rec(f, y_next, t_next, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()), new_output, t_out, template_p)
-      } else { rk45_adaptive_grid_rec(f, copy(y_step), t, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()), copy(output), t_out, template_p) }
+      } else rk45_adaptive_grid_rec(f, copy(y_step), t, t_end, next_h, rtol, atol, sub(steps_left, ode_one_i()), copy(output), t_out, template_p)
     }
   }
-}
 def rk45_adaptive_solve_grid[n, p](f: tensor[n, f32] -> f32 -> tensor[n, f32], t0: f32, y0: tensor[n, f32], t_end: f32, rtol: f32, atol: f32, t_out: &tensor[p, f32]) -> tensor[n, p, f32] = {
   span = sub(t_end, t0)
   abs_span = ode_abs_f(span)

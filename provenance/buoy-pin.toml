@@ -12,7 +12,7 @@ provenance_command = "chelis-provenance"
 provenance_command_source = "pinned source build (nix/chelis-provenance.nix); the upstream consumer package at this revision builds only the root buoy package. Upstream follow-up: expose chelis-provenance in consumer-package-v1, then retire the fallback."
 
 [chelis]
-version = "0.18.1"
+version = "0.18.5"
 version_skew = "the chelis:provenance/v1 record grammar is comment-based and attaches to top-level def and type declarations; both are stable from Chelis 0.16 through 0.18.1, so the frozen adapter parser identity from the Buoy pin applies unchanged"
 
 [policy]
