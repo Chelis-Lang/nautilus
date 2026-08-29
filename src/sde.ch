@@ -6,7 +6,7 @@ export (euler_maruyama_fixed, milstein_fixed)
 -- scopes = nautilus
 -- statement = Nautilus.Sde MUST provide the SDE-stepping surface listed in the module support table.
 def sde_zero_f() -> f32 = cast(0.0, f32)
-def sde_nan_f() -> f32 = 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
+def sde_nan_f() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
 def euler_maruyama_fixed[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32 = {
   n_i = numel(noise)
   if lte(n_i, cast(0, int64)) then sde_nan_f() else {
@@ -22,7 +22,8 @@ def euler_maruyama_fixed[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, y0: f32,
       diff = mul(gy, mul(sqrt_dt, z))
       y_next = add(y, add(drift, diff))
       t_next = add(t, dt)
-      (y_next, t_next)
+      pair = (y_next, t_next)
+      pair
     }, (y0, t0), to_list(noise))
     final_state.0
   }
@@ -48,7 +49,8 @@ def milstein_fixed[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, dg_dy: f32 -> 
       correction = mul(half, mul(gy, mul(dgy, correction_term)))
       y_next = add(y, drift |> add(diff) |> add(correction))
       t_next = add(t, dt)
-      (y_next, t_next)
+      pair = (y_next, t_next)
+      pair
     }, (y0, t0), to_list(noise))
     final_state.0
   }

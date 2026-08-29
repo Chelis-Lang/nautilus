@@ -3,7 +3,6 @@
 ## Purpose
 
 Repository-owned provenance governance for the Nautilus module support surface over the pinned Buoy interfaces: exact pinned tooling, a complete governed surface, records on real Chelis declarations, honest carrier verdicts, and a deterministic advisory gate lane.
-
 ## Requirements
 ### Requirement: NAUT-PROV-001 Pinned Buoy consumption
 Nautilus MUST consume Buoy through the published consumer-package path at one exact recorded revision. The repository MUST NOT vendor Buoy sources or follow a floating reference.
@@ -32,17 +31,22 @@ The Nautilus module support matrix MUST be one governed finite surface. Every mo
 - **THEN** the check reports the incomplete surface and MUST NOT infer a disposition from implementation presence
 
 ### Requirement: NAUT-PROV-003 Records attach to real declarations
-Every provenance record MUST attach to a real declaration in a saved `.ch` source. Unattached metadata, unsupported record schema versions, and malformed records MUST produce stable diagnostics and MUST NOT produce an empty successful graph.
+Every provenance record MUST attach to a real top-level declaration node parsed by the pinned Buoy adapter's vendored Chelis Surf grammar. Every bound item digest MUST derive from the parsed declaration node's exact bytes under `chelis-surf-syntax/v2`. Unattached metadata, unsupported record schema versions, malformed records, and sources the grammar rejects MUST produce stable diagnostics and MUST NOT produce an empty successful graph.
 
-#### Scenario: Positive - record on a real declaration
+#### Scenario: Positive - record on a parsed declaration
 - **GIVEN** a `chelis:provenance/v1` record followed by a top-level declaration
 - **WHEN** extraction runs
-- **THEN** the record materializes against that declaration with its exact byte span
+- **THEN** the record materializes against the parsed declaration node with its exact node byte span and node-derived item identity
 
 #### Scenario: Negative - trailing record without a declaration
 - **GIVEN** a record block at the end of a file with no following declaration
 - **WHEN** extraction runs
 - **THEN** the check reports `CHELIS-PROV-UNATTACHED-METADATA`
+
+#### Scenario: Negative - source the grammar rejects
+- **GIVEN** a selected `.ch` source the pinned grammar cannot parse
+- **WHEN** the static check runs
+- **THEN** the check reports `CHELIS-PROV-PARSE-ERROR` with the static exit class and MUST NOT emit an empty successful graph
 
 ### Requirement: NAUT-PROV-004 Exact carriers with honest verdicts
 Every registered carrier MUST bind an exact declaration, an explicit role, its atom revisions, the real gate oracle, and an exact scope. Verdicts MUST retain actual `not-run`, `pass`, `fail`, `error`, or `timeout` states, and no registration, waiver, or review may synthesize a passing verdict.
@@ -82,3 +86,17 @@ Effectful corpus execution MUST consume the static identity as an input and retu
 - **GIVEN** a gate run that terminates without a valid semantic result
 - **WHEN** the verdict is normalized
 - **THEN** the carrier records `error` and the lane MUST NOT invent `pass`
+
+### Requirement: NAUT-PROV-007 Report-derived bindings without helper builds
+Atom revisions and object identity digests that Nautilus records bind MUST derive from the pinned command's revision-bearing static report. The repository MUST NOT require an out-of-band helper build to compute revision bindings, and the `chelis-provenance` command MUST come from the upstream consumer package.
+
+#### Scenario: Positive - revisions from the canonical report
+- **GIVEN** the pinned `nautilus-provenance static` report
+- **WHEN** a maintainer rebinds a surface row, link, or carrier
+- **THEN** the required atom revision digests are present in the report bytes
+
+#### Scenario: Negative - fallback package builds are retired
+- **GIVEN** the repository's Nix expressions
+- **WHEN** the pin check runs
+- **THEN** no local fallback derivation builds the `chelis-provenance` command and the binary comes from the upstream consumer package
+

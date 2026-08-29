@@ -1,6 +1,6 @@
 module Nautilus.Fixture.Demo
 
-def demo(x: f32): f32 = x
+def demo(x: f32) -> f32 = x
 
 -- chelis:provenance/v1 authority
 -- id = NAUT-FIX-TRAILING

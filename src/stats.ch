@@ -15,8 +15,8 @@ def zero_f() -> f32 = cast(0.0, f32)
 def one_f() -> f32 = cast(1.0, f32)
 def two_f() -> f32 = cast(2.0, f32)
 def three_f() -> f32 = cast(3.0, f32)
-def pos_inf_f() -> f32 = 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
-def neg_inf_f() -> f32 = -1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
+def pos_inf_f() -> f32 = cast(1.0, f32) |> div(cast(0.0, f32))
+def neg_inf_f() -> f32 = cast(-1.0, f32) |> div(cast(0.0, f32))
 def zero_i() -> int64 = cast(0, int64)
 def zero_axis() -> int32 = cast(0, int32)
 def one_i() -> int64 = cast(1, int64)
@@ -97,7 +97,7 @@ def median_vec[n](v: &tensor[n, f32]) -> f32 = {
     take_even = is_odd |> not |> and(or(eq(i, lo_idx), eq(i, hi_idx)))
     if take_odd then x else if take_even then add(acc, x) else acc
   }, zero_f(), enum_lst)
-  if is_odd then picked else 0.5 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(picked)
+  if is_odd then picked else cast(0.5, f32) |> mul(picked)
 }
 def covariance_scalar[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: int64) -> f32 = {
   n_i = numel(a)

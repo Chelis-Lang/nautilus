@@ -26,6 +26,7 @@ REJECT_CASES = (
     ("reject-unattached", "CHELIS-PROV-UNATTACHED-METADATA"),
     ("reject-unsupported", "CHELIS-PROV-UNSUPPORTED-SCHEMA"),
     ("reject-malformed", "CHELIS-PROV-MALFORMED-RECORD"),
+    ("reject-parse", "CHELIS-PROV-PARSE-ERROR"),
 )
 
 
@@ -124,7 +125,7 @@ def main() -> None:
         "execute-report.json",
     )
 
-    print("provenance-fixtures: ok cases=8 goldens=2 determinism=cross-root")
+    print("provenance-fixtures: ok cases=9 goldens=2 determinism=cross-root")
 
 
 if __name__ == "__main__":

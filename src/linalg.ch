@@ -90,17 +90,17 @@ def cg_solve[n](a_mat: tensor[n, n, f32], b: tensor[n, f32], x0: tensor[n, f32],
 def la_zeros_mat_like[n](a: &tensor[n, n, f32]) -> tensor[n, n, f32] = sub(a, a)
 def la_basis_n_f32[n](k: int64, s: f32, template: &tensor[n, f32]) -> tensor[n, f32] = {
   items_len = template |> to_list |> len
-  idxs = 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(items_len)
+  idxs = cast(0, int64) |> range(items_len)
   to_tensor(map(fn (i: int64) -> if eq(i, k) then s else cast(0.0, f32), idxs))
 }
 def la_mask_ge_j_f32[n](j: int64, template: &tensor[n, f32]) -> tensor[n, f32] = {
   items_len = template |> to_list |> len
-  idxs = 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(items_len)
+  idxs = cast(0, int64) |> range(items_len)
   to_tensor(map(fn (i: int64) -> if gte(i, j) then cast(1.0, f32) else cast(0.0, f32), idxs))
 }
 def la_mask_gt_j_f32[n](j: int64, template: &tensor[n, f32]) -> tensor[n, f32] = {
   items_len = template |> to_list |> len
-  idxs = 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(items_len)
+  idxs = cast(0, int64) |> range(items_len)
   to_tensor(map(fn (i: int64) -> if gt(i, j) then cast(1.0, f32) else cast(0.0, f32), idxs))
 }
 def la_elementwise_mul_vec[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[n, f32] = mul(a, b)
@@ -112,7 +112,7 @@ def la_identity_n[n](template: &tensor[n, f32]) -> tensor[n, n, f32] = {
     e_i = la_basis_n_f32(i, cast(1.0, f32), template)
     outer_diag = einsum("i,j->ij", e_i, e_i)
     add(acc, outer_diag)
-  }, zero_mat, 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(n_len))
+  }, zero_mat, cast(0, int64) |> range(n_len))
 }
 def la_qr_hh_step_r[n](a_curr: tensor[n, n, f32], j: int64) -> tensor[n, n, f32] = {
   template = diag(a_curr)
@@ -126,7 +126,7 @@ def la_qr_hh_step_r[n](a_curr: tensor[n, n, f32], j: int64) -> tensor[n, n, f32]
   v = la_vec_add(masked_col, shift)
   norm_v = l2_norm_vec(v)
   safe_norm_v = if lt(norm_v, cast(1e-30, f32)) then cast(1.0, f32) else norm_v
-  v_hat = scale_vec(v, 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(safe_norm_v))
+  v_hat = scale_vec(v, cast(1.0, f32) |> div(safe_norm_v))
   vt_A = vecmat(v_hat, a_curr)
   rank1 = einsum("i,j->ij", scale_vec(v_hat, cast(2.0, f32)), vt_A)
   sub(a_curr, rank1)
@@ -145,17 +145,17 @@ def la_qr_hh_step_q[n](a_orig: tensor[n, n, f32], q_curr: tensor[n, n, f32], j: 
   v = la_vec_add(masked_col, shift)
   norm_v = l2_norm_vec(v)
   safe_norm_v = if lt(norm_v, cast(1e-30, f32)) then cast(1.0, f32) else norm_v
-  v_hat = scale_vec(v, 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(safe_norm_v))
+  v_hat = scale_vec(v, cast(1.0, f32) |> div(safe_norm_v))
   qv = matvec(q_curr, v_hat)
   qv2 = scale_vec(qv, cast(2.0, f32))
   rank1_q = einsum("i,j->ij", qv2, v_hat)
   sub(q_curr, rank1_q)
 }
-def la_qr_build_r[n](a: tensor[n, n, f32], n_len: int64) -> tensor[n, n, f32] = fold(fn (a_acc: tensor[n, n, f32], j: int64) -> la_qr_hh_step_r(a_acc, j), a, 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(n_len))
+def la_qr_build_r[n](a: tensor[n, n, f32], n_len: int64) -> tensor[n, n, f32] = fold(fn (a_acc: tensor[n, n, f32], j: int64) -> la_qr_hh_step_r(a_acc, j), a, cast(0, int64) |> range(n_len))
 def la_qr_build_q[n](a: &tensor[n, n, f32], n_len: int64) -> tensor[n, n, f32] = {
   template = diag(a)
   q_init = la_identity_n(template)
-  fold(fn (q_acc: tensor[n, n, f32], j: int64) -> la_qr_hh_step_q(copy(a), q_acc, j), q_init, 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(n_len))
+  fold(fn (q_acc: tensor[n, n, f32], j: int64) -> la_qr_hh_step_q(copy(a), q_acc, j), q_init, cast(0, int64) |> range(n_len))
 }
 def qr_decompose[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, n, f32]) = {
   n_len = len(to_list(diag(a)))
@@ -168,7 +168,7 @@ def la_lu_compact_step[n](lu: tensor[n, n, f32], j: int64) -> tensor[n, n, f32] 
   e_j = la_basis_n_f32(j, cast(1.0, f32), template)
   u_col_j = matvec(lu, e_j)
   u_jj = inner_product(u_col_j, e_j)
-  inv_ujj = 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(u_jj)
+  inv_ujj = cast(1.0, f32) |> div(u_jj)
   m_col = scale_vec(u_col_j, inv_ujj)
   m_gt = la_elementwise_mul_vec(m_col, la_mask_gt_j_f32(j, template))
   u_row_j_raw = vecmat(e_j, lu)
@@ -183,8 +183,7 @@ def la_lu_fwd_step[n](lu: tensor[n, n, f32], y_acc: tensor[n, f32], i: int64) ->
   template = diag(lu)
   e_i = la_basis_n_f32(i, cast(1.0, f32), template)
   l_row_i = vecmat(e_i, lu)
-  ones = 0
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_mask_ge_j_f32(template)
+  ones = cast(0, int64) |> la_mask_ge_j_f32(template)
   mask_ge_i = la_mask_ge_j_f32(i, template)
   mask_lt_i = la_vec_sub(ones, mask_ge_i)
   l_left = la_elementwise_mul_vec(l_row_i, mask_lt_i)
@@ -221,7 +220,7 @@ def la_tridiag_fwd_diag[n](lower: tensor[n, f32], diag_in: tensor[n, f32], upper
     new_diag_i = sub(diag_i, mul(w, upper_im1))
     corr_d = sub(new_diag_i, diag_i)
     la_vec_saxpy(corr_d, dacc, e_i)
-  }, diag_in, 1 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(n_len))
+  }, diag_in, cast(1, int64) |> range(n_len))
 }
 def la_tridiag_fwd_b[n](lower: tensor[n, f32], diag_f: tensor[n, f32], upper: tensor[n, f32], b_in: tensor[n, f32], n_len: int64) -> tensor[n, f32] = {
   tpl = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(b_in)))
@@ -239,7 +238,7 @@ def la_tridiag_fwd_b[n](lower: tensor[n, f32], diag_f: tensor[n, f32], upper: te
     new_b_i = sub(b_i, mul(w, b_im1))
     corr_b = sub(new_b_i, b_i)
     la_vec_saxpy(corr_b, bacc, e_i)
-  }, b_in, 1 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(n_len))
+  }, b_in, cast(1, int64) |> range(n_len))
 }
 def la_tridiag_bwd[n](upper: tensor[n, f32], diag_f: tensor[n, f32], b_f: tensor[n, f32], n_len: int64, n_len_m1: int64) -> tensor[n, f32] = {
   tpl = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(diag_f)))
@@ -259,7 +258,7 @@ def la_tridiag_bwd[n](upper: tensor[n, f32], diag_f: tensor[n, f32], b_f: tensor
     x_prev = inner_product(x_acc, e_i)
     corr = sub(x_i, x_prev)
     la_vec_saxpy(corr, x_acc, e_i)
-  }, x_init, 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(n_len))
+  }, x_init, cast(0, int64) |> range(n_len))
 }
 def la_tridiag_solve[n](lower: tensor[n, f32], diag: tensor[n, f32], upper: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32] = {
   tpl0 = diag
@@ -273,10 +272,10 @@ def lu_solve[n](a: tensor[n, n, f32], b: tensor[n, f32]) -> tensor[n, f32] = {
   template = diag(a)
   n_len = template |> to_list |> len
   n_len_m1 = sub(n_len, cast(1, int64))
-  lu = fold(fn (lu_acc: tensor[n, n, f32], j: int64) -> la_lu_compact_step(lu_acc, j), a, 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(n_len))
+  lu = fold(fn (lu_acc: tensor[n, n, f32], j: int64) -> la_lu_compact_step(lu_acc, j), a, cast(0, int64) |> range(n_len))
   lu_fwd = lu
-  y = fold(fn (y_acc: tensor[n, f32], i: int64) -> la_lu_fwd_step(lu_fwd, y_acc, i), b, 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(n_len))
-  fold(fn (x_acc: tensor[n, f32], i: int64) -> la_lu_bwd_step(lu, x_acc, i, n_len_m1), y, 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(n_len))
+  y = fold(fn (y_acc: tensor[n, f32], i: int64) -> la_lu_fwd_step(lu_fwd, y_acc, i), b, cast(0, int64) |> range(n_len))
+  fold(fn (x_acc: tensor[n, f32], i: int64) -> la_lu_bwd_step(lu, x_acc, i, n_len_m1), y, cast(0, int64) |> range(n_len))
 }
 def la_svd_rot_g[n](g: tensor[n, n, f32], p: int64, q: int64, tpl: tensor[n, f32]) -> tensor[n, n, f32] = {
   ep = la_basis_n_f32(p, cast(1.0, f32), tpl)
@@ -477,7 +476,7 @@ def la_chol_col_update[n](a_mat: tensor[n, n, f32], l_prev: tensor[n, n, f32], j
   c = la_vec_sub(col_a, partial)
   c_j = inner_product(c, e_j)
   d = sqrt(c_j)
-  inv_d = 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(d)
+  inv_d = cast(1.0, f32) |> div(d)
   scaled = scale_vec(c, inv_d)
   mask = la_mask_ge_j_f32(j, c)
   new_col = la_elementwise_mul_vec(scaled, mask)
@@ -487,7 +486,7 @@ def la_chol_col_update[n](a_mat: tensor[n, n, f32], l_prev: tensor[n, n, f32], j
 def cholesky_n[n](a: &tensor[n, n, f32]) -> tensor[n, n, f32] = {
   l_init = la_zeros_mat_like(a)
   n_len = len(to_list(diag(a)))
-  idxs = 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> range(n_len)
+  idxs = cast(0, int64) |> range(n_len)
   fold(fn (l: tensor[n, n, f32], j: int64) -> la_chol_col_update(copy(a), l, j), l_init, idxs)
 }
 def det_3x3(a: &tensor[3, 3, f32]) -> f32 = {
@@ -505,30 +504,25 @@ def det_3x3(a: &tensor[3, 3, f32]) -> f32 = {
   term3 = mul(two, t3)
   div(add(sub(term1, term2), term3), six)
 }
-def la_nan_f32() -> f32 = 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
+def la_nan_f32() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
 def la_basis2(k: int64, s: f32) -> tensor[2, f32] = to_tensor(map(fn (i: int64) -> if eq(i, k) then s else cast(0.0, f32), range(cast(0, int64), cast(2, int64))))
 def la_basis3(k: int64, s: f32) -> tensor[3, f32] = to_tensor(map(fn (i: int64) -> if eq(i, k) then s else cast(0.0, f32), range(cast(0, int64), cast(3, int64))))
 def la_scaled_eye_2(s: f32) -> tensor[2, 2, f32] = {
-  e1 = 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis2(s)
-  e1b = 0
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis2(cast(1.0, f32))
-  e2 = 1 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis2(s)
-  e2b = 1
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis2(cast(1.0, f32))
+  e1 = cast(0, int64) |> la_basis2(s)
+  e1b = cast(0, int64) |> la_basis2(cast(1.0, f32))
+  e2 = cast(1, int64) |> la_basis2(s)
+  e2b = cast(1, int64) |> la_basis2(cast(1.0, f32))
   o1 = einsum("i,j->ij", e1, e1b)
   o2 = einsum("i,j->ij", e2, e2b)
   add(o1, o2)
 }
 def la_scaled_eye_3(s: f32) -> tensor[3, 3, f32] = {
-  e1 = 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis3(s)
-  e1b = 0
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis3(cast(1.0, f32))
-  e2 = 1 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis3(s)
-  e2b = 1
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis3(cast(1.0, f32))
-  e3 = 2 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis3(s)
-  e3b = 2
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis3(cast(1.0, f32))
+  e1 = cast(0, int64) |> la_basis3(s)
+  e1b = cast(0, int64) |> la_basis3(cast(1.0, f32))
+  e2 = cast(1, int64) |> la_basis3(s)
+  e2b = cast(1, int64) |> la_basis3(cast(1.0, f32))
+  e3 = cast(2, int64) |> la_basis3(s)
+  e3b = cast(2, int64) |> la_basis3(cast(1.0, f32))
   o1 = einsum("i,j->ij", e1, e1b)
   o2 = einsum("i,j->ij", e2, e2b)
   o3 = einsum("i,j->ij", e3, e3b)
@@ -543,14 +537,12 @@ def la_scale_mat_3x3(s: f32, m: &tensor[3, 3, f32]) -> tensor[3, 3, f32] = {
   matmul(diag_s, m)
 }
 def la_mat_sub_2x2(a: &tensor[2, 2, f32], b: &tensor[2, 2, f32]) -> tensor[2, 2, f32] = {
-  neg_one = -1.0
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> la_scaled_eye_2
+  neg_one = cast(-1.0, f32) |> la_scaled_eye_2
   nb = matmul(neg_one, b)
   add(a, nb)
 }
 def la_mat_sub_3x3(a: &tensor[3, 3, f32], b: &tensor[3, 3, f32]) -> tensor[3, 3, f32] = {
-  neg_one = -1.0
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> la_scaled_eye_3
+  neg_one = cast(-1.0, f32) |> la_scaled_eye_3
   nb = matmul(neg_one, b)
   add(a, nb)
 }
@@ -650,20 +642,14 @@ def cholesky_2x2(a: &tensor[2, 2, f32]) -> tensor[2, 2, f32] = {
   r01 = if bad then nan_v else zero_f
   r10 = if bad then nan_v else l10
   r11 = if bad then nan_v else l11
-  b0 = 0
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis2(cast(1.0, f32))
-  b0b = 0
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis2(cast(1.0, f32))
-  b1 = 1
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis2(cast(1.0, f32))
-  b1b = 1
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis2(cast(1.0, f32))
-  row0 = 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis2(r00)
-  row0_p1 = 1
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis2(r01)
-  row1 = 0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis2(r10)
-  row1_p1 = 1
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, int64) |> la_basis2(r11)
+  b0 = cast(0, int64) |> la_basis2(cast(1.0, f32))
+  b0b = cast(0, int64) |> la_basis2(cast(1.0, f32))
+  b1 = cast(1, int64) |> la_basis2(cast(1.0, f32))
+  b1b = cast(1, int64) |> la_basis2(cast(1.0, f32))
+  row0 = cast(0, int64) |> la_basis2(r00)
+  row0_p1 = cast(1, int64) |> la_basis2(r01)
+  row1 = cast(0, int64) |> la_basis2(r10)
+  row1_p1 = cast(1, int64) |> la_basis2(r11)
   m00 = einsum("i,j->ij", b0, row0)
   m01 = einsum("i,j->ij", b0b, row0_p1)
   m10 = einsum("i,j->ij", b1, row1)
