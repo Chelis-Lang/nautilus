@@ -12,9 +12,14 @@ import re
 import unittest
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
-DEVENV = (REPO / "devenv.nix").read_text()
+DEVENV_PATH = REPO / "devenv.nix"
+DEVENV = DEVENV_PATH.read_text() if DEVENV_PATH.is_file() else ""
 
 
+@unittest.skipIf(
+    not DEVENV,
+    "devenv.nix absent; the pin-consistency guard runs from a sparse checkout",
+)
 class DevenvContractTests(unittest.TestCase):
     # Pre-existing gap outside the provenance adoption: the manual
     # `nautilus-goldens` utility references a generator that was never
