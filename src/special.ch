@@ -40,7 +40,7 @@ def erf(x: f32) -> f32 = {
     if lt(x, cast(0.0, f32)) then neg(y) else y
   }
 }
-def erfc(x: f32) -> f32 = 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> sub(erf(x))
+def erfc(x: f32) -> f32 = cast(1.0, f32) |> sub(erf(x))
 def lanczos_sum(x: f32) -> f32 = {
   c0 = cast(0.9999999999998099, f32)
   c1 = cast(676.5203681218851, f32)
@@ -82,7 +82,7 @@ def log_gamma(x: f32) -> f32 = {
     spix = sin(pix)
     aspix = abs_f32(spix)
     log_aspix = log(aspix)
-    one_minus_x = 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> sub(x)
+    one_minus_x = cast(1.0, f32) |> sub(x)
     lgc = log_gamma_core(one_minus_x)
     log_pi |> sub(log_aspix) |> sub(lgc)
   } else log_gamma_core(x)
@@ -93,7 +93,7 @@ def gamma(x: f32) -> f32 = {
   if is_nonpositive_integer(x) then pos_inf() else if lt(x, half) then {
     pix = mul(pi, x)
     spix = sin(pix)
-    one_minus_x = 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> sub(x)
+    one_minus_x = cast(1.0, f32) |> sub(x)
     g1 = one_minus_x |> log_gamma_core |> exp
     div(pi, mul(spix, g1))
   } else x |> log_gamma_core |> exp
@@ -240,7 +240,7 @@ def bessel_i0_small(ax: f32) -> f32 = {
   add(a0, mul(y, add(a1, mul(y, add(a2, mul(y, add(a3, mul(y, add(a4, mul(y, add(a5, mul(y, a6))))))))))))
 }
 def bessel_i0_large(ax: f32) -> f32 = {
-  t = 3.75 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(ax)
+  t = cast(3.75, f32) |> div(ax)
   a0 = cast(0.39894228, f32)
   a1 = cast(0.01328592, f32)
   a2 = cast(0.00225319, f32)
@@ -273,7 +273,7 @@ def bessel_i1_small(ax: f32) -> f32 = {
   mul(ax, poly)
 }
 def bessel_i1_large(ax: f32) -> f32 = {
-  t = 3.75 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(ax)
+  t = cast(3.75, f32) |> div(ax)
   a0 = cast(0.39894228, f32)
   a1 = cast(-0.03988024, f32)
   a2 = cast(-0.00362018, f32)
@@ -309,7 +309,7 @@ def bessel_k0_small(x: f32) -> f32 = {
   sub(poly, mul(lhx, i0))
 }
 def bessel_k0_large(x: f32) -> f32 = {
-  t = 2.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(x)
+  t = cast(2.0, f32) |> div(x)
   a0 = cast(1.25331414, f32)
   a1 = cast(-0.07832358, f32)
   a2 = cast(0.02189568, f32)
@@ -340,11 +340,11 @@ def bessel_k1_small(x: f32) -> f32 = {
   poly = add(a0, mul(y, add(a1, mul(y, add(a2, mul(y, add(a3, mul(y, add(a4, mul(y, add(a5, mul(y, a6))))))))))))
   lhx = log(half_x)
   i1 = bessel_i1(x)
-  inv_x = 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(x)
+  inv_x = cast(1.0, f32) |> div(x)
   lhx |> mul(i1) |> add(mul(inv_x, poly))
 }
 def bessel_k1_large(x: f32) -> f32 = {
-  t = 2.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(x)
+  t = cast(2.0, f32) |> div(x)
   a0 = cast(1.25331414, f32)
   a1 = cast(0.23498619, f32)
   a2 = cast(-0.0365562, f32)
@@ -381,7 +381,7 @@ def bessel_j0_small(ax: f32) -> f32 = {
   div(num, den)
 }
 def bessel_j0_large(ax: f32) -> f32 = {
-  z = 8.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(ax)
+  z = cast(8.0, f32) |> div(ax)
   y = mul(z, z)
   p0 = cast(1.0, f32)
   p1 = cast(-0.001098628627, f32)
@@ -428,7 +428,7 @@ def bessel_j1_small(ax: f32) -> f32 = {
   mul(ax, div(num, den))
 }
 def bessel_j1_large(ax: f32) -> f32 = {
-  z = 8.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(ax)
+  z = cast(8.0, f32) |> div(ax)
   y = mul(z, z)
   p0 = cast(1.0, f32)
   p1 = cast(0.00183105, f32)
@@ -480,7 +480,7 @@ def bessel_y0_small(x: f32) -> f32 = {
   add(rat, mul(two_over_pi, mul(j0v, lx)))
 }
 def bessel_y0_large(x: f32) -> f32 = {
-  z = 8.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(x)
+  z = cast(8.0, f32) |> div(x)
   y = mul(z, z)
   p0 = cast(1.0, f32)
   p1 = cast(-0.001098628627, f32)
@@ -529,11 +529,11 @@ def bessel_y1_small(x: f32) -> f32 = {
   two_over_pi = cast(0.6366197723675814, f32)
   j1v = bessel_j1(x)
   lx = log(x)
-  inv_x = 1.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(x)
+  inv_x = cast(1.0, f32) |> div(x)
   add(rat, mul(two_over_pi, j1v |> mul(lx) |> sub(inv_x)))
 }
 def bessel_y1_large(x: f32) -> f32 = {
-  z = 8.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(x)
+  z = cast(8.0, f32) |> div(x)
   y = mul(z, z)
   p0 = cast(1.0, f32)
   p1 = cast(0.00183105, f32)
@@ -612,13 +612,11 @@ def airy_gg(x: f32) -> f32 = {
 def airy_ai_asymptotic_pos(x: f32) -> f32 = {
   sqrt_x = sqrt(x)
   x_to_1_5 = mul(x, sqrt_x)
-  xi = 0.6666666666666666
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(x_to_1_5)
+  xi = cast(0.6666666666666666, f32) |> mul(x_to_1_5)
   neg_xi = neg(xi)
   exp_neg_xi = exp(neg_xi)
   x_to_0_25 = sqrt(sqrt_x)
-  inv_x_0_25 = 1.0
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(x_to_0_25)
+  inv_x_0_25 = cast(1.0, f32) |> div(x_to_0_25)
   two_sqrt_pi = cast(3.5449077018110318, f32)
   pre = div(inv_x_0_25, two_sqrt_pi)
   mul(pre, exp_neg_xi)
@@ -626,12 +624,10 @@ def airy_ai_asymptotic_pos(x: f32) -> f32 = {
 def airy_bi_asymptotic_pos(x: f32) -> f32 = {
   sqrt_x = sqrt(x)
   x_to_1_5 = mul(x, sqrt_x)
-  xi = 0.6666666666666666
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(x_to_1_5)
+  xi = cast(0.6666666666666666, f32) |> mul(x_to_1_5)
   exp_xi = exp(xi)
   x_to_0_25 = sqrt(sqrt_x)
-  inv_x_0_25 = 1.0
-    |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(x_to_0_25)
+  inv_x_0_25 = cast(1.0, f32) |> div(x_to_0_25)
   sqrt_pi = cast(1.7724538509055159, f32)
   pre = div(inv_x_0_25, sqrt_pi)
   mul(pre, exp_xi)
@@ -706,7 +702,7 @@ def ellipe(m: f32) -> f32 = {
     b0 = sqrt(om)
     c0 = sqrt(m)
     c0_sq = mul(c0, c0)
-    init_sum = 0.5 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(c0_sq)
+    init_sum = cast(0.5, f32) |> mul(c0_sq)
     a_inf = ellip_agm_a_rec(one, b0, cast(50, int64))
     c_sum = ellip_agm_csum_rec(one, b0, init_sum, cast(0.5, f32), cast(50, int64))
     k = div(half_pi, a_inf)

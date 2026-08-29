@@ -6,7 +6,7 @@ import Std.Test (assert_close, assert_true)
 -- id = NAUT-CARRIER-STATS-TESTS
 -- role = positive
 -- atoms = NAUT-MOD-STATS@xxh3-128:83e4d24feb0b0af7a179db04db8ace9b
--- item-digest = xxh3-128:71fd2049434deb9c73b1a1b89eef02c6
+-- item-digest = xxh3-128:b0b67356f7ba7993e46555b982386de5
 -- oracle-id = NAUT-GATE-CHELIS-TEST
 -- oracle-digest = xxh3-128:a6bf22d60ac853d26caa1417a727cd42
 -- configuration-digest = xxh3-128:ae3dfc4c0cfdd00cc99d50805da0931e

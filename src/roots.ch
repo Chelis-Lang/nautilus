@@ -6,14 +6,14 @@ export (bisection, newton, brent)
 -- scopes = nautilus
 -- statement = Nautilus.Roots MUST provide the root-finding surface listed in the module support table.
 def r_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
-def r_nan_f32() -> f32 = 0.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> div(cast(0.0, f32))
+def r_nan_f32() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
 def bisection_rec(f: f32 -> f32, lo: f32, hi: f32, flo: f32, tol: f32, iters: int64) -> f32 = {
   zero_i = cast(0, int64)
   one_i = cast(1, int64)
   if lte(iters, zero_i) then r_nan_f32() else {
     width = sub(hi, lo)
-    if lt(width, tol) then 0.5 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(add(lo, hi)) else {
-      mid = 0.5 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(add(lo, hi))
+    if lt(width, tol) then cast(0.5, f32) |> mul(add(lo, hi)) else {
+      mid = cast(0.5, f32) |> mul(add(lo, hi))
       if or(eq(mid, lo), eq(mid, hi)) then mid else {
         fmid = f(mid)
         afmid = r_abs_f32(fmid)
@@ -95,9 +95,8 @@ def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, f
       sec_step = fb1 |> mul(sub(b1, a1)) |> div(sec_denom)
       s_sec = sub(b1, sec_step)
       s_try = if use_iqi then s_iqi else s_sec
-      three_a = 3.0 |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(a1)
-      m = 0.25
-        |> fn (__chelis_pipe) -> cast(__chelis_pipe, f32) |> mul(add(three_a, b1))
+      three_a = cast(3.0, f32) |> mul(a1)
+      m = cast(0.25, f32) |> mul(add(three_a, b1))
       cond_range = gt(mul(sub(s_try, m), sub(s_try, b1)), zero_f)
       diff_bc = b1 |> sub(c1) |> r_abs_f32
       diff_cd = c1 |> sub(d) |> r_abs_f32

@@ -5,7 +5,7 @@ module Nautilus.Fixture.Demo
 -- kind = behavioral
 -- scopes = nautilus-fixture
 -- statement = Fixture modules MUST stay governed by the demo surface.
-def demo(x: f32): f32 = x
+def demo(x: f32) -> f32 = x
 
 -- chelis:provenance/v1 surface
 -- id = NAUT-FIX-SURFACE
@@ -14,4 +14,4 @@ def demo(x: f32): f32 = x
 -- generation = 1
 -- members = demo
 -- rows = demo:normative:NAUT-FIX-DEMO@xxh3-128:b387a37ccaf3946c5a6306a75ab6cc7a
-def demo_surface_anchor(x: f32): f32 = x
+def demo_surface_anchor(x: f32) -> f32 = x

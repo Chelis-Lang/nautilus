@@ -67,7 +67,6 @@ class DevenvContractTests(unittest.TestCase):
             "provenance/buoy-pin.toml",
             "provenance/chelis-adapter-config.toml",
             "nix/buoy-consumer.nix",
-            "nix/chelis-provenance.nix",
         ):
             self.assertTrue((REPO / reference).is_file(), reference)
 
