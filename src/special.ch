@@ -708,7 +708,7 @@ def ellipe(m: f32) -> f32 = {
     mul(k, sub(one, c_sum))
   }
 }
--- Tensor-domain special functions (nautilus#45).
+-- Tensor-domain special functions (nautilus PR 45).
 --
 -- The scalar `erf` / `erfinv` above are the reference; these compute the same
 -- approximations at tensor rank so a caller holding a tensor of values never

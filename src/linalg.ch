@@ -37,7 +37,7 @@ def frobenius_norm[m, n](a: &tensor[m, n, f32]) -> f32 = {
   s = fold(fn (acc: f32, x: f32) -> add(acc, x), cast(0.0, f32), rows)
   sqrt(s)
 }
--- nautilus#47: lift a scalar to rank `n` so an elementwise tensor op can
+-- nautilus PR 47: lift a scalar to rank `n` so an elementwise tensor op can
 -- take it. Chelis has no implicit tensor-scalar broadcasting; `expand`
 -- lowers to a stride-0 view, so this costs no per-element storage.
 def la_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = c |> scalar_to_tensor |> expand(0, shape(template, cast(0, int32)))
