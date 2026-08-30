@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Advisory provenance gate lane.
 
-The lane runs the pin check, the frozen fixture pack, and the deterministic
-static check; any failure there is loud and blocks the lane. It then prints
-the advisory summary derived from the same saved records: carrier verdicts
-from the latest committed execution receipts (`not-run` when none exist),
-uncovered atoms, and the README module table as a visible untracked copy.
-Advisory findings never change the exit status.
+The lane runs the pin check, the frozen fixture pack, the deterministic
+static check, the rebind dry run (which must report an empty plan), and a
+trace smoke over one bound atom; any failure there is loud and blocks the
+lane. It then prints the advisory summary derived from the same saved
+records: carrier verdicts from the latest committed execution receipts
+(`not-run` when none exist), uncovered atoms, and the README module table
+as a visible untracked copy. Advisory findings never change the exit
+status.
 """
 
 from __future__ import annotations
@@ -90,6 +92,52 @@ def main() -> None:
         raise SystemExit(static.returncode)
     report = json.loads(static.stdout)
 
+    config = str(repo / "provenance" / "chelis-adapter-config.toml")
+    rebind = subprocess.run(
+        [arguments.command, "rebind", "--root", str(repo), "--config", config],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if rebind.returncode != 0:
+        print(rebind.stderr, file=sys.stderr)
+        print(f"provenance-gate: rebind dry run failed with exit {rebind.returncode}", file=sys.stderr)
+        raise SystemExit(rebind.returncode)
+    plan = json.loads(rebind.stdout)
+    if plan["entries"]:
+        for entry in plan["entries"]:
+            print(
+                f"provenance-gate: stale binding {entry['path']} {entry['record']} "
+                f"{entry['field']} bound={entry['bound']} current={entry['current']}",
+                file=sys.stderr,
+            )
+        print(
+            "provenance-gate: run `nautilus-provenance rebind --write`, review the diff, "
+            "re-execute the corpus, and commit",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+
+    trace = subprocess.run(
+        [
+            arguments.command,
+            "trace",
+            "--root",
+            str(repo),
+            "--config",
+            config,
+            "--id",
+            "NAUT-MOD-LINALG",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if trace.returncode != 0:
+        print(trace.stdout, file=sys.stderr)
+        print(f"provenance-gate: trace smoke failed with exit {trace.returncode}", file=sys.stderr)
+        raise SystemExit(trace.returncode)
+
     records = parse_records(repo)
     atoms = {record["id"] for record in records if record["kind"] == "authority"}
     carriers = [record for record in records if record["kind"] == "carrier"]
@@ -109,6 +157,7 @@ def main() -> None:
 
     print("provenance-advisory: begin (advisory findings never block)")
     print(f"  static verdict: {report['verdict']} atoms={len(report['objects']['atoms'])}")
+    print("  rebind plan: empty; trace smoke: NAUT-MOD-LINALG accept")
     for identifier in sorted(verdicts):
         print(f"  carrier {identifier}: verdict={verdicts[identifier]}")
     for atom in sorted(atoms - covered):

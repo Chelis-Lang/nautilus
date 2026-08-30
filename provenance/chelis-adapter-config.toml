@@ -11,3 +11,9 @@ dialect = "surf"
 [[selector]]
 root = "tests_neg"
 dialect = "surf"
+
+# Selected for its raw artifacts only: the CI workflow that installs and
+# invokes the gate runner. No Surf sources live here.
+[[selector]]
+root = ".github"
+dialect = "surf"
