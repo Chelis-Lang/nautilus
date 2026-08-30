@@ -8,7 +8,7 @@ records in the saved sources.
 ## Pinned tooling
 
 - Buoy resolves only through the pinned consumer-package path at revision
-  `30b61f5e397bbf957b30ffd6eee47ee781d81bbe`. The pin check rejects floating
+  `92e60f5b419eea5601989cd96b45dff181fe7ce2`. The pin check rejects floating
   references and vendored copies.
 - The `chelis-provenance` command comes from the upstream consumer package,
   which builds the `buoy` and `chelis-provenance` binaries with exact
@@ -33,6 +33,21 @@ records in the saved sources.
   normalized to the grammar-accepted forms (`cast(x, t)` instead of the
   cast-pipe lambda; named tuple binding before the block tail) with
   unchanged semantics; the compiler corpus verifies the rewrite.
+
+## Enforced runner bindings
+
+- The gate oracle declares `runner-config-paths = .github/workflows/ci.yml`,
+  so its `runner-digest` verifies against the saved workflow bytes on every
+  static check (`CHELIS-PROV-ORACLE-RUNNER-STALE` on drift). The workflow is
+  the runner definition: it installs and invokes the pinned `chelis test`.
+- `runner-configuration-digest` binds the `reef.toml` compiler-pin bytes but
+  stays manually recomputed: `reef.toml` sits at the repository root, outside
+  every Buoy selector root. Upstream follow-up: reach root-level artifacts
+  from oracle bindings. Until then the reef-to-toolchain agreement stays
+  enforced by the devenv status shim and the upstream pin-consistency-guard.
+- The gate lane blocks on a nonempty `rebind` dry-run plan and on a failed
+  `trace` smoke over `NAUT-MOD-LINALG`, in addition to the pin, fixture, and
+  static checks.
 
 ## What the records claim
 
@@ -64,12 +79,15 @@ records in the saved sources.
 
 ## Digest regeneration
 
-Atom revisions and object digests come from the revision-bearing
-`chelis-static-report/v2` bytes; rebinding a surface row, link, or carrier
-needs no helper build. Bound item digests derive from parsed declaration
-node bytes under the pinned adapter; recompute them with the pinned
-`chelis-provenance` extraction when a bound declaration changes, then re-run
-the gate lane. The static check fails closed on any drift either way.
+Run `nautilus-provenance rebind` after any reviewed edit that moves a bound
+value. The dry run prints the exact field-level plan with bound and current
+values; review it, apply with `--write`, re-execute the corpus so the
+receipts bind the new static identity, and commit. The command rewrites
+only record comment fields, never declarations, and refuses when the
+grammar rejects a source. Every staleness diagnostic also carries
+`bound=...;current=...`, so no out-of-band recomputation build exists
+anywhere in this workflow. The static check fails closed on any drift
+either way.
 
 ## Rollback
 

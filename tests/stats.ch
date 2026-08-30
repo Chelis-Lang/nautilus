@@ -8,7 +8,7 @@ import Std.Test (assert_close, assert_true)
 -- atoms = NAUT-MOD-STATS@xxh3-128:83e4d24feb0b0af7a179db04db8ace9b
 -- item-digest = xxh3-128:b0b67356f7ba7993e46555b982386de5
 -- oracle-id = NAUT-GATE-CHELIS-TEST
--- oracle-digest = xxh3-128:a6bf22d60ac853d26caa1417a727cd42
+-- oracle-digest = xxh3-128:b5a32db6d41c30665962063a6052d0a5
 -- configuration-digest = xxh3-128:ae3dfc4c0cfdd00cc99d50805da0931e
 -- scope-schema = nautilus-carrier-scope/v1
 -- scope = the exact descriptive-statistics assertions in tests/stats.ch
