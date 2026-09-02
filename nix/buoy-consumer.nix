@@ -9,7 +9,7 @@
 ## Realize on demand: `nix-build nix/buoy-consumer.nix`. The result exposes
 ## `bin/chelis-provenance` and the `buoy` command family.
 {
-  digestFeature ? "xxh3-128",
+  digestFeature ? "blake3-256",
 }:
 
 let

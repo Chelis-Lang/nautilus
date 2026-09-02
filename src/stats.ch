@@ -7,11 +7,8 @@ export (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec,
 -- scopes = nautilus
 -- statement = Nautilus.Stats MUST provide the descriptive-statistics surface listed in the module support table.
 def zero_f() -> f32 = cast(0.0, f32)
--- chelis:provenance/v1 implementation-link
--- id = NAUT-LINK-STATS-HELPERS
--- atoms = NAUT-MOD-STATS@xxh3-128:83e4d24feb0b0af7a179db04db8ace9b
--- item-digest = xxh3-128:ecddac0920c0392a7d5330490f5c9114
--- navigation = implements
+-- chelis:provenance/v1 binding
+-- record = blake3-256:d68b13e3a8466c421ba48e840a87cea11268bc08c074df3a15add39cfb1f000d
 def one_f() -> f32 = cast(1.0, f32)
 def two_f() -> f32 = cast(2.0, f32)
 def three_f() -> f32 = cast(3.0, f32)

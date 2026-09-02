@@ -14,6 +14,10 @@ import unittest
 REPO = pathlib.Path(__file__).resolve().parents[1]
 DEVENV_PATH = REPO / "devenv.nix"
 DEVENV = DEVENV_PATH.read_text() if DEVENV_PATH.is_file() else ""
+PROVENANCE_CONFIG_PATH = REPO / "provenance" / "chelis-adapter-config.toml"
+PROVENANCE_CONFIG = PROVENANCE_CONFIG_PATH.read_text() if PROVENANCE_CONFIG_PATH.is_file() else ""
+PROVENANCE_GATE_PATH = REPO / "scripts" / "provenance_gate.py"
+PROVENANCE_GATE = PROVENANCE_GATE_PATH.read_text() if PROVENANCE_GATE_PATH.is_file() else ""
 
 
 @unittest.skipIf(
@@ -66,9 +70,24 @@ class DevenvContractTests(unittest.TestCase):
         for reference in (
             "provenance/buoy-pin.toml",
             "provenance/chelis-adapter-config.toml",
+            "provenance/bindings/README.md",
+            "provenance/receipts/latest-execution.json",
+            "provenance/receipts/latest-static-report.json",
             "nix/buoy-consumer.nix",
         ):
             self.assertTrue((REPO / reference).is_file(), reference)
+
+    def test_binding_store_is_selected(self) -> None:
+        self.assertIn('binding-store = "provenance/bindings"', PROVENANCE_CONFIG)
+        self.assertIn('root = "provenance/bindings"', PROVENANCE_CONFIG)
+
+    def test_gate_traces_each_compact_relation(self) -> None:
+        for identifier in (
+            "NAUT-LINK-LINALG-MATMUL",
+            "NAUT-LINK-SIGNAL-STUBS",
+            "NAUT-LINK-STATS-HELPERS",
+        ):
+            self.assertIn(identifier, PROVENANCE_GATE)
 
 
 if __name__ == "__main__":

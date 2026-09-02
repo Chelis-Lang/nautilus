@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Fail-closed check of the Buoy provenance pin.
+"""Run the fail-closed check of the Buoy provenance pin.
 
-The check validates that `provenance/buoy-pin.toml` records one exact
-40-hex revision, that `nix/buoy-consumer.nix` consumes only that pin
-record, and that no floating reference or vendored Buoy copy exists.
+The pin must record one exact 40-hex revision and the required BLAKE3-256 feature.
+The Nix consumer must use the same feature and only the recorded revision.
+The repository must not contain a floating reference or vendored Buoy copy.
 """
 
 from __future__ import annotations
@@ -44,6 +44,8 @@ def check(repo: pathlib.Path) -> None:
         fail("NAUT-PIN-FLOATING", f"revision must be one full 40-hex commit, got {revision!r}")
     if not buoy["reviewed_source_content_hash"].startswith("sha256-"):
         fail("NAUT-PIN-HASH", "reviewed_source_content_hash must be an SRI sha256 value")
+    if buoy["digest_feature"] != "blake3-256":
+        fail("NAUT-PIN-DIGEST", "buoy.digest_feature must be blake3-256")
 
     consumer_text = (repo / "nix" / "buoy-consumer.nix").read_text()
     consumer = "\n".join(
@@ -58,6 +60,14 @@ def check(repo: pathlib.Path) -> None:
             fail("NAUT-PIN-FLOATING", f"nix/buoy-consumer.nix contains floating marker {marker!r}")
     if re.search(r"\b(rev\s*=\s*\")", consumer):
         fail("NAUT-PIN-DRIFT", "nix/buoy-consumer.nix must take the revision from the pin record")
+    digest_default = re.search(r'\bdigestFeature\s*\?\s*"([^"]+)"', consumer)
+    if digest_default is None:
+        fail("NAUT-PIN-DIGEST-DRIFT", "nix/buoy-consumer.nix must declare its digest default")
+    if digest_default.group(1) != buoy["digest_feature"]:
+        fail(
+            "NAUT-PIN-DIGEST-DRIFT",
+            f"pin={buoy['digest_feature']} consumer={digest_default.group(1)}",
+        )
 
     vendored = [
         str(path)

@@ -9,11 +9,8 @@ export (fft_magnitude_stub, ifft_magnitude_stub, stft_magnitude_stub, lowpass_st
 -- scopes = nautilus
 -- statement = Nautilus.Signal MUST keep its six transform and filter entry points as typed stubs under the Phase 5f deferral until that deferral is lifted.
 def signal_stub_nan() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
--- chelis:provenance/v1 implementation-link
--- id = NAUT-LINK-SIGNAL-STUBS
--- atoms = NAUT-MOD-SIGNAL@xxh3-128:6a1b10484def2dcd1098ffe84895e0df
--- item-digest = xxh3-128:18b3fc0c6efde3dd469f98b8b2f3a943
--- navigation = implements
+-- chelis:provenance/v1 binding
+-- record = blake3-256:32eb1c81d8751deb66e20a1cc8f7ab6878afb73cae1d5fd32d879eb150e96ccb
 def fft_magnitude_stub[n](x: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
 def ifft_magnitude_stub[n](x: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
 def stft_magnitude_stub[n](x: &tensor[n, f32], window_size: int64, hop_size: int64) -> tensor[n, f32] = {

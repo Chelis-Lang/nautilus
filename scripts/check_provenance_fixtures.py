@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Execute the frozen provenance fixture pack against the pinned command.
 
-Every fixture freezes one expected outcome: the accept tree must produce the
-golden canonical report bytes under two distinct absolute roots, each reject
-tree must fail with its stable diagnostic, the floating-pin fixture must fail
-the pin check, and the builtin oracle files must produce the five-state
-execution behavior without mutating the static identity.
+Both accept trees must produce canonical reports under two distinct absolute roots.
+The compact accept tree must materialize its stored relation.
+Each reject tree must fail with its stable diagnostic.
+The builtin oracle files must preserve static identity across all execution states.
 
-Golden regeneration policy: delete one golden file, run this check twice, and
-review the recorded diff before commit. A missing golden fails the run.
+Golden regeneration procedure:
+1. Delete one golden file.
+2. Run this check twice.
+3. Review the recorded diff before commit.
 """
 
 from __future__ import annotations
@@ -28,6 +29,8 @@ REJECT_CASES = (
     ("reject-malformed", "CHELIS-PROV-MALFORMED-RECORD"),
     ("reject-parse", "CHELIS-PROV-PARSE-ERROR"),
     ("reject-runner", "CHELIS-PROV-ORACLE-RUNNER-STALE"),
+    ("reject-binding-address", "CHELIS-PROV-BINDING-ADDRESS"),
+    ("reject-binding-subject", "CHELIS-PROV-BINDING-SUBJECT-STALE"),
 )
 
 
@@ -78,6 +81,17 @@ def main() -> None:
     if report_a != report_b or report_a != report:
         fail("NAUT-FIX-DETERMINISM", "report bytes differ across absolute roots")
 
+    compact_exit, compact_report = run_static(command, fixtures / "accept-compact", config)
+    if compact_exit != 0 or '"id":"NAUT-FIX-LINK-COMPACT"' not in compact_report:
+        fail("NAUT-FIX-COMPACT", f"exit={compact_exit}")
+    with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
+        for scratch in (first, second):
+            shutil.copytree(fixtures / "accept-compact", pathlib.Path(scratch) / "tree")
+        _, compact_a = run_static(command, pathlib.Path(first) / "tree", config)
+        _, compact_b = run_static(command, pathlib.Path(second) / "tree", config)
+    if compact_a != compact_b or compact_a != compact_report:
+        fail("NAUT-FIX-COMPACT-DETERMINISM", "report bytes differ across absolute roots")
+
     for name, code in REJECT_CASES:
         exit_code, report_text = run_static(command, fixtures / name, config)
         if exit_code != 2:
@@ -93,6 +107,19 @@ def main() -> None:
     )
     if pin_check.returncode == 0 or "NAUT-PIN-FLOATING" not in pin_check.stderr:
         fail("NAUT-FIX-PIN", "floating pin fixture must fail the pin check")
+    digest_check = subprocess.run(
+        [
+            sys.executable,
+            str(repo / "scripts" / "check_buoy_pin.py"),
+            "--repo",
+            str(fixtures / "pin-digest-drift"),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if digest_check.returncode == 0 or "NAUT-PIN-DIGEST-DRIFT" not in digest_check.stderr:
+        fail("NAUT-FIX-PIN-DIGEST", "digest drift fixture must fail the pin check")
 
     def run_execute(oracles: str) -> tuple[int, dict]:
         result = subprocess.run(
@@ -126,7 +153,7 @@ def main() -> None:
         "execute-report.json",
     )
 
-    print("provenance-fixtures: ok cases=10 goldens=2 determinism=cross-root")
+    print("provenance-fixtures: ok cases=14 goldens=2 determinism=cross-root")
 
 
 if __name__ == "__main__":

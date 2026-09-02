@@ -4,10 +4,10 @@ import Std.Test (assert_close)
 -- chelis:provenance/v1 carrier
 -- id = NAUT-CARRIER-LINALG-NEGATIVE
 -- role = negative
--- atoms = NAUT-MOD-LINALG@xxh3-128:49dca51dd2b5269319d41eaa1523c417
--- item-digest = xxh3-128:5ac56cd4d01ef98ab4922ce007877912
+-- atoms = NAUT-MOD-LINALG@blake3-256:469597a07dcc6f6d49c65ac83962454a47ff57d96f5a19a332cc13bafbce99fa
+-- item-digest = blake3-256:31a62a2d28ba6db38cc6150959e121c7d9c1c59a2a916be2b64550bf9ba4a4f4
 -- oracle-id = NAUT-GATE-CHELIS-TEST
--- oracle-digest = xxh3-128:b5a32db6d41c30665962063a6052d0a5
+-- oracle-digest = blake3-256:953753dd95e43c8c4e9ced041b437e1d18a38fca8d01cdcbb5a272da24d83081
 -- configuration-digest = xxh3-128:ae3dfc4c0cfdd00cc99d50805da0931e
 -- scope-schema = nautilus-carrier-scope/v1
 -- scope = the pinned unsupported-element-type rejection in tests_neg/linalg

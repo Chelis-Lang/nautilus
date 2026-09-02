@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Execute the registered gate oracle once and record the canonical receipts.
 
-The oracle command mirrors the declared `NAUT-GATE-CHELIS-TEST` record: the
-reef-pinned `chelis test` run over the committed positive corpus. The
-canonical execution report is written to
-`provenance/receipts/latest-execution.json`; the raw logs stay noncanonical
-and are not retained. The static identity is an input and the check fails
-if execution changed it.
+The oracle command mirrors the declared `NAUT-GATE-CHELIS-TEST` record.
+It runs the reef-pinned `chelis test` command over the committed positive corpus.
+The command writes the execution report and its exact static report under `provenance/receipts`.
+Raw logs stay noncanonical and are not retained.
+The check fails if execution changes the static report.
 """
 
 from __future__ import annotations
@@ -92,9 +91,10 @@ def main() -> None:
         print("corpus-execute: execution mutated the static report bytes", file=sys.stderr)
         raise SystemExit(1)
 
-    receipts = repo / "provenance" / "receipts" / "latest-execution.json"
-    receipts.parent.mkdir(parents=True, exist_ok=True)
-    receipts.write_text(execution.stdout.strip() + "\n")
+    receipts_dir = repo / "provenance" / "receipts"
+    receipts_dir.mkdir(parents=True, exist_ok=True)
+    (receipts_dir / "latest-execution.json").write_text(execution.stdout.strip() + "\n")
+    (receipts_dir / "latest-static-report.json").write_text(static.stdout)
     print(f"corpus-execute: exit={execution.returncode} verdicts={report['verdicts']}")
     raise SystemExit(0 if execution.returncode in (0, 4) else 1)
 

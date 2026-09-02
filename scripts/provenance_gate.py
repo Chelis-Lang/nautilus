@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Advisory provenance gate lane.
+"""Run the advisory provenance gate lane.
 
-The lane runs the pin check, the frozen fixture pack, the deterministic
-static check, the rebind dry run (which must report an empty plan), and a
-trace smoke over one bound atom; any failure there is loud and blocks the
-lane. It then prints the advisory summary derived from the same saved
-records: carrier verdicts from the latest committed execution receipts
-(`not-run` when none exist), uncovered atoms, and the README module table
-as a visible untracked copy. Advisory findings never change the exit
-status.
+The lane runs the pin check, fixture pack, static check, and rebind dry run.
+The dry run must report an empty plan.
+The lane also traces each compact relation through its bound atom.
+A deterministic failure blocks the lane.
+
+The final summary uses the saved records and latest execution receipts.
+It reports carrier verdicts, uncovered atoms, and the untracked README module table.
+Advisory findings never change the exit status.
 """
 
 from __future__ import annotations
@@ -20,6 +20,11 @@ import subprocess
 import sys
 
 RECORD_MARKER = "-- chelis:provenance/v1 "
+COMPACT_TRACES = (
+    ("NAUT-MOD-LINALG", "NAUT-LINK-LINALG-MATMUL"),
+    ("NAUT-MOD-SIGNAL", "NAUT-LINK-SIGNAL-STUBS"),
+    ("NAUT-MOD-STATS", "NAUT-LINK-STATS-HELPERS"),
+)
 
 
 def parse_records(repo: pathlib.Path) -> list[dict[str, str]]:
@@ -91,6 +96,16 @@ def main() -> None:
         print(f"provenance-gate: static check failed with exit {static.returncode}", file=sys.stderr)
         raise SystemExit(static.returncode)
     report = json.loads(static.stdout)
+    receipts_dir = repo / "provenance" / "receipts"
+    receipts = receipts_dir / "latest-execution.json"
+    receipt_static = receipts_dir / "latest-static-report.json"
+    if receipts.is_file() and not receipt_static.is_file():
+        print("provenance-gate: receipt static report is absent; run the corpus again", file=sys.stderr)
+        raise SystemExit(2)
+    if receipt_static.is_file() and receipt_static.read_text() != static.stdout:
+        print("provenance-gate: execution receipt binds a stale static report", file=sys.stderr)
+        print("provenance-gate: run the corpus again and review both receipt files", file=sys.stderr)
+        raise SystemExit(2)
 
     config = str(repo / "provenance" / "chelis-adapter-config.toml")
     rebind = subprocess.run(
@@ -118,25 +133,40 @@ def main() -> None:
         )
         raise SystemExit(2)
 
-    trace = subprocess.run(
-        [
-            arguments.command,
-            "trace",
-            "--root",
-            str(repo),
-            "--config",
-            config,
-            "--id",
-            "NAUT-MOD-LINALG",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if trace.returncode != 0:
-        print(trace.stdout, file=sys.stderr)
-        print(f"provenance-gate: trace smoke failed with exit {trace.returncode}", file=sys.stderr)
-        raise SystemExit(trace.returncode)
+    for atom_id, binding_id in COMPACT_TRACES:
+        trace = subprocess.run(
+            [
+                arguments.command,
+                "trace",
+                "--root",
+                str(repo),
+                "--config",
+                config,
+                "--id",
+                atom_id,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if trace.returncode != 0:
+            print(trace.stdout, file=sys.stderr)
+            print(
+                f"provenance-gate: trace failed for {atom_id} with exit {trace.returncode}",
+                file=sys.stderr,
+            )
+            raise SystemExit(trace.returncode)
+        projection = json.loads(trace.stdout)
+        binding = next(
+            (entry for entry in projection["bindings"] if entry["id"] == binding_id),
+            None,
+        )
+        if binding is None or not binding["verified"]:
+            print(f"provenance-gate: compact binding absent or unverified: {binding_id}", file=sys.stderr)
+            raise SystemExit(2)
+        if any(not hop["matches"] for hop in binding["hops"]):
+            print(f"provenance-gate: compact binding trace mismatch: {binding_id}", file=sys.stderr)
+            raise SystemExit(2)
 
     records = parse_records(repo)
     atoms = {record["id"] for record in records if record["kind"] == "authority"}
@@ -147,7 +177,6 @@ def main() -> None:
             covered.add(reference.split("@", 1)[0])
 
     verdicts: dict[str, str] = {}
-    receipts = repo / "provenance" / "receipts" / "latest-execution.json"
     oracle_verdicts: dict[str, str] = {}
     if receipts.is_file():
         payload = json.loads(receipts.read_text())
@@ -157,7 +186,8 @@ def main() -> None:
 
     print("provenance-advisory: begin (advisory findings never block)")
     print(f"  static verdict: {report['verdict']} atoms={len(report['objects']['atoms'])}")
-    print("  rebind plan: empty; trace smoke: NAUT-MOD-LINALG accept")
+    traced = ", ".join(binding for _, binding in COMPACT_TRACES)
+    print(f"  rebind plan: empty; compact traces accept: {traced}")
     for identifier in sorted(verdicts):
         print(f"  carrier {identifier}: verdict={verdicts[identifier]}")
     for atom in sorted(atoms - covered):
