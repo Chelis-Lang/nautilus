@@ -1,0 +1,9 @@
+schema = "buoy/implementation-binding/v1"
+id = "NAUT-LINK-LINALG-MATMUL"
+relation = "implements"
+subject = "blake3-256:20d56f4699c7457683587928d5c00bdbe1fccdcc7ebd0de27e59e3b096c3a920"
+requirement = "blake3-256:49cf4e280b9d53175a44201f3c531b9e5495972de91e5a2d90fd1489df903ff3"
+
+[atom]
+id = "NAUT-MOD-LINALG"
+revision = "blake3-256:469597a07dcc6f6d49c65ac83962454a47ff57d96f5a19a332cc13bafbce99fa"

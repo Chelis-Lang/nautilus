@@ -1,0 +1,9 @@
+schema = "buoy/implementation-binding/v1"
+id = "NAUT-LINK-SIGNAL-STUBS"
+relation = "implements"
+subject = "blake3-256:8fc79ac08badd1fd2a157324492415c1524bd3eaf3d9be8fdd95e84c29adf6d6"
+requirement = "blake3-256:90f0c0c7564c1a62c4aa50e2053c13ce125f6d642cca0e7472044e506daa0901"
+
+[atom]
+id = "NAUT-MOD-SIGNAL"
+revision = "blake3-256:8f9dc27193f2723f425a58bb0862aad069d41981b0390114761c6d4dc6d110ae"

@@ -6,7 +6,7 @@ import Nautilus.LinAlg (matvec, vecmat, inner_product, l2_norm_vec, scale_vec, l
 -- oracle-kind = test
 -- runner-id = chelis-test
 -- runner-version = 0.18.6
--- runner-digest = xxh3-128:24d7931c77744443cd3f8749a4db04c5
+-- runner-digest = blake3-256:ed7a428e827caefa0ee9f6238b5fafc9c0313888d20d8faab737ba6bba39c397
 -- runner-configuration-digest = xxh3-128:9bdaff4595515ac76278651dc0b0050a
 -- runner-config-paths = .github/workflows/ci.yml
 -- selection-schema = nautilus-oracle-selection/v1
@@ -20,10 +20,10 @@ def basis2(k: int64) -> tensor[2, f32] = to_tensor(map(fn (i: int64) -> if eq(i,
 -- chelis:provenance/v1 carrier
 -- id = NAUT-CARRIER-LINALG-TESTS
 -- role = positive
--- atoms = NAUT-MOD-LINALG@xxh3-128:49dca51dd2b5269319d41eaa1523c417
--- item-digest = xxh3-128:184f1cf13b5e64d7ac8c1af5a2dd1a69
+-- atoms = NAUT-MOD-LINALG@blake3-256:469597a07dcc6f6d49c65ac83962454a47ff57d96f5a19a332cc13bafbce99fa
+-- item-digest = blake3-256:a941bd4bb99f7e4a799a7e3bd8bfc967cddfc0c5d8c126809268336383ea442b
 -- oracle-id = NAUT-GATE-CHELIS-TEST
--- oracle-digest = xxh3-128:b5a32db6d41c30665962063a6052d0a5
+-- oracle-digest = blake3-256:953753dd95e43c8c4e9ced041b437e1d18a38fca8d01cdcbb5a272da24d83081
 -- configuration-digest = xxh3-128:ae3dfc4c0cfdd00cc99d50805da0931e
 -- scope-schema = nautilus-carrier-scope/v1
 -- scope = the exact linear-algebra assertions in tests/linalg.ch

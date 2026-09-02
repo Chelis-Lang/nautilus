@@ -5,10 +5,10 @@ import Std.Test (assert_close, assert_true)
 -- chelis:provenance/v1 carrier
 -- id = NAUT-CARRIER-STATS-TESTS
 -- role = positive
--- atoms = NAUT-MOD-STATS@xxh3-128:83e4d24feb0b0af7a179db04db8ace9b
--- item-digest = xxh3-128:b0b67356f7ba7993e46555b982386de5
+-- atoms = NAUT-MOD-STATS@blake3-256:ff765fb0cb921dc27791152e76665a90325d8efaa50260fb1bb6daf1da75aa64
+-- item-digest = blake3-256:ff28b1efa03d8dbe04b0930834151ccade5d23875075fa14793056e68da08740
 -- oracle-id = NAUT-GATE-CHELIS-TEST
--- oracle-digest = xxh3-128:b5a32db6d41c30665962063a6052d0a5
+-- oracle-digest = blake3-256:953753dd95e43c8c4e9ced041b437e1d18a38fca8d01cdcbb5a272da24d83081
 -- configuration-digest = xxh3-128:ae3dfc4c0cfdd00cc99d50805da0931e
 -- scope-schema = nautilus-carrier-scope/v1
 -- scope = the exact descriptive-statistics assertions in tests/stats.ch
