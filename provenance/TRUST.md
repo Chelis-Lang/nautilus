@@ -25,12 +25,13 @@ records in the saved sources.
 - Item identities were reingested under `chelis-surf-syntax/v2`: every bound
   item digest derives from the parsed declaration node's exact bytes, so a
   body edit on a bound declaration now invalidates its bindings.
-- Known upstream Chelis grammar-parity gaps: the compiler accepts untyped
-  lambda parameters (`fn (p) -> ...`) and bare tuple expressions as lambda
-  block tails, but the grammar rejects both. The saved sources were
-  normalized to the grammar-accepted forms (`cast(x, t)` instead of the
-  cast-pipe lambda; named tuple binding before the block tail) with
-  unchanged semantics; the compiler corpus verifies the rewrite.
+- The previous adoption review incorrectly classified two parser findings as grammar-parity gaps.
+  The pinned parser accepts ordinary untyped lambda parameters and bare tuple expressions in lambda block tails.
+- The rejected Nautilus form was the v0.18 first-argument pipe-lambda alias.
+  Canonical Surf uses call-stage sugar, such as `cast(value, type)`.
+  `Chelis-Lang/chelis#1241` tracks the remaining migration error for other first-argument aliases.
+- The saved sources retain semantics-neutral rewrites because current provenance identities bind their declaration bytes.
+  The two named `pair` bindings are conservative rewrites, not parser requirements.
 
 ## Compact implementation bindings
 
