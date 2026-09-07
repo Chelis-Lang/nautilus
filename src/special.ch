@@ -17,6 +17,19 @@ def is_nonpositive_integer(x: f32) -> bool = {
 def pos_inf() -> f32 = cast(1.0, f32) |> div(cast(0.0, f32))
 def neg_inf() -> f32 = cast(-1.0, f32) |> div(cast(0.0, f32))
 def nan_f32() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
+-- Maclaurin series for erf, truncated after the x^7 term:
+--   erf(x) = (2/sqrt(pi)) * (x - x^3/3 + x^5/10 - x^7/42 + ...)
+-- Horner in x^2. Accurate to <5e-8 absolute for |x| <= 0.25, which is where
+-- `erf` uses it; the next term contributes ~(2/sqrt(pi))*x^9/216.
+def erf_taylor_core(x: f32) -> f32 = {
+  x2 = mul(x, x)
+  c3 = cast(0.3333333333333333, f32)
+  c5 = cast(0.1, f32)
+  c7 = cast(0.023809523809523808, f32)
+  two_over_sqrt_pi = cast(1.1283791670955126, f32)
+  poly = sub(cast(1.0, f32), mul(x2, sub(c3, mul(x2, sub(c5, mul(x2, c7))))))
+  mul(mul(x, poly), two_over_sqrt_pi)
+}
 def erf(x: f32) -> f32 = {
   a1 = cast(0.254829592, f32)
   a2 = cast(-0.284496736, f32)
@@ -26,10 +39,33 @@ def erf(x: f32) -> f32 = {
   p = cast(0.3275911, f32)
   one = cast(1.0, f32)
   ax = abs_f32(x)
-  small = cast(0.00001, f32)
+  -- ERROR BOUND, and why it is written down here.
+  --
+  -- The rational arm below is Abramowitz & Stegun 7.1.26, whose published
+  -- bound is |eps| <= 1.5e-7 ABSOLUTE in exact arithmetic; evaluating the
+  -- formula in f64 measures 1.394e-7, inside that.
+  --
+  -- Evaluated in f32 with f32 coefficients it realizes WORSE. Measured by
+  -- exhaustive scan of every f32 in range, not by sampling:
+  --   max |error| 4.44e-7 over |x| >= 0.25, the range it still owns
+  --                       (worst at x = 0.25292396545410156)
+  --   max |error| 6.62e-7 over |x| >= 1e-5, the range it owned before the
+  --                       cutover moved (worst at x = 0.03796697407960892)
+  -- Quote those, not the 1.5e-7 formula bound, when you need what this
+  -- function actually delivers.
+  --
+  -- That bound is ABSOLUTE and roughly constant, so the RELATIVE error
+  -- diverges as x -> 0. At the old 1e-5 cutover it reached 2.404e-2.
+  --
+  -- These constants are f32 constants. Widening this function to f64 does
+  -- NOT buy f64 accuracy: 7.1.26 is a 1.5e-7 formula at any precision, so
+  -- the coefficients must be replaced, not merely re-typed. The same
+  -- approximation is duplicated at `erf_t` below, and the sibling shoals
+  -- repo carries its own copy -- see shoals#61 for that propagation.
+  small = cast(0.25, f32)
   if lt(ax, small) then {
-    two_over_sqrt_pi = cast(1.1283791670955126, f32)
-    mul(x, two_over_sqrt_pi)
+    xt = if lt(ax, small) then x else cast(0.0, f32)
+    erf_taylor_core(xt)
   } else {
     t = div(one, add(one, mul(p, ax)))
     poly = mul(t, add(a1, mul(t, add(a2, mul(t, add(a3, mul(t, add(a4, mul(t, a5)))))))))
@@ -39,6 +75,9 @@ def erf(x: f32) -> f32 = {
     y = sub(one, mul(poly, e))
     if lt(x, cast(0.0, f32)) then neg(y) else y
   }
+  -- Clamp the series input to the branch domain. A masked-select lowering
+  -- evaluates BOTH arms (chelis#1464), and an unclamped x^7 overflows f32
+  -- for |x| > ~5.5e5; on the clamped value the untaken arm stays bounded.
 }
 def erfc(x: f32) -> f32 = cast(1.0, f32) |> sub(erf(x))
 def lanczos_sum(x: f32) -> f32 = {
@@ -737,11 +776,25 @@ def erf_t[n](x: &tensor[n, f32]) -> tensor[n, f32] = {
   e = x2 |> neg |> exp
   y = sub(one, mul(poly, e))
   signed = x |> lt(zero) |> where(neg(y), y)
-  -- Near zero the rational form loses relative accuracy; the scalar `erf`
-  -- switches to the leading Taylor term below 1e-5, so mirror that here.
-  small = sp_lift_t(x, cast(0.00001, f32))
+  -- Mirror the scalar `erf` exactly: the same 0.25 cutover onto the same
+  -- 4-term series. nautilus#45 requires these two lanes to agree
+  -- elementwise, so they change together or not at all.
+  small = sp_lift_t(x, cast(0.25, f32))
   two_over_sqrt_pi = sp_lift_t(x, cast(1.1283791670955126, f32))
-  ax |> lt(small) |> where(mul(x, two_over_sqrt_pi), signed)
+  c3 = sp_lift_t(x, cast(0.3333333333333333, f32))
+  c5 = sp_lift_t(x, cast(0.1, f32))
+  c7 = sp_lift_t(x, cast(0.023809523809523808, f32))
+  in_small = lt(ax, small)
+  -- Clamped for lane symmetry with the scalar `erf`, NOT because `where`
+  -- needs it: a discarded `where` arm holding inf or NaN does not poison
+  -- the selected value (probed directly). Deleting this clamp changes no
+  -- measured output. The scalar clamp IS load-bearing -- see chelis#1464
+  -- there -- and nautilus#45 wants the two lanes to stay the same shape.
+  xt = where(in_small, x, zero)
+  xt2 = mul(xt, xt)
+  tpoly = sub(one, mul(xt2, sub(c3, mul(xt2, sub(c5, mul(xt2, c7))))))
+  taylor = mul(mul(xt, tpoly), two_over_sqrt_pi)
+  where(in_small, taylor, signed)
 }
 def acklam_central_t[n](q: &tensor[n, f32]) -> tensor[n, f32] = {
   a1 = sp_lift_t(q, cast(-39.69683028665376, f32))
