@@ -23,6 +23,16 @@ Verdicts are fail-closed:
 |---|---|---|
 | `curvefit/lm_jacobian_generic_dims.ch` | Generic vector-model wrapper reaches malformed backward-DAG verification after chelis#847's checker fix; `chelis#676` | Every pin bump and the release resolving chelis#676 |
 | `curvefit/lm_jacobian_model_wrapper.ch` | Concrete arbitrary-model wrapper emits a malformed backward DAG; `chelis#676` (function-valued-capture witness, same verifier class) | Every pin bump and the release resolving the issue |
+| `masked_select/untaken_arm_overflow.ch` | An untaken scalar-`if` arm is evaluated under `vmap`, so an overflowing arm poisons the select; `chelis#1464` (untaken-arithmetic sibling of that issue's taken-`fail` reproducer) | Every pin bump and the release resolving chelis#1464 |
+
+## Cannot be probed from this repo
+
+- **`shoals#61`** — cited in `src/special.ch`'s `erf` error-bound note. It is
+  the sibling shoals repo's instance of the same duplicated-approximation
+  class, not a Chelis limitation and not reachable from Nautilus sources, so
+  there is nothing here to reproduce. The citation exists so that an author
+  widening `erf` to f64 sees the constants are copied elsewhere too. Re-probe
+  trigger: none; drop the citation when shoals#61 closes.
 
 ## Manual-only current probes
 

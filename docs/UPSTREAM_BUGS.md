@@ -172,13 +172,56 @@ release.
       On pass, re-run the generic probe and compare full LM recovery
       trajectories before de-narrowing.
 
+- **An untaken scalar-`if` arm is evaluated under `vmap`** — `chelis#1464`
+  ([Chelis-Lang/chelis#1464](https://github.com/Chelis-Lang/chelis/issues/1464)).
+  `spec/06` §2.10.1 says an untaken branch is not evaluated. Under `vmap` a
+  scalar `if` is lowered to a masked select that evaluates BOTH arms, so an
+  untaken arm which overflows poisons the selected value.
+    - **Where this sits in chelis#1464:** that issue's title and reproducer
+      are a **taken `fail`** arm replaced by a zero `Const`; ours is the
+      sibling case, an **untaken arithmetic** arm that overflows. Its
+      acceptance criteria already cover us — the second bullet of "Owning
+      class and fix shape" reads *"untaken branch: forward value and
+      gradient remain unchanged across lanes"*, which is exactly this
+      symptom, `grad` included. So the fix as specified should resolve it;
+      what the issue lacked was a reproducer exercising that bullet. The
+      probe below supplies one, and it is recorded upstream in
+      [a comment on chelis#1464](https://github.com/Chelis-Lang/chelis/issues/1464#issuecomment-5575529219)
+      and its [correction](https://github.com/Chelis-Lang/chelis/issues/1464#issuecomment-5575722689),
+      which withdraws that comment's claim of a scope gap.
+    - **Minimal reproducer:** `tests_blocked/masked_select/untaken_arm_overflow.ch`,
+      self-contained (it does not call `Nautilus.Special.erf`, so it reports
+      on the compiler rather than on our workaround).
+    - **0.18.6 result:** fails at `assert failed: the untaken overflowing arm
+      does not poison the selected value` (`chelis test tests_blocked/
+      --expect blocked` → 3 ok, 0 failing).
+    - **Affected Nautilus surface:** `Nautilus.Special.erf`, whose small-|x|
+      arm is a Maclaurin series carrying an `x^7` term that overflows f32 for
+      |x| > ~5.5e5. Measured: `erf` on a scalar reduced from a batched tensor
+      inside `vmap`, series arm unclamped, evaluates to NaN for a 1e6 input.
+      `grad(erf)(1e30)` is NaN under the same mutation.
+    - **Distinct from tensor `where`:** a discarded `where` arm holding NaN or
+      inf does NOT poison the selected value (probed directly, both cases).
+      Deleting `erf_t`'s clamp changes no measured output over a 3771-point
+      sweep; it is kept only for lane symmetry with the scalar `erf`.
+    - **Workaround:** `erf` clamps its series input to the branch domain, so
+      the unselected arm stays bounded on the finite domain.
+    - **Pin:** `tests/special.ch::test_erf_series_arm_survives_a_vmapped_huge_input`,
+      verified by mutation — removing the scalar clamp turns that value into
+      NaN. That test passes both with and without the workaround once the
+      compiler is fixed, which is why the blocked probe above, not this test,
+      is what orders de-narrowing.
+    - **Re-probe trigger:** every pin bump and the release resolving
+      chelis#1464. On pass, drop both clamps and archive this entry.
+
 ## Tracking
 
 **Re-probe cadence:** at every compiler pin bump.
 
 - **No separately tracked limitation remains.** The active finite-difference
-  narrowing is blocking and stays under chelis#676 above; chelis#848 is
-  archived below after its 0.17.5 release-asset re-probe passed all 15 shapes.
+  narrowing and the masked-select narrowing are both blocking and stay above;
+  chelis#848 is archived below after its 0.17.5 release-asset re-probe passed
+  all 15 shapes.
 
 ## Parked
 
