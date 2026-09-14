@@ -1123,6 +1123,9 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `la_vec_add` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `stable` | General-n elementwise add |
 | `la_vec_sub` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `stable` | General-n elementwise sub |
 | `la_vec_saxpy` | `[n](alpha: f32, x: tensor[n, f32], y: tensor[n, f32]) -> tensor[n, f32]` | `stable` | General-n, computes x + alpha*y |
+| `la_basis_n_f32` | `(k: int64, s: f32, template: &tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Basis vector scaled by `s`, using the template length; shared by CurveFit and Ode. |
+| `la_zeros_mat_like` | `(a: &tensor[n, n, f32]) -> tensor[n, n, f32]` | `alpha` | Elementwise `a - a`; a zero matrix for finite input, preserving IEEE behavior for non-finite values. |
+| `la_tridiag_solve` | `[n](lower: tensor[n, f32], diag: tensor[n, f32], upper: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Shared tridiagonal solver used by cubic spline interpolation. Intended for finite inputs with elimination pivots of magnitude at least `1e-30`; smaller pivots are replaced by `1.0` without a singularity diagnostic. |
 | `cg_solve` | `[n](a_mat: tensor[n, n, f32], b: tensor[n, f32], x0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32]` | `stable` | General-n conjugate gradient for SPD systems |
 | `inv_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` | Fixed 2x2, Cayley-Hamilton, NaN on singular |
 | `inv_3x3` | `(a: tensor[3, 3, f32]) -> tensor[3, 3, f32]` | `stable` | Fixed 3x3, Cayley-Hamilton, NaN on singular |

@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.44] - 2026-09-13
+
+- Prepare the Chelis 0.18.8 dependency release wave for C Note.
+- Export the LinAlg helpers used across modules and import the four required
+  interpolation helpers explicitly. Add analytic shared-helper tests and
+  retain wrong-precision rejection. This repairs nautilus#61.
+- Introduce new scalar-lift axes with `insert`, preserving values and shapes
+  under the compiler's explicit axis rules. Keep blocked AD probes active.
+- Replace the provenance shell wrapper with a Python launcher using the
+  selected interpreter, with process-status propagation tests.
+- Refresh executable documentation and the current CLI command inventory.
+  Published-compiler acceptance and artifact identities are recorded in
+  `docs/chelis-0.18.8-migration.md` before publication.
+
 ## [0.7.43] - 2026-08-29
 
 Compiler-pin release for Chelis v0.18.6. `chelis reef conform bump 0.18.6`

@@ -61,7 +61,7 @@ class DevenvContractTests(unittest.TestCase):
             "check_provenance_fixtures.py",
             "provenance_gate.py",
             "run_provenance_corpus.py",
-            "provenance_oracle.sh",
+            "provenance_oracle.py",
             "devenv_status.py",
         ):
             self.assertTrue((REPO / "scripts" / name).is_file(), name)
