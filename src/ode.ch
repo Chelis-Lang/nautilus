@@ -1,5 +1,5 @@
 module Nautilus.Ode
-import Nautilus.LinAlg (scale_vec, la_vec_add, la_basis_n_f32, inner_product)
+import Nautilus.LinAlg (scale_vec, la_vec_add, la_basis_n, inner_product)
 export (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve, rk45_adaptive_solve_grid)
 -- chelis:provenance/v1 authority
 -- id = NAUT-MOD-ODE
@@ -210,13 +210,13 @@ def rk45_hermite_interp[n](y_n: tensor[n, f32], y_high: tensor[n, f32], k1: tens
 }
 def rk45_grid_inner_rec[n, p](t_out: &tensor[p, f32], template_p: &tensor[p, f32], y_n: tensor[n, f32], y_high: tensor[n, f32], k1: tensor[n, f32], k7: tensor[n, f32], t_n: f32, h_accepted: f32, output: tensor[n, p, f32], j: int64, p_len: int64) -> tensor[n, p, f32] =
   if gte(j, p_len) then output else {
-    t_j = inner_product(copy(t_out), la_basis_n_f32(j, cast(1.0, f32), copy(template_p)))
+    t_j = inner_product(copy(t_out), la_basis_n(j, cast(1.0, f32), copy(template_p)))
     t_step_end = add(t_n, h_accepted)
     in_window = if gt(t_j, t_n) then lte(t_j, t_step_end) else cast(0, bool)
     new_output = if in_window then {
       theta = div(sub(t_j, t_n), h_accepted)
       y_interp = rk45_hermite_interp(copy(y_n), copy(y_high), copy(k1), copy(k7), h_accepted, theta)
-      col_basis = la_basis_n_f32(j, cast(1.0, f32), copy(template_p))
+      col_basis = la_basis_n(j, cast(1.0, f32), copy(template_p))
       delta = einsum("i,j->ij", copy(y_interp), col_basis)
       add(copy(output), delta)
     } else copy(output)

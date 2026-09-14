@@ -1,6 +1,6 @@
 module Nautilus.Tests.Ode
 import Nautilus.Ode (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve, rk45_adaptive_solve_grid)
-import Nautilus.LinAlg (inner_product, la_basis_n_f32)
+import Nautilus.LinAlg (inner_product, la_basis_n)
 import Std.Test (assert_close, assert_close_tensor, assert_true)
 def decay_rhs(y: f32, t: f32) -> f32 = neg(y)
 def zero_rhs(y: f32, t: f32) -> f32 = cast(0.0, f32)
@@ -8,15 +8,15 @@ def unit_rhs(y: f32, t: f32) -> f32 = cast(1.0, f32)
 def decay_rhs_vec(y: tensor[1, f32], t: f32) -> tensor[1, f32] = neg(y)
 def harmonic_rhs(y: tensor[2, f32], t: f32) -> tensor[2, f32] = {
   template = to_tensor([cast(0.0, f32), cast(0.0, f32)])
-  e0 = la_basis_n_f32(cast(0, int64), cast(1.0, f32), copy(template))
-  e1 = la_basis_n_f32(cast(1, int64), cast(1.0, f32), copy(template))
+  e0 = la_basis_n(cast(0, int64), cast(1.0, f32), copy(template))
+  e1 = la_basis_n(cast(1, int64), cast(1.0, f32), copy(template))
   y0 = inner_product(copy(y), e0)
   y1 = inner_product(y, e1)
   to_tensor([y1, neg(y0)])
 }
 def first_of_1(v: &tensor[1, f32]) -> f32 = inner_product(v, to_tensor([cast(1.0, f32)]))
 def grid_col[n, p](g: &tensor[n, p, f32], template_p: &tensor[p, f32], j: int64) -> tensor[n, f32] = {
-  basis = la_basis_n_f32(j, cast(1.0, f32), template_p)
+  basis = la_basis_n(j, cast(1.0, f32), template_p)
   einsum("ij,j->i", g, basis)
 }
 def test_decay_at_zero() -> unit ! { Test } = {

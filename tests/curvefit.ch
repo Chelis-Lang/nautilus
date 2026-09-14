@@ -1,6 +1,6 @@
 module Nautilus.Tests.CurveFit
 import Nautilus.CurveFit (lm_scalar_1param, lm_scalar_nparam)
-import Nautilus.LinAlg (inner_product, la_basis_n_f32, scale_vec, la_vec_add, la_vec_sub)
+import Nautilus.LinAlg (inner_product, la_basis_n, scale_vec, la_vec_add, la_vec_sub)
 import Std.Test (assert_close, assert_close_tensor, assert_true)
 def cf_lin_model(x: f32, theta: f32) -> f32 = mul(theta, x)
 def cf_lin_dmodel(x: f32, theta: f32) -> f32 = x
@@ -11,7 +11,7 @@ def cf_exp_dmodel(x: f32, theta: f32) -> f32 = {
 }
 def cf_get[n](theta: &tensor[n, f32], k: int64) -> f32 = {
   tpl = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(copy(theta))))
-  e_k = la_basis_n_f32(k, cast(1.0, f32), tpl)
+  e_k = la_basis_n(k, cast(1.0, f32), tpl)
   inner_product(theta, e_k)
 }
 def cf_nparam_linear2(theta: &tensor[2, f32], x_data: &tensor[6, f32]) -> tensor[6, f32] = {
