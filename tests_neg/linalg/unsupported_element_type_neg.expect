@@ -1,6 +1,20 @@
-tensor precision mismatch: f32 vs int64
+type variable bounded by dtype family `Float` (the active float dtypes) cannot be instantiated at `int64`
 
-Assumption: Nautilus.LinAlg.det_2x2 accepts only tensor[2, 2, f32]. Passing
-an int64 matrix must remain a compile-time PrecisionMismatch rather than being
+Assumption: Nautilus.LinAlg.det_2x2 accepts only float element types. Passing
+an int64 matrix must remain a compile-time rejection rather than being
 implicitly converted or accepted. If mixed-precision policy changes, review the
 public LinAlg contract before updating this diagnostic.
+
+The diagnostic changed when LinAlg became dtype-generic over the
+`spec/04-type-system.md` §5.9 `Float` family (nautilus#12). It used to read
+`tensor precision mismatch: f32 vs int64`, because the signature was concretely
+f32. The rejection is now the [04-DTYPE-2] one, which is strictly more
+informative: it names the required family AND the offending type, which is what
+that atom requires of an out-of-bound instantiation. The subject of this test is
+unchanged -- an int64 matrix is still rejected at compile time.
+
+The pinned substring includes the parenthetical gloss because the gloss sits
+between the family name and the offending type, so no contiguous substring
+covers both halves without it. If §1.1's active set is reworded this pin fails
+loudly, which is the correct outcome for a negative test rather than a reason to
+weaken it to one half.
