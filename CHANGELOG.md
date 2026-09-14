@@ -32,6 +32,12 @@ advances from 0.7.43 to 0.7.44.
   Published-compiler acceptance and artifact identities are recorded in
   `docs/chelis-0.18.9-migration.md` before publication.
 
+- CI carries a temporary bandaid: the native-suite job raises `--suite-timeout`
+  from its 600s default because Chelis v0.18.9 has a tensor and Monte-Carlo
+  performance regression (chelis#2059) that roughly doubles suite wall time.
+  Every test still passes; only speed regressed. The raise reverts once
+  chelis#2059 is fixed.
+
 ## [0.7.43] - 2026-08-29
 
 Compiler-pin release for Chelis v0.18.6. `chelis reef conform bump 0.18.6`
