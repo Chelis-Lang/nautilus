@@ -5,7 +5,42 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
-> **Current release pin: `chelis 0.18.6`.** The published Darwin arm64 asset
+> **Current release pin: `chelis 0.18.9`.** The published Darwin arm64 asset
+> (release SHA-256
+> `44e12cf187b37cb6d2a617e1573832a1bdcaa0e1564f59c4029e24081a84905d`;
+> compiler payload SHA-256
+> `68e460df6e796891fb30c42904b0309b4d5e83d187944222faaaae63241101c7`;
+> source commit `abff07b47eadc8d2be633e3a7d21220089befb6f`) ran the complete
+> local gate on 2026-09-14: 477 positive tests, 3 negative contracts, 4 blocked
+> probes, all green. The positive count is unchanged from the 0.18.6 baseline,
+> test for test.
+>
+> **Why this bump skips 0.18.7 and 0.18.8.** 0.18.8's release workflow failed
+> and neither tag was ever published, so 0.18.9 is the first release after
+> 0.18.6 that exists. It is also the first carrying chelis#1541, whose fix
+> merged twelve hours after the 0.18.8 tag was cut, and Nautilus needs that
+> specific fix: `Nautilus.LinAlg` reproduces #1541 exactly once its defs become
+> dtype-generic.
+>
+> **0.18.9 re-probe results.** chelis#676 remains **live**: both curvefit
+> probes still fail while verifying the backward DAG. chelis#1464 remains
+> **live**. chelis#2056 is **newly filed at this pin** and is why
+> `Nautilus.LinAlg.la_nan_val` takes a witness parameter. All four blocked
+> probes fail with their own expected diagnostics (`chelis test tests_blocked/
+> --expect blocked` -> 4 ok, 0 failing), so none has drifted.
+>
+> **Unlike previous bumps, Nautilus WAS exposed to the breaking changes**, in
+> two places. First, `spec/04-type-system.md` §4.7.2 split `expand` and
+> `insert`: `expand` now sets the extent at an existing axis and leaves the
+> rank unchanged, so broadcasting a rank-0 scalar is `insert`. Eight sites were
+> migrated, five of them in `tests_blocked/`, where the probes had silently
+> drifted onto the new `expand` diagnostic instead of the blockers they exist
+> to pin — so those blockers were going unverified. Second, name visibility
+> tightened: `src/interpolation.ch` carried no import lines at all while using
+> 38 `Nautilus.LinAlg` symbols, and three symbols its siblings import were
+> never exported. Both were tolerated at 0.18.6 and are errors at 0.18.9.
+
+> **Previous pin: `chelis 0.18.6`.** The published Darwin arm64 asset
 > (release SHA-256
 > `08580435570c6fd44716f4d5c64117e973e379808cefeaaa97c8faefa2588f6c`;
 > compiler payload SHA-256
@@ -129,35 +164,6 @@ reproductions, workarounds, and status notes.
 
 **Re-probe cadence:** at every compiler pin bump and before every Nautilus
 release.
-
-- **A bounded dtype binder in a nullary def's return type checks clean and
-  runs nowhere** — `chelis#2056`
-  ([Chelis-Lang/chelis#2056](https://github.com/Chelis-Lang/chelis/issues/2056)).
-  Filed while converting `Nautilus.LinAlg` to dtype-generic signatures for
-  nautilus#12.
-    - **Minimal reproducer:**
-      `tests_blocked/dtype_generic/nullary_return_only_binder.ch`, the exact
-      shape `Nautilus.LinAlg.la_nan_val` had before narrowing.
-    - **0.18.8 result per surface:** `chelis check` reports **score 1.0, zero
-      errors**; `chelis eval --file` fails with `cast target `prec` is not a
-      recognized primitive type`; `chelis build --target c` fails with
-      `unsupported: dtype `prec` on a `cast` target in host lowering`. Both
-      downstream lanes are correct and say so clearly — the checker is the one
-      making a claim it cannot support.
-    - **Direction worth noting:** WITHOUT the `: Float` bound the checker
-      rejects the same declaration at check time via chelis#1558's gate, so
-      declaring the bound moves the program from correctly-rejected to
-      accepted-and-unrunnable.
-    - **Affected Nautilus surface:** `Nautilus.LinAlg.la_nan_val`, reached from
-      `inv_2x2`, `inv_3x3`, `eig_2x2_real` and `cholesky_2x2`. Unnarrowed, it
-      cost **10 test failures** in `tests/linalg_matmul.ch` while the package
-      still checked at score 1.0.
-    - **Workaround:** `la_nan_val` takes a `prec`-typed witness parameter, so
-      the binder is instantiated by unification at each call site. The witness
-      is load-bearing, not decoration: it is the only instantiation site the
-      declaration has.
-    - **De-narrowing:** on pass, restore the nullary form, drop `witness` from
-      the four call sites, and archive this entry in the same change set.
 
 - **Concrete arbitrary-model wrapper emits a malformed backward DAG** —
   `chelis#676`

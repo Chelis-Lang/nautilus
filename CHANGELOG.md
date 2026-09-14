@@ -4,6 +4,68 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.44] - 2026-09-14
+
+Compiler-pin release for Chelis v0.18.9, and the first pin bump in a while that
+**did** require Nautilus source changes. `chelis reef conform bump 0.18.9`
+advanced the compiler pin, the three workflow audit mirrors, `AGENTS.md`,
+`docs/CHELIS_SURFACE.md` and the four shared agent skills; the package version
+advanced from 0.7.43 to 0.7.44.
+
+**Why 0.18.9 and not 0.18.7 or 0.18.8.** 0.18.8's release workflow failed and
+neither tag was ever published, so 0.18.9 is the first release after 0.18.6
+that exists at all. It is also the first carrying chelis#1541, whose fix merged
+twelve hours after the 0.18.8 tag was cut, and Nautilus needs that specific fix.
+
+### Changed
+
+- `Nautilus.LinAlg` is now dtype-generic over the `spec/04-type-system.md` §5.9
+  `Float` family. All 31 exports and the private helpers carry a
+  `[prec: Float]` binder; no `f32` remains in `src/linalg.ch`. This addresses
+  nautilus#12, which asked for f64 support for f64-default downstreams. The
+  binder is named `prec` rather than `p` because `p` is already an int64 pivot
+  index in the SVD and eigenvalue code.
+- Four `_f32`-suffixed private helpers renamed, since the `type-suffix-policy`
+  (§7.2) lint rejects the suffix once the signature no longer mentions `f32`.
+  `la_basis_n` has 26 call sites across four modules and two test files.
+- The scalar-broadcast helpers in `linalg`, `distributions` and `special` use
+  `insert` rather than `expand`, per §4.7.2's split: `expand` now sets the
+  extent at an existing axis and leaves the rank unchanged, so broadcasting a
+  rank-0 scalar is `insert`. Eight sites in total.
+- `tests_neg/linalg/unsupported_element_type_neg` repinned to the
+  `[04-DTYPE-2]` diagnostic. An int64 matrix is still refused at compile time;
+  the message now names the required family *and* the offending type, which the
+  old concretely-f32 signature could not.
+
+### Fixed
+
+- `src/interpolation.ch` had no import lines at all while using 38
+  `Nautilus.LinAlg` symbols, and `la_basis_n`, `la_zeros_mat_like` and
+  `la_tridiag_solve` were never exported although three sibling modules import
+  them. Both were tolerated at 0.18.6 and are errors at 0.18.9.
+- Five `tests_blocked/` probes had silently drifted onto the new `expand`
+  diagnostic instead of the blockers they exist to pin, so the blockers they
+  track were going unverified. All four probes now fail with their own expected
+  diagnostics again.
+
+### Known limitations
+
+- A dtype-generic signature does not by itself make `Nautilus.LinAlg`
+  f64-*accurate*. The f32-tuned constants — the `1e-30` singularity guards,
+  `cholesky_2x2`'s `1e-6` symmetry tolerance, `cg_solve`'s `tol` — become
+  silently loose thresholds at f64. Choosing between caller-supplied and
+  dtype-derived tolerances remains open under nautilus#12.
+- `Nautilus.LinAlg.la_nan_val` takes a `prec`-typed witness parameter as a
+  narrowing workaround for chelis#2056, filed at this pin: a bounded dtype
+  binder occurring only in a nullary def's return type checks at score 1.0 and
+  then runs in no lane. `tests_blocked/dtype_generic/` pins it.
+
+### Gate
+
+477 positive tests, 3 negative contracts, 4 blocked probes, all green against
+the published v0.18.9 Darwin arm64 asset. The positive count is unchanged from
+the 0.18.6 baseline, test for test.
+
 ## [0.7.43] - 2026-08-29
 
 Compiler-pin release for Chelis v0.18.6. `chelis reef conform bump 0.18.6`
