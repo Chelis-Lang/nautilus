@@ -18,7 +18,7 @@ hand-written adjoints.
 |---|---|---|
 | `Nautilus.Special` | 21 | runtime-verified |
 | `Nautilus.Distributions` | 38 | runtime-verified except 3 heavy sampling variants |
-| `Nautilus.LinAlg` | 34 | 31 prior runtime-verified exports plus three shared helpers; new-pin validation pending |
+| `Nautilus.LinAlg` | 34 | runtime-verified (31 prior exports plus the three shared helpers validated at the 0.18.9 pin) |
 | `Nautilus.Stats` | 24 | runtime-verified |
 | `Nautilus.Distance` | 8 | runtime-verified |
 | `Nautilus.Roots` | 3 | runtime-verified |
