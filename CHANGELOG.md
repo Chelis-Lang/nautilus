@@ -6,15 +6,26 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.7.44] - 2026-09-14
 
-- Prepare the Chelis 0.18.9 dependency release wave for C Note.
-- Export the LinAlg helpers used across modules and import the four required
-  interpolation helpers explicitly. Add analytic shared-helper tests and
-  retain wrong-precision rejection. This repairs nautilus#61.
-- Introduce new scalar-lift axes with `insert`, preserving values and shapes
-  under the compiler's explicit axis rules. Keep blocked AD probes active.
-- Replace the provenance shell wrapper with a Python launcher using the
-  selected interpreter, with process-status propagation tests.
-- Refresh executable documentation and the current CLI command inventory.
+Compiler-pin release for Chelis v0.18.9, the 2026-09-14 dependency wave used
+by C Note. The migration was prepared against published 0.18.7 and the 0.18.8
+repair candidate; 0.18.8 was never published, so this release targets 0.18.9
+directly. `chelis reef conform bump 0.18.9` advances `reef.toml`, the workflow
+audit mirrors and the managed shell files, and the Nautilus package version
+advances from 0.7.43 to 0.7.44.
+
+- Chelis 0.18.x enforces explicit exports within a package. LinAlg now exports
+  the shared helpers `la_basis_n_f32`, `la_zeros_mat_like` and
+  `la_tridiag_solve` for their existing in-package consumers, and Interpolation
+  imports the four LinAlg bindings it uses explicitly. Analytic shared-helper
+  tests cover the basis, zeros and tridiagonal cases and wrong precision still
+  rejects. This repairs nautilus#61.
+- Scalar lifts introduce their new axis through `insert`; `expand` now operates
+  only on an existing axis. Values, shapes and numerical tolerances are
+  unchanged, and the blocked AD probes keep their current expected diagnostics.
+- The provenance launcher moves from `scripts/provenance_oracle.sh` to
+  `scripts/provenance_oracle.py`, which runs under the selected interpreter
+  and propagates the subprocess status; unit tests cover the propagation.
+- Executable documentation and the CLI command inventory are refreshed.
   Published-compiler acceptance and artifact identities are recorded in
   `docs/chelis-0.18.9-migration.md` before publication.
 
