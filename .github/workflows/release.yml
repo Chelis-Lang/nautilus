@@ -13,8 +13,8 @@ env:
   PACKAGE_NAME: nautilus
   # Audit-only mirror required by the shell contract. The detection step below
   # overwrites these values from reef.toml before runtime installation.
-  CHELIS_TAG: v0.18.7
-  CHELIS_VERSION: 0.18.7
+  CHELIS_TAG: v0.18.9
+  CHELIS_VERSION: 0.18.9
 
 jobs:
   build-reef-assets:

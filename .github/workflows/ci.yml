@@ -15,8 +15,8 @@ env:
   # Audit-only mirror required by the shell contract. The installer resolves
   # its runtime tag and version directly from the exact pin in reef.toml; the
   # fail-fast guard and `conform audit` reject drift in this pair.
-  CHELIS_TAG: v0.18.7
-  CHELIS_VERSION: 0.18.7
+  CHELIS_TAG: v0.18.9
+  CHELIS_VERSION: 0.18.9
 
 jobs:
   pin-consistency-guard:

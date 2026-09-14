@@ -1,4 +1,4 @@
-# Chelis 0.18.8 migration
+# Chelis 0.18.9 migration
 
 This release advances the C Note dependency chain. The canonical compiler
 bump regenerates shell scaffolding, compiler-bound package artifacts and
@@ -24,10 +24,10 @@ their data-input meaning (chelis PR 2024).
 
 Published 0.18.7 passes the 216-sample strict SciPy comparison and the focused
 migration tests. The combined compiler repair candidate passes all 483 native
-tests. These are preparation results, not final 0.18.8 release acceptance.
+tests. These are preparation results, not final 0.18.9 release acceptance.
 Sonar preserves their commands and artifacts at
 `landing/runs/g5-nautilus-strict-parity-release/` and
 `landing/runs/g5-nautilus-combined-native-suite/`.
 
-The final published 0.18.8 full gate and release artifact hashes are pending.
+The final published 0.18.9 full gate and release artifact hashes are pending.
 Do not publish this package until that record replaces this pending marker.
