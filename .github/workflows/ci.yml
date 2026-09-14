@@ -201,8 +201,19 @@ jobs:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
         run: python3 scripts/install_chelis_std.py
 
+      # `--timeout` is PER-TEST; the whole-suite cap is `--suite-timeout` and
+      # defaults to 600s, which this suite no longer fits. Measured on one
+      # workstation, same sources, `--jobs auto`:
+      #   chelis 0.18.6, concrete f32   103s
+      #   chelis 0.18.9, concrete f32   341s / 342s over two runs
+      #   chelis 0.18.9, dtype-generic  235s / 235s over two runs
+      # So the cost is the compiler, not this package: 0.18.9 is ~3.3x slower
+      # than 0.18.6 on IDENTICAL concrete sources. (The dtype-generic build is
+      # the faster of the two 0.18.9 configurations, which is not what we
+      # expected and is recorded here as a measurement, not an explanation.)
+      # CI's runner is slower still and reached 353 of 477 tests in 600s.
       - name: chelis test (node-local parallel)
-        run: chelis test tests/ --timeout 600 --jobs auto
+        run: chelis test tests/ --timeout 600 --suite-timeout 1800 --jobs auto
 
       # Shell contract §6: every case must fail with the diagnostic substring
       # pinned on line 1 of its paired .expect sidecar.
