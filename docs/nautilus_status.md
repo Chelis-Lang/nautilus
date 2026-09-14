@@ -1,9 +1,9 @@
 # Nautilus — Current Status
 
-Prepared for external review. This document reflects the current
-`release/0.7.38-chelis-0.18.1` candidate on the published `chelis 0.18.1`
-release (Nautilus `0.7.38`). The official Linux glibc-2.31 payload passed the complete
-local gate; publication remains gated on the milestone red team.
+This document describes the maintained package surface and acceptance commands.
+`reef.toml` names the selected compiler and package versions. Current pin evidence
+and migration limitations are recorded in [UPSTREAM_BUGS.md](UPSTREAM_BUGS.md).
+Older numerical records below retain their original version labels.
 
 ## Scope
 
@@ -18,7 +18,7 @@ hand-written adjoints.
 |---|---|---|
 | `Nautilus.Special` | 21 | runtime-verified |
 | `Nautilus.Distributions` | 38 | runtime-verified except 3 heavy sampling variants |
-| `Nautilus.LinAlg` | 31 | runtime-verified |
+| `Nautilus.LinAlg` | 34 | runtime-verified (31 prior exports plus the three shared helpers validated at the 0.18.9 pin) |
 | `Nautilus.Stats` | 24 | runtime-verified |
 | `Nautilus.Distance` | 8 | runtime-verified |
 | `Nautilus.Roots` | 3 | runtime-verified |
@@ -38,10 +38,10 @@ hand-written adjoints.
 
 Totals:
 
-- Library surface: 192 exports across all modules: 185 numerical/library
+- Library surface: 195 exports across all modules: 188 numerical/library
   entries, 1 `Nautilus.Core.version` metadata helper, and 6 NaN-returning
   `Nautilus.Signal` stubs.
-- The 472-test native gate exercises every shipped module family through
+- The native gate exercises every shipped module family through
   identities, invariants, solver recovery, tensor paths, edge cases, and
   callability. The external checked-golden subset covers 45 Special and
   Distributions labels across 216 configurations; it intentionally does not
@@ -54,7 +54,7 @@ Totals:
 
 ## Verification Gates
 
-Clean `HEAD` passes these repo-local gates with the official 0.18.1 compiler:
+Run these repo-local gates with the compiler selected by `reef.toml`:
 
 ```sh
 chelis reef build
@@ -70,7 +70,7 @@ python3 scripts/validate_book_examples.py
 mdbook build docs/book
 ```
 
-Validated 0.18.1 results:
+Archived 0.18.1 results:
 
 ```text
 chelis test tests/ --jobs auto -> 463 passed, 0 failed
@@ -122,11 +122,9 @@ blocks, not illustrative `chelis-fragment` snippets.
 
 ## Upstream State
 
-Nautilus pins the published `chelis 0.18.1` release exactly via `reef.toml`.
-The official Linux glibc-2.31 asset passed the complete local acceptance gate
-on 2026-08-01. Historical
-compiler/runtime bugs discovered during Nautilus P0-P3 and current narrowed
-limitations are documented in `docs/UPSTREAM_BUGS.md`.
+The selected compiler is pinned exactly in `reef.toml`. Current migration
+evidence and historical compiler/runtime findings are documented in
+`docs/UPSTREAM_BUGS.md`. The 0.18.1 records below are archived results.
 
 For the validated 0.18.1 toolchain:
 

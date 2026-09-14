@@ -47,8 +47,8 @@ def main() -> None:
         [
             "[[oracle]]",
             'id = "NAUT-GATE-CHELIS-TEST"',
-            'program = "/bin/bash"',
-            f'args = ["{repo / "scripts" / "provenance_oracle.sh"}"]',
+            f'program = "{sys.executable}"',
+            f'args = ["{repo / "scripts" / "provenance_oracle.py"}"]',
             "timeout_ms = 1200000",
             "[oracle.environment]",
             f'HOME = "{pathlib.Path.home()}"',

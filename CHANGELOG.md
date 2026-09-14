@@ -4,6 +4,40 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.44] - 2026-09-14
+
+Compiler-pin release for Chelis v0.18.9, the 2026-09-14 dependency wave used
+by C Note. The migration was prepared against published 0.18.7 and the 0.18.8
+repair candidate; 0.18.8 was never published, so this release targets 0.18.9
+directly. `chelis reef conform bump 0.18.9` advances `reef.toml`, the workflow
+audit mirrors and the managed shell files, and the Nautilus package version
+advances from 0.7.43 to 0.7.44.
+
+- Chelis 0.18.x enforces explicit exports within a package. LinAlg now exports
+  the shared helpers `la_basis_n_f32`, `la_zeros_mat_like` and
+  `la_tridiag_solve` for their existing in-package consumers, and Interpolation
+  imports the four LinAlg bindings it uses explicitly. Analytic shared-helper
+  tests cover the basis, zeros and tridiagonal cases and wrong precision still
+  rejects. This repairs nautilus#61.
+- Scalar lifts introduce their new axis through `insert`; `expand` now operates
+  only on an existing axis. Values, shapes and numerical tolerances are
+  unchanged, and the blocked AD probes keep their current expected diagnostics.
+- `Nautilus.Core.version` migrates its return type from the `i32` alias to the
+  canonical `int32` spelling; the numerics are unchanged and the constant is
+  still 1000.
+- The provenance launcher is now `scripts/provenance_oracle.py`, replacing the
+  shell wrapper; it runs under the selected interpreter and propagates the
+  subprocess status, and unit tests cover the propagation.
+- Executable documentation and the CLI command inventory are refreshed.
+  Published-compiler acceptance and artifact identities are recorded in
+  `docs/chelis-0.18.9-migration.md` before publication.
+
+- CI carries a temporary bandaid: the native-suite job raises `--suite-timeout`
+  from its 600s default because Chelis v0.18.9 has a tensor and Monte-Carlo
+  performance regression (chelis#2059) that roughly doubles suite wall time.
+  Every test still passes; only speed regressed. The raise reverts once
+  chelis#2059 is fixed.
+
 ## [0.7.43] - 2026-08-29
 
 Compiler-pin release for Chelis v0.18.6. `chelis reef conform bump 0.18.6`

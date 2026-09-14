@@ -755,7 +755,7 @@ def ellipe(m: f32) -> f32 = {
 -- has to leave tensor rank to reach them. Chelis has no implicit
 -- tensor-scalar broadcasting, so every constant is lifted to rank `n` with
 -- `sp_lift_t`, and every scalar `if` becomes an elementwise `where`.
-def sp_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = c |> scalar_to_tensor |> expand(0, shape(template, cast(0, int32)))
+def sp_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = c |> scalar_to_tensor |> insert(0, shape(template, cast(0, int32)))
 def sp_abs_t[n](x: &tensor[n, f32]) -> tensor[n, f32] = {
   zeros = sp_lift_t(x, cast(0.0, f32))
   x |> lt(zeros) |> where(neg(x), x)

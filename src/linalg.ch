@@ -1,5 +1,5 @@
 module Nautilus.LinAlg
-export (transpose, matmul_wrap, gram, aat, diag, trace_mat, trace_scalar, l2_norm_vec, inner_product, frobenius_sq, frobenius_norm, scale_vec, matvec, vecmat, det_2x2, det_3x3, la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve, inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2, cholesky_n, lu_solve, qr_decompose, svd_n, eig_n)
+export (transpose, matmul_wrap, gram, aat, diag, trace_mat, trace_scalar, l2_norm_vec, inner_product, frobenius_sq, frobenius_norm, scale_vec, matvec, vecmat, det_2x2, det_3x3, la_vec_add, la_vec_sub, la_vec_saxpy, la_basis_n_f32, la_zeros_mat_like, la_tridiag_solve, cg_solve, inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2, cholesky_n, lu_solve, qr_decompose, svd_n, eig_n)
 -- chelis:provenance/v1 authority
 -- id = NAUT-MOD-LINALG
 -- kind = behavioral
@@ -45,9 +45,11 @@ def frobenius_norm[m, n](a: &tensor[m, n, f32]) -> f32 = {
   sqrt(s)
 }
 -- nautilus PR 47: lift a scalar to rank `n` so an elementwise tensor op can
--- take it. Chelis has no implicit tensor-scalar broadcasting; `expand`
--- lowers to a stride-0 view, so this costs no per-element storage.
-def la_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = c |> scalar_to_tensor |> expand(0, shape(template, cast(0, int32)))
+-- take it. Chelis has no implicit tensor-scalar broadcasting; `insert` adds
+-- the new axis 0 of length `n` to the rank-0 scalar tensor (`expand` only
+-- resizes an axis that already exists) and lowers to a stride-0 view, so this
+-- costs no per-element storage.
+def la_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = c |> scalar_to_tensor |> insert(0, shape(template, cast(0, int32)))
 def scale_vec[n](v: &tensor[n, f32], s: f32) -> tensor[n, f32] = v |> la_lift_t(s) |> mul(v)
 def matvec[m, n](a: &tensor[m, n, f32], v: &tensor[n, f32]) -> tensor[m, f32] = einsum("ij,j->i", a, v)
 def vecmat[m, n](v: &tensor[m, f32], a: &tensor[m, n, f32]) -> tensor[n, f32] = einsum("i,ij->j", v, a)

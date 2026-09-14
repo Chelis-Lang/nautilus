@@ -69,7 +69,7 @@ Compact resolution fails closed under the legacy XXH3-128 configuration.
   Registration is never execution evidence.
 - Carrier verdicts come only from `chelis-provenance execute` receipts over
   the declared gate oracle (`chelis test tests/ --timeout 600 --jobs auto`
-  through `scripts/provenance_oracle.sh`, which applies the declared
+  through `scripts/provenance_oracle.py`, which applies the declared
   exit-status normalization). Without receipts a carrier reports `not-run`.
   Raw test output stays noncanonical and is not retained in canonical bytes.
 - Execution cannot mutate static identity. The corpus runner fails if static report bytes change during execution.

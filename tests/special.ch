@@ -294,7 +294,7 @@ def test_erf_t_matches_scalar_across_the_cutover() -> unit ! { Test } = {
 -- from the batched tensor.
 def erf_row_scale(t: tensor[3, f32]) -> tensor[3, f32] = {
   s = tensor_to_scalar(sum(t, cast(0, int32)))
-  ev = expand(scalar_to_tensor(erf(s)), cast(0, int32), cast(3, int64))
+  ev = insert(scalar_to_tensor(erf(s)), cast(0, int32), cast(3, int64))
   mul(t, ev)
 }
 def erf_batched(b: tensor[2, 3, f32]) -> tensor[2, 3, f32] = vmap(erf_row_scale)(b)

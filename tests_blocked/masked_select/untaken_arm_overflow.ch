@@ -18,7 +18,7 @@ def uao_series(x: f32) -> f32 = {
 def uao_erf(x: f32) -> f32 = if lt(uao_abs(x), cast(0.25, f32)) then uao_series(x) else cast(1.0, f32)
 def uao_row(t: tensor[3, f32]) -> tensor[3, f32] = {
   s = tensor_to_scalar(sum(t, cast(0, int32)))
-  ev = expand(scalar_to_tensor(uao_erf(s)), cast(0, int32), cast(3, int64))
+  ev = insert(scalar_to_tensor(uao_erf(s)), cast(0, int32), cast(3, int64))
   mul(t, ev)
 }
 def uao_batched(b: tensor[2, 3, f32]) -> tensor[2, 3, f32] = vmap(uao_row)(b)

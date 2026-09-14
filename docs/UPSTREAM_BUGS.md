@@ -5,7 +5,92 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
-> **Current release pin: `chelis 0.18.6`.** The published Darwin arm64 asset
+> **Current release pin: `chelis 0.18.9`.** The published Darwin arm64 asset
+> (release SHA-256
+> `44e12cf187b37cb6d2a617e1573832a1bdcaa0e1564f59c4029e24081a84905d`;
+> compiler payload SHA-256
+> `68e460df6e796891fb30c42904b0309b4d5e83d187944222faaaae63241101c7`;
+> source commit `abff07b47eadc8d2be633e3a7d21220089befb6f`, tag `v0.18.9`,
+> release run 34843914490) ran the complete local gate on 2026-09-14:
+> 483 positive tests, 4 negative contracts, 3 blocked probes still
+> blocked, and 216/216 strict SciPy parity. The tarball was checked against its
+> release sidecar and the installed payload is the `bin/chelis` extracted from
+> it. The Linux glibc-2.31 asset for the same tag (SHA-256
+> `9aed0afbfc93a96a6804b4c82664869d74815bd27ca824dfeab02088b00ddb63`; compiler
+> payload SHA-256
+> `efe99c09f5d7d7372065206a332a2fd86b8aee77412262b0028cfbdbc98a19f2`) and the
+> Linux x86_64 asset (SHA-256
+> `bb292ca8246381b5e98df5cd029565ec9cfee78820fca9d48bdbb16033c315b2`) were not
+> exercised here; their gate run is CI's, not this one. The pin advances from
+> 0.18.6 directly to 0.18.9: 0.18.7 was published but never pinned here, and
+> 0.18.8 was never published, so this record covers the whole 0.18.7 through
+> 0.18.9 span.
+>
+> **0.18.9 re-probe results.** chelis#676 remains **live**: both
+> `tests_blocked/curvefit/` shapes still fail while verifying the backward DAG
+> with `mismatched dimension count: 0 vs 1` (seven binary-op nodes are
+> reported: nodes 5, 7 and 11 as `0 vs 1`, nodes 13, 19, 24 and 29 as
+> `1 vs 0`), so the finite-difference Jacobian narrowing stays. chelis#1464
+> remains **live**: `tests_blocked/masked_select/untaken_arm_overflow.ch`
+> still fails at its pinned `assert failed: the untaken overflowing arm does
+> not poison the selected value`, so both `erf` series clamps stay
+> (`chelis test tests_blocked/ --expect blocked` -> 3 ok, 0 failing). All
+> three probes carry one source edit this cycle: their scalar lifts are
+> rewritten from `expand(scalar_to_tensor(c), 0, extent)` to
+> `insert(scalar_to_tensor(c), 0, extent)`, because `expand` now operates on
+> an existing axis only. That is migration drift in the probe, of the same
+> kind as the 0.18.3 int64 extent widening, not movement on either issue:
+> each probe reaches the same layer and the same pinned diagnostic after the
+> rewrite. Real `Special.erf(1)` remains green at `0.8427007` through
+> package-aware `eval --file`, and the strict parity gate is numerically
+> unchanged at 216/216.
+>
+> **Nothing is retired at this pin.** Both cited issues are open upstream, so
+> `conform audit --explain` (row 9, staleness) has no closed-issue citation to
+> triage and the audit is conformant. 0.18.9's compiler fixes (chelis#1541, a
+> dtype-generic tensor through `if`; chelis#2013, caller-supplied tensor
+> arguments for selected host evaluation entries; host gradients that directly
+> name a checked declaration now read free tensors from the declaration
+> environment) touch surfaces Nautilus never had to work around. The
+> host-gradient repair is adjacent to chelis#676's class, but both wrapper
+> probes still fail at the same backward-DAG verifier, so no de-narrowing
+> follows from it.
+>
+> **0.18.7 through 0.18.9 breaking changes, and where Nautilus was exposed.**
+> Two breaks reached Nautilus source, and both are repaired in this release
+> (`docs/chelis-0.18.9-migration.md`): explicit in-package export enforcement,
+> which required LinAlg to export `la_basis_n_f32`, `la_zeros_mat_like` and
+> `la_tridiag_solve` for their existing consumers and Interpolation to import
+> the four LinAlg bindings it uses (nautilus#61); and the scalar-lift axis
+> rule, under which `expand` operates on an existing axis only and a new axis
+> is introduced through `insert`, which rewrote the three `*_lift_t` helpers
+> in `src/` and the three blocked probes above. Values, shapes and tolerances
+> are unchanged, which the suite and the 216/216 parity gate confirm. Every
+> other break lands on a surface Nautilus does not touch: the reserved
+> `normalize` builtin is removed and `conv2d` is replaced by `conv` (neither
+> name appears under `src/`, `tests/`, `tests_neg/` or `tests_blocked/`);
+> compiler execution JSON advances to v3 and WireDag to v9 with exact numeric
+> carriers, and the Python evaluation lane and compiled-context worker
+> handoffs move with them (Nautilus drives no wire, proof or Python-binding
+> lane; parity reads the `eval --file` text results, which still match all
+> 216 goldens); `chelis check <dir>` emits one typed envelope and its error
+> objects change shape (Nautilus calls `chelis check` on single files only, in
+> CI's rotating smoke and import mutation gate, whose verdict belongs to this
+> release's CI run); nominal type applications enforce their parameter counts
+> and deep nominal arguments use the recursive type grammar (the whole-package
+> `chelis reef build` type-checks every module unchanged); HIP and Metal
+> device ownership and ReLU's dedicated identity are backend and builtin
+> surfaces Nautilus does not target or call. `chelis-std` stays at 0.4.0,
+> compiler-bound to `=0.18.9` in the regenerated `reef.lock`, so there is
+> still **no dependency cascade** into this bump.
+>
+> **One gate repair this pin forced.** `chelis lint --check .` rejects a
+> kebab-case narrative filename under `docs/` through `doc-filename-convention`
+> (the chelis#190 behavior recorded in the historical evidence below), so the
+> migration document for this bump is named `docs/chelis-0.18.9-migration.md`
+> rather than the kebab-case spelling the branch first used.
+
+> **Previous pin: `chelis 0.18.6`.** The published Darwin arm64 asset
 > (release SHA-256
 > `08580435570c6fd44716f4d5c64117e973e379808cefeaaa97c8faefa2588f6c`;
 > compiler payload SHA-256
@@ -138,6 +223,17 @@ release.
     - **Minimal reproducer:** `tests_blocked/curvefit/lm_jacobian_model_wrapper.ch`,
       a concrete `n=2`, `m=6` linear model with expected first Jacobian row
       `[1, 1]`.
+    - **0.18.9 release result per surface:** unchanged. Both probes still
+      fail while verifying the backward DAG with
+      `mismatched dimension count: 0 vs 1` (`chelis test tests_blocked/
+      --expect blocked` -> 3 ok, 0 failing, counting the masked-select
+      probe). Both probes carry a migration edit this cycle: their scalar
+      lifts are rewritten from `expand` to `insert` under the 0.18.x axis
+      rule, and each still reaches the same verifier layer and the same
+      pinned diagnostic, so this is probe drift of the 0.18.3 kind rather
+      than movement on chelis#676. The 0.18.9 host-gradient
+      declaration-environment repair does not reach this layer. chelis#676
+      is open upstream.
     - **0.18.5 release result per surface:** unchanged. Both probes still
       fail while verifying the backward DAG with
       `mismatched dimension count: 0 vs 1` (`chelis test tests_blocked/
@@ -192,6 +288,12 @@ release.
     - **Minimal reproducer:** `tests_blocked/masked_select/untaken_arm_overflow.ch`,
       self-contained (it does not call `Nautilus.Special.erf`, so it reports
       on the compiler rather than on our workaround).
+    - **0.18.9 result:** unchanged. The probe still fails at `assert failed:
+      the untaken overflowing arm does not poison the selected value` after
+      its scalar lift is rewritten from `expand` to `insert` (`chelis test
+      tests_blocked/ --expect blocked` -> 3 ok, 0 failing), and
+      `tests/special.ch::test_erf_series_arm_survives_a_vmapped_huge_input`
+      stays green with the clamps in place. chelis#1464 is open upstream.
     - **0.18.6 result:** fails at `assert failed: the untaken overflowing arm
       does not poison the selected value` (`chelis test tests_blocked/
       --expect blocked` → 3 ok, 0 failing).
