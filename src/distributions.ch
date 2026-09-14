@@ -503,7 +503,7 @@ def student_t_sample[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! {
 -- reference; these evaluate the same formulas at tensor rank. A Monte Carlo or
 -- option-pricing caller holding a tensor of paths can reach Phi and Phi-inverse
 -- without dropping to `List` and back, which the `*_sample` functions still do.
-def dist_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = expand(scalar_to_tensor(c), 0, shape(template, cast(0, int32)))
+def dist_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = insert(scalar_to_tensor(c), 0, shape(template, cast(0, int32)))
 def normal_cdf_t[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] = {
   means = dist_lift_t(x, mean)
   denom = dist_lift_t(x, mul(std, sqrt_two_f()))

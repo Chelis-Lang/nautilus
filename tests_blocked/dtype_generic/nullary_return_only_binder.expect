@@ -1,0 +1,13 @@
+cast target `prec` is not a recognized primitive type
+Blocker: chelis#2056. The declaration checks at score 1.0 with zero errors and
+then fails in every lane that has to produce a value: `chelis eval --file`
+reports the message above, and `chelis build --target c` reports `unsupported:
+dtype `prec` on a `cast` target in host lowering`. Both downstream lanes are
+correct; the checker is the one making a claim it cannot support.
+Note the direction: WITHOUT the `: Float` bound the checker rejects this at
+check time via chelis#1558's gate, so declaring the bound moves the program
+from correctly-rejected to accepted-and-unrunnable.
+On pass, restore `Nautilus.LinAlg.la_nan_val` to its nullary form, drop the
+`witness` parameter from its four call sites in `inv_2x2`, `inv_3x3`,
+`eig_2x2_real` and `cholesky_2x2`, and archive the chelis#2056 entry in
+docs/UPSTREAM_BUGS.md in the same change set.

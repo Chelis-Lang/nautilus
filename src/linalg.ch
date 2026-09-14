@@ -1,5 +1,5 @@
 module Nautilus.LinAlg
-export (transpose, matmul_wrap, gram, aat, diag, trace_mat, trace_scalar, l2_norm_vec, inner_product, frobenius_sq, frobenius_norm, scale_vec, matvec, vecmat, det_2x2, det_3x3, la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve, inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2, cholesky_n, lu_solve, qr_decompose, svd_n, eig_n, la_basis_n, la_zeros_mat_like)
+export (transpose, matmul_wrap, gram, aat, diag, trace_mat, trace_scalar, l2_norm_vec, inner_product, frobenius_sq, frobenius_norm, scale_vec, matvec, vecmat, det_2x2, det_3x3, la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve, inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2, cholesky_n, lu_solve, qr_decompose, svd_n, eig_n, la_basis_n, la_zeros_mat_like, la_tridiag_solve)
 -- chelis:provenance/v1 authority
 -- id = NAUT-MOD-LINALG
 -- kind = behavioral
@@ -47,7 +47,7 @@ def frobenius_norm[m, n, prec: Float](a: &tensor[m, n, prec]) -> prec = {
 -- nautilus PR 47: lift a scalar to rank `n` so an elementwise tensor op can
 -- take it. Chelis has no implicit tensor-scalar broadcasting; `expand`
 -- lowers to a stride-0 view, so this costs no per-element storage.
-def la_lift_t[n, prec: Float](template: &tensor[n, prec], c: prec) -> tensor[n, prec] = c |> scalar_to_tensor |> expand(0, shape(template, cast(0, int32)))
+def la_lift_t[n, prec: Float](template: &tensor[n, prec], c: prec) -> tensor[n, prec] = c |> scalar_to_tensor |> insert(0, shape(template, cast(0, int32)))
 def scale_vec[n, prec: Float](v: &tensor[n, prec], s: prec) -> tensor[n, prec] = v |> la_lift_t(s) |> mul(v)
 def matvec[m, n, prec: Float](a: &tensor[m, n, prec], v: &tensor[n, prec]) -> tensor[m, prec] = einsum("ij,j->i", a, v)
 def vecmat[m, n, prec: Float](v: &tensor[m, prec], a: &tensor[m, n, prec]) -> tensor[n, prec] = einsum("i,ij->j", v, a)
@@ -501,7 +501,15 @@ def det_3x3[prec: Float](a: &tensor[3, 3, prec]) -> prec = {
   term3 = mul(two, t3)
   div(add(sub(term1, term2), term3), six)
 }
-def la_nan_val[prec: Float]() -> prec = cast(0.0, prec) |> div(cast(0.0, prec))
+-- Takes a `prec`-typed witness rather than being nullary. A nullary def whose
+-- only binder appears in the return type checks at score 1.0 and then fails at
+-- eval with `cast target `prec` is not a recognized primitive type`: nothing at
+-- the call site instantiates the binder, and the checker does not notice.
+-- Narrowing workaround for chelis#2056.
+def la_nan_val[prec: Float](witness: prec) -> prec = {
+  zero = sub(witness, witness)
+  div(zero, zero)
+}
 def la_basis2[prec: Float](k: int64, s: prec) -> tensor[2, prec] = to_tensor(map(fn (i: int64) -> if eq(i, k) then s else cast(0.0, prec), range(cast(0, int64), cast(2, int64))))
 def la_basis3[prec: Float](k: int64, s: prec) -> tensor[3, prec] = to_tensor(map(fn (i: int64) -> if eq(i, k) then s else cast(0.0, prec), range(cast(0, int64), cast(3, int64))))
 def la_scaled_eye_2[prec: Float](s: prec) -> tensor[2, 2, prec] = {
@@ -551,7 +559,7 @@ def inv_2x2[prec: Float](a: &tensor[2, 2, prec]) -> tensor[2, 2, prec] = {
   abs_det = if lt(det, zero_f) then neg(det) else det
   eps = cast(1e-30, prec)
   bad = lt(abs_det, eps)
-  nan_v = la_nan_val()
+  nan_v = la_nan_val(zero_f)
   det_safe = if bad then one_f else det
   inv_det = div(one_f, det_safe)
   tI = la_scaled_eye_2(t)
@@ -570,7 +578,7 @@ def inv_3x3[prec: Float](a: &tensor[3, 3, prec]) -> tensor[3, 3, prec] = {
   abs_det = if lt(det, zero_f) then neg(det) else det
   eps = cast(1e-30, prec)
   bad = lt(abs_det, eps)
-  nan_v = la_nan_val()
+  nan_v = la_nan_val(zero_f)
   det_safe = if bad then one_f else det
   c1 = mul(half, t |> mul(t) |> sub(t2))
   tA = la_scale_mat_3x3(t, a)
@@ -600,7 +608,7 @@ def eig_2x2_real[prec: Float](a: &tensor[2, 2, prec]) -> (prec, prec) = {
   rt = sqrt(disc_safe)
   lam1 = add(t_half, rt)
   lam2 = sub(t_half, rt)
-  nan_v = la_nan_val()
+  nan_v = la_nan_val(half)
   if lt(disc, cast(0.0, prec)) then (nan_v, nan_v) else (lam1, lam2)
 }
 def la_mat_entry_2[prec: Float](a: &tensor[2, 2, prec], i: int64, j: int64) -> prec = {
@@ -634,7 +642,7 @@ def cholesky_2x2[prec: Float](a: &tensor[2, 2, prec]) -> tensor[2, 2, prec] = {
   bad = bad_a00 |> or(lte(rem, zero_f)) |> or(not_sym)
   rem_safe = if bad then one_f else rem
   l11 = sqrt(rem_safe)
-  nan_v = la_nan_val()
+  nan_v = la_nan_val(zero_f)
   r00 = if bad then nan_v else l00
   r01 = if bad then nan_v else zero_f
   r10 = if bad then nan_v else l10

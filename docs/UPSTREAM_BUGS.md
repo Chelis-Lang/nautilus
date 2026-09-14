@@ -130,6 +130,35 @@ reproductions, workarounds, and status notes.
 **Re-probe cadence:** at every compiler pin bump and before every Nautilus
 release.
 
+- **A bounded dtype binder in a nullary def's return type checks clean and
+  runs nowhere** — `chelis#2056`
+  ([Chelis-Lang/chelis#2056](https://github.com/Chelis-Lang/chelis/issues/2056)).
+  Filed while converting `Nautilus.LinAlg` to dtype-generic signatures for
+  nautilus#12.
+    - **Minimal reproducer:**
+      `tests_blocked/dtype_generic/nullary_return_only_binder.ch`, the exact
+      shape `Nautilus.LinAlg.la_nan_val` had before narrowing.
+    - **0.18.8 result per surface:** `chelis check` reports **score 1.0, zero
+      errors**; `chelis eval --file` fails with `cast target `prec` is not a
+      recognized primitive type`; `chelis build --target c` fails with
+      `unsupported: dtype `prec` on a `cast` target in host lowering`. Both
+      downstream lanes are correct and say so clearly — the checker is the one
+      making a claim it cannot support.
+    - **Direction worth noting:** WITHOUT the `: Float` bound the checker
+      rejects the same declaration at check time via chelis#1558's gate, so
+      declaring the bound moves the program from correctly-rejected to
+      accepted-and-unrunnable.
+    - **Affected Nautilus surface:** `Nautilus.LinAlg.la_nan_val`, reached from
+      `inv_2x2`, `inv_3x3`, `eig_2x2_real` and `cholesky_2x2`. Unnarrowed, it
+      cost **10 test failures** in `tests/linalg_matmul.ch` while the package
+      still checked at score 1.0.
+    - **Workaround:** `la_nan_val` takes a `prec`-typed witness parameter, so
+      the binder is instantiated by unification at each call site. The witness
+      is load-bearing, not decoration: it is the only instantiation site the
+      declaration has.
+    - **De-narrowing:** on pass, restore the nullary form, drop `witness` from
+      the four call sites, and archive this entry in the same change set.
+
 - **Concrete arbitrary-model wrapper emits a malformed backward DAG** —
   `chelis#676`
   ([Chelis-Lang/chelis#676](https://github.com/Chelis-Lang/chelis/issues/676)).

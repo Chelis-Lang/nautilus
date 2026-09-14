@@ -1,4 +1,5 @@
 module Nautilus.Interpolation
+import Nautilus.LinAlg (inner_product, la_basis_n, la_vec_saxpy, la_tridiag_solve)
 export (linear_interp_uniform, linear_interp_sorted, cubic_hermite, spline_fit, spline_eval)
 -- chelis:provenance/v1 authority
 -- id = NAUT-MOD-INTERPOLATION
