@@ -22,9 +22,12 @@ advances from 0.7.43 to 0.7.44.
 - Scalar lifts introduce their new axis through `insert`; `expand` now operates
   only on an existing axis. Values, shapes and numerical tolerances are
   unchanged, and the blocked AD probes keep their current expected diagnostics.
-- The provenance launcher moves from `scripts/provenance_oracle.sh` to
-  `scripts/provenance_oracle.py`, which runs under the selected interpreter
-  and propagates the subprocess status; unit tests cover the propagation.
+- `Nautilus.Core.version` migrates its return type from the `i32` alias to the
+  canonical `int32` spelling; the numerics are unchanged and the constant is
+  still 1000.
+- The provenance launcher is now `scripts/provenance_oracle.py`, replacing the
+  shell wrapper; it runs under the selected interpreter and propagates the
+  subprocess status, and unit tests cover the propagation.
 - Executable documentation and the CLI command inventory are refreshed.
   Published-compiler acceptance and artifact identities are recorded in
   `docs/chelis-0.18.9-migration.md` before publication.

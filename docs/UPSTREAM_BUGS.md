@@ -5,6 +5,15 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
+> **PENDING RE-PROBE: this section still describes the `chelis 0.18.6` gate
+> run.** The branch pins `chelis 0.18.9`, which is not yet published. Pending
+> re-probe at 0.18.9 (AGENTS.md pin-bump checklist steps 2-6) before this
+> branch leaves draft: run the blocked-probe suite, triage every closed
+> upstream issue cited by a workaround, re-probe each entry due under its
+> cadence per verb and per surface, refresh `docs/CHELIS_SURFACE.md`, and
+> reclassify the entries below from the results. The paragraphs that follow
+> are the last completed record and must be replaced by the 0.18.9 record.
+>
 > **Current release pin: `chelis 0.18.6`.** The published Darwin arm64 asset
 > (release SHA-256
 > `08580435570c6fd44716f4d5c64117e973e379808cefeaaa97c8faefa2588f6c`;
