@@ -15,8 +15,8 @@ env:
   # Audit-only mirror required by the shell contract. The installer resolves
   # its runtime tag and version directly from the exact pin in reef.toml; the
   # fail-fast guard and `conform audit` reject drift in this pair.
-  CHELIS_TAG: v0.18.9
-  CHELIS_VERSION: 0.18.9
+  CHELIS_TAG: v0.18.10
+  CHELIS_VERSION: 0.18.10
 
 jobs:
   pin-consistency-guard:
@@ -202,12 +202,7 @@ jobs:
         run: python3 scripts/install_chelis_std.py
 
       - name: chelis test (node-local parallel)
-        # TEMPORARY BANDAID (chelis#2059): --suite-timeout is raised from its
-        # 600s default because a v0.18.9 compiler performance regression makes
-        # this tensor/Monte-Carlo suite roughly 2x slower. Every test still
-        # passes; only wall time regressed. Revert to the default once
-        # chelis#2059 is fixed. See https://github.com/Chelis-Lang/chelis/issues/2059
-        run: chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto
+        run: chelis test tests/ --timeout 600 --jobs auto
 
       # Shell contract §6: every case must fail with the diagnostic substring
       # pinned on line 1 of its paired .expect sidecar.

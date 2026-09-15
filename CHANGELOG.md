@@ -4,6 +4,45 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.45] - 2026-09-15
+
+Compiler-pin release for Chelis v0.18.10, a targeted repair on top of the
+2026-09-14 dependency wave used by C Note. `chelis reef conform bump 0.18.10`
+advances `reef.toml`, the workflow audit mirrors and the managed shell files,
+and the Nautilus package version advances from 0.7.44 to 0.7.45. **No Nautilus
+source behaviour change was required by the compiler:** the whole-package build,
+the 483-test suite, the negative sidecars, the three blocked probes, and the
+216/216 strict SciPy parity gate are all green on 0.18.10.
+
+- **The temporary CI perf bandaid is reverted because chelis#2059 is fixed.**
+  0.18.9 re-lowered definitions per closure application in the interpreter's
+  `admit_execution_profile`; 0.18.10 makes that lowering program-scoped,
+  removing the roughly 2x slowdown on Nautilus's tensor and Monte-Carlo suite.
+  The `chelis test tests/` step in `.github/workflows/ci.yml` returns from
+  `chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto` to
+  `chelis test tests/ --timeout 600 --jobs auto` — the same shape it had at
+  0.7.43/0.18.6, with no `--suite-timeout` override and the "TEMPORARY BANDAID"
+  comment block removed. Locally the suite now passes 483/483 within the default
+  600s suite timeout in 413s wall time; that green run within the default is the
+  proof the raise is no longer needed. `nightly.yml` and `release.yml` never
+  carried the raise (neither runs `chelis test tests/`), so no revert applied
+  there.
+- **chelis#2068 (native-C airy ownership) is fixed.** Nautilus's
+  `src/special.ch::airy_gg` — the recursive Airy `g`-series helper behind the
+  exported `airy_ai`/`airy_bi` — was the upstream trigger for a native-C
+  ownership error; 0.18.10 compiles it on the native-C target. The
+  whole-package `chelis reef build` and the sealed release-artifact contract
+  exercise it, and its numerics, shapes and tolerances are unchanged.
+- The bundled `chelis-std 0.4.0` is rebound to `compiler = "=0.18.10"` in the
+  regenerated local `reef.lock`; Nautilus carries **no dependency cascade** for
+  this wave.
+- The blocked probes stay live: chelis#676 (both `tests_blocked/curvefit/`
+  wrapper shapes) and chelis#1464 (`tests_blocked/masked_select/`) all still
+  reach their pinned diagnostics with no source drift, so the finite-difference
+  Jacobian narrowing and the `erf` series clamps are retained.
+- Published-compiler acceptance and artifact identities are recorded in
+  `docs/chelis-0.18.10-migration.md` before publication.
+
 ## [0.7.44] - 2026-09-14
 
 Compiler-pin release for Chelis v0.18.9, the 2026-09-14 dependency wave used
