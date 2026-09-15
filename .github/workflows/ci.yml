@@ -202,7 +202,16 @@ jobs:
         run: python3 scripts/install_chelis_std.py
 
       - name: chelis test (node-local parallel)
-        run: chelis test tests/ --timeout 600 --jobs auto
+        # --suite-timeout is raised above its 600s default because this tensor /
+        # Monte-Carlo suite runs ~800-940s on GitHub's Linux runners (measured on
+        # this same suite under both chelis 0.18.9 and 0.18.10). That wall time is
+        # intrinsic suite weight on a comparatively slow runner, NOT the chelis#2059
+        # interpreter regression: #2059 degraded the closure-heavy package/prove
+        # route (fixed in 0.18.10; see CHANGELOG and docs/UPSTREAM_BUGS.md), a
+        # different workload from these compute-bound tests. Every test passes; only
+        # wall time exceeds the default cap. Proper fix is to shard tests/ across a
+        # CI matrix so each shard fits the default; tracked for a follow-up.
+        run: chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto
 
       # Shell contract §6: every case must fail with the diagnostic substring
       # pinned on line 1 of its paired .expect sidecar.

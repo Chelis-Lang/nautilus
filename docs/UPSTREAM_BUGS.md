@@ -14,8 +14,9 @@ reproductions, workarounds, and status notes.
 > annotated tag object `e247a5d33cd2df552f57e3efddfd4ea30846b3b8`, release run
 > 34966582543) ran the complete local gate on 2026-09-15: 483 positive tests, 4
 > negative contracts, 3 blocked probes still blocked, and 216/216 strict SciPy
-> parity, with the positive suite finishing in 413s wall time at the default
-> 600s suite timeout. The tarball was checked against its release sidecar and
+> parity, with the positive suite finishing in 413s wall time on Apple silicon
+> (the slower Linux CI runner keeps the raised `--suite-timeout`; see #2059
+> below). The tarball was checked against its release sidecar and
 > the installed payload is the `bin/chelis` extracted from it. The Linux
 > glibc-2.31 asset for the same tag (SHA-256
 > `0843697e0a7783e383df0347ae431ae56f62b5a5ae34a7aa72ac37ee91df1e0b`; compiler
@@ -38,13 +39,18 @@ reproductions, workarounds, and status notes.
 >
 > **Two upstream repairs land in Nautilus this pin.** chelis#2059: the
 > interpreter's `admit_execution_profile` re-lowered definitions per closure
-> application, which roughly doubled the wall time of Nautilus's tensor and
-> Monte-Carlo suite under 0.18.9; 0.18.10 makes the lowering program-scoped. The
-> 0.7.44 CI bandaid that raised the `chelis test tests/` step's `--suite-timeout`
-> from its 600s default to 2400s is reverted in this release — the suite passes
-> 483/483 within the default 600s suite timeout (413s locally), which is the
-> proof the raise is no longer needed. `nightly.yml` and `release.yml` never
-> carried the raise, since neither runs `chelis test tests/`. chelis#2068: a
+> application; 0.18.10 makes the lowering program-scoped. This regression
+> degraded the closure-heavy package/prove route (the on-demand NN prove
+> exhausting its budget), where the fix is verified. The 0.7.44 CI raise of the
+> `chelis test tests/` step's `--suite-timeout` from 600s to 2400s was attributed
+> to #2059; that attribution was wrong. On GitHub's Linux runner this tensor /
+> Monte-Carlo suite ran ~800-940s under 0.18.9 and still exceeds the 600s default
+> under 0.18.10 (413s only on faster Apple silicon) — intrinsic suite weight on a
+> slow runner, a different workload from the one #2059 governed. The raise is
+> therefore retained and re-documented as suite weight, not reverted; the proper
+> fix is to shard `tests/` across a CI matrix (follow-up). `nightly.yml` and
+> `release.yml` never ran `chelis test tests/`, so neither carries it.
+> chelis#2068: a
 > native-C ownership error triggered by `src/special.ch::airy_gg` (the recursive
 > Airy `g`-series helper behind exported `airy_ai`/`airy_bi`) is fixed, so the
 > helper compiles on the native-C target; the whole-package `chelis reef build`
@@ -55,8 +61,9 @@ reproductions, workarounds, and status notes.
 > chelis#1464) are open upstream, so `conform audit --explain` (row 9,
 > staleness) has no closed-issue citation to triage and the audit is conformant.
 > chelis#2059 and chelis#2068 carried no shipped Nautilus source workaround to
-> revert: #2059's only downstream trace was the CI suite-timeout raise, reverted
-> above, and #2068 was an upstream compile error, not a narrowing. `chelis-std`
+> revert: #2059's only downstream trace was the CI suite-timeout raise (retained
+> and re-documented as suite weight, see above), and #2068 was an upstream
+> compile error, not a narrowing. `chelis-std`
 > stays at 0.4.0, compiler-bound to `=0.18.10` in the regenerated `reef.lock`,
 > so there is still **no dependency cascade** into this bump.
 

@@ -12,16 +12,18 @@ Nautilus directly:
 
 - **chelis#2059 (interpreter performance).** The interpreter's
   `admit_execution_profile` re-lowered definitions per closure application;
-  0.18.10 makes the lowering program-scoped. This removes the roughly 2x
-  slowdown that 0.18.9 imposed on Nautilus's tensor and Monte-Carlo suite. The
-  0.7.44 release carried a temporary CI bandaid for that regression — the
-  `chelis test tests/` step in `.github/workflows/ci.yml` raised
-  `--suite-timeout` from its 600s default to 2400s. **This release reverts the
-  bandaid**: the step returns to `chelis test tests/ --timeout 600 --jobs auto`
-  with no `--suite-timeout` override, the same shape it had at 0.7.43/0.18.6.
-  The green suite run within the default suite timeout is the proof that
-  chelis#2059 is fixed (local wall time recorded below; the Linux gate run is
-  the pull request's CI).
+  0.18.10 makes the lowering program-scoped. That regression degraded the
+  closure-heavy package/prove route (the on-demand NN prove exhausting its
+  budget); the fix is verified there. The 0.7.44 release raised this suite's CI
+  `--suite-timeout` from 600s to 2400s and attributed it to #2059. **That
+  attribution was wrong, and the raise is retained (now re-documented), not
+  reverted.** Measurement on GitHub's Linux runner: this tensor / Monte-Carlo
+  suite ran ~800-940s under 0.18.9 (with the raise) and still exceeds the 600s
+  default under 0.18.10 — the wall time is intrinsic suite weight on a slow
+  runner, not #2059, which touches a different workload. So `chelis test tests/`
+  keeps `--suite-timeout 2400`, its comment rewritten to say suite weight. Local
+  wall time is recorded below; the proper fix is to shard `tests/` across a CI
+  matrix so each shard fits the default (follow-up).
 
 - **chelis#2068 (native-C airy ownership).** 0.18.10 repairs a native-C
   ownership error that Nautilus's `src/special.ch::airy_gg` triggered. The
@@ -63,10 +65,11 @@ above with the complete AGENTS.md step 7 local gate:
   from 0.18.9, and the `doc-filename-convention` note on the kebab-case
   migration filenames is the same accepted condition present on `main`);
   `chelis reef build` green (built `nautilus 0.7.45`).
-- `chelis test tests/ --timeout 600 --jobs auto` **at the default 600s suite
-  timeout**: 483 passed, 0 failed, in 413s wall time. This is the proof that
-  chelis#2059 is fixed — the suite completes within the default suite timeout
-  the 0.7.44 bandaid had to raise to 2400s, so the bandaid is reverted.
+- `chelis test tests/ --timeout 600 --jobs auto` on Apple silicon: 483 passed,
+  0 failed, in 413s wall time. On GitHub's slower Linux runner the same suite
+  exceeds the 600s default (measured ~800-940s under 0.18.9), so CI retains
+  `--suite-timeout 2400`; every test passes, only wall time regresses. This
+  suite is not the workload chelis#2059 governed (see above).
 - `chelis test tests_neg/ --expect neg`: 4 ok, 0 failing.
 - `chelis test tests_blocked/ --expect blocked`: 3 ok, 0 failing (chelis#676
   twice and chelis#1464 all still live; see `docs/UPSTREAM_BUGS.md` for the

@@ -14,19 +14,22 @@ source behaviour change was required by the compiler:** the whole-package build,
 the 483-test suite, the negative sidecars, the three blocked probes, and the
 216/216 strict SciPy parity gate are all green on 0.18.10.
 
-- **The temporary CI perf bandaid is reverted because chelis#2059 is fixed.**
-  0.18.9 re-lowered definitions per closure application in the interpreter's
-  `admit_execution_profile`; 0.18.10 makes that lowering program-scoped,
-  removing the roughly 2x slowdown on Nautilus's tensor and Monte-Carlo suite.
-  The `chelis test tests/` step in `.github/workflows/ci.yml` returns from
-  `chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto` to
-  `chelis test tests/ --timeout 600 --jobs auto` — the same shape it had at
-  0.7.43/0.18.6, with no `--suite-timeout` override and the "TEMPORARY BANDAID"
-  comment block removed. Locally the suite now passes 483/483 within the default
-  600s suite timeout in 413s wall time; that green run within the default is the
-  proof the raise is no longer needed. `nightly.yml` and `release.yml` never
-  carried the raise (neither runs `chelis test tests/`), so no revert applied
-  there.
+- **chelis#2059 is fixed, but the CI `--suite-timeout` raise is retained — it
+  was misattributed to #2059.** 0.18.9 re-lowered definitions per closure
+  application in the interpreter's `admit_execution_profile`; 0.18.10 makes that
+  lowering program-scoped. That regression degraded the closure-heavy
+  package/prove route (the on-demand NN prove exhausting its budget); its fix is
+  verified there, not on this suite. Measurement on GitHub's Linux runner shows
+  this tensor / Monte-Carlo suite takes ~800-940s under 0.18.9 (with the raise)
+  and still exceeds the 600s default under 0.18.10 — the wall time is intrinsic
+  suite weight on a comparatively slow runner, not #2059. So the
+  `chelis test tests/` step keeps `--suite-timeout 2400` in
+  `.github/workflows/ci.yml`, now documented as suite weight rather than a
+  temporary #2059 bandaid. Every test passes; only wall time exceeds the default.
+  Locally (Apple silicon) the full suite is 483/483 in 413s. The proper fix is
+  to shard `tests/` across a CI matrix so each shard fits the default; tracked
+  for a follow-up. `nightly.yml` and `release.yml` never ran `chelis test tests/`,
+  so neither carries the raise.
 - **chelis#2068 (native-C airy ownership) is fixed.** Nautilus's
   `src/special.ch::airy_gg` — the recursive Airy `g`-series helper behind the
   exported `airy_ai`/`airy_bi` — was the upstream trigger for a native-C
