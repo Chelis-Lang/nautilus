@@ -910,11 +910,13 @@ but do not assume every recursive or fold-based decomposition supports `grad`;
 only surfaces with executable gradient coverage are advertised as differentiable.
 
 ### Nautilus.Stats
-Descriptive statistics over `tensor[n, f32]` inputs. All return `f32`.
+Descriptive statistics over `tensor[n, f32]` inputs. Reductions return `f32`.
 Central: `mean_vec`, `variance_vec(v, ddof)`, `std_vec(v, ddof)`.
 Shape: `skewness_vec`, `kurtosis_vec` (Fisher convention, biased).
 Order: `median_vec`, `min_vec`, `max_vec`, `range_vec`, `quantile_vec(v, q)`, `percentile_vec(v, p)`, `trimmed_mean_vec(v, proportion)`.
+Tensor-returning: `rank_vec` (average ranks, ties shared; O(n^2), and NaN input gives a silently wrong finite result), `zscore_vec(v, ddof)`.
 Two-sample: `covariance_scalar(a, b, ddof)`, `correlation_scalar(a, b)`.
+Many-variable: `covariance_matrix(x, ddof)`, `correlation_matrix(x)` over `tensor[m, n, f32]` with rows as variables.
 
 ### Nautilus.Roots
 Three root-finders, all taking `f: f32 -> f32`:
@@ -1139,7 +1141,7 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `svd_n` | `[n](a: tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor[n, n, f32])` | `alpha` | General-n square Jacobi SVD. Returns (U, sigma, Vt). Fixed 30n sweeps; poorly-separated singular values may not fully converge. U is orthogonal only for full-rank A. AD: singular-vector bases are discontinuous at repeated singular values. |
 | `eig_n` | `[n](a: tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32])` | `alpha` | Symmetric Jacobi eigendecomposition. Returns (eigenvalues, Q) where Q[:,i] is eigenvector for eigenvalue i. Fixed 30n sweeps. Requires symmetric input — non-symmetric matrices produce wrong results silently. No sorting of eigenvalues guaranteed. |
 
-### Nautilus.Stats (24 exports)
+### Nautilus.Stats (28 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
@@ -1157,6 +1159,8 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `quantile_vec` | `[n](v: tensor[n, f32], q: f32) -> f32` | `stable` | q in [0,1], linear interpolation, sorts internally |
 | `percentile_vec` | `[n](v: tensor[n, f32], p: f32) -> f32` | `stable` | p in [0,100], delegates to quantile_vec |
 | `trimmed_mean_vec` | `[n](v: tensor[n, f32], proportion: f32) -> f32` | `stable` | Trims proportion from each tail, NaN if proportion >= 0.5 |
+| `rank_vec` | `[n](v: tensor[n, f32]) -> tensor[n, f32]` | `stable` | 1-based ranks; ties share the average of the ranks they span (scipy method=average). O(n^2) pairwise counting, much slower than the sort-based reductions. Does NOT propagate NaN: a NaN element ranks 0.5 and the result is silently wrong, unlike scipy which returns all-NaN |
+| `zscore_vec` | `[n](v: tensor[n, f32], ddof: int64) -> tensor[n, f32]` | `stable` | (x - mean) / std; NaN for a constant vector |
 | `bonferroni_adjust` | `[n](p_values: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Multiplies each p-value by m (number of tests), clamped to 1 |
 | `stat_holm_adjust` | `[n](p_values: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Holm step-down adjustment over sorted p-values |
 | `benjamini_hochberg_adjust` | `[n](p_values: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Benjamini-Hochberg FDR adjustment |
@@ -1167,6 +1171,8 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `correlation_2x2` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[2, 2, f32]` | `alpha` | 2x2 Pearson correlation matrix for (a, b) |
 | `covariance_matrix_2` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: int64) -> tensor[2, 2, f32]` | `alpha` | Alias for covariance_2x2 |
 | `correlation_matrix_2` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[2, 2, f32]` | `alpha` | Alias for correlation_2x2 |
+| `covariance_matrix` | `[m, n](x: tensor[m, n, f32], ddof: int64) -> tensor[m, m, f32]` | `alpha` | m variables by n observations, rows are variables (numpy.cov default) |
+| `correlation_matrix` | `[m, n](x: tensor[m, n, f32]) -> tensor[m, m, f32]` | `alpha` | Pearson correlation over m variables; a constant row gives NaN |
 
 ### Nautilus.Distance (8 exports)
 
