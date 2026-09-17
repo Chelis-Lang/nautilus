@@ -346,15 +346,57 @@ release.
       is what orders de-narrowing.
     - **Re-probe trigger:** every pin bump and the release resolving
       chelis#1464. On pass, drop both clamps and archive this entry.
+- **A downstream `chelis build` rejects a cast to a `Float`-bounded binder** —
+  parked draft `docs/issue_drafts/c_build_float_binder_cast_target.md` (not yet
+  filed; filing condition: measure on current chelis `main`).
+    - **Symptom:** a `[prec: Float]` library containing `cast(…, prec)` passes
+      `chelis check`, `chelis test` and `reef build`, as does a dependent
+      consumer's `reef build`. The consumer's `chelis build` (C) then fails
+      with ``unsupported: dtype `prec` on a `cast` target in host lowering``,
+      **even when it calls the function only at f32**.
+    - **Shapes rejected on 0.18.10:** a scalar cast to `prec` at any depth; a
+      tensor cast to `prec` reached through a generic-to-generic call. A tensor
+      cast to `prec` called directly from a concrete caller, and a generic def
+      with no cast, both build.
+    - **Relation upstream:** chelis#1418 is the same diagnostic, closed, and
+      fixed in 0.18.9 for tensor-producing recursive helpers only. chelis#2151
+      (below, Tracking) is the checker-side mirror.
+    - **Affected Nautilus surface:** blocks nautilus#69's Float-generic
+      `Nautilus.Stats` (branch `fix/69-stats-float-generic`). Converting it
+      as-is would regress existing f32 C consumers: nautilus `main`'s f32
+      Stats builds and links for the same consumer, and the converted branch
+      does not. The same pattern threatens nautilus#67 and nautilus#12 under
+      nautilus#70.
+    - **Why no gate here catches it:** `scripts/check_release_artifacts.py`'s
+      dependent compile runs only `reef build`, never `chelis build`.
+    - **Probe:** manual-only, see `tests_blocked/README.md`.
+    - **Workaround:** none adopted. Nautilus stays f32 until this clears, and
+      no `[prec: Float]` conversion merges before a downstream C build passes.
+    - **Re-probe trigger:** every pin bump. On pass at f32 and f64, unblock
+      nautilus#69 and archive this entry.
 
 ## Tracking
 
 **Re-probe cadence:** at every compiler pin bump.
 
-- **No separately tracked limitation remains.** The active finite-difference
-  narrowing and the masked-select narrowing are both blocking and stay above;
-  chelis#848 is archived below after its 0.17.5 release-asset re-probe passed
-  all 15 shapes.
+- **`cast`/`cast_trunc` reject a scalar source typed by a `Float`-bounded
+  binder** — `chelis#2151`
+  ([Chelis-Lang/chelis#2151](https://github.com/Chelis-Lang/chelis/issues/2151)).
+    - **Symptom:** `def f[prec: Float](x: prec) -> int64 = cast_trunc(x, int64)`
+      fails checking with ``cast requires tensor or prim type, got `prec` ``.
+      The tensor form over the same binder is accepted. [05-OP-6] says the
+      scalar and tensor surfaces have identical semantics.
+    - **Affected Nautilus surface:** none on `main`, which is f32-only.
+      nautilus#69's Float-generic Stats needs it in `quantile_vec` and
+      `trimmed_mean_vec`, and that branch routes the truncation through a
+      length-1 tensor, cited at the site.
+    - **Why Tracking rather than Actively blocking:** a workaround exists, and
+      nautilus#69 is blocked by the C-build entry above regardless.
+    - **Probe:** `tests_blocked/generic_dtype/scalar_cast_from_float_binder.ch`
+      (0.18.10: fails with the pinned diagnostic; its assertion passes when the
+      same cast goes through the tensor form, so a fix reports FIX-DETECTED).
+    - **Re-probe trigger:** every pin bump. On pass, drop the tensor detour
+      and archive this entry.
 
 ## Parked
 

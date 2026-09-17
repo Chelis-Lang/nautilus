@@ -2,7 +2,15 @@
 
 Ready-to-file issue bodies awaiting a stated filing condition.
 
-No drafts are currently parked. The three prior drafts are filed upstream:
+## Parked
+
+| Draft | Filing condition | Blocks |
+|---|---|---|
+| `c_build_float_binder_cast_target.md` | Measure the reproducer on current chelis `main`, then re-run the duplicate search | nautilus#69 (and nautilus#67, nautilus#12, under nautilus#70) |
+
+## Filed
+
+The three prior drafts are filed upstream:
 
 | Prior draft | Filed as |
 |---|---|
