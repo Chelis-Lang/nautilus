@@ -1,0 +1,8 @@
+precision mismatch: expected f32, got f64
+
+`likelihood_ratio_p_value` is the one Nautilus.Stats export that stays f32:
+it calls `Nautilus.Distributions.chi_squared_cdf`, which is f32-only, and a
+generic caller cannot be more generic than its callee (nautilus#70). This pins
+that residue. When Distributions becomes Float-generic, this test starts to
+fail as an unexpected pass. Convert `likelihood_ratio_p_value` then, and
+delete this file.

@@ -1,0 +1,5 @@
+cannot be instantiated at `int64`
+
+The `prec: Float` bound admits float dtypes only ([04-DTYPE-2]). An integer
+tensor passed to `mean_vec` must be rejected at the bound, not by integer
+division or a cast that happens deeper in the implementation.

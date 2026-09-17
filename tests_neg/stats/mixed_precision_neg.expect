@@ -1,0 +1,6 @@
+tensor precision mismatch: f32 vs f64
+
+Nautilus.Stats is generic over one `prec: Float` binder per function, so
+every tensor and scalar argument of a single call must share one float dtype.
+An f32 tensor and an f64 tensor passed to `covariance_scalar` must be rejected.
+Accepting it would mean the dtype-generic signature silently mixed widths.
