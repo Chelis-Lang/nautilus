@@ -24,6 +24,7 @@ Verdicts are fail-closed:
 | `curvefit/lm_jacobian_generic_dims.ch` | Generic vector-model wrapper reaches malformed backward-DAG verification after chelis#847's checker fix; `chelis#676` | Every pin bump and the release resolving chelis#676 |
 | `curvefit/lm_jacobian_model_wrapper.ch` | Concrete arbitrary-model wrapper emits a malformed backward DAG; `chelis#676` (function-valued-capture witness, same verifier class) | Every pin bump and the release resolving the issue |
 | `masked_select/untaken_arm_overflow.ch` | An untaken scalar-`if` arm is evaluated under `vmap`, so an overflowing arm poisons the select; `chelis#1464` (untaken-arithmetic sibling of that issue's taken-`fail` reproducer) | Every pin bump and the release resolving chelis#1464 |
+| `generic_dtype/scalar_cast_from_float_binder.ch` | `cast`/`cast_trunc` reject a scalar source typed by a `Float`-bounded binder while the tensor form is accepted; `chelis#2151` | Every pin bump and the release resolving chelis#2151 |
 
 ## Cannot be probed from this repo
 
@@ -36,6 +37,22 @@ Verdicts are fail-closed:
 
 ## Manual-only current probes
 
-None. The former unused-Reef-import `eval --file` residue (`chelis#848`) is
+- **A downstream `chelis build` rejects a cast to a `Float`-bounded binder** —
+  `chelis#2152`. This cannot be a
+  `tests_blocked` probe because `chelis test` never runs C host lowering. The
+  reproducer needs two packages: a library installed into a temporary
+  `CHELIS_REEF_HOME`, and a consumer running `chelis build`. The exact steps and
+  expected rejection are in chelis#2152. **Expected while blocked:** the
+  consumer's `chelis build` exits nonzero with ``unsupported: dtype `prec` on a
+  `cast` target in host lowering``. **Control:** the same consumer against
+  nautilus `main`'s f32 `Nautilus.Stats` builds and links. **On pass:** only when
+  every shape in the pass condition of the chelis#2152 entry in
+  `docs/UPSTREAM_BUGS.md` builds, compiles and links at f32 and at f64,
+  including the #69 Stats consumer. chelis#2152's headline reproducer passing
+  on its own is not enough. Then nautilus#69's Float-generic Stats branch
+  becomes mergeable, subject to its own gates. Re-probe trigger: every
+  pin bump, and before any `[prec: Float]` conversion under nautilus#70 merges.
+
+The former unused-Reef-import `eval --file` residue (`chelis#848`) is
 archived after its 0.17.5 release-asset re-probe passed all 15 import shapes.
 The benchmark remains positive regression coverage, not a current blocker.
