@@ -38,11 +38,11 @@ Verdicts are fail-closed:
 ## Manual-only current probes
 
 - **A downstream `chelis build` rejects a cast to a `Float`-bounded binder** —
-  `docs/issue_drafts/c_build_float_binder_cast_target.md`. This cannot be a
+  `chelis#2152`. This cannot be a
   `tests_blocked` probe because `chelis test` never runs C host lowering. The
   reproducer needs two packages: a library installed into a temporary
   `CHELIS_REEF_HOME`, and a consumer running `chelis build`. The exact steps and
-  expected rejection are in the draft. **Expected while blocked:** the
+  expected rejection are in chelis#2152. **Expected while blocked:** the
   consumer's `chelis build` exits nonzero with ``unsupported: dtype `prec` on a
   `cast` target in host lowering``. **Control:** the same consumer against
   nautilus `main`'s f32 `Nautilus.Stats` builds and links. **On pass** (build

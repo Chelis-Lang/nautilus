@@ -347,8 +347,11 @@ release.
     - **Re-probe trigger:** every pin bump and the release resolving
       chelis#1464. On pass, drop both clamps and archive this entry.
 - **A downstream `chelis build` rejects a cast to a `Float`-bounded binder** —
-  parked draft `docs/issue_drafts/c_build_float_binder_cast_target.md` (not yet
-  filed; filing condition: measure on current chelis `main`).
+  `chelis#2152`
+  ([Chelis-Lang/chelis#2152](https://github.com/Chelis-Lang/chelis/issues/2152)).
+    - **Measured on chelis `main`:** the same variant table is rejected
+      identically on a debug build of `main` at `1703a2e32` as on the 0.18.10
+      release, at f32 and at f64, so it is not already fixed upstream.
     - **Symptom:** a `[prec: Float]` library containing `cast(…, prec)` passes
       `chelis check`, `chelis test` and `reef build`, as does a dependent
       consumer's `reef build`. The consumer's `chelis build` (C) then fails
@@ -369,7 +372,8 @@ release.
       nautilus#70.
     - **Why no gate here catches it:** `scripts/check_release_artifacts.py`'s
       dependent compile runs only `reef build`, never `chelis build`.
-    - **Probe:** manual-only, see `tests_blocked/README.md`.
+    - **Probe:** manual-only, see `tests_blocked/README.md`. The two-package
+      reproducer and the variant table are in chelis#2152.
     - **Workaround:** none adopted. Nautilus stays f32 until this clears, and
       no `[prec: Float]` conversion merges before a downstream C build passes.
     - **Re-probe trigger:** every pin bump. On pass at f32 and f64, unblock
