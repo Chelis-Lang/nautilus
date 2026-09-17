@@ -13,7 +13,8 @@ reproductions, workarounds, and status notes.
 > source commit `b9095ccf2c0b76859aa447c6febe699fd287f1d2`, tag `v0.18.10`,
 > annotated tag object `e247a5d33cd2df552f57e3efddfd4ea30846b3b8`, release run
 > 34966582543) ran the complete local gate on 2026-09-15: 483 positive tests, 4
-> negative contracts, 3 blocked probes still blocked, and 216/216 strict SciPy
+> negative contracts, 3 blocked probes still blocked (a fourth, for chelis#2151,
+> was added afterwards and is also still blocked on 0.18.10), and 216/216 strict SciPy
 > parity, with the positive suite finishing in 413s wall time on Apple silicon
 > (the slower Linux CI runner keeps the raised `--suite-timeout`; see #2059
 > below). The tarball was checked against its release sidecar and
@@ -357,12 +358,16 @@ release.
       consumer's `reef build`. The consumer's `chelis build` (C) then fails
       with ``unsupported: dtype `prec` on a `cast` target in host lowering``,
       **even when it calls the function only at f32**.
-    - **Shapes rejected on 0.18.10:** a scalar cast to `prec` at any depth; a
-      tensor cast to `prec` reached through a generic-to-generic call. A tensor
-      cast to `prec` called directly from a concrete caller, and a generic def
-      with no cast, both build.
-    - **Relation upstream:** chelis#1418 is the same diagnostic, closed, and
-      fixed in 0.18.9 for tensor-producing recursive helpers only. chelis#2151
+    - **Shapes rejected on 0.18.10, as measured:** a scalar cast to `prec`
+      called directly (`cast(numel(v), prec)` over a borrowed or owned tensor
+      parameter, and `cast(0.0, prec)`); the same scalar cast one generic call
+      deep; and a tensor cast to `prec` reached through a generic-to-generic
+      call. Built as a control: a tensor cast to `prec` called directly from a
+      concrete caller, and a generic def with no cast. Deeper nesting was not
+      measured.
+    - **Relation upstream:** chelis#1418 is the same diagnostic, closed. Its
+      fixes (chelis#1758, chelis#1759) first shipped in 0.18.7, and they cover
+      tensor-producing recursive helpers only. chelis#2151
       (below, Tracking) is the checker-side mirror.
     - **Affected Nautilus surface:** blocks nautilus#69's Float-generic
       `Nautilus.Stats` (branch `fix/69-stats-float-generic`). Converting it
@@ -376,8 +381,16 @@ release.
       reproducer and the variant table are in chelis#2152.
     - **Workaround:** none adopted. Nautilus stays f32 until this clears, and
       no `[prec: Float]` conversion merges before a downstream C build passes.
-    - **Re-probe trigger:** every pin bump. On pass at f32 and f64, unblock
-      nautilus#69 and archive this entry.
+    - **Re-probe trigger:** every pin bump.
+    - **Pass condition (all of it, at f32 AND f64):** every rejected shape above
+      builds, compiles and links as a downstream consumer; AND a consumer of
+      the `fix/69-stats-float-generic` branch's `Nautilus.Stats` that calls
+      `mean_vec`, `std_vec`, `quantile_vec`, `trimmed_mean_vec` and
+      `correlation_matrix` builds, compiles and links. A pass on chelis#2152's
+      headline reproducer alone is **not** a pass: upstream could fix the
+      direct scalar case while the nested and tensor-routed shapes that Stats
+      depends on still fail, and no gate in this repo would notice. Only on a
+      full pass, unblock nautilus#69 and archive this entry.
 
 ## Tracking
 

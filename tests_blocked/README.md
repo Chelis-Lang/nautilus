@@ -45,9 +45,12 @@ Verdicts are fail-closed:
   expected rejection are in chelis#2152. **Expected while blocked:** the
   consumer's `chelis build` exits nonzero with ``unsupported: dtype `prec` on a
   `cast` target in host lowering``. **Control:** the same consumer against
-  nautilus `main`'s f32 `Nautilus.Stats` builds and links. **On pass** (build
-  exit 0, clang exit 0, at f32 and at f64): nautilus#69's Float-generic Stats
-  branch becomes mergeable subject to its own gates. Re-probe trigger: every
+  nautilus `main`'s f32 `Nautilus.Stats` builds and links. **On pass:** only when
+  every shape in the pass condition of the chelis#2152 entry in
+  `docs/UPSTREAM_BUGS.md` builds, compiles and links at f32 and at f64,
+  including the #69 Stats consumer. chelis#2152's headline reproducer passing
+  on its own is not enough. Then nautilus#69's Float-generic Stats branch
+  becomes mergeable, subject to its own gates. Re-probe trigger: every
   pin bump, and before any `[prec: Float]` conversion under nautilus#70 merges.
 
 The former unused-Reef-import `eval --file` residue (`chelis#848`) is
