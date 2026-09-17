@@ -4,7 +4,7 @@ import Nautilus.Distributions (normal_pdf, normal_cdf, normal_inv_cdf, uniform_p
 import Nautilus.LinAlg (transpose, matmul_wrap, gram, aat, diag, trace_mat, trace_scalar, l2_norm_vec, inner_product, frobenius_sq, frobenius_norm, scale_vec, matvec, vecmat, det_2x2, det_3x3, la_vec_add, la_vec_sub, la_vec_saxpy, cg_solve, inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2, cholesky_n, lu_solve, qr_decompose, svd_n, eig_n)
 import Nautilus.Roots (bisection, newton, brent)
 import Nautilus.Ode (euler_step, euler_solve, rk4_step, rk4_solve, rk45_adaptive_solve, rk45_adaptive_solve_grid)
-import Nautilus.Stats (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, likelihood_ratio_p_value, covariance_2x2, correlation_2x2, covariance_matrix_2, correlation_matrix_2)
+import Nautilus.Stats (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec, rank_vec, zscore_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, likelihood_ratio_p_value, covariance_2x2, correlation_2x2, covariance_matrix_2, correlation_matrix_2, covariance_matrix, correlation_matrix)
 import Nautilus.Info (entropy, cross_entropy, kl_divergence)
 import Nautilus.Integrate (trapezoidal, simpsons, gauss_legendre_5)
 import Nautilus.Testing (z_statistic, z_p_value_two_sided, z_p_value_upper, z_p_value_lower, normal_ci_half_width, chi_squared_p_value)
@@ -18,7 +18,7 @@ import Nautilus.Integrate (trapezoidal, simpsons, gauss_legendre_5, adaptive_sim
 import Nautilus.CurveFit (lm_scalar_1param, lm_scalar_nparam)
 import Nautilus.StateSpace (kalman_predict_scalar, kalman_update_scalar, kalman_step_scalar, local_level_predict, local_level_update, local_level_step)
 import Nautilus.TimeSeries (ts_ewma_next, ts_ewma_series, exponential_smoothing_next, exponential_smoothing_series, ar1_predict_next, arma11_predict_next, arima110_predict_next)
-export (smoke_special, smoke_distributions, smoke_linalg, smoke_roots, smoke_ode, smoke_stats, smoke_integrate, smoke_testing, smoke_distance, smoke_signal, smoke_optim, smoke_interpolation, smoke_cg_solve, smoke_sde, smoke_linalg_inv, smoke_integrate_adaptive, smoke_integrate_hl, smoke_curvefit, smoke_distributions_p4, smoke_stats_p4, smoke_qr, smoke_svd_n, smoke_lm_nparam, smoke_eig_n, smoke_ode_grid, smoke_spline, smoke_optimize, smoke_info, smoke_stats_inference, smoke_statespace, smoke_timeseries)
+export (smoke_special, smoke_distributions, smoke_linalg, smoke_roots, smoke_ode, smoke_stats, smoke_integrate, smoke_testing, smoke_distance, smoke_signal, smoke_optim, smoke_interpolation, smoke_cg_solve, smoke_sde, smoke_linalg_inv, smoke_integrate_adaptive, smoke_integrate_hl, smoke_curvefit, smoke_distributions_p4, smoke_stats_p4, smoke_stats_rank_cov, smoke_qr, smoke_svd_n, smoke_lm_nparam, smoke_eig_n, smoke_ode_grid, smoke_spline, smoke_optimize, smoke_info, smoke_stats_inference, smoke_statespace, smoke_timeseries)
 -- chelis:provenance/v1 surface
 -- id = NAUT-SUPPORT-SURFACE
 -- member-key-schema = nautilus-module-key/v1
@@ -257,6 +257,13 @@ def smoke_stats_p4[n](v: tensor[n, f32]) -> f32 = {
   p = percentile_vec(copy(v), cast(75.0, f32))
   tm = trimmed_mean_vec(v, cast(0.1, f32))
   add(add(add(add(add(mn, mx), rg), q), p), tm)
+}
+def smoke_stats_rank_cov[n](v: tensor[n, f32], m: tensor[2, n, f32]) -> f32 = {
+  r = mean_vec(rank_vec(copy(v)))
+  z = mean_vec(zscore_vec(v, cast(0, int64)))
+  cv = trace_scalar(covariance_matrix(copy(m), cast(0, int64)))
+  cr = trace_scalar(correlation_matrix(m))
+  add(add(add(r, z), cv), cr)
 }
 def smoke_svd_n(a3: tensor[3, 3, f32]) -> f32 = {
   svd_u = svd_n(copy(a3))

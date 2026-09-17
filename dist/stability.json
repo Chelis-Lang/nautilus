@@ -188,9 +188,11 @@
     "benjamini_hochberg_adjust": "alpha",
     "bonferroni_adjust": "alpha",
     "correlation_2x2": "alpha",
+    "correlation_matrix": "alpha",
     "correlation_matrix_2": "alpha",
     "correlation_scalar": "stable",
     "covariance_2x2": "alpha",
+    "covariance_matrix": "alpha",
     "covariance_matrix_2": "alpha",
     "covariance_scalar": "stable",
     "fdr_adjust": "alpha",
@@ -204,11 +206,13 @@
     "percentile_vec": "stable",
     "quantile_vec": "stable",
     "range_vec": "stable",
+    "rank_vec": "stable",
     "skewness_vec": "stable",
     "stat_holm_adjust": "alpha",
     "std_vec": "stable",
     "trimmed_mean_vec": "stable",
-    "variance_vec": "stable"
+    "variance_vec": "stable",
+    "zscore_vec": "stable"
   },
   "Nautilus.Testing": {
     "chi_squared_p_value": "stable",

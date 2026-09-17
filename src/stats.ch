@@ -1,6 +1,6 @@
 module Nautilus.Stats
 import Nautilus.Distributions (chi_squared_cdf)
-export (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, likelihood_ratio_p_value, covariance_2x2, correlation_2x2, covariance_matrix_2, correlation_matrix_2)
+export (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec, rank_vec, zscore_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, likelihood_ratio_p_value, covariance_2x2, correlation_2x2, covariance_matrix_2, correlation_matrix_2, covariance_matrix, correlation_matrix)
 -- chelis:provenance/v1 authority
 -- id = NAUT-MOD-STATS
 -- kind = behavioral
@@ -166,6 +166,24 @@ def percentile_vec[n](v: &tensor[n, f32], p: f32) -> f32 = {
   q = div(p, cast(100.0, f32))
   quantile_vec(v, q)
 }
+-- Average rank of one element against the whole sample: 1 + (#below) +
+-- (#tied - 1)/2. Counting rather than sorting is what makes ties average
+-- cleanly, and it matches scipy.stats.rankdata's default `method="average"`.
+def stats_rank_one[n](sample: &tensor[n, f32], x: f32) -> f32 = {
+  counts = fold(fn (acc: (f32, f32), y: f32) -> {
+    below = if lt(y, x) then add(acc.0, one_f()) else acc.0
+    tied = if eq(y, x) then add(acc.1, one_f()) else acc.1
+    (below, tied)
+  }, (zero_f(), zero_f()), to_list(sample))
+  half = cast(0.5, f32)
+  counts.0 |> add(one_f()) |> add(mul(half, sub(counts.1, one_f())))
+}
+def rank_vec[n](v: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (x: f32) -> stats_rank_one(v, x), to_list(v)))
+def zscore_vec[n](v: &tensor[n, f32], ddof: int64) -> tensor[n, f32] = {
+  mu = mean_vec(v)
+  sd = std_vec(v, ddof)
+  to_tensor(map(fn (x: f32) -> div(sub(x, mu), sd), to_list(v)))
+}
 def trimmed_mean_vec[n](v: &tensor[n, f32], proportion: f32) -> f32 = {
   half = cast(0.5, f32)
   bad_prop = proportion |> lt(zero_f()) |> or(gte(proportion, half))
@@ -248,3 +266,35 @@ def correlation_2x2[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[2, 2, f
 }
 def covariance_matrix_2[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: int64) -> tensor[2, 2, f32] = covariance_2x2(a, b, ddof)
 def correlation_matrix_2[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[2, 2, f32] = correlation_2x2(a, b)
+-- Lift a scalar to rank 1 / rank 2 so an elementwise tensor op can take it.
+-- Chelis has no implicit tensor-scalar broadcasting; `insert` adds a new axis
+-- of the given length and lowers to a stride-0 view, so this costs no
+-- per-element storage. Same idiom as `la_lift_t` in Nautilus.LinAlg.
+def stats_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = c |> scalar_to_tensor |> insert(0, shape(template, cast(0, int32)))
+def stats_lift_t2[m, n](template: &tensor[m, n, f32], c: f32) -> tensor[m, n, f32] =
+  c
+  |> scalar_to_tensor
+  |> insert(0, shape(template, cast(0, int32)))
+  |> insert(1, shape(template, cast(1, int32)))
+-- Covariance over m variables and n observations. Each ROW is a variable and
+-- each COLUMN an observation, matching numpy.cov's default `rowvar=True`;
+-- `covariance_matrix(to_tensor([a, b]), ddof)` therefore agrees entrywise with
+-- `covariance_matrix_2(a, b, ddof)`, which tests/stats.ch pins.
+def covariance_matrix[m, n](x: &tensor[m, n, f32], ddof: int64) -> tensor[m, m, f32] = {
+  n_obs = cast(shape(x, cast(1, int32)), f32)
+  row_sums = sum(x, 1)
+  mu = div(row_sums, stats_lift_t(row_sums, n_obs))
+  centered = sub(x, insert(mu, 1, shape(x, cast(1, int32))))
+  cross = einsum("ik,jk->ij", centered, centered)
+  denom = sub(n_obs, cast(ddof, f32))
+  div(cross, stats_lift_t2(cross, denom))
+}
+-- Pearson correlation over m variables. Scale-invariant, so the ddof the
+-- covariance is built with cancels and is fixed at 0. A constant row has zero
+-- variance and yields NaN in its row and column, as numpy.corrcoef does.
+def correlation_matrix[m, n](x: &tensor[m, n, f32]) -> tensor[m, m, f32] = {
+  cov = covariance_matrix(x, zero_i())
+  sd = sqrt(diagonal(cov, 0, 1))
+  outer = einsum("i,j->ij", sd, sd)
+  div(cov, outer)
+}

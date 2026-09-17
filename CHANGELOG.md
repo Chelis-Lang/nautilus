@@ -4,6 +4,37 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **`Nautilus.Stats` gains `rank_vec`, `zscore_vec`, `covariance_matrix` and
+  `correlation_matrix`** (nautilus#66). `rank_vec` returns 1-based ranks with
+  ties sharing the average of the ranks they span, matching
+  `scipy.stats.rankdata`'s default `method="average"`. `zscore_vec(v, ddof)`
+  standardises to `(x - mean) / std`. `covariance_matrix(x, ddof)` and
+  `correlation_matrix(x)` work over `tensor[m, n, f32]` with each row a
+  variable and each column an observation, matching `numpy.cov`'s default
+  `rowvar=True`; the existing `covariance_matrix_2` remains the two-vector
+  form and the general function agrees with it entrywise.
+
+  Both divide by a standard deviation, so a constant vector or constant row
+  yields NaN rather than 0, as `numpy.corrcoef` does. 20 new assertions in
+  `tests/stats.ch` cover the positive cases and the NaN, tie and sign
+  failure cases. The matrix forms are pinned entrywise against `numpy.cov`
+  and `numpy.corrcoef` at 3 variables by 4 observations, not only against
+  the 2-variable form they generalise.
+
+  **The issue's premise did not hold.** nautilus#66 reported that
+  `Nautilus.Stats` exported only constants and one hypothesis test, and that
+  `mean`, `median`, `std`, `var` and `quantile` were all absent. On `main`
+  those five are present, exported, and documented in
+  `docs/book/src/stats/descriptive.md`, and have been since long before the
+  issue was filed (`mean_vec` from the module's first commit `99d2ac9`,
+  `quantile_vec` and `percentile_vec` from `de9aee4` the following day). What was
+  genuinely missing is the four functions above. The issue has been corrected
+  and narrowed accordingly.
+
 ## [0.7.45] - 2026-09-15
 
 Compiler-pin release for Chelis v0.18.10, a targeted repair on top of the

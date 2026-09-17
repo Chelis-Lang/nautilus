@@ -1,7 +1,7 @@
 module Nautilus.Tests.Stats
-import Nautilus.Stats (mean_vec, variance_vec, std_vec, median_vec, min_vec, max_vec, range_vec, skewness_vec, kurtosis_vec, covariance_scalar, correlation_scalar, quantile_vec, percentile_vec, trimmed_mean_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, covariance_2x2, correlation_2x2)
+import Nautilus.Stats (mean_vec, variance_vec, std_vec, median_vec, min_vec, max_vec, range_vec, skewness_vec, kurtosis_vec, covariance_scalar, correlation_scalar, quantile_vec, percentile_vec, trimmed_mean_vec, rank_vec, zscore_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, covariance_2x2, correlation_2x2, covariance_matrix, correlation_matrix)
 import Nautilus.LinAlg (matvec, inner_product)
-import Std.Test (assert_close, assert_true)
+import Std.Test (assert_close, assert_close_tensor, assert_true)
 -- chelis:provenance/v1 carrier
 -- id = NAUT-CARRIER-STATS-TESTS
 -- role = positive
@@ -181,4 +181,111 @@ def test_covariance_2x2_diagonal_matches_variance() -> unit ! { Test } = {
   corr = correlation_2x2(x, y)
   _ = assert_close(mat2_get(copy(cov), cast(0, int64), cast(0, int64)), cast(0.6666667, f32), cast(1e-6, f32), "covariance_2x2[0,0] is var(x)")
   assert_close(mat2_get(corr, cast(0, int64), cast(1, int64)), cast(1.0, f32), cast(0.0001, f32), "correlation_2x2 off diagonal for y=2x is 1")
+}
+def test_rank_no_ties_is_ordinal() -> unit ! { Test } = {
+  v = to_tensor([cast(30.0, f32), cast(10.0, f32), cast(20.0, f32)])
+  expected = to_tensor([cast(3.0, f32), cast(1.0, f32), cast(2.0, f32)])
+  assert_close_tensor(rank_vec(v), expected, cast(1e-6, f32), "rank_vec of a tie-free vector is its ordinal position")
+}
+def test_rank_averages_ties() -> unit ! { Test } = {
+  v = to_tensor([cast(3.0, f32), cast(1.0, f32), cast(4.0, f32), cast(1.0, f32)])
+  expected = to_tensor([cast(3.0, f32), cast(1.5, f32), cast(4.0, f32), cast(1.5, f32)])
+  assert_close_tensor(rank_vec(v), expected, cast(1e-6, f32), "tied values share the average of the ranks they span (scipy method=average)")
+}
+def test_rank_all_tied_is_midpoint() -> unit ! { Test } = {
+  v = to_tensor([cast(5.0, f32), cast(5.0, f32), cast(5.0, f32), cast(5.0, f32)])
+  expected = to_tensor([cast(2.5, f32), cast(2.5, f32), cast(2.5, f32), cast(2.5, f32)])
+  assert_close_tensor(rank_vec(v), expected, cast(1e-6, f32), "an all-tied vector ranks every entry at (n+1)/2")
+}
+def test_rank_tie_is_not_the_bare_ordinal() -> unit ! { Test } = {
+  v = to_tensor([cast(1.0, f32), cast(1.0, f32)])
+  r0 = index(to_list(rank_vec(v)), cast(0, int64))
+  assert_true(neq(r0, cast(1.0, f32)), "a tied first element must not receive the bare ordinal rank 1")
+}
+def test_rank_sum_is_triangular() -> unit ! { Test } = {
+  v = to_tensor([cast(2.0, f32), cast(7.0, f32), cast(2.0, f32), cast(-1.0, f32), cast(7.0, f32)])
+  total = fold(fn (acc: f32, x: f32) -> add(acc, x), cast(0.0, f32), to_list(rank_vec(v)))
+  assert_close(total, cast(15.0, f32), cast(0.00001, f32), "ranks sum to n(n+1)/2 whether or not there are ties")
+}
+def test_rank_invariant_under_increasing_map() -> unit ! { Test } = {
+  v = to_tensor([cast(2.0, f32), cast(7.0, f32), cast(2.0, f32), cast(-1.0, f32)])
+  mapped = to_tensor([cast(5.0, f32), cast(15.0, f32), cast(5.0, f32), cast(-1.0, f32)])
+  assert_close_tensor(rank_vec(v), rank_vec(mapped), cast(1e-6, f32), "rank_vec is invariant under the strictly increasing map 2x+1")
+}
+def test_zscore_known_values() -> unit ! { Test } = {
+  v = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)])
+  expected = to_tensor([cast(-1.2247449, f32), cast(0.0, f32), cast(1.2247449, f32)])
+  assert_close_tensor(zscore_vec(v, cast(0, int64)), expected, cast(0.00001, f32), "zscore_vec([1,2,3], ddof=0) = [-sqrt(3/2), 0, sqrt(3/2)]")
+}
+def test_zscore_has_zero_mean() -> unit ! { Test } = {
+  v = to_tensor([cast(4.0, f32), cast(-2.0, f32), cast(9.0, f32), cast(1.5, f32)])
+  z = zscore_vec(v, cast(0, int64))
+  assert_close(mean_vec(z), cast(0.0, f32), cast(0.00001, f32), "standardised data has mean 0")
+}
+def test_zscore_has_unit_std() -> unit ! { Test } = {
+  v = to_tensor([cast(4.0, f32), cast(-2.0, f32), cast(9.0, f32), cast(1.5, f32)])
+  z = zscore_vec(v, cast(0, int64))
+  assert_close(std_vec(z, cast(0, int64)), cast(1.0, f32), cast(0.00001, f32), "standardised data has population std 1")
+}
+def test_zscore_ddof_rescales_by_sqrt_n_over_n_minus_one() -> unit ! { Test } = {
+  v = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(10.0, f32)])
+  z0 = index(to_list(zscore_vec(copy(v), cast(0, int64))), cast(0, int64))
+  z1 = index(to_list(zscore_vec(v, cast(1, int64))), cast(0, int64))
+  ratio = sqrt(div(cast(4.0, f32), cast(3.0, f32)))
+  assert_close(div(z0, z1), ratio, cast(0.00001, f32), "ddof=1 rescales every z-score by sqrt(n/(n-1))")
+}
+def test_zscore_constant_vector_is_nan() -> unit ! { Test } = {
+  v = to_tensor([cast(7.0, f32), cast(7.0, f32), cast(7.0, f32)])
+  z0 = index(to_list(zscore_vec(v, cast(0, int64))), cast(0, int64))
+  assert_true(neq(z0, z0), "a constant vector has zero spread, so zscore_vec is NaN rather than 0")
+}
+def test_covariance_matrix_agrees_with_pairwise_2x2() -> unit ! { Test } = {
+  a = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)])
+  b = to_tensor([cast(2.0, f32), cast(4.0, f32), cast(7.0, f32)])
+  stacked = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(2.0, f32), cast(4.0, f32), cast(7.0, f32)]])
+  general = covariance_matrix(stacked, cast(0, int64))
+  pair = covariance_2x2(a, b, cast(0, int64))
+  assert_close_tensor(general, pair, cast(1e-6, f32), "covariance_matrix over stacked rows equals covariance_2x2 on the same two variables")
+}
+def test_covariance_matrix_diagonal_is_variance() -> unit ! { Test } = {
+  x = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(2.0, f32), cast(4.0, f32), cast(7.0, f32)]])
+  row0 = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)])
+  cov = covariance_matrix(x, cast(0, int64))
+  assert_close(mat2_get(cov, cast(0, int64), cast(0, int64)), variance_vec(row0, cast(0, int64)), cast(1e-6, f32), "covariance_matrix[i,i] is variance_vec of row i")
+}
+def test_covariance_matrix_ddof_scales() -> unit ! { Test } = {
+  x = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(2.0, f32), cast(4.0, f32), cast(7.0, f32)]])
+  pop = mat2_get(covariance_matrix(copy(x), cast(0, int64)), cast(0, int64), cast(1, int64))
+  samp = mat2_get(covariance_matrix(x, cast(1, int64)), cast(0, int64), cast(1, int64))
+  assert_close(div(samp, pop), cast(1.5, f32), cast(0.00001, f32), "ddof=1 scales covariance by n/(n-1) = 3/2")
+}
+def test_correlation_matrix_diagonal_is_one() -> unit ! { Test } = {
+  x = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(2.0, f32), cast(4.0, f32), cast(7.0, f32)]])
+  corr = correlation_matrix(x)
+  assert_close(mat2_get(corr, cast(0, int64), cast(0, int64)), cast(1.0, f32), cast(0.00001, f32), "correlation_matrix has a unit diagonal")
+}
+def test_correlation_matrix_perfect_linear_is_one() -> unit ! { Test } = {
+  x = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(3.0, f32), cast(5.0, f32), cast(7.0, f32)]])
+  corr = correlation_matrix(x)
+  assert_close(mat2_get(corr, cast(0, int64), cast(1, int64)), cast(1.0, f32), cast(0.0001, f32), "corr(x, 2x+1) = 1 off the diagonal")
+}
+def test_correlation_matrix_keeps_negative_sign() -> unit ! { Test } = {
+  x = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(9.0, f32), cast(6.0, f32), cast(3.0, f32)]])
+  corr = correlation_matrix(x)
+  assert_close(mat2_get(corr, cast(0, int64), cast(1, int64)), cast(-1.0, f32), cast(0.0001, f32), "corr(x, -3x+12) = -1, so the sign survives the sqrt(diag) normalisation")
+}
+def test_correlation_matrix_constant_row_is_nan() -> unit ! { Test } = {
+  x = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(5.0, f32), cast(5.0, f32), cast(5.0, f32)]])
+  corr = correlation_matrix(x)
+  c01 = mat2_get(corr, cast(0, int64), cast(1, int64))
+  assert_true(neq(c01, c01), "a constant row has zero variance, so its correlations are NaN rather than 0")
+}
+def stats_three_by_four() -> tensor[3, 4, f32] = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32)], [cast(2.0, f32), cast(4.0, f32), cast(7.0, f32), cast(8.0, f32)], [cast(5.0, f32), cast(3.0, f32), cast(2.0, f32), cast(1.0, f32)]])
+def test_covariance_matrix_three_variables() -> unit ! { Test } = {
+  expected = to_tensor([[cast(1.25, f32), cast(2.625, f32), cast(-1.625, f32)], [cast(2.625, f32), cast(5.6875, f32), cast(-3.4375, f32)], [cast(-1.625, f32), cast(-3.4375, f32), cast(2.1875, f32)]])
+  assert_close_tensor(covariance_matrix(stats_three_by_four(), cast(0, int64)), expected, cast(0.00001, f32), "covariance_matrix over 3 variables by 4 observations matches the NumPy covariance reference with bias true, entrywise")
+}
+def test_correlation_matrix_three_variables() -> unit ! { Test } = {
+  expected = to_tensor([[cast(1.0, f32), cast(0.9844952, f32), cast(-0.9827076, f32)], [cast(0.9844952, f32), cast(1.0, f32), cast(-0.9745586, f32)], [cast(-0.9827076, f32), cast(-0.9745586, f32), cast(1.0, f32)]])
+  assert_close_tensor(correlation_matrix(stats_three_by_four()), expected, cast(0.00001, f32), "correlation_matrix over 3 variables by 4 observations matches the NumPy correlation reference, entrywise")
 }
