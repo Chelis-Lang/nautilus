@@ -1,0 +1,5 @@
+precision mismatch: expected f64, got f32
+
+One `prec` binder governs the grid tensors and the query point of
+Nautilus.Interpolation.linear_interp_sorted (nautilus#67). An f64 grid queried
+at an f32 point must be rejected; Chelis has no implicit precision promotion.

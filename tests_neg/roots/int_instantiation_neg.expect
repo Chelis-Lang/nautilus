@@ -1,0 +1,6 @@
+type variable bounded by dtype family `Float` (the active float dtypes) cannot be instantiated at `int64`
+
+Nautilus.Roots.brent, bisection and newton are declared `[prec: Float]`
+(nautilus#67). An int64 objective is outside that family, so the call is a
+compile-time PrecisionMismatch naming the family and the offending type
+([04-DTYPE-2]) rather than a truncated integer root.

@@ -6,52 +6,46 @@ export (linear_interp_uniform, linear_interp_sorted, cubic_hermite, spline_fit, 
 -- kind = behavioral
 -- scopes = nautilus
 -- statement = Nautilus.Interpolation MUST provide the interpolation surface listed in the module support table.
-def interp_zero_f() -> f32 = cast(0.0, f32)
-def interp_one_f() -> f32 = cast(1.0, f32)
-def interp_two_f() -> f32 = cast(2.0, f32)
-def interp_three_f() -> f32 = cast(3.0, f32)
 def interp_zero_i() -> int64 = cast(0, int64)
 def interp_one_i() -> int64 = cast(1, int64)
-def interp_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
-def interp_max_i64(a: int64, b: int64) -> int64 = if gt(a, b) then a else b
-def interp_min_i64(a: int64, b: int64) -> int64 = if lt(a, b) then a else b
-def linear_interp_uniform[n](ys: &tensor[n, f32], x_min: f32, x_max: f32, x_query: f32) -> f32 = {
+def linear_interp_uniform[n, prec: Float](ys: &tensor[n, prec], x_min: prec, x_max: prec, x_query: prec) -> prec = {
   n_i = numel(copy(ys))
   n_minus_1_i = sub(n_i, interp_one_i())
-  n_minus_1_f = cast(n_minus_1_i, f32)
+  n_minus_1_f = cast(n_minus_1_i, prec)
   lst = to_list(ys)
   enum_lst = enumerate(lst)
   span = sub(x_max, x_min)
   h = div(span, n_minus_1_f)
   u_raw = div(sub(x_query, x_min), h)
-  u_lo_clamped = if lt(u_raw, interp_zero_f()) then interp_zero_f() else u_raw
+  u_lo_clamped = if lt(u_raw, cast(0.0, prec)) then cast(0.0, prec) else u_raw
   u_clamped = if gt(u_lo_clamped, n_minus_1_f) then n_minus_1_f else u_lo_clamped
-  k_trunc_i = cast_trunc(u_clamped, int64)
-  k_i_pre = interp_min_i64(k_trunc_i, sub(n_minus_1_i, interp_one_i()))
-  k_i = interp_max_i64(k_i_pre, interp_zero_i())
-  k_f = cast(k_i, f32)
+  -- Cell index floor(u) clamped to [0, n-2], counted over the interior grid
+  -- points rather than truncated: cast_trunc rejects a Float-bounded operand
+  -- (CHELIS-ISSUE-PENDING).
+  k_i = fold(fn (acc: int64, i: int64) -> if lte(cast(i, prec), u_clamped) then i else acc, interp_zero_i(), range(interp_one_i(), n_minus_1_i))
+  k_f = cast(k_i, prec)
   kp1_i = add(k_i, interp_one_i())
-  picked = fold(fn (acc: (f32, f32), pair: (int64, f32)) -> {
+  picked = fold(fn (acc: (prec, prec), pair: (int64, prec)) -> {
     i = pair.0
     v = pair.1
     take_lo = eq(i, k_i)
     take_hi = eq(i, kp1_i)
     if take_lo then (v, acc.1) else if take_hi then (acc.0, v) else acc
-  }, (interp_zero_f(), interp_zero_f()), enum_lst)
+  }, (cast(0.0, prec), cast(0.0, prec)), enum_lst)
   y_lo = picked.0
   y_hi = picked.1
   frac = sub(u_clamped, k_f)
   add(y_lo, mul(frac, sub(y_hi, y_lo)))
 }
-def linear_interp_sorted[n](xs: &tensor[n, f32], ys: &tensor[n, f32], x_query: f32) -> f32 = {
+def linear_interp_sorted[n, prec: Float](xs: &tensor[n, prec], ys: &tensor[n, prec], x_query: prec) -> prec = {
   n_i = numel(copy(xs))
   last_i = sub(n_i, interp_one_i())
   x_list = to_list(xs)
   y_list = to_list(ys)
   zipped = zip(x_list, y_list)
   enum_zipped = enumerate(zipped)
-  init = (false, interp_zero_f(), interp_zero_f(), interp_zero_f(), interp_zero_f(), interp_zero_f(), interp_zero_f(), interp_zero_f(), interp_zero_f(), interp_zero_f(), interp_zero_f())
-  acc_final = fold(fn (acc: (bool, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32), entry: (int64, (f32, f32))) -> {
+  init = (false, cast(0.0, prec), cast(0.0, prec), cast(0.0, prec), cast(0.0, prec), cast(0.0, prec), cast(0.0, prec), cast(0.0, prec), cast(0.0, prec), cast(0.0, prec), cast(0.0, prec))
+  acc_final = fold(fn (acc: (bool, prec, prec, prec, prec, prec, prec, prec, prec, prec, prec), entry: (int64, (prec, prec))) -> {
     i = entry.0
     xy = entry.1
     xi = xy.0
@@ -88,16 +82,16 @@ def linear_interp_sorted[n](xs: &tensor[n, f32], ys: &tensor[n, f32], x_query: f
   bracket_val = add(y_lo, mul(frac, sub(y_hi, y_lo)))
   if found then bracket_val else if lt(x_query, first_x) then first_y else last_y
 }
-def cubic_hermite(x0: f32, x1: f32, y0: f32, y1: f32, m0: f32, m1: f32, x_query: f32) -> f32 = {
+def cubic_hermite[prec: Float](x0: prec, x1: prec, y0: prec, y1: prec, m0: prec, m1: prec, x_query: prec) -> prec = {
   h = sub(x1, x0)
-  if eq(h, interp_zero_f()) then div(interp_zero_f(), interp_zero_f()) else {
+  if eq(h, cast(0.0, prec)) then div(cast(0.0, prec), cast(0.0, prec)) else {
     t = div(sub(x_query, x0), h)
     t2 = mul(t, t)
     t3 = mul(t2, t)
-    two_t3 = mul(interp_two_f(), t3)
-    three_t2 = mul(interp_three_f(), t2)
-    two_t2 = mul(interp_two_f(), t2)
-    h00 = add(sub(two_t3, three_t2), interp_one_f())
+    two_t3 = mul(cast(2.0, prec), t3)
+    three_t2 = mul(cast(3.0, prec), t2)
+    two_t2 = mul(cast(2.0, prec), t2)
+    h00 = add(sub(two_t3, three_t2), cast(1.0, prec))
     h10 = add(sub(t3, two_t2), t)
     h01 = sub(three_t2, two_t3)
     h11 = sub(t3, t2)
