@@ -21,7 +21,7 @@ def linear_interp_uniform[n, prec: Float](ys: &tensor[n, prec], x_min: prec, x_m
   u_clamped = if gt(u_lo_clamped, n_minus_1_f) then n_minus_1_f else u_lo_clamped
   -- Cell index floor(u) clamped to [0, n-2], counted over the interior grid
   -- points rather than truncated: cast_trunc rejects a Float-bounded operand
-  -- (CHELIS-ISSUE-PENDING).
+  -- (chelis#2151; the tensor form of the same cast is accepted).
   k_i = fold(fn (acc: int64, i: int64) -> if lte(cast(i, prec), u_clamped) then i else acc, interp_zero_i(), range(interp_one_i(), n_minus_1_i))
   k_f = cast(k_i, prec)
   kp1_i = add(k_i, interp_one_i())

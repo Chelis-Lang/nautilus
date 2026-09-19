@@ -6,6 +6,43 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`Nautilus.Roots` and the linear/Hermite half of `Nautilus.Interpolation`
+  are dtype-generic over the `Float` family** (nautilus#67). `bisection`,
+  `newton`, `brent`, `linear_interp_uniform`, `linear_interp_sorted` and
+  `cubic_hermite` carry `[prec: Float]` in place of `f32`, so an f64 caller
+  reaches them without a parallel `_f64` surface. One binder governs each
+  call, so a call is entirely f32 or entirely f64; mixing is a compile-time
+  `PrecisionMismatch` (`tests_neg/interpolation/mixed_precision_neg`), and an
+  integer instantiation is rejected by the family bound
+  (`tests_neg/roots/int_instantiation_neg`). Existing f32 call sites are
+  unchanged. Verified at f32 and f64 only: `Float` also admits f16 and bf16
+  per [04-DTYPE-2], and neither the tolerances nor the constants are tuned for
+  them. `spline_fit` and `spline_eval` stay f32 until `Nautilus.LinAlg` is
+  generic (nautilus#12).
+
+### Fixed
+
+- **`brent` clamped every caller's tolerance to a 1e-6 floor** (nautilus#67).
+  `tol_floor` made that the best accuracy any caller could obtain, whatever
+  the dtype; shoals' curve bootstrap passes 1e-7 and was silently clamped. The
+  floor is removed, and the plateau stop now covers either bracket end, so a
+  tolerance below the dtype's resolution (including 0) returns the plateau
+  iterate instead of exhausting `max_iters` into NaN. At f64, `brent` on
+  `x^2 - 2` with `tol = 1e-13` now lands within 1e-12 of sqrt(2); under the
+  old floor it stopped near 1e-7.
+
+### Known blocker
+
+- **Not mergeable on chelis 0.18.10.** A downstream consumer's `chelis build`
+  rejects the generic module with ``unsupported: dtype `prec` on a `cast`
+  target in host lowering`` (chelis#2152), even at an f32 call. Fix in flight
+  as chelis PR #2159. On 0.18.10 that build instead hangs (chelis#2182 and
+  chelis#2181, both fixed on chelis `main` by chelis#2202, neither released).
+  See `docs/UPSTREAM_BUGS.md` and `tests_blocked/README.md`; the pass
+  condition is a consumer that builds, compiles and links at f32 and f64.
+
 ### Added
 
 - **`Nautilus.Stats` gains `rank_vec`, `zscore_vec`, `covariance_matrix` and

@@ -1,7 +1,15 @@
 # Interpolation
 
 The `Nautilus.Interpolation` module provides three interpolation functions
-for f32 data. All are pure (no effects) and polymorphic over tensor length.
+plus a natural cubic spline. All are pure (no effects) and polymorphic over
+tensor length.
+
+`linear_interp_uniform`, `linear_interp_sorted` and `cubic_hermite` are also
+generic over the `Float` dtype family: one binder governs the grid, the query
+and the result, so a call is entirely f32 or entirely f64. Verified at f32 and
+f64; `Float` also admits f16 and bf16, which are untested (nautilus#67).
+`spline_fit` and `spline_eval` remain f32 until `Nautilus.LinAlg` is generic
+(nautilus#12).
 
 ## linear_interp_uniform
 
@@ -16,7 +24,7 @@ import Nautilus.Interpolation (linear_interp_uniform)
 result = linear_interp_uniform(ys, cast(0.0, f32), cast(4.0, f32), cast(1.5, f32))
 ```
 
-**Signature:** `[n](ys: tensor[n, f32], x_min: f32, x_max: f32, x_query: f32) -> f32`
+**Signature:** `[n, prec: Float](ys: &tensor[n, prec], x_min: prec, x_max: prec, x_query: prec) -> prec`
 
 Extrapolation is clamped: queries outside `[x_min, x_max]` return the
 nearest endpoint value. Internally uses `fold` over `enumerate(to_list(ys))`
@@ -33,7 +41,7 @@ import Nautilus.Interpolation (linear_interp_sorted)
 result = linear_interp_sorted(xs, ys, cast(2.5, f32))
 ```
 
-**Signature:** `[n](xs: tensor[n, f32], ys: tensor[n, f32], x_query: f32) -> f32`
+**Signature:** `[n, prec: Float](xs: &tensor[n, prec], ys: &tensor[n, prec], x_query: prec) -> prec`
 
 Extrapolation is flat: queries below the first knot return the first
 y-value; queries above the last knot return the last y-value. The xs
@@ -58,7 +66,7 @@ result = cubic_hermite(
 // result = 0.5
 ```
 
-**Signature:** `(x0: f32, x1: f32, y0: f32, y1: f32, m0: f32, m1: f32, x_query: f32) -> f32`
+**Signature:** `[prec: Float](x0: prec, x1: prec, y0: prec, y1: prec, m0: prec, m1: prec, x_query: prec) -> prec`
 
 Uses the standard Hermite basis polynomials h00, h10, h01, h11 to ensure
 C1 continuity. Returns NaN if `x0 == x1` (zero-width interval). To build

@@ -373,8 +373,19 @@ release.
       `Nautilus.Stats` (branch `fix/69-stats-float-generic`). Converting it
       as-is would regress existing f32 C consumers: nautilus `main`'s f32
       Stats builds and links for the same consumer, and the converted branch
-      does not. The same pattern threatens nautilus#67 and nautilus#12 under
-      nautilus#70.
+      does not. **Also measured on nautilus#67** (branch
+      `agent/67-interp-roots-float-generic`): a consumer calling the generic
+      `linear_interp_sorted` reaches this same rejection in about 3s on chelis
+      `main` at `e0250b290`, while the f32 module on nautilus `main` builds and
+      links. nautilus#12 remains unmeasured.
+    - **Earlier symptom, now gone upstream:** on 0.18.10 the nautilus#67
+      consumer did not reject at all; `chelis build` ran past 1200s with no
+      diagnostic (chelis#2182), as did a consumer of released f32
+      `Nautilus.Roots.brent` with no generics involved (chelis#2181). Both were
+      one defect, exponential re-substitution per `let` binder in the host-lane
+      inliner, fixed by chelis#2202 (`e0250b290`) and closed 2026-09-19.
+      Neither fix is released: 0.18.10 is still the newest tag, so both hangs
+      are live at the current pin.
     - **Why no gate here catches it:** `scripts/check_release_artifacts.py`'s
       dependent compile runs only `reef build`, never `chelis build`.
     - **Probe:** manual-only, see `tests_blocked/README.md`. The two-package
@@ -390,7 +401,9 @@ release.
       headline reproducer alone is **not** a pass: upstream could fix the
       direct scalar case while the nested and tensor-routed shapes that Stats
       depends on still fail, and no gate in this repo would notice. Only on a
-      full pass, unblock nautilus#69 and archive this entry.
+      full pass, unblock nautilus#69 and archive this entry. The same applies
+      to nautilus#67: its consumer must build, compile and link at f32 and f64
+      before that branch merges.
 
 ## Tracking
 
@@ -414,6 +427,28 @@ release.
       same cast goes through the tensor form, so a fix reports FIX-DETECTED).
     - **Re-probe trigger:** every pin bump. On pass, drop the tensor detour
       and archive this entry.
+- **A bounded dtype binder occurring only in a nullary def's return type
+  checks clean and runs in no lane** — `chelis#2056`
+  ([Chelis-Lang/chelis#2056](https://github.com/Chelis-Lang/chelis/issues/2056)).
+    - **Symptom:** `def nan_of[prec: Float]() -> prec = ...` checks at score
+      1.0, because the binder has no argument position to fix it, and then
+      fails to run: nothing at the call site selects the instantiation.
+    - **Affected Nautilus surface:** `Nautilus.Roots`'s `r_nan` under
+      nautilus#67. The f32 module had `r_nan_f32() -> f32`, a nullary
+      constant; generic over `[prec: Float]` that is exactly this shape.
+    - **Workaround, cited at the site:** `r_nan(witness: prec) -> prec` takes a
+      value of the dtype it returns, which the callers already hold (`lo`, `a`
+      or `x`). The same pattern replaced the module's nullary f32 literal
+      helpers in `src/interpolation.ch`, where `cast(0.0, prec)` is written
+      inline instead.
+    - **Why Tracking rather than Actively blocking:** the witness argument is a
+      complete workaround on a private helper, with no effect on the public
+      surface. nautilus#67 is blocked by the C-build entry above regardless.
+    - **Probe:** none in this repo. The shape is upstream-only and the
+      workaround is unconditional, so a probe would test the workaround rather
+      than the compiler. chelis#2056 carries the reproducer.
+    - **Re-probe trigger:** every pin bump. On pass, `r_nan` may drop its
+      witness parameter, and this entry archives.
 
 ## Parked
 

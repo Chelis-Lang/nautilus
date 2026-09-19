@@ -1,16 +1,20 @@
 # Root Finding
 
-The `Nautilus.Roots` module provides three scalar root-finders. All take
-a function-typed argument `f: f32 -> f32` and return the approximate
-root, or NaN on failure.
+The `Nautilus.Roots` module provides three scalar root-finders. All are
+generic over the `Float` dtype family: one binder governs the objective,
+the bracket, the tolerance and the result, so a call is entirely f32 or
+entirely f64. Each returns the approximate root, or NaN on failure.
+
+Verified at f32 and f64. `Float` also admits f16 and bf16 per
+[04-DTYPE-2], which are untested here (nautilus#67).
 
 ## Functions
 
 | Function | Signature |
 |---|---|
-| `bisection` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` |
-| `newton` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32` |
-| `brent` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` |
+| `bisection` | `[prec: Float](f: prec -> prec, lo: prec, hi: prec, tol: prec, max_iters: int64) -> prec` |
+| `newton` | `[prec: Float](f: prec -> prec, df: prec -> prec, x0: prec, tol: prec, max_iters: int64) -> prec` |
+| `brent` | `[prec: Float](f: prec -> prec, lo: prec, hi: prec, tol: prec, max_iters: int64) -> prec` |
 
 ## When to use which
 
@@ -53,4 +57,11 @@ def find_cos_eq_x() -> f32 = {
 - **Non-convergence**: all three return NaN if `max_iters` is exhausted
   without meeting the tolerance.
 - **Tolerance semantics**: the solvers check both interval width and
-  `|f(x)|` against `tol`. A value of 1e-8 to 1e-10 is typical.
+  `|f(x)|` against `tol`. A value of 1e-8 to 1e-10 is typical at f32.
+  `tol` is honoured as given: nothing clamps it to a floor, so the
+  reachable accuracy is bounded by the dtype rather than by the module.
+  At f64, `brent` on `x^2 - 2` with `tol = 1e-13` lands within 1e-12 of
+  sqrt(2).
+- **Sub-resolution tolerance**: a `tol` below the dtype's resolution, `0`
+  included, stops at the resolution plateau (the step lands on a bracket
+  end) and returns that iterate. It does not exhaust `max_iters` into NaN.
