@@ -7,9 +7,9 @@ export (bisection, newton, brent)
 -- statement = Nautilus.Roots MUST provide the root-finding surface listed in the module support table.
 def r_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def r_nan_f32() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
-def bisection_rec(f: f32 -> f32, lo: f32, hi: f32, flo: f32, tol: f32, iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def bisection_rec(f: f32 -> f32, lo: f32, hi: f32, flo: f32, tol: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   if lte(iters, zero_i) then r_nan_f32() else {
     width = sub(hi, lo)
     if lt(width, tol) then cast(0.5, f32) |> mul(add(lo, hi)) else {
@@ -25,7 +25,7 @@ def bisection_rec(f: f32 -> f32, lo: f32, hi: f32, flo: f32, tol: f32, iters: in
     }
   }
 }
-def bisection(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 = {
+def bisection(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32 = {
   flo = f(lo)
   aflo = r_abs_f32(flo)
   if lt(aflo, tol) then lo else {
@@ -37,9 +37,9 @@ def bisection(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f3
     }
   }
 }
-def newton_rec(f: f32 -> f32, df: f32 -> f32, x: f32, tol: f32, iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def newton_rec(f: f32 -> f32, df: f32 -> f32, x: f32, tol: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   if lte(iters, zero_i) then r_nan_f32() else {
     fx = f(x)
     afx = r_abs_f32(fx)
@@ -54,14 +54,14 @@ def newton_rec(f: f32 -> f32, df: f32 -> f32, x: f32, tol: f32, iters: int64) ->
     }
   }
 }
-def newton(f: f32 -> f32, df: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32 = {
+def newton(f: f32 -> f32, df: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32 = {
   fx0 = f(x0)
   afx0 = r_abs_f32(fx0)
   if lt(afx0, tol) then x0 else newton_rec(f, df, x0, tol, max_iters)
 }
-def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, fc: f32, was_bisect: bool, tol: f32, iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, fc: f32, was_bisect: bool, tol: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   zero_f = cast(0.0, f32)
   half = cast(0.5, f32)
   tol_floor = cast(1e-6, f32)
@@ -125,7 +125,7 @@ def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, f
     }
   }
 }
-def brent(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 = {
+def brent(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32 = {
   flo = f(lo)
   aflo = r_abs_f32(flo)
   if lt(aflo, tol) then lo else {

@@ -1,6 +1,6 @@
 # Chelis Capability Surface (this shell)
 
-<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.18.10 (sha256:28011bed9ccb5778) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface-header chelis@0.18.11 (sha256:28011bed9ccb5778) -->
 This file is a domain-scoped view of the canonical Chelis capability surface,
 generated for the pinned toolchain. Each capability row is marked `@pin` (usable
 at the current pin) or `@upstream` (lands at the next bump). **Read it before
@@ -14,12 +14,12 @@ in `Chelis-Lang/chelis`.
 
 | Item | Value |
 |---|---|
-| Pinned compiler | Published `chelis 0.18.10` (`reef.toml`: `=0.18.10`) |
-| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.10` in the regenerated local `reef.lock` |
-| Upstream release identity | Source commit `b9095ccf2c0b76859aa447c6febe699fd287f1d2` (tag `v0.18.10`); Linux glibc-2.31 asset SHA-256 `0843697e0a7783e383df0347ae431ae56f62b5a5ae34a7aa72ac37ee91df1e0b` (compiler payload SHA-256 `6622e40bc786c562b5b66d370a84e46ded551dee70abfc617a71d026c0119b00`) |
-| Installed compiler payload | Darwin arm64 SHA-256 `a6af380886b21761bc2822a814e4fef4232e8b8551922d32bca722cd4e04e1e2`, the `bin/chelis` extracted from the released `chelis-v0.18.10-darwin-arm64.tar.gz` (asset SHA-256 `80c9c5b42a8fbcee6884915df1a4dafb8bcc1cae33199ded060d8b2ebece8bf0`, checked against its release sidecar) |
-| Validation status | Complete local gate passed on the official Darwin arm64 release payload: 483 positive, 4 negative, 3 blocked, 216/216 strict SciPy parity, 15/15 SKILL.md and 4/4 mdBook examples, `lint --check .` clean, `reef build` green, `conform audit` conformant, `conform bump-check` green. The Linux glibc-2.31 asset was hashed against the release manifest but its gate run is CI's |
-| Last refreshed | 2026-09-15 |
+| Pinned compiler | Published `chelis 0.18.11` (`reef.toml`: `=0.18.11`) |
+| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.11` in the regenerated local `reef.lock` |
+| Upstream release identity | Source commit `a7e592f88a148d8323b8f9a8f679c8e163ad3ee7` (tag `v0.18.11`; release workflow run `35665381014`); Linux glibc-2.31 asset SHA-256 `5b97fdf8d20582f022b945bccdc8020d222ad16cbc90047aa369e0d54fd3afd3` |
+| Installed compiler payload | Darwin arm64 payload SHA-256 `416e7b5875c7b2d3c8cc5835e0b89a983ff46e866f6f4989d9876a93e2e60951`, installed by `chelisup` from `chelis-v0.18.11-darwin-arm64.tar.gz` (asset SHA-256 `386b2912d21f2b4a2fc6f7f42ab71625c5f1258b2d90c48c2e263b3fc435c289`) |
+| Validation status | Official Darwin arm64 payload: 507 positive tests, 4 negative contracts, no executable blocked probes, and 216/216 strict SciPy parity; all maintained Surf format checks, `lint --check .`, `reef build`, conform audit, and bump-check pass |
+| Last refreshed | 2026-09-21 |
 
 `@pin` means the row describes behavior available (or a limitation verified)
 on the exact pinned release. `@upstream` means a capability exists in a newer
@@ -30,7 +30,7 @@ This is the Nautilus-scoped view of the canonical Chelis inventory. The gate
 that backs it ran on the published Darwin arm64 asset: the tarball was checked
 against its release sidecar and its extracted compiler payload is byte-identical
 to the installed toolchain, so every result below comes from official release
-bytes. Version-sensitive statements resolve to the executable 0.18.10 re-probes
+bytes. Version-sensitive statements resolve to the executable 0.18.11 re-probes
 cited in [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
 
 ## Capability inventory
@@ -39,8 +39,8 @@ cited in [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
 
 | Capability | Nautilus consequence | Status |
 |---|---|---|
-| Active scalar precisions | Chelis admits `f32`, `f64`, `bf16`, `f16`, signed `int8`/`int16`/`int32`/`int64`, `bool`, and `string`. Nautilus's public numerical surface is deliberately `f32`; iteration/count parameters use `int64`, and predicates use `bool`. Public `f64` numerical overloads are not shipped by Phase 3j. | `@pin` |
-| Literals, casts, and promotion | Unsuffixed floats default to `f32` and integers to `int32`. There is no implicit precision promotion; `cast` is explicit. This is why the unsupported `int64` matrix contract in `tests_neg/linalg/` is rejected instead of silently converting to `f32`. | `@pin` |
+| Active scalar precisions | Chelis admits `f32`, `f64`, `bf16`, `f16`, signed `i8`/`i16`/`i32`/`i64`, `bool`, and `string`. Nautilus's public numerical surface is deliberately `f32`; iteration/count parameters use `i64`, and predicates use `bool`. Public `f64` numerical overloads are not shipped by Phase 3j. | `@pin` |
+| Literals, casts, and promotion | Unsuffixed floats default to `f32` and integers to `i32`. There is no implicit precision promotion; `cast` is explicit. This is why the unsupported `i64` matrix contract in `tests_neg/linalg/` is rejected instead of silently converting to `f32`. | `@pin` |
 | Literal and symbolic dimensions | Fixed extents such as `tensor[2,2,f32]` and symbolic parameters such as `tensor[n,f32]` are both available. Distinct declared dimensions are rigid in a generic definition; call sites instantiate them by unification. Nautilus uses `[n]` and `[m,k,n]` extensively. | `@pin` |
 | Shape safety | Dimension lists must match and Chelis never broadcasts implicitly. Shape changes must be explicit. Nautilus relies on this for fixed-size LinAlg rejection and generic vector/matrix signatures. | `@pin` |
 | Name-preserving rank polymorphism | `tensor[..r,p]` and named-axis reductions/expands exist with a restricted, name-trackable body discipline. Nautilus does not currently use a rank spread: its APIs intentionally state rank-1/rank-2 or fixed rank, so `n` is a dimension variable, not a shape-vector variable. Mixed-rank tensor lists remain invalid. | `@pin` |
@@ -61,8 +61,8 @@ the compiler lacks f64. See the
 | Phase 3h tensor/host operations | `einsum`, `diagonal`, `trace`, `sort` | These operations evaluate and emit through the C host lane used by Nautilus. They are not a basis for blanket AD or GPU claims. `einsum` supports the two-operand explicit-output forms used by LinAlg; ellipsis is not part of the pinned surface. | `@pin` |
 | Tensor/host bridges and queries | `to_tensor`, `to_list`, `numel` | Pure-Chelis algorithms convert between tensors and host lists and read element counts. These are valid for eval and C/package build, but a general bridge-crossing reverse pass is not assumed. | `@pin` |
 | Higher-order sequences | `map`, `fold`, `scan`, `zip`, `enumerate`, `range`, `len` | Many solver and factorization implementations are host-lane compositions or recursive drivers. They are supported by the C package path and are outside the general tensor-DAG AD/GPU contract. | `@pin` |
-| Explicit precision and ownership | `cast`, `copy` | Casts implement the f32/int64 boundary explicitly. Remaining copies express real ownership needs after the 0.16.1 linearity cleanup; they are not the archived redundant-linearity workaround. | `@pin` |
-| Elementwise selection and shape-sourced lifting | `where`, `insert`, `scalar_to_tensor`, `shape` | Tensor-domain formulas reach a scalar constant or a branch without dropping to `List`. Chelis has no implicit tensor-scalar broadcasting, so a constant is lifted as `insert(scalar_to_tensor(c), 0, shape(t, cast(0, int32)))` -- the spec/04 §4.7.2 Form-3 shape-sourced extent, since a bare runtime scalar has no shape source the backend can emit -- and a scalar `if` becomes an elementwise `where`. At this pin `insert` introduces the new axis and `expand` operates on an existing axis only, so the three `*_lift_t` helpers and the blocked probes spell the lift with `insert`. Introduced by the tensor-domain normal family (nautilus PR 45). | `@pin` |
+| Explicit precision and ownership | `cast`, `copy` | Casts implement the f32/i64 boundary explicitly. Remaining copies express real ownership needs after the 0.16.1 linearity cleanup; they are not the archived redundant-linearity workaround. | `@pin` |
+| Elementwise selection and shape-sourced lifting | `where`, `insert`, `scalar_to_tensor`, `shape` | Tensor-domain formulas reach a scalar constant or a branch without dropping to `List`. Chelis has no implicit tensor-scalar broadcasting, so a constant is lifted as `insert(scalar_to_tensor(c), 0, shape(t, cast(0, i32)))` -- the spec/04 §4.7.2 Form-3 shape-sourced extent, since a bare runtime scalar has no shape source the backend can emit -- and a scalar `if` becomes an elementwise `where`. At this pin `insert` introduces the new axis and `expand` operates on an existing axis only. Introduced by the tensor-domain normal family (nautilus PR 45). | `@pin` |
 | Random tensor generation | `uniform_like` | Sampling exports declare `! { Random }`; callers handle the effect with `with seed(42i64)` (seed literals require an explicit `i64` suffix). `uniform_like` has zero gradient with respect to generated values/seed and is not an implicit source of differentiable randomness. | `@pin` |
 | Control flow and functions | `if`, recursion, closures, and function-valued solver/model parameters | Forward eval and C package build support the patterns shipped here. AD supports only the transformable tensor-DAG subset and documented static-control slices; recursive/fold-based solver bodies are not automatically differentiable. | `@pin` |
 
@@ -87,7 +87,7 @@ entire reached body must lower into a supported transform lane.
 | `floor_div` and integer/index arithmetic | Piecewise-constant/index math is non-differentiable or a stop-gradient boundary; unsupported differentiation fails closed. | Not an advertised AD path. | `@pin` |
 | `uniform_like` | Random source; zero gradient and handled `Random` effect. | Sampling exports are not advertised as reparameterized gradients. | `@pin` |
 | Host-list and host-tensor operations (`map`, `fold`, `sort`, `einsum`, general `to_list`/`to_tensor`) | No general host-lane adjoint. The compiler has narrow documented boundary rewrites, but Nautilus does not infer package-wide differentiability from them. | Solvers/decompositions need an executable gradient oracle before being advertised as differentiable. | `@pin` |
-| Multi-parameter CurveFit Jacobian wrapper | Plain tensor-wrt and capture-free multi-argument controls pass. The former generic-dimension checker collapse remains resolved at 0.18.10, but both the generic and concrete arbitrary-model wrappers still reach malformed backward-DAG lowering (chelis#676). | `lm_scalar_nparam` retains its finite-difference Jacobian. Both exact wrapper shapes are executable in `tests_blocked/curvefit/`. | `@pin` |
+| Multi-parameter CurveFit Jacobian wrapper | The former generic and concrete Jacobian-row witnesses now pass and live as positive tests. Composing the helper into the full generic LM path exposes a distinct runtime-extent binder-provenance failure (chelis#2370, under tracker #1277). | `lm_scalar_nparam` retains its finite-difference Jacobian until the full recovery path passes; the fixed exact rows no longer masquerade as blocked probes. | `@pin` |
 
 No broad LinAlg, solver, distribution, or special-function AD promise is made
 by this inventory. The acceptance rule in
@@ -102,7 +102,7 @@ specified in the two ready-to-file drafts linked from
 |---|---|---|
 | `Random` | `uniform_like` introduces `Random`; all sampling exports declare it. `with seed(42i64) { ... }` is the handler (seed literals require an explicit `i64` suffix). | `@pin` |
 | `Io`, `Test`, and resources | Library `src/` introduces no I/O or device-resource effect. `Std.Test` assertions in `tests/` introduce the test effect. | `@pin` |
-| Package-aware `eval --file` | Real imported Nautilus calls pass, strict parity batches 216 reviewed samples through this route, and all 15 import-only startup shapes execute at 0.18.10 (`scripts/bench_eval_startup.py`, re-run at this pin). The former symbolic-input leak tracked by chelis#848 remains resolved. | `@pin` |
+| Package-aware `eval --file` | Real imported Nautilus calls pass, strict parity batches reviewed samples through this route, and all import-only startup shapes execute at 0.18.11 (`scripts/bench_eval_startup.py`, re-run at this pin). The former symbolic-input leak tracked by chelis#848 remains resolved. | `@pin` |
 | C/package build | `chelis reef build` packages the full pure-Chelis surface successfully. Host-lane list/tensor operations are supported by the C host emitter. | `@pin` |
 | Canonical artifact verification | `chelis reef verify-artifact` fully consumes the CHB, enforces canonical metadata, and checks its paired archive digest. Nautilus's release gate also proves archive-mutation and CHB-trailing-byte rejection plus unchanged-build byte identity. | `@pin` |
 | HIP/Metal | Upstream DAG subsets exist, but Nautilus's host-lane algorithms and lack of a package-level GPU oracle mean no Nautilus GPU support claim is made. | `@pin` |
@@ -125,7 +125,7 @@ shipped library modules themselves do not import a runtime `Std.*` module.
 |---|---|---|
 | Explicit copies for every repeated read | Removed where 0.16.1 implicit-linearity analysis proves them redundant (131 removals in `src/linalg.ch`). Copies that remain are semantic ownership boundaries; `tests/linalg.ch` and `tests_neg/linearity/` pin the required owned-from-borrowed behavior in both directions. | `@pin` |
 | Package imports under `eval --file` | Real imported calls are used directly by parity, and import-only package shapes now execute. Both the former broad avoidance and the chelis#848 symbolic-input narrowing are retired. | `@pin` |
-| Exact multi-parameter CurveFit AD | Workaround retained: the one remaining backward-DAG compiler layer is reproduced through generic and concrete wrapper shapes under `tests_blocked/curvefit/` and cited at `src/curvefit.ch`. | `@pin` |
+| Exact multi-parameter CurveFit AD | Exact generic and concrete Jacobian rows pass; the full LM replacement remains narrowed by chelis#2370's composed runtime-extent failure, so the numerical finite-difference implementation stays. | `@pin` |
 | Signal transforms without complex numbers | Stubs retained under the dated [`spec/phase3j.md` deferral](../spec/phase3j.md#explicit-deferrals); this is planned scope, not an invented real-only FFT design. | `@pin` |
 | f64 package overloads | Not added: canonical Phase 3j deliberately specifies an f32 numerical package even though f64 is a compiler capability. | `@pin` |
 
@@ -140,7 +140,7 @@ shipped library modules themselves do not import a runtime `Std.*` module.
 | [spec/08 — backends](https://github.com/Chelis-Lang/chelis/blob/b9095ccf2c0b76859aa447c6febe699fd287f1d2/spec/08-backends.md) | C, HIP, and Metal backend scope and rejection rules. |
 | [Rank polymorphism design](https://github.com/Chelis-Lang/chelis/blob/b9095ccf2c0b76859aa447c6febe699fd287f1d2/spec/design/rank_polymorphism.md) | Name-preserving `..r` support and body discipline. |
 | [Implicit linearity design](https://github.com/Chelis-Lang/chelis/blob/b9095ccf2c0b76859aa447c6febe699fd287f1d2/spec/design/implicit_linearity.md) | Inserted copy/drop behavior and preserved hard errors. |
-| [Differentiable-language design](https://github.com/Chelis-Lang/chelis/blob/b9095ccf2c0b76859aa447c6febe699fd287f1d2/spec/design/differentiable_language.md) | Shipped AD slices versus later control/ADT/effect/implicit-diff scope. |
-| [Shell repo contract](https://github.com/Chelis-Lang/chelis/blob/b9095ccf2c0b76859aa447c6febe699fd287f1d2/spec/design/shell_repo_contract.md#3-capability-surface-doc--docschelis_surfacemd-must) | Required downstream `@pin`/`@upstream` inventory contract. |
+| [Differentiable-language design](https://github.com/Chelis-Lang/chelis/blob/a7e592f88a148d8323b8f9a8f679c8e163ad3ee7/spec/design/differentiable_language.md) | Shipped AD slices versus later control/ADT/effect/implicit-diff scope. |
+| [Shell repo contract](https://github.com/Chelis-Lang/chelis/blob/a7e592f88a148d8323b8f9a8f679c8e163ad3ee7/spec/design/shell_repo_contract.md#3-capability-surface-doc--docschelis_surfacemd-must) | Required downstream `@pin`/`@upstream` inventory contract. |
 | [`spec/phase3j.md`](../spec/phase3j.md) | Nautilus architecture, acceptance rules, and dated deferrals. |
-| [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) | Executable 0.18.10 re-probes, current residues, workarounds, and triggers. |
+| [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) | Executable 0.18.11 re-probes, current residues, workarounds, and triggers. |

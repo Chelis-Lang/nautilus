@@ -1,5 +1,5 @@
 module Nautilus.Info
-export (entropy, cross_entropy, kl_divergence)
+export (entropy, distribution_cross_entropy, kl_divergence)
 -- chelis:provenance/v1 authority
 -- id = NAUT-MOD-INFO
 -- kind = behavioral
@@ -13,7 +13,7 @@ def entropy[n](p: &tensor[n, f32]) -> f32 = {
   }, info_zero(), to_list(p))
   total
 }
-def cross_entropy[n](p: &tensor[n, f32], q: &tensor[n, f32]) -> f32 = {
+def distribution_cross_entropy[n](p: &tensor[n, f32], q: &tensor[n, f32]) -> f32 = {
   pairs = p |> to_list |> zip(to_list(q))
   fold(fn (acc: f32, pair: (f32, f32)) -> {
     px = pair.0

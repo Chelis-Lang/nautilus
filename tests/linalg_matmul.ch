@@ -1,19 +1,19 @@
 module Nautilus.Tests.LinAlgMatmul
 import Std.Test (assert_close, assert_true)
 import Nautilus.LinAlg (matvec, inner_product, l2_norm_vec, la_vec_sub, transpose, matmul_wrap, gram, aat, frobenius_norm, frobenius_sq, det_2x2, det_3x3, inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2, svd_n)
-def basis2(k: int64) -> tensor[2, f32] = to_tensor(map(fn (i: int64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, int64), cast(2, int64))))
-def basis3(k: int64) -> tensor[3, f32] = to_tensor(map(fn (i: int64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, int64), cast(3, int64))))
+def basis2(k: i64) -> tensor[2, f32] = to_tensor(map(fn (i: i64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, i64), cast(2, i64))))
+def basis3(k: i64) -> tensor[3, f32] = to_tensor(map(fn (i: i64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, i64), cast(3, i64))))
 def mk_2x2(a: f32, b: f32, c: f32, d: f32) -> tensor[2, 2, f32] = {
-  e0 = basis2(cast(0, int64))
-  e1 = basis2(cast(1, int64))
+  e0 = basis2(cast(0, i64))
+  e1 = basis2(cast(1, i64))
   m0 = einsum("i,j->ij", e0, to_tensor([a, b]))
   m1 = einsum("i,j->ij", e1, to_tensor([c, d]))
   add(m0, m1)
 }
 def mk_3x3(a00: f32, a01: f32, a02: f32, a10: f32, a11: f32, a12: f32, a20: f32, a21: f32, a22: f32) -> tensor[3, 3, f32] = {
-  e0 = basis3(cast(0, int64))
-  e1 = basis3(cast(1, int64))
-  e2 = basis3(cast(2, int64))
+  e0 = basis3(cast(0, i64))
+  e1 = basis3(cast(1, i64))
+  e2 = basis3(cast(2, i64))
   m0 = einsum("i,j->ij", e0, to_tensor([a00, a01, a02]))
   m1 = einsum("i,j->ij", e1, to_tensor([a10, a11, a12]))
   m2 = einsum("i,j->ij", e2, to_tensor([a20, a21, a22]))
@@ -24,28 +24,28 @@ def eye3() -> tensor[3, 3, f32] = mk_3x3(cast(1.0, f32), cast(0.0, f32), cast(0.
 def test_transpose_swaps_offdiagonal() -> unit ! { Test } = {
   a = mk_2x2(cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32))
   at = transpose(a)
-  e0 = basis2(cast(0, int64))
-  e1 = basis2(cast(1, int64))
+  e0 = basis2(cast(0, i64))
+  e1 = basis2(cast(1, i64))
   v10 = inner_product(matvec(at, e0), e1)
   assert_close(v10, cast(2.0, f32), cast(0.00001, f32), "transpose([[1,2],[3,4]])[1,0] = 2")
 }
 def test_matmul_wrap_diagonal() -> unit ! { Test } = {
   a = mk_2x2(cast(2.0, f32), cast(0.0, f32), cast(0.0, f32), cast(3.0, f32))
   prod = matmul_wrap(eye2(), a)
-  e0 = basis2(cast(0, int64))
+  e0 = basis2(cast(0, i64))
   v00 = inner_product(matvec(prod, copy(e0)), e0)
   assert_close(v00, cast(2.0, f32), cast(0.00001, f32), "matmul_wrap(I, diag(2,3))[0,0] = 2")
 }
 def test_gram_identity_is_identity() -> unit ! { Test } = {
   g = gram(eye2())
-  e0 = basis2(cast(0, int64))
-  e1 = basis2(cast(1, int64))
+  e0 = basis2(cast(0, i64))
+  e1 = basis2(cast(1, i64))
   v00 = inner_product(matvec(g, copy(e0)), copy(e0))
   assert_close(v00, cast(1.0, f32), cast(0.00001, f32), "gram(I)[0,0] = 1")
 }
 def test_aat_identity_is_identity() -> unit ! { Test } = {
   ai = aat(eye2())
-  e0 = basis2(cast(0, int64))
+  e0 = basis2(cast(0, i64))
   v00 = inner_product(matvec(ai, copy(e0)), e0)
   assert_close(v00, cast(1.0, f32), cast(0.00001, f32), "aat(I)[0,0] = 1")
 }
@@ -127,19 +127,19 @@ def test_svd_n_singular_value_sum_diagonal() -> unit ! { Test } = {
 def test_inv_2x2_singular_returns_nan() -> unit ! { Test } = {
   singular = mk_2x2(cast(1.0, f32), cast(2.0, f32), cast(2.0, f32), cast(4.0, f32))
   inv = inv_2x2(singular)
-  first = inner_product(matvec(inv, basis2(cast(0, int64))), basis2(cast(0, int64)))
+  first = inner_product(matvec(inv, basis2(cast(0, i64))), basis2(cast(0, i64)))
   assert_true(neq(first, first), "inv_2x2: singular matrix returns NaN entries")
 }
 def test_solve_2x2_singular_returns_nan() -> unit ! { Test } = {
   singular = mk_2x2(cast(1.0, f32), cast(2.0, f32), cast(2.0, f32), cast(4.0, f32))
   b = to_tensor([cast(1.0, f32), cast(2.0, f32)])
   x = solve_2x2(singular, b)
-  first = inner_product(x, basis2(cast(0, int64)))
+  first = inner_product(x, basis2(cast(0, i64)))
   assert_true(neq(first, first), "solve_2x2: singular matrix returns NaN entries")
 }
 def test_cholesky_2x2_non_spd_returns_nan() -> unit ! { Test } = {
   non_spd = mk_2x2(cast(1.0, f32), cast(2.0, f32), cast(2.0, f32), cast(1.0, f32))
   l = cholesky_2x2(non_spd)
-  first = inner_product(matvec(l, basis2(cast(0, int64))), basis2(cast(0, int64)))
+  first = inner_product(matvec(l, basis2(cast(0, i64))), basis2(cast(0, i64)))
   assert_true(neq(first, first), "cholesky_2x2: non-SPD matrix returns NaN entries")
 }

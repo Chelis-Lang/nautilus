@@ -10,5 +10,5 @@ import Std.Test (assert_true)
 -- `quantile_vec` and `trimmed_mean_vec` to go Float-generic (nautilus#69).
 -- While this fails, a generic Stats has to route the truncation through a
 -- length-1 tensor. When it passes, that detour is removable.
-def sc_trunc[prec: Float](x: prec) -> int64 = cast_trunc(x, int64)
+def sc_trunc[prec: Float](x: prec) -> i64 = cast_trunc(x, i64)
 def test_blocked_scalar_cast_trunc_from_a_float_binder() -> unit ! { Test } = assert_true(eq(sc_trunc(7.999999999f64), 7i64), "cast_trunc of a Float-bounded scalar truncates toward zero at f64")

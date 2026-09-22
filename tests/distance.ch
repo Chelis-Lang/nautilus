@@ -1,10 +1,10 @@
 module Nautilus.Tests.Distance
 import Nautilus.Distance (euclidean, squared_euclidean, manhattan, chebyshev, cosine_similarity, cosine_distance, mahalanobis, mahalanobis_squared)
 import Std.Test (assert_close, assert_true)
-def basis2(k: int64) -> tensor[2, f32] = to_tensor(map(fn (i: int64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, int64), cast(2, int64))))
+def basis2(k: i64) -> tensor[2, f32] = to_tensor(map(fn (i: i64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, i64), cast(2, i64))))
 def mk_2x2(a: f32, b: f32, c: f32, d: f32) -> tensor[2, 2, f32] = {
-  e0 = basis2(cast(0, int64))
-  e1 = basis2(cast(1, int64))
+  e0 = basis2(cast(0, i64))
+  e1 = basis2(cast(1, i64))
   row0 = to_tensor([a, b])
   row1 = to_tensor([c, d])
   m0 = einsum("i,j->ij", e0, row0)

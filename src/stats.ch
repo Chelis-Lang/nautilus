@@ -14,17 +14,17 @@ def two_f() -> f32 = cast(2.0, f32)
 def three_f() -> f32 = cast(3.0, f32)
 def pos_inf_f() -> f32 = cast(1.0, f32) |> div(cast(0.0, f32))
 def neg_inf_f() -> f32 = cast(-1.0, f32) |> div(cast(0.0, f32))
-def zero_i() -> int64 = cast(0, int64)
-def zero_axis() -> int32 = cast(0, int32)
-def one_i() -> int64 = cast(1, int64)
-def two_i() -> int64 = cast(2, int64)
+def zero_i() -> i64 = cast(0, i64)
+def zero_axis() -> i32 = cast(0, i32)
+def one_i() -> i64 = cast(1, i64)
+def two_i() -> i64 = cast(2, i64)
 def mean_vec[n](v: &tensor[n, f32]) -> f32 = {
   n_i = numel(v)
   n_f = cast(n_i, f32)
   s = fold(fn (acc: f32, x: f32) -> add(acc, x), zero_f(), to_list(v))
   div(s, n_f)
 }
-def variance_vec[n](v: &tensor[n, f32], ddof: int64) -> f32 = {
+def variance_vec[n](v: &tensor[n, f32], ddof: i64) -> f32 = {
   n_i = numel(v)
   n_f = cast(n_i, f32)
   mu = mean_vec(v)
@@ -35,7 +35,7 @@ def variance_vec[n](v: &tensor[n, f32], ddof: int64) -> f32 = {
   denom = sub(n_f, cast(ddof, f32))
   div(ss, denom)
 }
-def std_vec[n](v: &tensor[n, f32], ddof: int64) -> f32 = {
+def std_vec[n](v: &tensor[n, f32], ddof: i64) -> f32 = {
   vr = variance_vec(v, ddof)
   sqrt(vr)
 }
@@ -87,7 +87,7 @@ def median_vec[n](v: &tensor[n, f32]) -> f32 = {
   is_odd = n_i |> mod(two_i()) |> eq(one_i())
   lo_idx = sub(half, one_i())
   hi_idx = half
-  picked = fold(fn (acc: f32, pair: (int64, f32)) -> {
+  picked = fold(fn (acc: f32, pair: (i64, f32)) -> {
     i = pair.0
     x = pair.1
     take_odd = and(is_odd, eq(i, half))
@@ -96,7 +96,7 @@ def median_vec[n](v: &tensor[n, f32]) -> f32 = {
   }, zero_f(), enum_lst)
   if is_odd then picked else cast(0.5, f32) |> mul(picked)
 }
-def covariance_scalar[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: int64) -> f32 = {
+def covariance_scalar[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: i64) -> f32 = {
   n_i = numel(a)
   n_f = cast(n_i, f32)
   mu_a = mean_vec(a)
@@ -145,13 +145,13 @@ def quantile_vec[n](v: &tensor[n, f32], q: f32) -> f32 = {
   pos = mul(q_clamped, sub(n_f, one_f()))
   lo_idx_f = pos
   hi_idx_f = add(pos, one_f())
-  lo_idx_i = cast_trunc(lo_idx_f, int64)
+  lo_idx_i = cast_trunc(lo_idx_f, i64)
   lo_idx_back = cast(lo_idx_i, f32)
   frac = sub(pos, lo_idx_back)
   hi_idx_i = add(lo_idx_i, one_i())
   last_idx = sub(n_i, one_i())
   hi_idx_clamped = if gt(hi_idx_i, last_idx) then last_idx else hi_idx_i
-  picked = fold(fn (acc: (f32, f32), pair: (int64, f32)) -> {
+  picked = fold(fn (acc: (f32, f32), pair: (i64, f32)) -> {
     i = pair.0
     x = pair.1
     take_lo = eq(i, lo_idx_i)
@@ -179,7 +179,7 @@ def stats_rank_one[n](sample: &tensor[n, f32], x: f32) -> f32 = {
   counts.0 |> add(one_f()) |> add(mul(half, sub(counts.1, one_f())))
 }
 def rank_vec[n](v: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (x: f32) -> stats_rank_one(v, x), to_list(v)))
-def zscore_vec[n](v: &tensor[n, f32], ddof: int64) -> tensor[n, f32] = {
+def zscore_vec[n](v: &tensor[n, f32], ddof: i64) -> tensor[n, f32] = {
   mu = mean_vec(v)
   sd = std_vec(v, ddof)
   to_tensor(map(fn (x: f32) -> div(sub(x, mu), sd), to_list(v)))
@@ -195,10 +195,10 @@ def trimmed_mean_vec[n](v: &tensor[n, f32], proportion: f32) -> f32 = {
     lst = to_list(sorted_v)
     enum_lst = enumerate(lst)
     trim_count_f = mul(proportion, n_f)
-    trim_count_i = cast_trunc(trim_count_f, int64)
+    trim_count_i = cast_trunc(trim_count_f, i64)
     lo_bound = trim_count_i
     hi_bound_excl = sub(n_i, trim_count_i)
-    kept_sum_pair = fold(fn (acc: (f32, int64), pair: (int64, f32)) -> {
+    kept_sum_pair = fold(fn (acc: (f32, i64), pair: (i64, f32)) -> {
       i = pair.0
       x = pair.1
       within = i |> gte(lo_bound) |> and(lt(i, hi_bound_excl))
@@ -217,7 +217,7 @@ def bonferroni_adjust[n](p_values: &tensor[n, f32]) -> tensor[n, f32] = {
 }
 def stat_holm_adjust_one[n](sorted_p: &tensor[n, f32], p: f32, m: f32) -> f32 = {
   pairs = enumerate(to_list(sorted_p))
-  raw = fold(fn (acc: f32, pair: (int64, f32)) -> {
+  raw = fold(fn (acc: f32, pair: (i64, f32)) -> {
     rank0 = pair.0
     sp = pair.1
     multiplier = sub(m, cast(rank0, f32))
@@ -234,7 +234,7 @@ def stat_holm_adjust[n](p_values: &tensor[n, f32]) -> tensor[n, f32] = {
 }
 def bh_adjust_one[n](sorted_p: &tensor[n, f32], p: f32, m: f32) -> f32 = {
   pairs = enumerate(to_list(sorted_p))
-  raw = fold(fn (acc: f32, pair: (int64, f32)) -> {
+  raw = fold(fn (acc: f32, pair: (i64, f32)) -> {
     rank = add(pair.0, one_i())
     sp = pair.1
     adj = div(mul(m, sp), cast(rank, f32))
@@ -254,7 +254,7 @@ def likelihood_ratio_p_value(log_likelihood_null: f32, log_likelihood_alt: f32, 
   stat = likelihood_ratio_stat(log_likelihood_null, log_likelihood_alt)
   sub(one_f(), chi_squared_cdf(stat, df))
 }
-def covariance_2x2[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: int64) -> tensor[2, 2, f32] = {
+def covariance_2x2[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: i64) -> tensor[2, 2, f32] = {
   va = covariance_scalar(a, a, ddof)
   vb = covariance_scalar(b, b, ddof)
   cab = covariance_scalar(a, b, ddof)
@@ -264,27 +264,27 @@ def correlation_2x2[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[2, 2, f
   rab = correlation_scalar(a, b)
   to_tensor([[one_f(), rab], [rab, one_f()]])
 }
-def covariance_matrix_2[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: int64) -> tensor[2, 2, f32] = covariance_2x2(a, b, ddof)
+def covariance_matrix_2[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: i64) -> tensor[2, 2, f32] = covariance_2x2(a, b, ddof)
 def correlation_matrix_2[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> tensor[2, 2, f32] = correlation_2x2(a, b)
 -- Lift a scalar to rank 1 / rank 2 so an elementwise tensor op can take it.
 -- Chelis has no implicit tensor-scalar broadcasting; `insert` adds a new axis
 -- of the given length and lowers to a stride-0 view, so this costs no
 -- per-element storage. Same idiom as `la_lift_t` in Nautilus.LinAlg.
-def stats_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = c |> scalar_to_tensor |> insert(0, shape(template, cast(0, int32)))
+def stats_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = c |> scalar_to_tensor |> insert(0, shape(template, cast(0, i32)))
 def stats_lift_t2[m, n](template: &tensor[m, n, f32], c: f32) -> tensor[m, n, f32] =
   c
   |> scalar_to_tensor
-  |> insert(0, shape(template, cast(0, int32)))
-  |> insert(1, shape(template, cast(1, int32)))
+  |> insert(0, shape(template, cast(0, i32)))
+  |> insert(1, shape(template, cast(1, i32)))
 -- Covariance over m variables and n observations. Each ROW is a variable and
 -- each COLUMN an observation, matching numpy.cov's default `rowvar=True`;
 -- `covariance_matrix(to_tensor([a, b]), ddof)` therefore agrees entrywise with
 -- `covariance_matrix_2(a, b, ddof)`, which tests/stats.ch pins.
-def covariance_matrix[m, n](x: &tensor[m, n, f32], ddof: int64) -> tensor[m, m, f32] = {
-  n_obs = cast(shape(x, cast(1, int32)), f32)
+def covariance_matrix[m, n](x: &tensor[m, n, f32], ddof: i64) -> tensor[m, m, f32] = {
+  n_obs = cast(shape(x, cast(1, i32)), f32)
   row_sums = sum(x, 1)
   mu = div(row_sums, stats_lift_t(row_sums, n_obs))
-  centered = sub(x, insert(mu, 1, shape(x, cast(1, int32))))
+  centered = sub(x, insert(mu, 1, shape(x, cast(1, i32))))
   cross = einsum("ik,jk->ij", centered, centered)
   denom = sub(n_obs, cast(ddof, f32))
   div(cross, stats_lift_t2(cross, denom))

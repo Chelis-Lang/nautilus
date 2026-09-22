@@ -37,15 +37,15 @@ decomposition.
 ## Getting started
 
 Targets the published
-[Chelis v0.18.1 release](https://github.com/Chelis-Lang/chelis/releases/tag/v0.18.1).
+[Chelis v0.18.11 release](https://github.com/Chelis-Lang/chelis/releases/tag/v0.18.11).
 Install it through `chelisup`; do not replace the pin-resolving shim with a
 version-specific symlink.
 
 ```sh
-chelisup install 0.18.1
+chelisup install 0.18.11
 chelis reef setup
 chelis reef build
-chelis test tests/ --jobs auto
+chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto
 uv sync --project parity --frozen
 uv run --project parity --frozen python parity/run_parity.py --strict
 ```
@@ -58,9 +58,9 @@ corpus is checked in under `parity/goldens/`; normal CI validation never
 regenerates it.
 
 ```sh
-chelis test tests/ --jobs auto                         # 472 native tests
+chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto # 507 native tests
 chelis test tests_neg/ --expect neg                    # rejection contracts
-chelis test tests_blocked/ --expect blocked            # upstream blocker probes
+chelis test tests_blocked/ --expect blocked            # only when probes are present
 chelis test tests/ --jobs 1                            # serial fallback
 uv sync --project parity --frozen                      # locked oracle project
 uv run --project parity --frozen python parity/run_parity.py --strict # 216 samples

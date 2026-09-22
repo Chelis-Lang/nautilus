@@ -5,9 +5,9 @@ export (trapezoidal, simpsons, gauss_legendre_5, adaptive_simpson, romberg_5, ga
 -- kind = behavioral
 -- scopes = nautilus
 -- statement = Nautilus.Integrate MUST provide the quadrature surface listed in the module support table.
-def trap_rec(f: f32 -> f32, x: f32, h: f32, k: int64, acc: f32) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def trap_rec(f: f32 -> f32, x: f32, h: f32, k: i64, acc: f32) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   if lte(k, zero_i) then acc else {
     fx = f(x)
     acc_next = add(acc, fx)
@@ -15,22 +15,22 @@ def trap_rec(f: f32 -> f32, x: f32, h: f32, k: int64, acc: f32) -> f32 = {
     trap_rec(f, x_next, h, sub(k, one_i), acc_next)
   }
 }
-def trapezoidal(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 =
-  if lte(n_steps, cast(0, int64)) then cast(0.0, f32) |> div(cast(0.0, f32)) else {
+def trapezoidal(f: f32 -> f32, a: f32, b: f32, n_steps: i64) -> f32 =
+  if lte(n_steps, cast(0, i64)) then cast(0.0, f32) |> div(cast(0.0, f32)) else {
     n_f = cast(n_steps, f32)
     h = sub(b, a) |> div(n_f)
     fa = f(a)
     fb = f(b)
     endpoint_sum = cast(0.5, f32) |> mul(add(fa, fb))
     x1 = add(a, h)
-    inner_count = sub(n_steps, cast(1, int64))
+    inner_count = sub(n_steps, cast(1, i64))
     inner_sum = trap_rec(f, x1, h, inner_count, cast(0.0, f32))
     total = add(endpoint_sum, inner_sum)
     mul(h, total)
   }
-def simpson_rec(f: f32 -> f32, x: f32, h: f32, k: int64, is_odd_step: bool, acc: f32) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def simpson_rec(f: f32 -> f32, x: f32, h: f32, k: i64, is_odd_step: bool, acc: f32) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   if lte(k, zero_i) then acc else {
     fx = f(x)
     weight = if is_odd_step then cast(4.0, f32) else cast(2.0, f32)
@@ -40,9 +40,9 @@ def simpson_rec(f: f32 -> f32, x: f32, h: f32, k: int64, is_odd_step: bool, acc:
     simpson_rec(f, x_next, h, sub(k, one_i), not(is_odd_step), acc_next)
   }
 }
-def simpsons(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  two_i = cast(2, int64)
+def simpsons(f: f32 -> f32, a: f32, b: f32, n_steps: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  two_i = cast(2, i64)
   if lte(n_steps, zero_i) then cast(0.0, f32) |> div(cast(0.0, f32)) else {
     parity = mod(n_steps, two_i)
     if neq(parity, zero_i) then cast(0.0, f32) |> div(cast(0.0, f32)) else {
@@ -52,7 +52,7 @@ def simpsons(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32 = {
       fb = f(b)
       endpoint_sum = add(fa, fb)
       x1 = add(a, h)
-      inner_count = sub(n_steps, cast(1, int64))
+      inner_count = sub(n_steps, cast(1, i64))
       inner_sum = simpson_rec(f, x1, h, inner_count, true, cast(0.0, f32))
       total = add(endpoint_sum, inner_sum)
       div(h, cast(3.0, f32)) |> mul(total)
@@ -65,9 +65,9 @@ def int_simpson_small(h: f32, fa: f32, fm: f32, fb: f32) -> f32 = {
   div(h, cast(6.0, f32)) |> mul(inner)
 }
 def int_abs(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
-def adaptive_simpson_rec(f: f32 -> f32, a: f32, b: f32, fa: f32, fb: f32, fm: f32, whole: f32, tol: f32, depth: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def adaptive_simpson_rec(f: f32 -> f32, a: f32, b: f32, fa: f32, fb: f32, fm: f32, whole: f32, tol: f32, depth: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   half_f = cast(0.5, f32)
   m = mul(half_f, add(a, b))
   lm = mul(half_f, add(a, m))
@@ -98,8 +98,8 @@ def adaptive_simpson_rec(f: f32 -> f32, a: f32, b: f32, fa: f32, fb: f32, fm: f3
     add(left, right)
   }
 }
-def adaptive_simpson(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: int64) -> f32 = {
-  depth_cap = cast(30, int64)
+def adaptive_simpson(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: i64) -> f32 = {
+  depth_cap = cast(30, i64)
   capped_depth = if gt(max_depth, depth_cap) then depth_cap else max_depth
   fa = f(a)
   fb = f(b)
@@ -110,11 +110,11 @@ def adaptive_simpson(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: int64) 
   adaptive_simpson_rec(f, a, b, fa, fb, fm, whole, tol, capped_depth)
 }
 def romberg_5(f: f32 -> f32, a: f32, b: f32) -> f32 = {
-  t_1 = trapezoidal(f, a, b, cast(1, int64))
-  t_2 = trapezoidal(f, a, b, cast(2, int64))
-  t_4 = trapezoidal(f, a, b, cast(4, int64))
-  t_8 = trapezoidal(f, a, b, cast(8, int64))
-  t_16 = trapezoidal(f, a, b, cast(16, int64))
+  t_1 = trapezoidal(f, a, b, cast(1, i64))
+  t_2 = trapezoidal(f, a, b, cast(2, i64))
+  t_4 = trapezoidal(f, a, b, cast(4, i64))
+  t_8 = trapezoidal(f, a, b, cast(8, i64))
+  t_16 = trapezoidal(f, a, b, cast(16, i64))
   four = cast(4.0, f32)
   three = cast(3.0, f32)
   sixteen = cast(16.0, f32)
@@ -246,7 +246,7 @@ def gauss_laguerre_10(f: f32 -> f32) -> f32 = {
   sum_c = add(s9, s10)
   add(sum_a, sum_b) |> add(sum_c)
 }
-def gauss_legendre_5(f: f32 -> f32, a: f32, b: f32, n_points: int64) -> f32 = {
+def gauss_legendre_5(f: f32 -> f32, a: f32, b: f32, n_points: i64) -> f32 = {
   ignore_n = n_points
   half_range = cast(0.5, f32) |> mul(sub(b, a))
   mid = cast(0.5, f32) |> mul(add(a, b))

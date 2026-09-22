@@ -16,7 +16,7 @@ import Nautilus.LinAlg (matvec, vecmat, inner_product, l2_norm_vec, scale_vec, l
 -- configuration-digest = xxh3-128:ae3dfc4c0cfdd00cc99d50805da0931e
 -- scope-schema = nautilus-oracle-scope/v1
 -- scope = the committed Chelis-native positive corpus under tests/
-def basis2(k: int64) -> tensor[2, f32] = to_tensor(map(fn (i: int64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, int64), cast(2, int64))))
+def basis2(k: i64) -> tensor[2, f32] = to_tensor(map(fn (i: i64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, i64), cast(2, i64))))
 -- chelis:provenance/v1 carrier
 -- id = NAUT-CARRIER-LINALG-TESTS
 -- role = positive
@@ -27,18 +27,18 @@ def basis2(k: int64) -> tensor[2, f32] = to_tensor(map(fn (i: int64) -> if eq(i,
 -- configuration-digest = xxh3-128:ae3dfc4c0cfdd00cc99d50805da0931e
 -- scope-schema = nautilus-carrier-scope/v1
 -- scope = the exact linear-algebra assertions in tests/linalg.ch
-def basis3(k: int64) -> tensor[3, f32] = to_tensor(map(fn (i: int64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, int64), cast(3, int64))))
+def basis3(k: i64) -> tensor[3, f32] = to_tensor(map(fn (i: i64) -> if eq(i, k) then cast(1.0, f32) else cast(0.0, f32), range(cast(0, i64), cast(3, i64))))
 def mk_2x2(a: f32, b: f32, c: f32, d: f32) -> tensor[2, 2, f32] = {
-  e0 = basis2(cast(0, int64))
-  e1 = basis2(cast(1, int64))
+  e0 = basis2(cast(0, i64))
+  e1 = basis2(cast(1, i64))
   m0 = einsum("i,j->ij", e0, to_tensor([a, b]))
   m1 = einsum("i,j->ij", e1, to_tensor([c, d]))
   add(m0, m1)
 }
 def mk_3x3(a00: f32, a01: f32, a02: f32, a10: f32, a11: f32, a12: f32, a20: f32, a21: f32, a22: f32) -> tensor[3, 3, f32] = {
-  e0 = basis3(cast(0, int64))
-  e1 = basis3(cast(1, int64))
-  e2 = basis3(cast(2, int64))
+  e0 = basis3(cast(0, i64))
+  e1 = basis3(cast(1, i64))
+  e2 = basis3(cast(2, i64))
   m0 = einsum("i,j->ij", e0, to_tensor([a00, a01, a02]))
   m1 = einsum("i,j->ij", e1, to_tensor([a10, a11, a12]))
   m2 = einsum("i,j->ij", e2, to_tensor([a20, a21, a22]))
@@ -77,11 +77,11 @@ def test_dot_symmetric() -> unit ! { Test } = {
   assert_close(l, r, cast(0.00001, f32), "dot symmetric")
 }
 def test_dot_basis_orthogonal() -> unit ! { Test } = {
-  d = inner_product(basis3(cast(0, int64)), basis3(cast(1, int64)))
+  d = inner_product(basis3(cast(0, i64)), basis3(cast(1, i64)))
   assert_close(d, cast(0.0, f32), cast(1e-6, f32), "e_0 . e_1 = 0")
 }
 def test_dot_basis_self_one() -> unit ! { Test } = {
-  d = inner_product(basis3(cast(2, int64)), basis3(cast(2, int64)))
+  d = inner_product(basis3(cast(2, i64)), basis3(cast(2, i64)))
   assert_close(d, cast(1.0, f32), cast(1e-6, f32), "e_2 . e_2 = 1")
 }
 def test_dot_bilinear_in_first() -> unit ! { Test } = {
@@ -167,19 +167,19 @@ def test_matvec_zero_matrix() -> unit ! { Test } = {
 }
 def test_matvec_basis_extracts_column() -> unit ! { Test } = {
   a = mk_3x3(cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32), cast(5.0, f32), cast(6.0, f32), cast(7.0, f32), cast(8.0, f32), cast(9.0, f32))
-  out = matvec(a, basis3(cast(0, int64)))
+  out = matvec(a, basis3(cast(0, i64)))
   expected = to_tensor([cast(1.0, f32), cast(4.0, f32), cast(7.0, f32)])
   assert_close(l2_norm_vec(la_vec_sub(out, expected)), cast(0.0, f32), cast(0.00001, f32), "A * e_0 = column 0 of A")
 }
 def test_matvec_basis_extracts_column_2() -> unit ! { Test } = {
   a = mk_3x3(cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32), cast(5.0, f32), cast(6.0, f32), cast(7.0, f32), cast(8.0, f32), cast(9.0, f32))
-  out = matvec(a, basis3(cast(2, int64)))
+  out = matvec(a, basis3(cast(2, i64)))
   expected = to_tensor([cast(3.0, f32), cast(6.0, f32), cast(9.0, f32)])
   assert_close(l2_norm_vec(la_vec_sub(out, expected)), cast(0.0, f32), cast(0.00001, f32), "A * e_2 = column 2 of A")
 }
 def test_vecmat_basis_extracts_row() -> unit ! { Test } = {
   a = mk_3x3(cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32), cast(5.0, f32), cast(6.0, f32), cast(7.0, f32), cast(8.0, f32), cast(9.0, f32))
-  out = vecmat(basis3(cast(1, int64)), a)
+  out = vecmat(basis3(cast(1, i64)), a)
   expected = to_tensor([cast(4.0, f32), cast(5.0, f32), cast(6.0, f32)])
   assert_close(l2_norm_vec(la_vec_sub(out, expected)), cast(0.0, f32), cast(0.00001, f32), "e_1^T A = row 1")
 }

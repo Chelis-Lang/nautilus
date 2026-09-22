@@ -1,12 +1,10 @@
 module Nautilus.Fixture.Demo
-
 -- chelis:provenance/v1 authority
 -- id = NAUT-FIX-DEMO
 -- kind = behavioral
 -- scopes = nautilus-fixture
 -- statement = Fixture modules MUST stay governed by the demo surface.
 def demo(x: f32) -> f32 = x
-
 -- chelis:provenance/v1 surface
 -- id = NAUT-FIX-SURFACE
 -- member-key-schema = nautilus-module-key/v1

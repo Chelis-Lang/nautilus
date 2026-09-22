@@ -147,9 +147,9 @@ def student_t_pdf(x: f32, df: f32) -> f32 = {
   log_pdf = sub(sub(sub(add(lg_num, exponent_term), lg_den), half_log_df), half_log_pi)
   exp(log_pdf)
 }
-def gammainc_series(a: f32, x: f32, term: f32, acc: f32, ap: f32, iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def gammainc_series(a: f32, x: f32, term: f32, acc: f32, ap: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   if lte(iters, zero_i) then acc else {
     ap_next = add(ap, one_f())
     term_next = mul(term, div(x, ap_next))
@@ -171,12 +171,12 @@ def gammap(a: f32, x: f32) -> f32 =
     front_exp_arg = sub(sub(a_lx, x), la)
     front = exp(front_exp_arg)
     inv_a = div(one_f(), a)
-    series = gammainc_series(a, x, inv_a, inv_a, a, cast(200, int64))
+    series = gammainc_series(a, x, inv_a, inv_a, a, cast(200, i64))
     mul(front, series)
   }
-def gammaq_cf_rec(a: f32, x: f32, b: f32, c: f32, d: f32, h: f32, i: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def gammaq_cf_rec(a: f32, x: f32, b: f32, c: f32, d: f32, h: f32, i: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   if lte(i, zero_i) then h else {
     fi = cast(201, f32)
     j = sub(fi, cast(i, f32))
@@ -196,8 +196,8 @@ def gammaq_cf_rec(a: f32, x: f32, b: f32, c: f32, d: f32, h: f32, i: int64) -> f
   }
 }
 def abs_f32_inner(x: f32) -> f32 = if lt(x, zero_f()) then neg(x) else x
-def betacf_rec(a: f32, b: f32, x: f32, c: f32, d: f32, h: f32, m: int64, max_m: int64) -> f32 = {
-  one_i = cast(1, int64)
+def betacf_rec(a: f32, b: f32, x: f32, c: f32, d: f32, h: f32, m: i64, max_m: i64) -> f32 = {
+  one_i = cast(1, i64)
   if gt(m, max_m) then h else {
     eps = cast(1e-30, f32)
     m_f = cast(m, f32)
@@ -238,7 +238,7 @@ def betacf(a: f32, b: f32, x: f32) -> f32 = {
   d0 = if lt(abs_f32_inner(d0_raw), eps) then eps else d0_raw
   d0_inv = div(one_f(), d0)
   c0 = one_f()
-  betacf_rec(a, b, x, c0, d0_inv, d0_inv, cast(1, int64), cast(200, int64))
+  betacf_rec(a, b, x, c0, d0_inv, d0_inv, cast(1, i64), cast(200, i64))
 }
 def betai(a: f32, b: f32, x: f32) -> f32 =
   if lte(x, zero_f()) then zero_f() else if gte(x, one_f()) then one_f() else {
@@ -263,7 +263,7 @@ def betai(a: f32, b: f32, x: f32) -> f32 =
     }
   }
 def is_integer_f32(x: f32) -> bool = {
-  xi = cast(cast_trunc(x, int64), f32)
+  xi = cast(cast_trunc(x, i64), f32)
   eq(x, xi)
 }
 def poisson_pmf(k: f32, lambda: f32) -> f32 =
@@ -400,7 +400,7 @@ def gammaq(a: f32, x: f32) -> f32 =
     c0 = div(one_f(), tiny)
     d0 = div(one_f(), b0)
     h0 = d0
-    h = gammaq_cf_rec(a, x, b0, c0, d0, h0, cast(200, int64))
+    h = gammaq_cf_rec(a, x, b0, c0, d0, h0, cast(200, i64))
     mul(front, h)
   }
 def gamma_cdf(x: f32, shape: f32, scale: f32) -> f32 = {
@@ -411,9 +411,9 @@ def chi_squared_cdf(x: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_cdf(x, half_df, two_f())
 }
-def gamma_inv_cdf_newton(target: f32, shape: f32, scale: f32, x: f32, iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def gamma_inv_cdf_newton(target: f32, shape: f32, scale: f32, x: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   if lte(iters, zero_i) then x else {
     cur = gamma_cdf(x, shape, scale)
     resid = sub(cur, target)
@@ -438,15 +438,15 @@ def gamma_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
     s_cubed = mul(s, mul(s, s))
     wh_safe = if gt(s_cubed, cast(1e-30, f32)) then s_cubed else cast(1e-30, f32)
     x0 = mul(shape, mul(scale, wh_safe))
-    gamma_inv_cdf_newton(q, shape, scale, x0, cast(80, int64))
+    gamma_inv_cdf_newton(q, shape, scale, x0, cast(80, i64))
   }
 def chi_squared_inv_cdf(q: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_inv_cdf(q, half_df, two_f())
 }
-def gamma_sample_ge1_try[n](template: tensor[n, f32], d: f32, c: f32, attempts: int64) -> tensor[n, f32] ! { Random } = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def gamma_sample_ge1_try[n](template: tensor[n, f32], d: f32, c: f32, attempts: i64) -> tensor[n, f32] ! { Random } = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   z_t = normal_sample(copy(template), zero_f(), one_f())
   u_t = uniform_like(copy(template), 1e-7, 1.0)
   z_list = to_list(z_t)
@@ -479,7 +479,7 @@ def gamma_sample[n](template: tensor[n, f32], shape: f32, scale: f32) -> tensor[
   inv_3 = cast(0.3333333333, f32)
   sqrt_d = sqrt(d)
   c = div(inv_3, sqrt_d)
-  raw = gamma_sample_ge1_try(template, d, c, cast(64, int64))
+  raw = gamma_sample_ge1_try(template, d, c, cast(64, i64))
   to_tensor(map(fn (x: f32) -> mul(x, scale), to_list(raw)))
 }
 def chi_squared_sample[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! { Random } = {
@@ -503,7 +503,7 @@ def student_t_sample[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! {
 -- reference; these evaluate the same formulas at tensor rank. A Monte Carlo or
 -- option-pricing caller holding a tensor of paths can reach Phi and Phi-inverse
 -- without dropping to `List` and back, which the `*_sample` functions still do.
-def dist_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = insert(scalar_to_tensor(c), 0, shape(template, cast(0, int32)))
+def dist_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = insert(scalar_to_tensor(c), 0, shape(template, cast(0, i32)))
 def normal_cdf_t[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] = {
   means = dist_lift_t(x, mean)
   denom = dist_lift_t(x, mul(std, sqrt_two_f()))

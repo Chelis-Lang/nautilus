@@ -13,7 +13,7 @@ def signal_stub_nan() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
 -- record = blake3-256:32eb1c81d8751deb66e20a1cc8f7ab6878afb73cae1d5fd32d879eb150e96ccb
 def fft_magnitude_stub[n](x: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
 def ifft_magnitude_stub[n](x: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
-def stft_magnitude_stub[n](x: &tensor[n, f32], window_size: int64, hop_size: int64) -> tensor[n, f32] = {
+def stft_magnitude_stub[n](x: &tensor[n, f32], window_size: i64, hop_size: i64) -> tensor[n, f32] = {
   ignore_ws = window_size
   ignore_hs = hop_size
   to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
@@ -39,7 +39,7 @@ def fftfreq[n](x: &tensor[n, f32], sample_rate: f32) -> tensor[n, f32] = {
   n_f = cast(n_i, f32)
   half = cast(0.5, f32) |> mul(n_f)
   indexed = x |> to_list |> enumerate
-  to_tensor(map(fn (pair: (int64, f32)) -> {
+  to_tensor(map(fn (pair: (i64, f32)) -> {
     i_f = cast(pair.0, f32)
     shifted = if lt(i_f, half) then i_f else sub(i_f, n_f)
     shifted |> div(n_f) |> mul(sample_rate)

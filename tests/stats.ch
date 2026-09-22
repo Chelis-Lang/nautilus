@@ -37,38 +37,38 @@ def test_mean_homogeneity() -> unit ! { Test } = {
 }
 def test_variance_constant_zero_pop() -> unit ! { Test } = {
   v = to_tensor([cast(5.0, f32), cast(5.0, f32), cast(5.0, f32), cast(5.0, f32)])
-  assert_close(variance_vec(v, cast(0, int64)), cast(0.0, f32), cast(1e-6, f32), "population variance of constant = 0")
+  assert_close(variance_vec(v, cast(0, i64)), cast(0.0, f32), cast(1e-6, f32), "population variance of constant = 0")
 }
 def test_variance_constant_zero_sample() -> unit ! { Test } = {
   v = to_tensor([cast(5.0, f32), cast(5.0, f32), cast(5.0, f32), cast(5.0, f32)])
-  assert_close(variance_vec(v, cast(1, int64)), cast(0.0, f32), cast(1e-6, f32), "sample variance of constant = 0")
+  assert_close(variance_vec(v, cast(1, i64)), cast(0.0, f32), cast(1e-6, f32), "sample variance of constant = 0")
 }
 def test_variance_two_points_population() -> unit ! { Test } = {
   v = to_tensor([cast(0.0, f32), cast(2.0, f32)])
-  assert_close(variance_vec(v, cast(0, int64)), cast(1.0, f32), cast(1e-6, f32), "population variance of [0,2] = 1")
+  assert_close(variance_vec(v, cast(0, i64)), cast(1.0, f32), cast(1e-6, f32), "population variance of [0,2] = 1")
 }
 def test_variance_two_points_sample() -> unit ! { Test } = {
   v = to_tensor([cast(0.0, f32), cast(2.0, f32)])
-  assert_close(variance_vec(v, cast(1, int64)), cast(2.0, f32), cast(1e-6, f32), "sample variance of [0,2] = 2")
+  assert_close(variance_vec(v, cast(1, i64)), cast(2.0, f32), cast(1e-6, f32), "sample variance of [0,2] = 2")
 }
 def test_variance_nonnegative() -> unit ! { Test } = {
   v = to_tensor([cast(-3.5, f32), cast(1.2, f32), cast(4.8, f32), cast(-1.0, f32), cast(2.7, f32)])
-  vv = variance_vec(v, cast(0, int64))
+  vv = variance_vec(v, cast(0, i64))
   assert_true(gte(vv, cast(0.0, f32)), "variance >= 0 for any vector")
 }
 def test_std_constant_zero() -> unit ! { Test } = {
   v = to_tensor([cast(3.0, f32), cast(3.0, f32), cast(3.0, f32)])
-  assert_close(std_vec(v, cast(0, int64)), cast(0.0, f32), cast(1e-6, f32), "std of constant = 0")
+  assert_close(std_vec(v, cast(0, i64)), cast(0.0, f32), cast(1e-6, f32), "std of constant = 0")
 }
 def test_std_sqrt_variance_identity() -> unit ! { Test } = {
   v = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(4.0, f32), cast(7.0, f32), cast(11.0, f32)])
-  s = std_vec(copy(v), cast(0, int64))
-  rhs = sqrt(variance_vec(v, cast(0, int64)))
+  s = std_vec(copy(v), cast(0, i64))
+  rhs = sqrt(variance_vec(v, cast(0, i64)))
   assert_close(s, rhs, cast(1e-6, f32), "std(v) = sqrt(variance(v))")
 }
 def test_std_two_point_closed_form() -> unit ! { Test } = {
   v = to_tensor([cast(0.0, f32), cast(2.0, f32)])
-  assert_close(std_vec(v, cast(0, int64)), cast(1.0, f32), cast(1e-6, f32), "std([0,2], pop) = 1")
+  assert_close(std_vec(v, cast(0, i64)), cast(1.0, f32), cast(1e-6, f32), "std([0,2], pop) = 1")
 }
 def test_min_unsorted_input() -> unit ! { Test } = {
   v = to_tensor([cast(3.0, f32), cast(1.0, f32), cast(2.0, f32)])
@@ -106,15 +106,15 @@ def test_skewness_symmetric_zero() -> unit ! { Test } = {
 }
 def test_covariance_self_is_variance() -> unit ! { Test } = {
   v = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32), cast(5.0, f32)])
-  c = covariance_scalar(copy(v), copy(v), cast(1, int64))
-  vv = variance_vec(v, cast(1, int64))
+  c = covariance_scalar(copy(v), copy(v), cast(1, i64))
+  vv = variance_vec(v, cast(1, i64))
   assert_close(c, vv, cast(0.00001, f32), "cov(x, x) = var(x)")
 }
 def test_covariance_symmetric() -> unit ! { Test } = {
   x = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32), cast(5.0, f32)])
   y = to_tensor([cast(2.0, f32), cast(4.0, f32), cast(5.0, f32), cast(8.0, f32), cast(11.0, f32)])
-  c_xy = covariance_scalar(copy(x), copy(y), cast(1, int64))
-  c_yx = covariance_scalar(y, x, cast(1, int64))
+  c_xy = covariance_scalar(copy(x), copy(y), cast(1, i64))
+  c_yx = covariance_scalar(y, x, cast(1, i64))
   assert_close(c_xy, c_yx, cast(0.00001, f32), "cov(x, y) = cov(y, x)")
 }
 def test_correlation_self_is_one() -> unit ! { Test } = {
@@ -149,38 +149,38 @@ def test_trimmed_mean_zero_proportion_is_mean() -> unit ! { Test } = {
 def test_bonferroni_adjust_caps_at_one() -> unit ! { Test } = {
   p = to_tensor([cast(0.01, f32), cast(0.5, f32)])
   adjusted = bonferroni_adjust(p)
-  _ = assert_close(index(to_list(adjusted), cast(0, int64)), cast(0.02, f32), cast(1e-6, f32), "Bonferroni multiplies by m")
-  assert_close(index(to_list(adjusted), cast(1, int64)), cast(1.0, f32), cast(1e-6, f32), "Bonferroni caps at 1")
+  _ = assert_close(index(to_list(adjusted), cast(0, i64)), cast(0.02, f32), cast(1e-6, f32), "Bonferroni multiplies by m")
+  assert_close(index(to_list(adjusted), cast(1, i64)), cast(1.0, f32), cast(1e-6, f32), "Bonferroni caps at 1")
 }
 def test_holm_adjust_monotone_example() -> unit ! { Test } = {
   p = to_tensor([cast(0.01, f32), cast(0.04, f32), cast(0.03, f32)])
   adjusted = stat_holm_adjust(p)
-  _ = assert_close(index(to_list(adjusted), cast(0, int64)), cast(0.03, f32), cast(1e-6, f32), "Holm first sorted p uses multiplier m")
-  assert_close(index(to_list(adjusted), cast(1, int64)), cast(0.06, f32), cast(1e-6, f32), "Holm adjusted p-values are step-down monotone")
+  _ = assert_close(index(to_list(adjusted), cast(0, i64)), cast(0.03, f32), cast(1e-6, f32), "Holm first sorted p uses multiplier m")
+  assert_close(index(to_list(adjusted), cast(1, i64)), cast(0.06, f32), cast(1e-6, f32), "Holm adjusted p-values are step-down monotone")
 }
 def test_bh_and_fdr_alias() -> unit ! { Test } = {
   p = to_tensor([cast(0.01, f32), cast(0.04, f32), cast(0.03, f32)])
   bh = benjamini_hochberg_adjust(copy(p))
   fdr = fdr_adjust(p)
-  _ = assert_close(index(to_list(bh), cast(0, int64)), cast(0.03, f32), cast(1e-6, f32), "BH adjusts smallest p by m/rank")
-  assert_close(index(to_list(bh), cast(1, int64)), index(to_list(fdr), cast(1, int64)), cast(1e-6, f32), "fdr_adjust aliases BH")
+  _ = assert_close(index(to_list(bh), cast(0, i64)), cast(0.03, f32), cast(1e-6, f32), "BH adjusts smallest p by m/rank")
+  assert_close(index(to_list(bh), cast(1, i64)), index(to_list(fdr), cast(1, i64)), cast(1e-6, f32), "fdr_adjust aliases BH")
 }
 def test_likelihood_ratio_stat() -> unit ! { Test } = assert_close(likelihood_ratio_stat(cast(-12.0, f32), cast(-10.0, f32)), cast(4.0, f32), cast(1e-6, f32), "LR statistic is 2*(alt-null)")
-def basis2(idx: int64, value: f32) -> tensor[2, f32] = {
-  zero_i = cast(0, int64)
+def basis2(idx: i64, value: f32) -> tensor[2, f32] = {
+  zero_i = cast(0, i64)
   if eq(idx, zero_i) then to_tensor([value, cast(0.0, f32)]) else to_tensor([cast(0.0, f32), value])
 }
-def mat2_get(m: &tensor[2, 2, f32], i: int64, j: int64) -> f32 = {
+def mat2_get(m: &tensor[2, 2, f32], i: i64, j: i64) -> f32 = {
   col = matvec(m, basis2(j, cast(1.0, f32)))
   inner_product(col, basis2(i, cast(1.0, f32)))
 }
 def test_covariance_2x2_diagonal_matches_variance() -> unit ! { Test } = {
   x = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)])
   y = to_tensor([cast(2.0, f32), cast(4.0, f32), cast(6.0, f32)])
-  cov = covariance_2x2(copy(x), copy(y), cast(0, int64))
+  cov = covariance_2x2(copy(x), copy(y), cast(0, i64))
   corr = correlation_2x2(x, y)
-  _ = assert_close(mat2_get(copy(cov), cast(0, int64), cast(0, int64)), cast(0.6666667, f32), cast(1e-6, f32), "covariance_2x2[0,0] is var(x)")
-  assert_close(mat2_get(corr, cast(0, int64), cast(1, int64)), cast(1.0, f32), cast(0.0001, f32), "correlation_2x2 off diagonal for y=2x is 1")
+  _ = assert_close(mat2_get(copy(cov), cast(0, i64), cast(0, i64)), cast(0.6666667, f32), cast(1e-6, f32), "covariance_2x2[0,0] is var(x)")
+  assert_close(mat2_get(corr, cast(0, i64), cast(1, i64)), cast(1.0, f32), cast(0.0001, f32), "correlation_2x2 off diagonal for y=2x is 1")
 }
 def test_rank_no_ties_is_ordinal() -> unit ! { Test } = {
   v = to_tensor([cast(30.0, f32), cast(10.0, f32), cast(20.0, f32)])
@@ -199,7 +199,7 @@ def test_rank_all_tied_is_midpoint() -> unit ! { Test } = {
 }
 def test_rank_tie_is_not_the_bare_ordinal() -> unit ! { Test } = {
   v = to_tensor([cast(1.0, f32), cast(1.0, f32)])
-  r0 = index(to_list(rank_vec(v)), cast(0, int64))
+  r0 = index(to_list(rank_vec(v)), cast(0, i64))
   assert_true(neq(r0, cast(1.0, f32)), "a tied first element must not receive the bare ordinal rank 1")
 }
 def test_rank_sum_is_triangular() -> unit ! { Test } = {
@@ -215,75 +215,75 @@ def test_rank_invariant_under_increasing_map() -> unit ! { Test } = {
 def test_zscore_known_values() -> unit ! { Test } = {
   v = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)])
   expected = to_tensor([cast(-1.2247449, f32), cast(0.0, f32), cast(1.2247449, f32)])
-  assert_close_tensor(zscore_vec(v, cast(0, int64)), expected, cast(0.00001, f32), "zscore_vec([1,2,3], ddof=0) = [-sqrt(3/2), 0, sqrt(3/2)]")
+  assert_close_tensor(zscore_vec(v, cast(0, i64)), expected, cast(0.00001, f32), "zscore_vec([1,2,3], ddof=0) = [-sqrt(3/2), 0, sqrt(3/2)]")
 }
 def test_zscore_has_zero_mean() -> unit ! { Test } = {
   v = to_tensor([cast(4.0, f32), cast(-2.0, f32), cast(9.0, f32), cast(1.5, f32)])
-  z = zscore_vec(v, cast(0, int64))
+  z = zscore_vec(v, cast(0, i64))
   assert_close(mean_vec(z), cast(0.0, f32), cast(0.00001, f32), "standardised data has mean 0")
 }
 def test_zscore_has_unit_std() -> unit ! { Test } = {
   v = to_tensor([cast(4.0, f32), cast(-2.0, f32), cast(9.0, f32), cast(1.5, f32)])
-  z = zscore_vec(v, cast(0, int64))
-  assert_close(std_vec(z, cast(0, int64)), cast(1.0, f32), cast(0.00001, f32), "standardised data has population std 1")
+  z = zscore_vec(v, cast(0, i64))
+  assert_close(std_vec(z, cast(0, i64)), cast(1.0, f32), cast(0.00001, f32), "standardised data has population std 1")
 }
 def test_zscore_ddof_rescales_by_sqrt_n_over_n_minus_one() -> unit ! { Test } = {
   v = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(10.0, f32)])
-  z0 = index(to_list(zscore_vec(copy(v), cast(0, int64))), cast(0, int64))
-  z1 = index(to_list(zscore_vec(v, cast(1, int64))), cast(0, int64))
+  z0 = index(to_list(zscore_vec(copy(v), cast(0, i64))), cast(0, i64))
+  z1 = index(to_list(zscore_vec(v, cast(1, i64))), cast(0, i64))
   ratio = sqrt(div(cast(4.0, f32), cast(3.0, f32)))
   assert_close(div(z0, z1), ratio, cast(0.00001, f32), "ddof=1 rescales every z-score by sqrt(n/(n-1))")
 }
 def test_zscore_constant_vector_is_nan() -> unit ! { Test } = {
   v = to_tensor([cast(7.0, f32), cast(7.0, f32), cast(7.0, f32)])
-  z0 = index(to_list(zscore_vec(v, cast(0, int64))), cast(0, int64))
+  z0 = index(to_list(zscore_vec(v, cast(0, i64))), cast(0, i64))
   assert_true(neq(z0, z0), "a constant vector has zero spread, so zscore_vec is NaN rather than 0")
 }
 def test_covariance_matrix_agrees_with_pairwise_2x2() -> unit ! { Test } = {
   a = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)])
   b = to_tensor([cast(2.0, f32), cast(4.0, f32), cast(7.0, f32)])
   stacked = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(2.0, f32), cast(4.0, f32), cast(7.0, f32)]])
-  general = covariance_matrix(stacked, cast(0, int64))
-  pair = covariance_2x2(a, b, cast(0, int64))
+  general = covariance_matrix(stacked, cast(0, i64))
+  pair = covariance_2x2(a, b, cast(0, i64))
   assert_close_tensor(general, pair, cast(1e-6, f32), "covariance_matrix over stacked rows equals covariance_2x2 on the same two variables")
 }
 def test_covariance_matrix_diagonal_is_variance() -> unit ! { Test } = {
   x = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(2.0, f32), cast(4.0, f32), cast(7.0, f32)]])
   row0 = to_tensor([cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)])
-  cov = covariance_matrix(x, cast(0, int64))
-  assert_close(mat2_get(cov, cast(0, int64), cast(0, int64)), variance_vec(row0, cast(0, int64)), cast(1e-6, f32), "covariance_matrix[i,i] is variance_vec of row i")
+  cov = covariance_matrix(x, cast(0, i64))
+  assert_close(mat2_get(cov, cast(0, i64), cast(0, i64)), variance_vec(row0, cast(0, i64)), cast(1e-6, f32), "covariance_matrix[i,i] is variance_vec of row i")
 }
 def test_covariance_matrix_ddof_scales() -> unit ! { Test } = {
   x = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(2.0, f32), cast(4.0, f32), cast(7.0, f32)]])
-  pop = mat2_get(covariance_matrix(copy(x), cast(0, int64)), cast(0, int64), cast(1, int64))
-  samp = mat2_get(covariance_matrix(x, cast(1, int64)), cast(0, int64), cast(1, int64))
+  pop = mat2_get(covariance_matrix(copy(x), cast(0, i64)), cast(0, i64), cast(1, i64))
+  samp = mat2_get(covariance_matrix(x, cast(1, i64)), cast(0, i64), cast(1, i64))
   assert_close(div(samp, pop), cast(1.5, f32), cast(0.00001, f32), "ddof=1 scales covariance by n/(n-1) = 3/2")
 }
 def test_correlation_matrix_diagonal_is_one() -> unit ! { Test } = {
   x = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(2.0, f32), cast(4.0, f32), cast(7.0, f32)]])
   corr = correlation_matrix(x)
-  assert_close(mat2_get(corr, cast(0, int64), cast(0, int64)), cast(1.0, f32), cast(0.00001, f32), "correlation_matrix has a unit diagonal")
+  assert_close(mat2_get(corr, cast(0, i64), cast(0, i64)), cast(1.0, f32), cast(0.00001, f32), "correlation_matrix has a unit diagonal")
 }
 def test_correlation_matrix_perfect_linear_is_one() -> unit ! { Test } = {
   x = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(3.0, f32), cast(5.0, f32), cast(7.0, f32)]])
   corr = correlation_matrix(x)
-  assert_close(mat2_get(corr, cast(0, int64), cast(1, int64)), cast(1.0, f32), cast(0.0001, f32), "corr(x, 2x+1) = 1 off the diagonal")
+  assert_close(mat2_get(corr, cast(0, i64), cast(1, i64)), cast(1.0, f32), cast(0.0001, f32), "corr(x, 2x+1) = 1 off the diagonal")
 }
 def test_correlation_matrix_keeps_negative_sign() -> unit ! { Test } = {
   x = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(9.0, f32), cast(6.0, f32), cast(3.0, f32)]])
   corr = correlation_matrix(x)
-  assert_close(mat2_get(corr, cast(0, int64), cast(1, int64)), cast(-1.0, f32), cast(0.0001, f32), "corr(x, -3x+12) = -1, so the sign survives the sqrt(diag) normalisation")
+  assert_close(mat2_get(corr, cast(0, i64), cast(1, i64)), cast(-1.0, f32), cast(0.0001, f32), "corr(x, -3x+12) = -1, so the sign survives the sqrt(diag) normalisation")
 }
 def test_correlation_matrix_constant_row_is_nan() -> unit ! { Test } = {
   x = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32)], [cast(5.0, f32), cast(5.0, f32), cast(5.0, f32)]])
   corr = correlation_matrix(x)
-  c01 = mat2_get(corr, cast(0, int64), cast(1, int64))
+  c01 = mat2_get(corr, cast(0, i64), cast(1, i64))
   assert_true(neq(c01, c01), "a constant row has zero variance, so its correlations are NaN rather than 0")
 }
 def stats_three_by_four() -> tensor[3, 4, f32] = to_tensor([[cast(1.0, f32), cast(2.0, f32), cast(3.0, f32), cast(4.0, f32)], [cast(2.0, f32), cast(4.0, f32), cast(7.0, f32), cast(8.0, f32)], [cast(5.0, f32), cast(3.0, f32), cast(2.0, f32), cast(1.0, f32)]])
 def test_covariance_matrix_three_variables() -> unit ! { Test } = {
   expected = to_tensor([[cast(1.25, f32), cast(2.625, f32), cast(-1.625, f32)], [cast(2.625, f32), cast(5.6875, f32), cast(-3.4375, f32)], [cast(-1.625, f32), cast(-3.4375, f32), cast(2.1875, f32)]])
-  assert_close_tensor(covariance_matrix(stats_three_by_four(), cast(0, int64)), expected, cast(0.00001, f32), "covariance_matrix over 3 variables by 4 observations matches the NumPy covariance reference with bias true, entrywise")
+  assert_close_tensor(covariance_matrix(stats_three_by_four(), cast(0, i64)), expected, cast(0.00001, f32), "covariance_matrix over 3 variables by 4 observations matches the NumPy covariance reference with bias true, entrywise")
 }
 def test_correlation_matrix_three_variables() -> unit ! { Test } = {
   expected = to_tensor([[cast(1.0, f32), cast(0.9844952, f32), cast(-0.9827076, f32)], [cast(0.9844952, f32), cast(1.0, f32), cast(-0.9745586, f32)], [cast(-0.9827076, f32), cast(-0.9745586, f32), cast(1.0, f32)]])

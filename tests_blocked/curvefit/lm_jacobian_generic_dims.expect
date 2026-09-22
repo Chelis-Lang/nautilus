@@ -1,7 +1,0 @@
-mismatched dimension count: 0 vs 1
-Blocker: chelis#676; the former outer generic-dimension failure chelis#847 is
-resolved at 0.17.2, so this exact generic wrapper now reaches the same
-backward-DAG verifier layer as lm_jacobian_model_wrapper.ch.
-On pass, promote a generic Jacobian-row positive test, then remove the
-finite-difference Jacobian only after the concrete eval/C probe also passes
-and numerical parity is reviewed.

@@ -17,14 +17,14 @@ def uao_series(x: f32) -> f32 = {
 }
 def uao_erf(x: f32) -> f32 = if lt(uao_abs(x), cast(0.25, f32)) then uao_series(x) else cast(1.0, f32)
 def uao_row(t: tensor[3, f32]) -> tensor[3, f32] = {
-  s = tensor_to_scalar(sum(t, cast(0, int32)))
-  ev = insert(scalar_to_tensor(uao_erf(s)), cast(0, int32), cast(3, int64))
+  s = tensor_to_scalar(sum(t, cast(0, i32)))
+  ev = insert(scalar_to_tensor(uao_erf(s)), cast(0, i32), cast(3, i64))
   mul(t, ev)
 }
 def uao_batched(b: tensor[2, 3, f32]) -> tensor[2, 3, f32] = vmap(uao_row)(b)
 def test_blocked_untaken_arm_does_not_poison_a_vmapped_select() -> unit ! { Test } = {
   batch = to_tensor([[cast(1000000.0, f32), cast(0.0, f32), cast(0.0, f32)], [cast(0.1, f32), cast(0.0, f32), cast(0.0, f32)]])
-  rows = to_list(sum(uao_batched(batch), cast(1, int32)))
-  big = index(rows, cast(0, int64))
+  rows = to_list(sum(uao_batched(batch), cast(1, i32)))
+  big = index(rows, cast(0, i64))
   assert_true(eq(big, big), "the untaken overflowing arm does not poison the selected value")
 }
