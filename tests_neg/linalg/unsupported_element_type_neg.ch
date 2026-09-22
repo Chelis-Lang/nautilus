@@ -11,5 +11,5 @@ import Std.Test (assert_close)
 -- configuration-digest = xxh3-128:ae3dfc4c0cfdd00cc99d50805da0931e
 -- scope-schema = nautilus-carrier-scope/v1
 -- scope = the pinned unsupported-element-type rejection in tests_neg/linalg
-def unsupported_int_matrix(a: tensor[2, 2, int64]) -> f32 = det_2x2(a)
+def unsupported_int_matrix(a: tensor[2, 2, i64]) -> f32 = det_2x2(a)
 def test_negative_linalg_unsupported_element_type() -> unit ! { Test } = assert_close(cast(0.0, f32), cast(0.0, f32), cast(0.0, f32), "should not reach here")

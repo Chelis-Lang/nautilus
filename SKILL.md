@@ -364,7 +364,7 @@ export (main)
 
 def main() -> f32 = {
   f = fn (x: f32) -> sub(sub(mul(x, mul(x, x)), mul(cast(2.0, f32), x)), cast(5.0, f32))
-  brent(f, cast(2.0, f32), cast(3.0, f32), cast(1.0e-8, f32), cast(100, int64))
+  brent(f, cast(2.0, f32), cast(3.0, f32), cast(1.0e-8, f32), cast(100, i64))
 }
 ```
 
@@ -394,7 +394,7 @@ def main() -> f32 = {
           (cast {} (lit {type: (t-prim {} f32)} 2.0) (t-prim {} f32))
           (cast {} (lit {type: (t-prim {} f32)} 3.0) (t-prim {} f32))
           (cast {} (lit {type: (t-prim {} f32)} 0.00000001) (t-prim {} f32))
-          (cast {} (lit {type: (t-prim {} int32)} 100) (t-prim {} int64)))))))
+          (cast {} (lit {type: (t-prim {} i32)} 100) (t-prim {} i64)))))))
 ```
 
 Expected result: approximately 2.09455 (the real root of x^3 - 2x - 5).
@@ -414,7 +414,7 @@ export (main)
 def decay(y: f32, t: f32) -> f32 = neg(y)
 
 def main() -> f32 =
-  rk4_solve(decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(100, int64))
+  rk4_solve(decay, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), cast(100, i64))
 ```
 
 ```deep
@@ -438,7 +438,7 @@ def main() -> f32 =
           (cast {} (lit {type: (t-prim {} f32)} 1.0) (t-prim {} f32))
           (cast {} (lit {type: (t-prim {} f32)} 0.0) (t-prim {} f32))
           (cast {} (lit {type: (t-prim {} f32)} 1.0) (t-prim {} f32))
-          (cast {} (lit {type: (t-prim {} int32)} 100) (t-prim {} int64)))))))
+          (cast {} (lit {type: (t-prim {} i32)} 100) (t-prim {} i64)))))))
 ```
 
 Expected result: approximately 0.36788 (e^{-1}, the exact solution at t=1).
@@ -458,7 +458,7 @@ export (main)
 
 def main() -> f32 = {
   f = fn (x: f32) -> exp(neg(mul(x, x)))
-  adaptive_simpson(f, cast(0.0, f32), cast(1.0, f32), cast(1.0e-8, f32), cast(20, int64))
+  adaptive_simpson(f, cast(0.0, f32), cast(1.0, f32), cast(1.0e-8, f32), cast(20, i64))
 }
 ```
 
@@ -483,7 +483,7 @@ def main() -> f32 = {
           (cast {} (lit {type: (t-prim {} f32)} 0.0) (t-prim {} f32))
           (cast {} (lit {type: (t-prim {} f32)} 1.0) (t-prim {} f32))
           (cast {} (lit {type: (t-prim {} f32)} 0.00000001) (t-prim {} f32))
-          (cast {} (lit {type: (t-prim {} int32)} 20) (t-prim {} int64)))))))
+          (cast {} (lit {type: (t-prim {} i32)} 20) (t-prim {} i64)))))))
 ```
 
 Expected result: approximately 0.74682 (sqrt(pi)/2 * erf(1)).
@@ -503,7 +503,7 @@ export (main)
 
 def demo_stats[n](data: tensor[n, f32]) -> f32 = {
   mu = mean_vec(copy(data))
-  v = variance_vec(data, cast(1, int64))
+  v = variance_vec(data, cast(1, i64))
   add(mu, v)
 }
 
@@ -527,7 +527,7 @@ def main() -> f32 = cast(0.0, f32)
         (let {}
           (bind {} v
             (app {} (var {} variance_vec) (var {} data)
-              (cast {} (lit {type: (t-prim {} int32)} 1) (t-prim {} int64))))
+              (cast {} (lit {type: (t-prim {} i32)} 1) (t-prim {} i64))))
           (app {} (var {} add) (var {} mu) (var {} v))))))
   (defsig {} main (t-fn {} (t-prim {} f32)))
   (def {}
@@ -663,7 +663,7 @@ def linear_dmodel(x: f32, theta: f32) -> f32 = x
 
 def demo_fit[n](xs: tensor[n, f32], ys: tensor[n, f32]) -> f32 =
   lm_scalar_1param(linear_model, linear_dmodel, xs, ys,
-    cast(0.0, f32), cast(0.01, f32), cast(1.0e-8, f32), cast(100, int64))
+    cast(0.0, f32), cast(0.01, f32), cast(1.0e-8, f32), cast(100, i64))
 
 def main() -> f32 = cast(0.0, f32)
 ```
@@ -704,7 +704,7 @@ def main() -> f32 = cast(0.0, f32)
             (cast {} (lit {type: (t-prim {} f32)} 0.0) (t-prim {} f32))
             (cast {} (lit {type: (t-prim {} f32)} 0.01) (t-prim {} f32))
             (cast {} (lit {type: (t-prim {} f32)} 0.00000001) (t-prim {} f32))
-            (cast {} (lit {type: (t-prim {} int32)} 100) (t-prim {} int64)))))))
+            (cast {} (lit {type: (t-prim {} i32)} 100) (t-prim {} i64)))))))
   (defsig {} main (t-fn {} (t-prim {} f32)))
   (def {}
     main
@@ -1125,10 +1125,10 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `la_vec_add` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `stable` | General-n elementwise add |
 | `la_vec_sub` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `stable` | General-n elementwise sub |
 | `la_vec_saxpy` | `[n](alpha: f32, x: tensor[n, f32], y: tensor[n, f32]) -> tensor[n, f32]` | `stable` | General-n, computes x + alpha*y |
-| `la_basis_n_f32` | `(k: int64, s: f32, template: &tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Basis vector scaled by `s`, using the template length; shared by CurveFit and Ode. |
+| `la_basis_n_f32` | `(k: i64, s: f32, template: &tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Basis vector scaled by `s`, using the template length; shared by CurveFit and Ode. |
 | `la_zeros_mat_like` | `(a: &tensor[n, n, f32]) -> tensor[n, n, f32]` | `alpha` | Elementwise `a - a`; a zero matrix for finite input, preserving IEEE behavior for non-finite values. |
 | `la_tridiag_solve` | `[n](lower: tensor[n, f32], diag: tensor[n, f32], upper: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Shared tridiagonal solver used by cubic spline interpolation. Intended for finite inputs with elimination pivots of magnitude at least `1e-30`; smaller pivots are replaced by `1.0` without a singularity diagnostic. |
-| `cg_solve` | `[n](a_mat: tensor[n, n, f32], b: tensor[n, f32], x0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32]` | `stable` | General-n conjugate gradient for SPD systems |
+| `cg_solve` | `[n](a_mat: tensor[n, n, f32], b: tensor[n, f32], x0: tensor[n, f32], tol: f32, max_iters: i64) -> tensor[n, f32]` | `stable` | General-n conjugate gradient for SPD systems |
 | `inv_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` | Fixed 2x2, Cayley-Hamilton, NaN on singular |
 | `inv_3x3` | `(a: tensor[3, 3, f32]) -> tensor[3, 3, f32]` | `stable` | Fixed 3x3, Cayley-Hamilton, NaN on singular |
 | `solve_2x2` | `(a: tensor[2, 2, f32], b: tensor[2, f32]) -> tensor[2, f32]` | `stable` | Fixed 2x2, via inv_2x2 + matvec |
@@ -1146,12 +1146,12 @@ The `Stability` column is the source of truth for row-level classification. Use
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
 | `mean_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` |  |
-| `variance_vec` | `[n](v: tensor[n, f32], ddof: int64) -> f32` | `stable` | ddof=0 for population, ddof=1 for sample |
-| `std_vec` | `[n](v: tensor[n, f32], ddof: int64) -> f32` | `stable` | sqrt(variance_vec) |
+| `variance_vec` | `[n](v: tensor[n, f32], ddof: i64) -> f32` | `stable` | ddof=0 for population, ddof=1 for sample |
+| `std_vec` | `[n](v: tensor[n, f32], ddof: i64) -> f32` | `stable` | sqrt(variance_vec) |
 | `skewness_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` | Population skewness (not adjusted) |
 | `kurtosis_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` | Excess kurtosis (subtracts 3) |
 | `median_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` | Sorts internally |
-| `covariance_scalar` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: int64) -> f32` | `stable` | Returns scalar covariance |
+| `covariance_scalar` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: i64) -> f32` | `stable` | Returns scalar covariance |
 | `correlation_scalar` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | `stable` | Pearson r, uses ddof=0 |
 | `min_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` |  |
 | `max_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` |  |
@@ -1160,18 +1160,18 @@ The `Stability` column is the source of truth for row-level classification. Use
 | `percentile_vec` | `[n](v: tensor[n, f32], p: f32) -> f32` | `stable` | p in [0,100], delegates to quantile_vec |
 | `trimmed_mean_vec` | `[n](v: tensor[n, f32], proportion: f32) -> f32` | `stable` | Trims proportion from each tail, NaN if proportion >= 0.5 |
 | `rank_vec` | `[n](v: tensor[n, f32]) -> tensor[n, f32]` | `stable` | 1-based ranks; ties share the average of the ranks they span (scipy method=average). O(n^2) pairwise counting, much slower than the sort-based reductions. Does NOT propagate NaN: a NaN element ranks 0.5 and the result is silently wrong, unlike scipy which returns all-NaN |
-| `zscore_vec` | `[n](v: tensor[n, f32], ddof: int64) -> tensor[n, f32]` | `stable` | (x - mean) / std; NaN for a constant vector |
+| `zscore_vec` | `[n](v: tensor[n, f32], ddof: i64) -> tensor[n, f32]` | `stable` | (x - mean) / std; NaN for a constant vector |
 | `bonferroni_adjust` | `[n](p_values: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Multiplies each p-value by m (number of tests), clamped to 1 |
 | `stat_holm_adjust` | `[n](p_values: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Holm step-down adjustment over sorted p-values |
 | `benjamini_hochberg_adjust` | `[n](p_values: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Benjamini-Hochberg FDR adjustment |
 | `fdr_adjust` | `[n](p_values: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Alias for benjamini_hochberg_adjust |
 | `likelihood_ratio_stat` | `(log_likelihood_null: f32, log_likelihood_alt: f32) -> f32` | `alpha` | 2 * (log L_alt - log L_null) |
 | `likelihood_ratio_p_value` | `(log_likelihood_null: f32, log_likelihood_alt: f32, df: f32) -> f32` | `alpha` | Upper-tail chi-squared p-value of LR statistic |
-| `covariance_2x2` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: int64) -> tensor[2, 2, f32]` | `alpha` | 2x2 covariance matrix for (a, b) |
+| `covariance_2x2` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: i64) -> tensor[2, 2, f32]` | `alpha` | 2x2 covariance matrix for (a, b) |
 | `correlation_2x2` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[2, 2, f32]` | `alpha` | 2x2 Pearson correlation matrix for (a, b) |
-| `covariance_matrix_2` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: int64) -> tensor[2, 2, f32]` | `alpha` | Alias for covariance_2x2 |
+| `covariance_matrix_2` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: i64) -> tensor[2, 2, f32]` | `alpha` | Alias for covariance_2x2 |
 | `correlation_matrix_2` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[2, 2, f32]` | `alpha` | Alias for correlation_2x2 |
-| `covariance_matrix` | `[m, n](x: tensor[m, n, f32], ddof: int64) -> tensor[m, m, f32]` | `alpha` | m variables by n observations, rows are variables (numpy.cov default) |
+| `covariance_matrix` | `[m, n](x: tensor[m, n, f32], ddof: i64) -> tensor[m, m, f32]` | `alpha` | m variables by n observations, rows are variables (numpy.cov default) |
 | `correlation_matrix` | `[m, n](x: tensor[m, n, f32]) -> tensor[m, m, f32]` | `alpha` | Pearson correlation over m variables; a constant row gives NaN |
 
 ### Nautilus.Distance (8 exports)
@@ -1191,18 +1191,18 @@ The `Stability` column is the source of truth for row-level classification. Use
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
-| `bisection` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f`; requires sign change in [lo,hi], NaN if none |
-| `newton` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f` and `df`; NaN on zero derivative or non-convergence |
-| `brent` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f`; Brent's method with IQI/secant/bisection fallback |
+| `bisection` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32` | `stable` | Takes function-typed `f`; requires sign change in [lo,hi], NaN if none |
+| `newton` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32` | `stable` | Takes function-typed `f` and `df`; NaN on zero derivative or non-convergence |
+| `brent` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32` | `stable` | Takes function-typed `f`; Brent's method with IQI/secant/bisection fallback |
 
 ### Nautilus.Ode (5 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
 | `euler_step` | `(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32` | `stable` | Single Euler step; `f` takes (y, t) via curried args |
-| `euler_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32` | `stable` | Fixed-step Euler; `f` takes (y, t), returns final y |
+| `euler_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: i64) -> f32` | `stable` | Fixed-step Euler; `f` takes (y, t), returns final y |
 | `rk4_step` | `(f: f32 -> f32 -> f32, y: f32, t: f32, dt: f32) -> f32` | `stable` | Single RK4 step; `f` takes (y, t) |
-| `rk4_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: int64) -> f32` | `stable` | Fixed-step RK4; `f` takes (y, t), returns final y |
+| `rk4_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, n_steps: i64) -> f32` | `stable` | Fixed-step RK4; `f` takes (y, t), returns final y |
 | `rk45_adaptive_solve` | `(f: f32 -> f32 -> f32, y0: f32, t0: f32, t_end: f32, rtol: f32, atol: f32) -> f32` | `alpha` | Scalar Dormand-Prince 5(4) endpoint solve with adaptive step control; returns final y only |
 | `rk45_adaptive_solve_grid` | `[n, p](f: tensor[n, f32] -> f32 -> tensor[n, f32], t0: f32, y0: tensor[n, f32], t_end: f32, rtol: f32, atol: f32, t_out: tensor[p, f32]) -> tensor[n, p, f32]` | `alpha` | Vector Dormand-Prince 5(4) with Hermite cubic dense output. Returns state at each t_out point. t_out must be sorted ascending, all in (t0, t_end]. f takes (state, t) curried. |
 
@@ -1210,10 +1210,10 @@ The `Stability` column is the source of truth for row-level classification. Use
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
-| `trapezoidal` | `(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32` | `stable` | Takes function-typed `f`; composite trapezoidal rule |
-| `simpsons` | `(f: f32 -> f32, a: f32, b: f32, n_steps: int64) -> f32` | `stable` | Takes function-typed `f`; n_steps must be even, NaN otherwise |
-| `gauss_legendre_5` | `(f: f32 -> f32, a: f32, b: f32, n_points: int64) -> f32` | `stable` | Takes function-typed `f`; 5-point Gauss-Legendre (n_points ignored) |
-| `adaptive_simpson` | `(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: int64) -> f32` | `stable` | Takes function-typed `f`; recursive adaptive Simpson with Richardson correction |
+| `trapezoidal` | `(f: f32 -> f32, a: f32, b: f32, n_steps: i64) -> f32` | `stable` | Takes function-typed `f`; composite trapezoidal rule |
+| `simpsons` | `(f: f32 -> f32, a: f32, b: f32, n_steps: i64) -> f32` | `stable` | Takes function-typed `f`; n_steps must be even, NaN otherwise |
+| `gauss_legendre_5` | `(f: f32 -> f32, a: f32, b: f32, n_points: i64) -> f32` | `stable` | Takes function-typed `f`; 5-point Gauss-Legendre (n_points ignored) |
+| `adaptive_simpson` | `(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: i64) -> f32` | `stable` | Takes function-typed `f`; recursive adaptive Simpson with Richardson correction |
 | `romberg_5` | `(f: f32 -> f32, a: f32, b: f32) -> f32` | `stable` | Takes function-typed `f`; 5-level Romberg (16-panel trapezoidal base) |
 | `gauss_legendre_10` | `(f: f32 -> f32, a: f32, b: f32) -> f32` | `stable` | Takes function-typed `f`; 10-point Gauss-Legendre |
 | `gauss_hermite_10` | `(f: f32 -> f32) -> f32` | `stable` | Takes function-typed `f`; 10-point Gauss-Hermite, integrates f(x)*exp(-x^2) over (-inf,inf) |
@@ -1241,10 +1241,10 @@ The `Stability` column is the source of truth for row-level classification. Use
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
-| `golden_section_search` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f`; finds minimizer in [lo,hi] |
-| `brent_minimize` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f`; Brent's minimization with parabolic interpolation |
-| `gradient_descent_1d` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, lr: f32, max_iters: int64) -> f32` | `stable` | Takes function-typed `f` and `df`; fixed learning rate, NaN on divergence |
-| `newton_minimize_1d` | `(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Takes function-typed `f`, `df`, `ddf`; requires positive curvature at minimum |
+| `golden_section_search` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32` | `stable` | Takes function-typed `f`; finds minimizer in [lo,hi] |
+| `brent_minimize` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32` | `stable` | Takes function-typed `f`; Brent's minimization with parabolic interpolation |
+| `gradient_descent_1d` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, lr: f32, max_iters: i64) -> f32` | `stable` | Takes function-typed `f` and `df`; fixed learning rate, NaN on divergence |
+| `newton_minimize_1d` | `(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32` | `alpha` | Takes function-typed `f`, `df`, `ddf`; requires positive curvature at minimum |
 
 ### Nautilus.Interpolation (5 exports)
 
@@ -1267,8 +1267,8 @@ The `Stability` column is the source of truth for row-level classification. Use
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
-| `lm_scalar_1param` | `[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs: tensor[n, f32], ys: tensor[n, f32], theta0: f32, lambda0: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Levenberg-Marquardt for single-parameter models; `model(x, theta)` and `dmodel(x, theta)` are function-typed |
-| `lm_scalar_nparam` | `[n, m](model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32], x: tensor[m, f32], y: tensor[m, f32], theta0: tensor[n, f32], tol: f32, max_iters: int64) -> tensor[n, f32]` | `alpha` | Multi-parameter LM via finite-difference Jacobian (eps=1e-5); `tol` accepted but unused (runs full `max_iters`); lambda fixed at 0.01; AD replacement pinned by `chelis#676` |
+| `lm_scalar_1param` | `[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs: tensor[n, f32], ys: tensor[n, f32], theta0: f32, lambda0: f32, tol: f32, max_iters: i64) -> f32` | `alpha` | Levenberg-Marquardt for single-parameter models; `model(x, theta)` and `dmodel(x, theta)` are function-typed |
+| `lm_scalar_nparam` | `[n, m](model: tensor[n, f32] -> tensor[m, f32] -> tensor[m, f32], x: tensor[m, f32], y: tensor[m, f32], theta0: tensor[n, f32], tol: f32, max_iters: i64) -> tensor[n, f32]` | `alpha` | Multi-parameter LM via finite-difference Jacobian (eps=1e-5); `tol` accepted but unused (runs full `max_iters`); lambda fixed at 0.01; full AD replacement is tracked by `chelis#2370` |
 
 ### Nautilus.Signal (7 exports -- 6 stubs + `fftfreq`)
 
@@ -1278,7 +1278,7 @@ The six NaN-returning rows share the dated `spec/phase3j.md` § Explicit Deferra
 |---|---|---|---|
 | `fft_magnitude_stub` | `[n](x: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor. Blocked on upstream complex-number support (Phase 5f) |
 | `ifft_magnitude_stub` | `[n](x: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
-| `stft_magnitude_stub` | `[n](x: tensor[n, f32], window_size: int64, hop_size: int64) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
+| `stft_magnitude_stub` | `[n](x: tensor[n, f32], window_size: i64, hop_size: i64) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
 | `lowpass_stub` | `[n](x: tensor[n, f32], cutoff_hz: f32, sample_rate: f32) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
 | `highpass_stub` | `[n](x: tensor[n, f32], cutoff_hz: f32, sample_rate: f32) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
 | `bandpass_stub` | `[n](x: tensor[n, f32], low_hz: f32, high_hz: f32, sample_rate: f32) -> tensor[n, f32]` | `alpha` | Stub: returns NaN tensor |
@@ -1289,15 +1289,15 @@ The six NaN-returning rows share the dated `spec/phase3j.md` § Explicit Deferra
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
 | `entropy` | `[n](p: tensor[n, f32]) -> f32` | `alpha` | Shannon entropy of a probability vector; zero-probability terms contribute 0 |
-| `cross_entropy` | `[n](p: tensor[n, f32], q: tensor[n, f32]) -> f32` | `alpha` | Cross-entropy H(p, q); zero-probability terms in p contribute 0 |
+| `distribution_cross_entropy` | `[n](p: tensor[n, f32], q: tensor[n, f32]) -> f32` | `alpha` | Cross-entropy H(p, q); zero-probability terms in p contribute 0 |
 | `kl_divergence` | `[n](p: tensor[n, f32], q: tensor[n, f32]) -> f32` | `alpha` | Kullback-Leibler divergence KL(p || q); zero-probability terms in p contribute 0 |
 
 ### Nautilus.Optimize (3 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
-| `minimize` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Bracketed 1D minimizer; delegates to brent_minimize |
-| `root` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32` | `alpha` | Bracketed 1D root finder; delegates to brent |
+| `minimize` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32` | `alpha` | Bracketed 1D minimizer; delegates to brent_minimize |
+| `root` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32` | `alpha` | Bracketed 1D root finder; delegates to brent |
 | `optimize_ad_smoke` | `(x: f32) -> f32` | `alpha` | Smoke target (x - 2)^2 used to exercise AD through Nautilus.Optimize |
 
 ### Nautilus.StateSpace (6 exports)

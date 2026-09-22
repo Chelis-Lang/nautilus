@@ -9,7 +9,7 @@ def abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def is_nonpositive_integer(x: f32) -> bool = {
   zero = cast(0.0, f32)
   if gt(x, zero) then false else {
-    xi_i = cast_trunc(x, int64)
+    xi_i = cast_trunc(x, i64)
     xi = cast(xi_i, f32)
     eq(x, xi)
   }
@@ -61,12 +61,9 @@ def erf(x: f32) -> f32 = {
   -- NOT buy f64 accuracy: 7.1.26 is a 1.5e-7 formula at any precision, so
   -- the coefficients must be replaced, not merely re-typed. The same
   -- approximation is duplicated at `erf_t` below, and the sibling shoals
-  -- repo carries its own copy -- see shoals#61 for that propagation.
+  -- repo carries its own copy; keep any approximation change synchronized.
   small = cast(0.25, f32)
-  if lt(ax, small) then {
-    xt = if lt(ax, small) then x else cast(0.0, f32)
-    erf_taylor_core(xt)
-  } else {
+  if lt(ax, small) then erf_taylor_core(x) else {
     t = div(one, add(one, mul(p, ax)))
     poly = mul(t, add(a1, mul(t, add(a2, mul(t, add(a3, mul(t, add(a4, mul(t, a5)))))))))
     x2 = mul(ax, ax)
@@ -75,9 +72,6 @@ def erf(x: f32) -> f32 = {
     y = sub(one, mul(poly, e))
     if lt(x, cast(0.0, f32)) then neg(y) else y
   }
-  -- Clamp the series input to the branch domain. A masked-select lowering
-  -- evaluates BOTH arms (chelis#1464), and an unclamped x^7 overflows f32
-  -- for |x| > ~5.5e5; on the clamped value the untaken arm stays bounded.
 }
 def erfc(x: f32) -> f32 = cast(1.0, f32) |> sub(erf(x))
 def lanczos_sum(x: f32) -> f32 = {
@@ -600,9 +594,9 @@ def bessel_y1(x: f32) -> f32 = {
   zero = cast(0.0, f32)
   if lt(x, zero) then nan_f32() else if eq(x, zero) then neg_inf() else if lt(x, cast(7.5, f32)) then bessel_y1_small(x) else bessel_y1_large(x)
 }
-def airy_f_rec(x3: f32, term: f32, acc: f32, k: f32, iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def airy_f_rec(x3: f32, term: f32, acc: f32, k: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   one_f = cast(1.0, f32)
   three = cast(3.0, f32)
   if lte(iters, zero_i) then acc else {
@@ -619,9 +613,9 @@ def airy_f_rec(x3: f32, term: f32, acc: f32, k: f32, iters: int64) -> f32 = {
     if converged then acc_next else airy_f_rec(x3, term_next, acc_next, add(k, one_f), sub(iters, one_i))
   }
 }
-def airy_g_rec(x3: f32, term: f32, acc: f32, k: f32, iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def airy_g_rec(x3: f32, term: f32, acc: f32, k: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   one_f = cast(1.0, f32)
   three = cast(3.0, f32)
   if lte(iters, zero_i) then acc else {
@@ -641,12 +635,12 @@ def airy_g_rec(x3: f32, term: f32, acc: f32, k: f32, iters: int64) -> f32 = {
 def airy_fg(x: f32) -> f32 = {
   x2 = mul(x, x)
   x3 = mul(x2, x)
-  airy_f_rec(x3, cast(1.0, f32), cast(1.0, f32), cast(0.0, f32), cast(50, int64))
+  airy_f_rec(x3, cast(1.0, f32), cast(1.0, f32), cast(0.0, f32), cast(50, i64))
 }
 def airy_gg(x: f32) -> f32 = {
   x2 = mul(x, x)
   x3 = mul(x2, x)
-  airy_g_rec(x3, x, x, cast(0.0, f32), cast(50, int64))
+  airy_g_rec(x3, x, x, cast(0.0, f32), cast(50, i64))
 }
 def airy_ai_asymptotic_pos(x: f32) -> f32 = {
   sqrt_x = sqrt(x)
@@ -690,9 +684,9 @@ def airy_bi(x: f32) -> f32 = {
     mul(sqrt3, c1 |> mul(f) |> add(mul(c2, g)))
   }
 }
-def ellip_agm_a_rec(a: f32, b: f32, iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def ellip_agm_a_rec(a: f32, b: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   two = cast(2.0, f32)
   if lte(iters, zero_i) then a else {
     a_next = a |> add(b) |> div(two)
@@ -704,9 +698,9 @@ def ellip_agm_a_rec(a: f32, b: f32, iters: int64) -> f32 = {
     if converged then a_next else ellip_agm_a_rec(a_next, b_next, sub(iters, one_i))
   }
 }
-def ellip_agm_csum_rec(a: f32, b: f32, c_sum: f32, weight: f32, iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def ellip_agm_csum_rec(a: f32, b: f32, c_sum: f32, weight: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   two = cast(2.0, f32)
   if lte(iters, zero_i) then c_sum else {
     a_next = a |> add(b) |> div(two)
@@ -728,7 +722,7 @@ def ellipk(m: f32) -> f32 = {
     half_pi = cast(1.5707963267948966, f32)
     om = sub(one, m)
     b0 = sqrt(om)
-    a_inf = ellip_agm_a_rec(one, b0, cast(50, int64))
+    a_inf = ellip_agm_a_rec(one, b0, cast(50, i64))
     div(half_pi, a_inf)
   }
 }
@@ -742,8 +736,8 @@ def ellipe(m: f32) -> f32 = {
     c0 = sqrt(m)
     c0_sq = mul(c0, c0)
     init_sum = cast(0.5, f32) |> mul(c0_sq)
-    a_inf = ellip_agm_a_rec(one, b0, cast(50, int64))
-    c_sum = ellip_agm_csum_rec(one, b0, init_sum, cast(0.5, f32), cast(50, int64))
+    a_inf = ellip_agm_a_rec(one, b0, cast(50, i64))
+    c_sum = ellip_agm_csum_rec(one, b0, init_sum, cast(0.5, f32), cast(50, i64))
     k = div(half_pi, a_inf)
     mul(k, sub(one, c_sum))
   }
@@ -755,7 +749,7 @@ def ellipe(m: f32) -> f32 = {
 -- has to leave tensor rank to reach them. Chelis has no implicit
 -- tensor-scalar broadcasting, so every constant is lifted to rank `n` with
 -- `sp_lift_t`, and every scalar `if` becomes an elementwise `where`.
-def sp_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = c |> scalar_to_tensor |> insert(0, shape(template, cast(0, int32)))
+def sp_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = c |> scalar_to_tensor |> insert(0, shape(template, cast(0, i32)))
 def sp_abs_t[n](x: &tensor[n, f32]) -> tensor[n, f32] = {
   zeros = sp_lift_t(x, cast(0.0, f32))
   x |> lt(zeros) |> where(neg(x), x)
@@ -777,7 +771,7 @@ def erf_t[n](x: &tensor[n, f32]) -> tensor[n, f32] = {
   y = sub(one, mul(poly, e))
   signed = x |> lt(zero) |> where(neg(y), y)
   -- Mirror the scalar `erf` exactly: the same 0.25 cutover onto the same
-  -- 4-term series. nautilus#45 requires these two lanes to agree
+  -- 4-term series. Nautilus PR 45 requires these two lanes to agree
   -- elementwise, so they change together or not at all.
   small = sp_lift_t(x, cast(0.25, f32))
   two_over_sqrt_pi = sp_lift_t(x, cast(1.1283791670955126, f32))
@@ -785,12 +779,7 @@ def erf_t[n](x: &tensor[n, f32]) -> tensor[n, f32] = {
   c5 = sp_lift_t(x, cast(0.1, f32))
   c7 = sp_lift_t(x, cast(0.023809523809523808, f32))
   in_small = lt(ax, small)
-  -- Clamped for lane symmetry with the scalar `erf`, NOT because `where`
-  -- needs it: a discarded `where` arm holding inf or NaN does not poison
-  -- the selected value (probed directly). Deleting this clamp changes no
-  -- measured output. The scalar clamp IS load-bearing -- see chelis#1464
-  -- there -- and nautilus#45 wants the two lanes to stay the same shape.
-  xt = where(in_small, x, zero)
+  xt = x
   xt2 = mul(xt, xt)
   tpoly = sub(one, mul(xt2, sub(c3, mul(xt2, sub(c5, mul(xt2, c7))))))
   taylor = mul(mul(xt, tpoly), two_over_sqrt_pi)

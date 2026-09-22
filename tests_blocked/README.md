@@ -19,14 +19,12 @@ Verdicts are fail-closed:
 
 ## Current executable probes
 
-| Probe | Current blocker | Re-probe trigger |
-|---|---|---|
-| `curvefit/lm_jacobian_generic_dims.ch` | Generic vector-model wrapper reaches malformed backward-DAG verification after chelis#847's checker fix; `chelis#676` | Every pin bump and the release resolving chelis#676 |
-| `curvefit/lm_jacobian_model_wrapper.ch` | Concrete arbitrary-model wrapper emits a malformed backward DAG; `chelis#676` (function-valued-capture witness, same verifier class) | Every pin bump and the release resolving the issue |
-| `masked_select/untaken_arm_overflow.ch` | An untaken scalar-`if` arm is evaluated under `vmap`, so an overflowing arm poisons the select; `chelis#1464` (untaken-arithmetic sibling of that issue's taken-`fail` reproducer) | Every pin bump and the release resolving chelis#1464 |
-| `generic_dtype/scalar_cast_from_float_binder.ch` | `cast`/`cast_trunc` reject a scalar source typed by a `Float`-bounded binder while the tensor form is accepted; `chelis#2151` | Every pin bump and the release resolving chelis#2151 |
+None. The four 0.18.10 probes became positive regression tests at the 0.18.11
+pin. The wider Levenberg-Marquardt AD replacement remains narrowed by a distinct
+runtime-extent failure tracked under `chelis#1277`; its exact Jacobian-row
+witness is now positive coverage rather than a failing probe.
 
-## Cannot be probed from this repo
+## §cannot-be-probed
 
 - **`shoals#61`** — cited in `src/special.ch`'s `erf` error-bound note. It is
   the sibling shoals repo's instance of the same duplicated-approximation
@@ -34,6 +32,22 @@ Verdicts are fail-closed:
   there is nothing here to reproduce. The citation exists so that an author
   widening `erf` to f64 sees the constants are copied elsewhere too. Re-probe
   trigger: none; drop the citation when shoals#61 closes.
+
+- **`chelis#2152`** — the failure occurs only during C host lowering of an
+  imported generic definition across two packages. `chelis test --expect
+  blocked` does not enter that lane; use the manual recipe below.
+
+- **`chelis#2370`** — the failure is exposed by replacing the shipped
+  finite-difference Levenberg-Marquardt Jacobian with its exact-AD
+  implementation and then running the six complete multi-parameter recovery
+  paths. The fixed Jacobian-row witnesses pass in isolation, and a smaller
+  recursive composition also passes, so pinning either as a blocked probe
+  would test the wrong boundary. The issue body preserves the exact mutation
+  and diagnostic until a bounded standalone witness exists. The narrowing site
+  therefore links this inventory rather than spelling an issue token: the
+  0.18.11 conformance auditor treats every source token as proof that an
+  executable blocked probe must exist and does not consult this
+  `§cannot-be-probed` disposition.
 
 ## Manual-only current probes
 

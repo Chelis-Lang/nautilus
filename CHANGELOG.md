@@ -6,6 +6,20 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.46] - 2026-09-21
+
+### Changed
+
+- Upgraded the Chelis toolchain pin from 0.18.10 to 0.18.11 and refreshed all
+  conform-managed shell surfaces. Canonical Surf now uses `i8`/`i16`/`i32`/`i64`.
+- Renamed the 0.18.9 through 0.18.11 migration notes to the enforced
+  snake_case narrative-document convention.
+- Promoted the repaired generic Jacobian-row, scalar generic cast, and untaken
+  masked-select probes to positive coverage. Removed the `erf` series clamps
+  made unnecessary by the masked-select repair. The full generic LM AD
+  replacement remains on its finite-difference implementation because the
+  composed path exposes chelis#2370 under the runtime-extents tracker.
+
 ### Added
 
 - **`Nautilus.Stats` gains `rank_vec`, `zscore_vec`, `covariance_matrix` and
@@ -75,7 +89,7 @@ the 483-test suite, the negative sidecars, the three blocked probes, and the
   reach their pinned diagnostics with no source drift, so the finite-difference
   Jacobian narrowing and the `erf` series clamps are retained.
 - Published-compiler acceptance and artifact identities are recorded in
-  `docs/chelis-0.18.10-migration.md` before publication.
+  `docs/chelis_0_18_10_migration.md` before publication.
 
 ## [0.7.44] - 2026-09-14
 
@@ -103,7 +117,7 @@ advances from 0.7.43 to 0.7.44.
   subprocess status, and unit tests cover the propagation.
 - Executable documentation and the CLI command inventory are refreshed.
   Published-compiler acceptance and artifact identities are recorded in
-  `docs/chelis-0.18.9-migration.md` before publication.
+  `docs/chelis_0_18_9_migration.md` before publication.
 
 - CI carries a temporary bandaid: the native-suite job raises `--suite-timeout`
   from its 600s default because Chelis v0.18.9 has a tensor and Monte-Carlo

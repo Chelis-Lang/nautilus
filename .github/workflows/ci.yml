@@ -15,8 +15,8 @@ env:
   # Audit-only mirror required by the shell contract. The installer resolves
   # its runtime tag and version directly from the exact pin in reef.toml; the
   # fail-fast guard and `conform audit` reject drift in this pair.
-  CHELIS_TAG: v0.18.10
-  CHELIS_VERSION: 0.18.10
+  CHELIS_TAG: v0.18.11
+  CHELIS_VERSION: 0.18.11
 
 jobs:
   pin-consistency-guard:
@@ -221,6 +221,7 @@ jobs:
       # Shell contract §5: blockers must keep failing with their pinned
       # diagnostic. A pass is FIX-DETECTED and fails until de-narrowed.
       - name: chelis test (upstream-blocker probes)
+        if: ${{ hashFiles('tests_blocked/**/*.ch') != '' }}
         run: chelis test tests_blocked/ --expect blocked
 
   scipy-parity:

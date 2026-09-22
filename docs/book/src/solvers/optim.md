@@ -8,10 +8,10 @@ NaN on failure).
 
 | Function | Signature |
 |---|---|
-| `golden_section_search` | `(f: f32 -> f32, lo, hi: f32, tol: f32, max_iters: int64) -> f32` |
-| `brent_minimize` | `(f: f32 -> f32, lo, hi: f32, tol: f32, max_iters: int64) -> f32` |
-| `gradient_descent_1d` | `(f, df: f32 -> f32, x0, lr: f32, max_iters: int64) -> f32` |
-| `newton_minimize_1d` | `(f, df, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32` |
+| `golden_section_search` | `(f: f32 -> f32, lo, hi: f32, tol: f32, max_iters: i64) -> f32` |
+| `brent_minimize` | `(f: f32 -> f32, lo, hi: f32, tol: f32, max_iters: i64) -> f32` |
+| `gradient_descent_1d` | `(f, df: f32 -> f32, x0, lr: f32, max_iters: i64) -> f32` |
+| `newton_minimize_1d` | `(f, df, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32` |
 
 ## When to use which
 
@@ -40,7 +40,7 @@ def find_min() -> f32 = {
     add(mul(d, d), cast(7.0, f32))
   }
   golden_section_search(f, cast(0.0, f32), cast(10.0, f32),
-                        cast(1.0e-8, f32), cast(200, int64))
+                        cast(1.0e-8, f32), cast(200, i64))
 }
 ```
 
@@ -60,7 +60,7 @@ def dd_parabola(x: f32) -> f32 = cast(2.0, f32)
 
 def find_min_newton() -> f32 =
   newton_minimize_1d(parabola, d_parabola, dd_parabola,
-                     cast(0.0, f32), cast(1.0e-10, f32), cast(50, int64))
+                     cast(0.0, f32), cast(1.0e-10, f32), cast(50, i64))
 ```
 
 ## Notes

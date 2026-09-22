@@ -9,7 +9,7 @@ def sde_zero_f() -> f32 = cast(0.0, f32)
 def sde_nan_f() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
 def euler_maruyama_fixed[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32 = {
   n_i = numel(noise)
-  if lte(n_i, cast(0, int64)) then sde_nan_f() else {
+  if lte(n_i, cast(0, i64)) then sde_nan_f() else {
     n_f = cast(n_i, f32)
     dt = t1 |> sub(t0) |> div(n_f)
     sqrt_dt = sqrt(dt)
@@ -30,7 +30,7 @@ def euler_maruyama_fixed[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, y0: f32,
 }
 def milstein_fixed[n](f: f32 -> f32 -> f32, g: f32 -> f32 -> f32, dg_dy: f32 -> f32 -> f32, y0: f32, t0: f32, t1: f32, noise: tensor[n, f32]) -> f32 = {
   n_i = numel(noise)
-  if lte(n_i, cast(0, int64)) then sde_nan_f() else {
+  if lte(n_i, cast(0, i64)) then sde_nan_f() else {
     n_f = cast(n_i, f32)
     dt = t1 |> sub(t0) |> div(n_f)
     sqrt_dt = sqrt(dt)

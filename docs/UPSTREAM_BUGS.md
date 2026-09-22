@@ -5,68 +5,32 @@ The four current-status sections are the operational index; the historical
 evidence that follows preserves the original release-by-release probes,
 reproductions, workarounds, and status notes.
 
-> **Current release pin: `chelis 0.18.10`.** The published Darwin arm64 asset
-> (release SHA-256
-> `80c9c5b42a8fbcee6884915df1a4dafb8bcc1cae33199ded060d8b2ebece8bf0`;
-> compiler payload SHA-256
-> `a6af380886b21761bc2822a814e4fef4232e8b8551922d32bca722cd4e04e1e2`;
-> source commit `b9095ccf2c0b76859aa447c6febe699fd287f1d2`, tag `v0.18.10`,
-> annotated tag object `e247a5d33cd2df552f57e3efddfd4ea30846b3b8`, release run
-> 34966582543) ran the complete local gate on 2026-09-15: 483 positive tests, 4
-> negative contracts, 3 blocked probes still blocked (a fourth, for chelis#2151,
-> was added afterwards and is also still blocked on 0.18.10), and 216/216 strict SciPy
-> parity, with the positive suite finishing in 413s wall time on Apple silicon
-> (the slower Linux CI runner keeps the raised `--suite-timeout`; see #2059
-> below). The tarball was checked against its release sidecar and
-> the installed payload is the `bin/chelis` extracted from it. The Linux
-> glibc-2.31 asset for the same tag (SHA-256
-> `0843697e0a7783e383df0347ae431ae56f62b5a5ae34a7aa72ac37ee91df1e0b`; compiler
-> payload SHA-256
-> `6622e40bc786c562b5b66d370a84e46ded551dee70abfc617a71d026c0119b00`) was not
-> exercised here; its gate run is CI's, not this one.
+> **Current release pin: `chelis 0.18.11`.** Source commit
+> `a7e592f88a148d8323b8f9a8f679c8e163ad3ee7`, tag `v0.18.11`, release run
+> 35665381014. The published Darwin arm64 asset SHA-256 is
+> `386b2912d21f2b4a2fc6f7f42ab71625c5f1258b2d90c48c2e263b3fc435c289`;
+> its installed compiler payload SHA-256 is
+> `416e7b5875c7b2d3c8cc5835e0b89a983ff46e866f6f4989d9876a93e2e60951`.
+> The official payload passes 507 positive tests, 4 negative contracts, and
+> 216/216 strict SciPy parity. Formatting, lint, package build, conform audit,
+> and bump-check are green; there is no executable blocked-probe suite at this
+> pin. The complete local-gate receipt is recorded in `docs/CHELIS_SURFACE.md`.
 >
-> **0.18.10 re-probe results.** chelis#676 remains **live**: both
-> `tests_blocked/curvefit/` shapes still fail while verifying the backward DAG
-> with `mismatched dimension count: 0 vs 1` (`chelis test tests_blocked/
-> --expect blocked` -> 3 ok, 0 failing, counting the masked-select probe), so
-> the finite-difference Jacobian narrowing stays. chelis#1464 remains **live**:
-> `tests_blocked/masked_select/untaken_arm_overflow.ch` still fails at its
-> pinned `assert failed: the untaken overflowing arm does not poison the
-> selected value`, so both `erf` series clamps stay. No probe source drift this
-> cycle: all three probes reach the same pinned diagnostic unmodified, so the
-> verdict is a clean OK. Real `Special.erf(1)` remains green at `0.8427007`
-> through package-aware `eval --file`, and the strict parity gate is numerically
-> unchanged at 216/216.
+> **0.18.11 re-probe results.** The two chelis#676 Jacobian probes, the
+> chelis#1464 untaken-arm probe, and the chelis#2151 scalar generic-cast probe
+> now pass and have moved into `tests/`. The `erf` series clamps are removed.
+> Replacing the wider Levenberg-Marquardt finite-difference Jacobian exposed a
+> distinct runtime-extent binder-provenance failure, tracked as chelis#2370
+> under chelis#1277; the finite-difference implementation remains until that
+> broader composed-helper case passes. The chelis#2152 headline scalar-cast
+> shape now builds, but its function-parameter-plus-cast residue still rejects
+> in downstream C lowering at both concrete precisions and remains live.
 >
-> **Two upstream repairs land in Nautilus this pin.** chelis#2059: the
-> interpreter's `admit_execution_profile` re-lowered definitions per closure
-> application; 0.18.10 makes the lowering program-scoped. This regression
-> degraded the closure-heavy package/prove route (the on-demand NN prove
-> exhausting its budget), where the fix is verified. The 0.7.44 CI raise of the
-> `chelis test tests/` step's `--suite-timeout` from 600s to 2400s was attributed
-> to #2059; that attribution was wrong. On GitHub's Linux runner this tensor /
-> Monte-Carlo suite ran ~800-940s under 0.18.9 and still exceeds the 600s default
-> under 0.18.10 (413s only on faster Apple silicon) — intrinsic suite weight on a
-> slow runner, a different workload from the one #2059 governed. The raise is
-> therefore retained and re-documented as suite weight, not reverted; the proper
-> fix is to shard `tests/` across a CI matrix (follow-up). `nightly.yml` and
-> `release.yml` never ran `chelis test tests/`, so neither carries it.
-> chelis#2068: a
-> native-C ownership error triggered by `src/special.ch::airy_gg` (the recursive
-> Airy `g`-series helper behind exported `airy_ai`/`airy_bi`) is fixed, so the
-> helper compiles on the native-C target; the whole-package `chelis reef build`
-> and the sealed release-artifact contract exercise it and its numerics, shapes
-> and tolerances are unchanged. Neither fix required a Nautilus source edit.
->
-> **Nothing is retired at this pin.** Both cited blocked issues (chelis#676,
-> chelis#1464) are open upstream, so `conform audit --explain` (row 9,
-> staleness) has no closed-issue citation to triage and the audit is conformant.
-> chelis#2059 and chelis#2068 carried no shipped Nautilus source workaround to
-> revert: #2059's only downstream trace was the CI suite-timeout raise (retained
-> and re-documented as suite weight, see above), and #2068 was an upstream
-> compile error, not a narrowing. `chelis-std`
-> stays at 0.4.0, compiler-bound to `=0.18.10` in the regenerated `reef.lock`,
-> so there is still **no dependency cascade** into this bump.
+> **Migration effects.** Maintained Surf source uses canonical
+> `i8`/`i16`/`i32`/`i64` spellings. The package-local `cross_entropy` export is
+> renamed `distribution_cross_entropy` because `cross_entropy` is now a
+> standard-prelude macro. `chelis-std` remains 0.4.0 and is compiler-bound to
+> `=0.18.11` in the regenerated lockfile.
 
 > **Previous pin: `chelis 0.18.9`.** The published Darwin arm64 asset
 > (release SHA-256
@@ -121,7 +85,7 @@ reproductions, workarounds, and status notes.
 >
 > **0.18.7 through 0.18.9 breaking changes, and where Nautilus was exposed.**
 > Two breaks reached Nautilus source, and both are repaired in this release
-> (`docs/chelis-0.18.9-migration.md`): explicit in-package export enforcement,
+> (`docs/chelis_0_18_9_migration.md`): explicit in-package export enforcement,
 > which required LinAlg to export `la_basis_n_f32`, `la_zeros_mat_like` and
 > `la_tridiag_solve` for their existing consumers and Interpolation to import
 > the four LinAlg bindings it uses (nautilus#61); and the scalar-lift axis
@@ -150,7 +114,7 @@ reproductions, workarounds, and status notes.
 > **One gate repair this pin forced.** `chelis lint --check .` rejects a
 > kebab-case narrative filename under `docs/` through `doc-filename-convention`
 > (the chelis#190 behavior recorded in the historical evidence below), so the
-> migration document for this bump is named `docs/chelis-0.18.9-migration.md`
+> migration document for this bump was originally named `docs/chelis-0.18.9-migration.md`
 > rather than the kebab-case spelling the branch first used.
 
 > **Previous pin: `chelis 0.18.6`.** The published Darwin arm64 asset
@@ -226,12 +190,12 @@ reproductions, workarounds, and status notes.
 > because it will recur for any shell that references its own issues in source:
 > the widened grammar does not exempt a repo's self-reference.
 
-## Actively blocking
+### Resolved 0.18.11 repair detail
 
 **Re-probe cadence:** at every compiler pin bump and before every Nautilus
 release.
 
-- **Concrete arbitrary-model wrapper emits a malformed backward DAG** —
+- **Resolved in 0.18.11: concrete arbitrary-model wrapper emitted a malformed backward DAG** —
   `chelis#676`
   ([Chelis-Lang/chelis#676](https://github.com/Chelis-Lang/chelis/issues/676)).
   Filed as a function-valued-model-capture witness on `chelis#676` (the same
@@ -294,7 +258,7 @@ release.
       On pass, re-run the generic probe and compare full LM recovery
       trajectories before de-narrowing.
 
-- **An untaken scalar-`if` arm is evaluated under `vmap`** — `chelis#1464`
+- **Resolved in 0.18.11: an untaken scalar-`if` arm was evaluated under `vmap`** — `chelis#1464`
   ([Chelis-Lang/chelis#1464](https://github.com/Chelis-Lang/chelis/issues/1464)).
   `spec/06` §2.10.1 says an untaken branch is not evaluated. Under `vmap` a
   scalar `if` is lowered to a masked select that evaluates BOTH arms, so an
@@ -346,29 +310,43 @@ release.
       compiler is fixed, which is why the blocked probe above, not this test,
       is what orders de-narrowing.
     - **Re-probe trigger:** every pin bump and the release resolving
-      chelis#1464. On pass, drop both clamps and archive this entry.
+      chelis#1464. The 0.18.11 pass removed both clamps and archived this entry.
+
+## Actively blocking
+
+**Re-probe cadence:** at every compiler pin bump and before every Nautilus
+release.
+
+- **Composed generic gradient helper loses runtime-extent binder provenance** —
+  `chelis#2370`
+  ([Chelis-Lang/chelis#2370](https://github.com/Chelis-Lang/chelis/issues/2370)).
+    - **Symptom:** the focused Jacobian row helpers fixed by chelis#676 pass,
+      but the complete Levenberg-Marquardt composition fails during evaluation
+      with a missing runtime-extent binder after `grad` crosses the helper.
+    - **Affected Nautilus surface:** replacing `lm_scalar_nparam`'s
+      finite-difference Jacobian with exact AD. The existing finite-difference
+      implementation remains the bounded workaround.
+    - **Probe:** the full `tests/curvefit.ch` trajectory with the exact-AD
+      replacement; the two narrower repaired shapes now live in `tests/`.
+    - **Re-probe trigger:** every pin bump and the release resolving
+      chelis#2370. On pass, compare the full LM recovery trajectories before
+      removing the finite-difference implementation.
+
 - **A downstream `chelis build` rejects a cast to a `Float`-bounded binder** —
   `chelis#2152`
   ([Chelis-Lang/chelis#2152](https://github.com/Chelis-Lang/chelis/issues/2152)).
-    - **Measured on chelis `main`:** the same variant table is rejected
-      identically on a debug build of `main` at `1703a2e32` as on the 0.18.10
-      release, at f32 and at f64, so it is not already fixed upstream.
-    - **Symptom:** a `[prec: Float]` library containing `cast(…, prec)` passes
-      `chelis check`, `chelis test` and `reef build`, as does a dependent
-      consumer's `reef build`. The consumer's `chelis build` (C) then fails
-      with ``unsupported: dtype `prec` on a `cast` target in host lowering``,
-      **even when it calls the function only at f32**.
-    - **Shapes rejected on 0.18.10, as measured:** a scalar cast to `prec`
-      called directly (`cast(numel(v), prec)` over a borrowed or owned tensor
-      parameter, and `cast(0.0, prec)`); the same scalar cast one generic call
-      deep; and a tensor cast to `prec` reached through a generic-to-generic
-      call. Built as a control: a tensor cast to `prec` called directly from a
-      concrete caller, and a generic def with no cast. Deeper nesting was not
-      measured.
+    - **0.18.11 result:** the original imported `cast(numel(v), prec)` headline
+      shape now emits C from a concrete f32 consumer. The remaining minimal
+      shape combines a function-typed parameter with the scalar cast:
+      `apply_cast[prec: Float](g: prec -> prec, x: prec)`. A two-package probe
+      using the official Darwin arm64 release passes both packages' `reef
+      build`, then the consumer's `chelis build` rejects with ``unsupported:
+      dtype `prec` on a `cast` target in host lowering``. The upstream issue's
+      current evidence records the same residue at f32 and f64.
     - **Relation upstream:** chelis#1418 is the same diagnostic, closed. Its
-      fixes (chelis#1758, chelis#1759) first shipped in 0.18.7, and they cover
-      tensor-producing recursive helpers only. chelis#2151
-      (below, Tracking) is the checker-side mirror.
+      fixes (chelis#1758, chelis#1759) first shipped in 0.18.7, and subsequent
+      repairs cover the direct scalar shape. chelis#2151, the checker-side
+      mirror, is resolved in 0.18.11.
     - **Affected Nautilus surface:** blocks nautilus#69's Float-generic
       `Nautilus.Stats` (branch `fix/69-stats-float-generic`). Converting it
       as-is would regress existing f32 C consumers: nautilus `main`'s f32
@@ -382,21 +360,16 @@ release.
     - **Workaround:** none adopted. Nautilus stays f32 until this clears, and
       no `[prec: Float]` conversion merges before a downstream C build passes.
     - **Re-probe trigger:** every pin bump.
-    - **Pass condition (all of it, at f32 AND f64):** every rejected shape above
-      builds, compiles and links as a downstream consumer; AND a consumer of
-      the `fix/69-stats-float-generic` branch's `Nautilus.Stats` that calls
-      `mean_vec`, `std_vec`, `quantile_vec`, `trimmed_mean_vec` and
-      `correlation_matrix` builds, compiles and links. A pass on chelis#2152's
-      headline reproducer alone is **not** a pass: upstream could fix the
-      direct scalar case while the nested and tensor-routed shapes that Stats
-      depends on still fail, and no gate in this repo would notice. Only on a
-      full pass, unblock nautilus#69 and archive this entry.
+    - **Pass condition:** at f32 and f64, the function-parameter-plus-cast
+      reproducer and the affected Float-generic Nautilus consumers build,
+      compile, and link. The headline direct-scalar repair alone does not close
+      the remaining class.
 
-## Tracking
+### Resolved 0.18.11 tracking detail — `chelis#2151`
 
 **Re-probe cadence:** at every compiler pin bump.
 
-- **`cast`/`cast_trunc` reject a scalar source typed by a `Float`-bounded
+- **Resolved in 0.18.11: `cast`/`cast_trunc` rejected a scalar source typed by a `Float`-bounded
   binder** — `chelis#2151`
   ([Chelis-Lang/chelis#2151](https://github.com/Chelis-Lang/chelis/issues/2151)).
     - **Symptom:** `def f[prec: Float](x: prec) -> int64 = cast_trunc(x, int64)`
@@ -415,14 +388,19 @@ release.
     - **Re-probe trigger:** every pin bump. On pass, drop the tensor detour
       and archive this entry.
 
+## Tracking
+
+- **No current limitation is tracking-only.** Live release blockers are listed
+  under `chelis#2370` and `chelis#2152`; resolved historical entries remain
+  below.
+
 ## Parked
 
 **Re-probe cadence:** at every pin bump and whenever a stated filing condition
 is met.
 
-- **No inactive limitation is parked.** The remaining filed issues are
-  chelis#676 (backward-DAG wrapper shapes). Chelis#847, chelis#848,
-  chelis#970, and chelis#972 are archived below.
+- **No inactive limitation is parked.** The former `chelis#676`, `chelis#847`,
+  `chelis#848`, `chelis#970`, and `chelis#972` entries are archived below.
 
 ## Archived
 

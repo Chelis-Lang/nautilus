@@ -1,5 +1,4 @@
 module Nautilus.Fixture.Demo
-
 -- chelis:provenance/v1 oracle
 -- id = NAUT-FIX-RUNNER-ORACLE
 -- oracle-kind = test

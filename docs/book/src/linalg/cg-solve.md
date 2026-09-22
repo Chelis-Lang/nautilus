@@ -12,7 +12,7 @@ def cg_solve[n](
   b: tensor[n, f32],
   x0: tensor[n, f32],
   tol: f32,
-  max_iters: int64
+  max_iters: i64
 ) -> tensor[n, f32]
 ```
 
@@ -56,7 +56,7 @@ def solve_normal_eq[m, n](a: tensor[m, n, f32],
   ata = gram(copy(a))
   atb = einsum("ji,j->i", a, b)
   x0 = to_tensor(map(fn (x: f32) -> cast(0.0, f32), to_list(copy(atb))))
-  cg_solve(ata, atb, x0, cast(1.0e-10, f32), cast(200, int64))
+  cg_solve(ata, atb, x0, cast(1.0e-10, f32), cast(200, i64))
 }
 ```
 

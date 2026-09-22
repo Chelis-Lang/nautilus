@@ -521,18 +521,18 @@ def test_normal_cdf_t_matches_scalar_elementwise() -> unit ! { Test } = {
   std = cast(1.4, f32)
   ys = to_list(normal_cdf_t(dist_probe_xs(), mean, std))
   tol = cast(1e-9, f32)
-  _ = assert_close(index(ys, cast(0, int64)), normal_cdf(cast(-2.5, f32), mean, std), tol, "normal_cdf_t[0]")
-  _ = assert_close(index(ys, cast(1, int64)), normal_cdf(cast(-0.3, f32), mean, std), tol, "normal_cdf_t[1]")
-  _ = assert_close(index(ys, cast(2, int64)), normal_cdf(cast(0.0, f32), mean, std), tol, "normal_cdf_t[2]")
-  assert_close(index(ys, cast(3, int64)), normal_cdf(cast(1.7, f32), mean, std), tol, "normal_cdf_t[3]")
+  _ = assert_close(index(ys, cast(0, i64)), normal_cdf(cast(-2.5, f32), mean, std), tol, "normal_cdf_t[0]")
+  _ = assert_close(index(ys, cast(1, i64)), normal_cdf(cast(-0.3, f32), mean, std), tol, "normal_cdf_t[1]")
+  _ = assert_close(index(ys, cast(2, i64)), normal_cdf(cast(0.0, f32), mean, std), tol, "normal_cdf_t[2]")
+  assert_close(index(ys, cast(3, i64)), normal_cdf(cast(1.7, f32), mean, std), tol, "normal_cdf_t[3]")
 }
 def test_normal_pdf_t_matches_scalar_elementwise() -> unit ! { Test } = {
   mean = cast(0.2, f32)
   std = cast(1.4, f32)
   ys = to_list(normal_pdf_t(dist_probe_xs(), mean, std))
   tol = cast(1e-9, f32)
-  _ = assert_close(index(ys, cast(0, int64)), normal_pdf(cast(-2.5, f32), mean, std), tol, "normal_pdf_t[0]")
-  assert_close(index(ys, cast(3, int64)), normal_pdf(cast(1.7, f32), mean, std), tol, "normal_pdf_t[3]")
+  _ = assert_close(index(ys, cast(0, i64)), normal_pdf(cast(-2.5, f32), mean, std), tol, "normal_pdf_t[0]")
+  assert_close(index(ys, cast(3, i64)), normal_pdf(cast(1.7, f32), mean, std), tol, "normal_pdf_t[3]")
 }
 def test_normal_inv_cdf_t_matches_scalar_elementwise() -> unit ! { Test } = {
   mean = cast(0.2, f32)
@@ -540,10 +540,10 @@ def test_normal_inv_cdf_t_matches_scalar_elementwise() -> unit ! { Test } = {
   qs = to_tensor([cast(0.01, f32), cast(0.25, f32), cast(0.5, f32), cast(0.99, f32)])
   ys = to_list(normal_inv_cdf_t(qs, mean, std))
   tol = cast(1e-9, f32)
-  _ = assert_close(index(ys, cast(0, int64)), normal_inv_cdf(cast(0.01, f32), mean, std), tol, "normal_inv_cdf_t low tail")
-  _ = assert_close(index(ys, cast(1, int64)), normal_inv_cdf(cast(0.25, f32), mean, std), tol, "normal_inv_cdf_t central")
-  _ = assert_close(index(ys, cast(2, int64)), normal_inv_cdf(cast(0.5, f32), mean, std), tol, "normal_inv_cdf_t median")
-  assert_close(index(ys, cast(3, int64)), normal_inv_cdf(cast(0.99, f32), mean, std), tol, "normal_inv_cdf_t high tail")
+  _ = assert_close(index(ys, cast(0, i64)), normal_inv_cdf(cast(0.01, f32), mean, std), tol, "normal_inv_cdf_t low tail")
+  _ = assert_close(index(ys, cast(1, i64)), normal_inv_cdf(cast(0.25, f32), mean, std), tol, "normal_inv_cdf_t central")
+  _ = assert_close(index(ys, cast(2, i64)), normal_inv_cdf(cast(0.5, f32), mean, std), tol, "normal_inv_cdf_t median")
+  assert_close(index(ys, cast(3, i64)), normal_inv_cdf(cast(0.99, f32), mean, std), tol, "normal_inv_cdf_t high tail")
 }
 def test_normal_cdf_t_inv_roundtrip() -> unit ! { Test } = {
   mean = cast(0.0, f32)
@@ -551,9 +551,9 @@ def test_normal_cdf_t_inv_roundtrip() -> unit ! { Test } = {
   xs = to_tensor([cast(-1.5, f32), cast(0.4, f32), cast(2.0, f32)])
   back = to_list(normal_inv_cdf_t(normal_cdf_t(xs, mean, std), mean, std))
   tol = cast(0.00001, f32)
-  _ = assert_close(index(back, cast(0, int64)), cast(-1.5, f32), tol, "roundtrip[0]")
-  _ = assert_close(index(back, cast(1, int64)), cast(0.4, f32), tol, "roundtrip[1]")
-  assert_close(index(back, cast(2, int64)), cast(2.0, f32), tol, "roundtrip[2]")
+  _ = assert_close(index(back, cast(0, i64)), cast(-1.5, f32), tol, "roundtrip[0]")
+  _ = assert_close(index(back, cast(1, i64)), cast(0.4, f32), tol, "roundtrip[1]")
+  assert_close(index(back, cast(2, i64)), cast(2.0, f32), tol, "roundtrip[2]")
 }
 def test_normal_inv_cdf_t_guards_match_scalar() -> unit ! { Test } = {
   -- The guard lanes are the ones a branchless port is most likely to get
@@ -563,10 +563,10 @@ def test_normal_inv_cdf_t_guards_match_scalar() -> unit ! { Test } = {
   std = cast(1.0, f32)
   qs = to_tensor([cast(0.0, f32), cast(1.0, f32), cast(-0.5, f32), cast(1.5, f32)])
   ys = to_list(normal_inv_cdf_t(qs, mean, std))
-  _ = assert_true(lt(index(ys, cast(0, int64)), cast(-1e30, f32)), "q = 0 gives -inf like the scalar")
-  _ = assert_true(gt(index(ys, cast(1, int64)), cast(1e30, f32)), "q = 1 gives +inf like the scalar")
-  lo = index(ys, cast(2, int64))
-  hi = index(ys, cast(3, int64))
+  _ = assert_true(lt(index(ys, cast(0, i64)), cast(-1e30, f32)), "q = 0 gives -inf like the scalar")
+  _ = assert_true(gt(index(ys, cast(1, i64)), cast(1e30, f32)), "q = 1 gives +inf like the scalar")
+  lo = index(ys, cast(2, i64))
+  hi = index(ys, cast(3, i64))
   _ = assert_true(neq(lo, lo), "q < 0 gives NaN like the scalar")
   assert_true(neq(hi, hi), "q > 1 gives NaN like the scalar")
 }

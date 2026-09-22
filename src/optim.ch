@@ -8,9 +8,9 @@ export (golden_section_search, brent_minimize, gradient_descent_1d, newton_minim
 def opt_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def opt_nan_f32() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
 def opt_phi() -> f32 = cast(0.6180339887, f32)
-def opt_gs_rec(f: f32 -> f32, a: f32, b: f32, tol: f32, iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def opt_gs_rec(f: f32 -> f32, a: f32, b: f32, tol: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   if lte(iters, zero_i) then cast(0.5, f32) |> mul(add(a, b)) else {
     width = sub(b, a)
     awidth = opt_abs_f32(width)
@@ -25,11 +25,11 @@ def opt_gs_rec(f: f32 -> f32, a: f32, b: f32, tol: f32, iters: int64) -> f32 = {
     }
   }
 }
-def golden_section_search(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 = opt_gs_rec(f, lo, hi, tol, max_iters)
-def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32, fv: f32, fw: f32, tol: f32, iters: int64, total_iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
-  two_i = cast(2, int64)
+def golden_section_search(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32 = opt_gs_rec(f, lo, hi, tol, max_iters)
+def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32, fv: f32, fw: f32, tol: f32, iters: i64, total_iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
+  two_i = cast(2, i64)
   tol_floor = cast(1e-6, f32)
   tol_eff = if lt(tol, tol_floor) then tol_floor else tol
   if lte(iters, zero_i) then u else {
@@ -122,7 +122,7 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
     }
   }
 }
-def brent_minimize(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) -> f32 = {
+def brent_minimize(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32 = {
   mid = cast(0.5, f32) |> mul(add(lo, hi))
   quarter = add(lo, cast(0.25, f32) |> mul(sub(hi, lo)))
   three_q = add(lo, cast(0.75, f32) |> mul(sub(hi, lo)))
@@ -131,9 +131,9 @@ def brent_minimize(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: int64) 
   ft = f(three_q)
   opt_brent_rec(f, lo, hi, mid, quarter, three_q, fm, fq, ft, tol, max_iters, max_iters)
 }
-def opt_gd_rec(f: f32 -> f32, df: f32 -> f32, x: f32, lr: f32, iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def opt_gd_rec(f: f32 -> f32, df: f32 -> f32, x: f32, lr: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   if lte(iters, zero_i) then x else {
     g = df(x)
     ag = opt_abs_f32(g)
@@ -147,10 +147,10 @@ def opt_gd_rec(f: f32 -> f32, df: f32 -> f32, x: f32, lr: f32, iters: int64) -> 
     }
   }
 }
-def gradient_descent_1d(f: f32 -> f32, df: f32 -> f32, x0: f32, lr: f32, max_iters: int64) -> f32 = opt_gd_rec(f, df, x0, lr, max_iters)
-def opt_nmin_rec(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x: f32, tol: f32, iters: int64) -> f32 = {
-  zero_i = cast(0, int64)
-  one_i = cast(1, int64)
+def gradient_descent_1d(f: f32 -> f32, df: f32 -> f32, x0: f32, lr: f32, max_iters: i64) -> f32 = opt_gd_rec(f, df, x0, lr, max_iters)
+def opt_nmin_rec(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x: f32, tol: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
   if lte(iters, zero_i) then opt_nan_f32() else {
     g = df(x)
     ag = opt_abs_f32(g)
@@ -170,4 +170,4 @@ def opt_nmin_rec(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x: f32, tol: f3
     }
   }
 }
-def newton_minimize_1d(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: int64) -> f32 = opt_nmin_rec(f, df, ddf, x0, tol, max_iters)
+def newton_minimize_1d(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32 = opt_nmin_rec(f, df, ddf, x0, tol, max_iters)

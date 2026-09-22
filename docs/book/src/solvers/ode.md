@@ -10,9 +10,9 @@ solver.
 | Function | Signature | Notes |
 |---|---|---|
 | `euler_step` | `(f: f32 -> f32 -> f32, y, t, dt: f32) -> f32` | Single forward Euler step |
-| `euler_solve` | `(f: f32 -> f32 -> f32, y0, t0, t1: f32, n_steps: int64) -> f32` | Full Euler integration, returns y(t1) |
+| `euler_solve` | `(f: f32 -> f32 -> f32, y0, t0, t1: f32, n_steps: i64) -> f32` | Full Euler integration, returns y(t1) |
 | `rk4_step` | `(f: f32 -> f32 -> f32, y, t, dt: f32) -> f32` | Single classical RK4 step |
-| `rk4_solve` | `(f: f32 -> f32 -> f32, y0, t0, t1: f32, n_steps: int64) -> f32` | Full RK4 integration, returns y(t1) |
+| `rk4_solve` | `(f: f32 -> f32 -> f32, y0, t0, t1: f32, n_steps: i64) -> f32` | Full RK4 integration, returns y(t1) |
 | `rk45_adaptive_solve` | `(f: f32 -> f32 -> f32, y0, t0, t_end, rtol, atol: f32) -> f32` | Adaptive Dormand-Prince 5(4), returns y(t_end) |
 
 The drift function `f` is curried: it takes `(y: f32, t: f32)` as two
@@ -34,11 +34,11 @@ def decay(y: f32, t: f32) -> f32 = neg(y)
 
 def demo_rk4() -> f32 =
   rk4_solve(decay, cast(1.0, f32), cast(0.0, f32),
-            cast(1.0, f32), cast(100, int64))
+            cast(1.0, f32), cast(100, i64))
 
 def demo_euler() -> f32 =
   euler_solve(decay, cast(1.0, f32), cast(0.0, f32),
-              cast(1.0, f32), cast(1000, int64))
+              cast(1.0, f32), cast(1000, i64))
 
 def demo_rk45() -> f32 =
   rk45_adaptive_solve(decay, cast(1.0, f32), cast(0.0, f32),
@@ -62,7 +62,7 @@ def forced(y: f32, t: f32) -> f32 = {
 
 def demo_forced() -> f32 =
   rk4_solve(forced, cast(0.0, f32), cast(0.0, f32),
-            cast(1.0, f32), cast(100, int64))
+            cast(1.0, f32), cast(100, i64))
 ```
 
 ## Notes

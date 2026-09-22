@@ -8,7 +8,7 @@ def test_ewma_next_half_alpha() -> unit ! { Test } = {
 def test_ewma_series_matches_final() -> unit ! { Test } = {
   xs = to_tensor([cast(2.0, f32), cast(4.0, f32)])
   series = ts_ewma_series(copy(xs), cast(0.5, f32), cast(0.0, f32))
-  assert_close(ts_ewma_next(xs, cast(0.5, f32), cast(0.0, f32)), index(to_list(series), cast(1, int64)), cast(1e-6, f32), "EWMA series final equals EWMA next")
+  assert_close(ts_ewma_next(xs, cast(0.5, f32), cast(0.0, f32)), index(to_list(series), cast(1, i64)), cast(1e-6, f32), "EWMA series final equals EWMA next")
 }
 def test_exponential_smoothing_alias() -> unit ! { Test } = {
   xs = to_tensor([cast(2.0, f32), cast(4.0, f32)])

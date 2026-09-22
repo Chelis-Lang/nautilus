@@ -185,11 +185,11 @@ def test_erf_t_matches_scalar_elementwise() -> unit ! { Test } = {
   xs = sp_probe_points()
   ys = to_list(erf_t(xs))
   tol = cast(1e-9, f32)
-  _ = assert_close(index(ys, cast(0, int64)), erf(cast(-1.3, f32)), tol, "erf_t[0] matches erf(-1.3)")
-  _ = assert_close(index(ys, cast(1, int64)), erf(cast(-0.4, f32)), tol, "erf_t[1] matches erf(-0.4)")
-  _ = assert_close(index(ys, cast(2, int64)), erf(cast(1e-6, f32)), tol, "erf_t[2] matches erf near zero")
-  _ = assert_close(index(ys, cast(3, int64)), erf(cast(0.4, f32)), tol, "erf_t[3] matches erf(0.4)")
-  assert_close(index(ys, cast(4, int64)), erf(cast(2.1, f32)), tol, "erf_t[4] matches erf(2.1)")
+  _ = assert_close(index(ys, cast(0, i64)), erf(cast(-1.3, f32)), tol, "erf_t[0] matches erf(-1.3)")
+  _ = assert_close(index(ys, cast(1, i64)), erf(cast(-0.4, f32)), tol, "erf_t[1] matches erf(-0.4)")
+  _ = assert_close(index(ys, cast(2, i64)), erf(cast(1e-6, f32)), tol, "erf_t[2] matches erf near zero")
+  _ = assert_close(index(ys, cast(3, i64)), erf(cast(0.4, f32)), tol, "erf_t[3] matches erf(0.4)")
+  assert_close(index(ys, cast(4, i64)), erf(cast(2.1, f32)), tol, "erf_t[4] matches erf(2.1)")
 }
 def test_erf_t_takes_the_small_x_branch() -> unit ! { Test } = {
   -- Below 0.25 the scalar `erf` switches to a 4-term Maclaurin series. At
@@ -200,18 +200,18 @@ def test_erf_t_takes_the_small_x_branch() -> unit ! { Test } = {
   xs = to_tensor([cast(1e-6, f32), cast(-1e-6, f32)])
   ys = to_list(erf_t(xs))
   two_over_sqrt_pi = cast(1.1283791670955126, f32)
-  _ = assert_close(index(ys, cast(0, int64)), mul(cast(1e-6, f32), two_over_sqrt_pi), cast(1e-12, f32), "erf_t small-x branch is the Taylor term")
-  assert_close(index(ys, cast(1, int64)), neg(mul(cast(1e-6, f32), two_over_sqrt_pi)), cast(1e-12, f32), "erf_t small-x branch is odd")
+  _ = assert_close(index(ys, cast(0, i64)), mul(cast(1e-6, f32), two_over_sqrt_pi), cast(1e-12, f32), "erf_t small-x branch is the Taylor term")
+  assert_close(index(ys, cast(1, i64)), neg(mul(cast(1e-6, f32), two_over_sqrt_pi)), cast(1e-12, f32), "erf_t small-x branch is odd")
 }
 def test_erfinv_t_matches_scalar_elementwise() -> unit ! { Test } = {
   qs = to_tensor([cast(-0.9, f32), cast(-0.2, f32), cast(0.0, f32), cast(0.2, f32), cast(0.9, f32)])
   ys = to_list(erfinv_t(qs))
   tol = cast(1e-9, f32)
-  _ = assert_close(index(ys, cast(0, int64)), erfinv(cast(-0.9, f32)), tol, "erfinv_t[0] matches erfinv(-0.9)")
-  _ = assert_close(index(ys, cast(1, int64)), erfinv(cast(-0.2, f32)), tol, "erfinv_t[1] matches erfinv(-0.2)")
-  _ = assert_close(index(ys, cast(2, int64)), erfinv(cast(0.0, f32)), tol, "erfinv_t[2] matches erfinv(0)")
-  _ = assert_close(index(ys, cast(3, int64)), erfinv(cast(0.2, f32)), tol, "erfinv_t[3] matches erfinv(0.2)")
-  assert_close(index(ys, cast(4, int64)), erfinv(cast(0.9, f32)), tol, "erfinv_t[4] matches erfinv(0.9)")
+  _ = assert_close(index(ys, cast(0, i64)), erfinv(cast(-0.9, f32)), tol, "erfinv_t[0] matches erfinv(-0.9)")
+  _ = assert_close(index(ys, cast(1, i64)), erfinv(cast(-0.2, f32)), tol, "erfinv_t[1] matches erfinv(-0.2)")
+  _ = assert_close(index(ys, cast(2, i64)), erfinv(cast(0.0, f32)), tol, "erfinv_t[2] matches erfinv(0)")
+  _ = assert_close(index(ys, cast(3, i64)), erfinv(cast(0.2, f32)), tol, "erfinv_t[3] matches erfinv(0.2)")
+  assert_close(index(ys, cast(4, i64)), erfinv(cast(0.9, f32)), tol, "erfinv_t[4] matches erfinv(0.9)")
 }
 def test_erfinv_t_covers_both_acklam_tails() -> unit ! { Test } = {
   -- q = (x+1)/2 crosses Acklam's 0.02425 / 0.97575 breakpoints at
@@ -220,8 +220,8 @@ def test_erfinv_t_covers_both_acklam_tails() -> unit ! { Test } = {
   xs = to_tensor([cast(-0.98, f32), cast(0.98, f32)])
   ys = to_list(erfinv_t(xs))
   tol = cast(1e-9, f32)
-  _ = assert_close(index(ys, cast(0, int64)), erfinv(cast(-0.98, f32)), tol, "erfinv_t low tail matches scalar")
-  assert_close(index(ys, cast(1, int64)), erfinv(cast(0.98, f32)), tol, "erfinv_t high tail matches scalar")
+  _ = assert_close(index(ys, cast(0, i64)), erfinv(cast(-0.98, f32)), tol, "erfinv_t low tail matches scalar")
+  assert_close(index(ys, cast(1, i64)), erfinv(cast(0.98, f32)), tol, "erfinv_t high tail matches scalar")
 }
 -- nautilus#56: A&S 7.1.26 carries a roughly constant ABSOLUTE error, so its
 -- RELATIVE error diverges as x -> 0. The old implementation switched to the
@@ -276,10 +276,10 @@ def test_erf_t_matches_scalar_across_the_cutover() -> unit ! { Test } = {
   xs = to_tensor([cast(0.2499999, f32), cast(0.2500001, f32), cast(0.01, f32), cast(0.00001001, f32)])
   ys = to_list(erf_t(xs))
   tol = cast(1e-9, f32)
-  _ = assert_close(index(ys, cast(0, int64)), erf(cast(0.2499999, f32)), tol, "erf_t below the cutover")
-  _ = assert_close(index(ys, cast(1, int64)), erf(cast(0.2500001, f32)), tol, "erf_t above the cutover")
-  _ = assert_close(index(ys, cast(2, int64)), erf(cast(0.01, f32)), tol, "erf_t at 0.01")
-  assert_close(index(ys, cast(3, int64)), erf(cast(0.00001001, f32)), tol, "erf_t just above the old cutover")
+  _ = assert_close(index(ys, cast(0, i64)), erf(cast(0.2499999, f32)), tol, "erf_t below the cutover")
+  _ = assert_close(index(ys, cast(1, i64)), erf(cast(0.2500001, f32)), tol, "erf_t above the cutover")
+  _ = assert_close(index(ys, cast(2, i64)), erf(cast(0.01, f32)), tol, "erf_t at 0.01")
+  assert_close(index(ys, cast(3, i64)), erf(cast(0.00001001, f32)), tol, "erf_t just above the old cutover")
 }
 -- nautilus#56 / chelis#1464: `erf`'s series arm holds an x^7 term that
 -- overflows f32 for |x| > ~5.5e5. A scalar `if` inside a vmapped region is
@@ -293,16 +293,16 @@ def test_erf_t_matches_scalar_across_the_cutover() -> unit ! { Test } = {
 -- non-tensor arguments -- so the witness has to call `erf` on a scalar derived
 -- from the batched tensor.
 def erf_row_scale(t: tensor[3, f32]) -> tensor[3, f32] = {
-  s = tensor_to_scalar(sum(t, cast(0, int32)))
-  ev = insert(scalar_to_tensor(erf(s)), cast(0, int32), cast(3, int64))
+  s = tensor_to_scalar(sum(t, cast(0, i32)))
+  ev = insert(scalar_to_tensor(erf(s)), cast(0, i32), cast(3, i64))
   mul(t, ev)
 }
 def erf_batched(b: tensor[2, 3, f32]) -> tensor[2, 3, f32] = vmap(erf_row_scale)(b)
 def test_erf_series_arm_survives_a_vmapped_huge_input() -> unit ! { Test } = {
   batch = to_tensor([[cast(1000000.0, f32), cast(0.0, f32), cast(0.0, f32)], [cast(0.1, f32), cast(0.0, f32), cast(0.0, f32)]])
-  rows = to_list(sum(erf_batched(batch), cast(1, int32)))
-  big = index(rows, cast(0, int64))
-  small = index(rows, cast(1, int64))
+  rows = to_list(sum(erf_batched(batch), cast(1, i32)))
+  big = index(rows, cast(0, i64))
+  small = index(rows, cast(1, i64))
   _ = assert_true(eq(big, big), "the vmapped huge row is not NaN")
   _ = assert_close(big, cast(1000000.0, f32), cast(1.0, f32), "erf saturates to 1 on the huge row")
   assert_close(small, cast(0.011246292, f32), cast(1e-7, f32), "the small row keeps its value")

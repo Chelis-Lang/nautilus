@@ -1,16 +1,13 @@
 module Nautilus.Fixture.Compact
-
 -- chelis:provenance/v1 authority
 -- id = NAUT-FIX-COMPACT
 -- kind = behavioral
 -- scopes = nautilus-fixture
 -- statement = Compact fixture declarations MUST retain one stored implementation relation.
 def compact_requirement(x: f32) -> f32 = x
-
 -- chelis:provenance/v1 binding
 -- record = blake3-256:ee0b4b79be1ec115d93d817ddb25415beeda90e8cbe3e8d55fb5d57b296844e2
 def compact_implementation(x: f32) -> f32 = add(x, x)
-
 -- chelis:provenance/v1 surface
 -- id = NAUT-FIX-COMPACT-SURFACE
 -- member-key-schema = nautilus-module-key/v1

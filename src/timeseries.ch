@@ -18,12 +18,12 @@ def ts_ewma_series[n](values: &tensor[n, f32], alpha: f32, initial: f32) -> tens
 def exponential_smoothing_next[n](values: &tensor[n, f32], alpha: f32, initial_level: f32) -> f32 = ts_ewma_next(values, alpha, initial_level)
 def exponential_smoothing_series[n](values: &tensor[n, f32], alpha: f32, initial_level: f32) -> tensor[n, f32] = ts_ewma_series(values, alpha, initial_level)
 def ts_last[n](values: &tensor[n, f32]) -> f32 = {
-  last_idx = values |> numel |> sub(cast(1, int64))
-  fold(fn (acc: f32, pair: (int64, f32)) -> if eq(pair.0, last_idx) then pair.1 else acc, cast(0.0, f32), values |> to_list |> enumerate)
+  last_idx = values |> numel |> sub(cast(1, i64))
+  fold(fn (acc: f32, pair: (i64, f32)) -> if eq(pair.0, last_idx) then pair.1 else acc, cast(0.0, f32), values |> to_list |> enumerate)
 }
 def ts_prev[n](values: &tensor[n, f32]) -> f32 = {
-  prev_idx = values |> numel |> sub(cast(2, int64))
-  fold(fn (acc: f32, pair: (int64, f32)) -> if eq(pair.0, prev_idx) then pair.1 else acc, cast(0.0, f32), values |> to_list |> enumerate)
+  prev_idx = values |> numel |> sub(cast(2, i64))
+  fold(fn (acc: f32, pair: (i64, f32)) -> if eq(pair.0, prev_idx) then pair.1 else acc, cast(0.0, f32), values |> to_list |> enumerate)
 }
 def ar1_predict_next[n](values: &tensor[n, f32], intercept: f32, phi: f32) -> f32 = add(intercept, mul(phi, ts_last(values)))
 def arma11_predict_next[n](values: &tensor[n, f32], intercept: f32, phi: f32, theta: f32, last_error: f32) -> f32 = {
