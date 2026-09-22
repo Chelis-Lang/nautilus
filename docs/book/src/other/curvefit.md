@@ -17,7 +17,7 @@ lm_scalar_1param(
   theta0: f32,
   lambda0: f32,
   tol: f32,
-  max_iters: int64
+  max_iters: i64
 ) -> f32
 ```
 
@@ -37,7 +37,7 @@ def fit_slope[n](xs: tensor[n, f32], ys: tensor[n, f32]) -> f32 =
   lm_scalar_1param(
     linear_model, linear_dmodel, xs, ys,
     cast(0.0, f32), cast(0.01, f32),
-    cast(1.0e-8, f32), cast(100, int64)
+    cast(1.0e-8, f32), cast(100, i64)
   )
 ```
 
@@ -52,7 +52,7 @@ lm_scalar_nparam(
   y: tensor[m, f32],
   theta0: tensor[n, f32],
   tol: f32,
-  max_iters: int64
+  max_iters: i64
 ) -> tensor[n, f32]
 ```
 

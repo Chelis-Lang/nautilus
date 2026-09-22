@@ -8,14 +8,14 @@ composite rules to adaptive and Gaussian quadrature.
 
 | Function | Signature | Notes |
 |---|---|---|
-| `trapezoidal` | `(f: f32 -> f32, a, b: f32, n_steps: int64) -> f32` | Composite trapezoidal; O(h^2) |
-| `simpsons` | `(f: f32 -> f32, a, b: f32, n_steps: int64) -> f32` | Composite Simpson's; n_steps must be even, NaN otherwise; O(h^4) |
+| `trapezoidal` | `(f: f32 -> f32, a, b: f32, n_steps: i64) -> f32` | Composite trapezoidal; O(h^2) |
+| `simpsons` | `(f: f32 -> f32, a, b: f32, n_steps: i64) -> f32` | Composite Simpson's; n_steps must be even, NaN otherwise; O(h^4) |
 
 ## Gaussian quadrature (finite interval)
 
 | Function | Signature | Notes |
 |---|---|---|
-| `gauss_legendre_5` | `(f: f32 -> f32, a, b: f32, n_points: int64) -> f32` | 5-point; n_points is ignored |
+| `gauss_legendre_5` | `(f: f32 -> f32, a, b: f32, n_points: i64) -> f32` | 5-point; n_points is ignored |
 | `gauss_legendre_10` | `(f: f32 -> f32, a, b: f32) -> f32` | 10-point; exact for polynomials up to degree 19 |
 
 Pre-tabulated nodes and weights mapped from [-1, 1] to [a, b]. No
@@ -26,7 +26,7 @@ approximates the integrand.
 
 | Function | Signature | Notes |
 |---|---|---|
-| `adaptive_simpson` | `(f: f32 -> f32, a, b: f32, tol: f32, max_depth: int64) -> f32` | Recursive subdivision with Richardson extrapolation |
+| `adaptive_simpson` | `(f: f32 -> f32, a, b: f32, tol: f32, max_depth: i64) -> f32` | Recursive subdivision with Richardson extrapolation |
 | `romberg_5` | `(f: f32 -> f32, a, b: f32) -> f32` | 5-level Romberg (trapezoidal base, up to 16 panels) |
 
 `adaptive_simpson` subdivides intervals where the local error estimate
@@ -53,7 +53,7 @@ def inv_1_x2(x: f32) -> f32 =
 
 def pi_over_4_adaptive() -> f32 =
   adaptive_simpson(inv_1_x2, cast(0.0, f32), cast(1.0, f32),
-                   cast(1.0e-10, f32), cast(20, int64))
+                   cast(1.0e-10, f32), cast(20, i64))
 
 def pi_over_4_gl10() -> f32 =
   gauss_legendre_10(inv_1_x2, cast(0.0, f32), cast(1.0, f32))

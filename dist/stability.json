@@ -57,7 +57,7 @@
     "weibull_pdf": "stable"
   },
   "Nautilus.Info": {
-    "cross_entropy": "alpha",
+    "distribution_cross_entropy": "alpha",
     "entropy": "alpha",
     "kl_divergence": "alpha"
   },

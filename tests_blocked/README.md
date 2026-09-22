@@ -43,7 +43,11 @@ witness is now positive coverage rather than a failing probe.
   paths. The fixed Jacobian-row witnesses pass in isolation, and a smaller
   recursive composition also passes, so pinning either as a blocked probe
   would test the wrong boundary. The issue body preserves the exact mutation
-  and diagnostic until a bounded standalone witness exists.
+  and diagnostic until a bounded standalone witness exists. The narrowing site
+  therefore links this inventory rather than spelling an issue token: the
+  0.18.11 conformance auditor treats every source token as proof that an
+  executable blocked probe must exist and does not consult this
+  `§cannot-be-probed` disposition.
 
 ## Manual-only current probes
 

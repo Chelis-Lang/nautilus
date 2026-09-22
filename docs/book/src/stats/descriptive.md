@@ -18,8 +18,8 @@ correlation matrices return a square tensor over the variables.
 
 | Function | Signature | Notes |
 |---|---|---|
-| `variance_vec` | `[n](v: tensor[n, f32], ddof: int64) -> f32` | ddof=0 for population, ddof=1 for sample |
-| `std_vec` | `[n](v: tensor[n, f32], ddof: int64) -> f32` | sqrt(variance_vec) |
+| `variance_vec` | `[n](v: tensor[n, f32], ddof: i64) -> f32` | ddof=0 for population, ddof=1 for sample |
+| `std_vec` | `[n](v: tensor[n, f32], ddof: i64) -> f32` | sqrt(variance_vec) |
 | `range_vec` | `[n](v: tensor[n, f32]) -> f32` | max - min |
 
 ## Shape
@@ -42,7 +42,7 @@ correlation matrices return a square tensor over the variables.
 
 | Function | Signature | Notes |
 |---|---|---|
-| `covariance_scalar` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: int64) -> f32` | Scalar covariance between two vectors |
+| `covariance_scalar` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: i64) -> f32` | Scalar covariance between two vectors |
 | `correlation_scalar` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | Pearson r (uses ddof=0 internally) |
 
 ## Standardisation and ranks
@@ -52,7 +52,7 @@ These return a tensor of the same length rather than a scalar.
 | Function | Signature | Notes |
 |---|---|---|
 | `rank_vec` | `[n](v: tensor[n, f32]) -> tensor[n, f32]` | 1-based ranks; ties share the average of the ranks they span |
-| `zscore_vec` | `[n](v: tensor[n, f32], ddof: int64) -> tensor[n, f32]` | `(x - mean) / std`; NaN throughout for a constant vector |
+| `zscore_vec` | `[n](v: tensor[n, f32], ddof: i64) -> tensor[n, f32]` | `(x - mean) / std`; NaN throughout for a constant vector |
 
 For finite input `rank_vec` matches `scipy.stats.rankdata`'s default
 `method="average"`, so `rank_vec([3, 1, 4, 1])` is `[3, 1.5, 4, 1.5]` and the
@@ -66,7 +66,7 @@ markedly slower than the sort-based reductions in this module; prefer
 
 | Function | Signature | Notes |
 |---|---|---|
-| `covariance_matrix` | `[m, n](x: tensor[m, n, f32], ddof: int64) -> tensor[m, m, f32]` | m variables by n observations |
+| `covariance_matrix` | `[m, n](x: tensor[m, n, f32], ddof: i64) -> tensor[m, m, f32]` | m variables by n observations |
 | `correlation_matrix` | `[m, n](x: tensor[m, n, f32]) -> tensor[m, m, f32]` | Pearson correlation over the same layout |
 
 Each **row** is a variable and each **column** an observation, matching
@@ -83,7 +83,7 @@ import Nautilus.Stats (mean_vec, variance_vec, median_vec)
 export (summary)
 def summary[n](data: tensor[n, f32]) -> (f32, f32, f32) = {
   mu = mean_vec(copy(data))
-  v = variance_vec(copy(data), cast(1, int64))
+  v = variance_vec(copy(data), cast(1, i64))
   med = median_vec(data)
   (mu, v, med)
 }
