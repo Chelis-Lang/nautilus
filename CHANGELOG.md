@@ -6,6 +6,82 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`Nautilus.Special` is dtype-generic over the `Float` family**
+  (nautilus#59). All 23 exports -- `erf`, `erfc`, `erfinv`, `erf_t`,
+  `erfinv_t`, `gamma`, `log_gamma`, `digamma`, `beta`, `lbeta`, `trigamma`,
+  the eight `bessel_*`, `airy_ai`, `airy_bi`, `ellipk` and `ellipe` -- now
+  carry a `prec: Float` binder instead of a concrete `f32` signature, so an
+  f64 caller reaches them directly. Existing f32 call sites are unchanged:
+  they instantiate the same defs at `f32` and a compiled-and-linked C
+  consumer returns bit-identical f32 results against the previous release.
+  The private helpers `abs_f32` and `nan_f32` are renamed `sp_abs` and
+  `sp_nan`, which the §7.2 type-suffix rule requires once they are no longer
+  f32-specific.
+
+  **Widening the signature did not widen the accuracy, and was not meant
+  to.** Rerunning `tests/special_f64.ch` with every `f64` rewritten to `f32`
+  fails 23 of its 30 tests, so most exports do compute differently at
+  f64 -- but how much better varies, and the tolerances in that file are not
+  accuracy claims. Only six exports are limited by f32 rounding rather than
+  by their own coefficients and so reach f64 grade: `gamma`, `log_gamma`,
+  `beta`, `lbeta`, `ellipk`, `ellipe`. Of the remaining fifteen scalar
+  exports, `erf` and `erfc` are covered separately just below; the other
+  thirteen are limited by
+  their approximations and improve by less, by amounts that share no common
+  bound: `bessel_y1` is nearly six orders better at its test point than near its
+  large-x seam around 7.4, and `airy_ai`/`airy_bi` above x = 5 gain nothing at
+  all. No per-function, per-domain f64 figure is established for any of the
+  thirteen, here or anywhere else in the repo; the two figures quoted for
+  `bessel_y1` are single points, chosen to show that no single figure covers
+  it. The `erf` and `erfc` figures
+  below were measured directly and are exact.
+
+  `erf` is capped hardest, by Abramowitz & Stegun 7.1.26's own 1.5e-7 error:
+  at x = 0.5, 1.385e-7 at f64 against 1.861e-7 at f32; over the whole range
+  the maxima are 1.3884e-7 and 4.438e-7. `erfc` is the opposite, and the one place f64
+  changes what is computable rather than how precisely -- at f32 it underflows
+  to exactly 0 from about x = 3.92, where f64 returns 1.546e-8 at x = 4 and
+  stays usable to
+  about x = 5.5 (its relative error is 2.8e-3 at x = 4 and degrades further
+  out). Narrowing any of this means replacing coefficients, which this change
+  deliberately did not do; #74 tracks it, and
+  `test_f64_erf_is_not_more_accurate_than_f32` fails loudly if someone does it
+  without revisiting the accuracy documentation.
+
+  **`f16` and `bf16` are now admitted, and should not be used.** `Float` is
+  the narrowest dtype-family bound the language offers, so the generic
+  signatures typecheck at `f16`/`bf16` where the f32-only ones raised
+  `precision mismatch`. The f32-tuned constants do not degrade gracefully
+  there -- `bf16` `gamma(5.5)` returns 58.0 against a true 52.343, and `f16`
+  `bessel_j0`/`j1`/`y0`/`y1` return NaN -- and nothing rejects or warns. There
+  is no narrower bound to adopt, so this is disclosed rather than fixed, and
+  it applies equally to every other `[prec: Float]` conversion under
+  nautilus#70. Tracked as #75.
+
+  **One f32 call shape regressed.** The point-free `grad(erf)` evaluated to
+  0.8787825 against the f32-only module and is now rejected at checking
+  (`grad requires a scalar floating output`), because `erf` names an
+  uninstantiated generic and `grad` cannot fix its dtype from a point-free
+  argument. Eta-expansion works at both dtypes and is the documented shape.
+  `tests_neg/special/grad_point_free_neg.ch` pins the rejection and
+  `test_f32_grad_through_a_wrapper_still_works` pins the workaround.
+
+  The downstream C lane was the gate that parked nautilus#69, and it was
+  measured rather than assumed: see the nautilus#59 entry under chelis#2152
+  in `docs/UPSTREAM_BUGS.md`.
+
+### Added
+
+- `tests/special_f64.ch`, 30 tests covering every export, with
+  tolerances chosen from measurement against a 50-dps mpmath reference,
+  including `erfc`'s f64 tail and `grad` through a wrapper at both dtypes.
+- `tests_neg/special/`, four negative contracts, each verified to fail against
+  the pre-generic module so that none of them can pass by accident: an integer
+  scalar and an integer tensor rejected at the `Float` bound, mixed f32/f64
+  arguments to one call rejected, and the point-free `grad` regression.
+
 ## [0.7.46] - 2026-09-21
 
 ### Changed

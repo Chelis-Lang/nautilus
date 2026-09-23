@@ -353,6 +353,20 @@ release.
       Stats builds and links for the same consumer, and the converted branch
       does not. The same pattern threatens nautilus#67 and nautilus#12 under
       nautilus#70.
+    - **0.18.11 measurement against the Float-generic `Nautilus.Special`
+      (nautilus#59): NOT affected.** A two-package probe installed the
+      converted module into a temporary `CHELIS_REEF_HOME` and built a
+      consumer calling `erf`, `erfc`, `gamma`, `log_gamma` and `ellipk` at
+      both f32 and f64. `chelis build` emitted C, `clang` compiled and linked
+      it, and the binary's f32 results are bit-identical to the same consumer
+      built against unconverted `main`. The residue still reproduces, but it
+      needs a scalar `cast` to a `Float` binder in the CONSUMER's own def:
+      `apply_special[prec: Float](g: prec -> prec, x: prec) = add(g(x),
+      cast(1.0, prec))` is rejected, while the same def without that cast
+      passes `erf` as a callback at f32 and f64 and builds. So the trigger is
+      a consumer-side cast, not an imported generic callee, and
+      `Nautilus.Special` contains no function-typed parameter to reach it.
+      This narrows the entry's blast radius; it does not close the issue.
     - **Why no gate here catches it:** `scripts/check_release_artifacts.py`'s
       dependent compile runs only `reef build`, never `chelis build`.
     - **Probe:** manual-only, see `tests_blocked/README.md`. The two-package
@@ -376,10 +390,16 @@ release.
       fails checking with ``cast requires tensor or prim type, got `prec` ``.
       The tensor form over the same binder is accepted. [05-OP-6] says the
       scalar and tensor surfaces have identical semantics.
-    - **Affected Nautilus surface:** none on `main`, which is f32-only.
-      nautilus#69's Float-generic Stats needs it in `quantile_vec` and
-      `trimmed_mean_vec`, and that branch routes the truncation through a
-      length-1 tensor, cited at the site.
+    - **Affected Nautilus surface:** `Nautilus.Special`'s
+      `is_nonpositive_integer[prec: Float]` does exactly this
+      `cast_trunc(x, i64)` from a `Float`-bounded scalar, and `gamma`,
+      `log_gamma` and `digamma` route through it directly, with `beta` and
+      `lbeta` reaching it transitively through `log_gamma`. The shipped surface
+      therefore depends on the 0.18.11 fix, and this entry must not be read as
+      "no affected surface" at the next pin bump. nautilus#69's Float-generic
+      Stats needs the same cast in `quantile_vec` and `trimmed_mean_vec`, and
+      that branch routes the truncation through a length-1 tensor, cited at the
+      site.
     - **Why Tracking rather than Actively blocking:** a workaround exists, and
       nautilus#69 is blocked by the C-build entry above regardless.
     - **Probe:** `tests_blocked/generic_dtype/scalar_cast_from_float_binder.ch`

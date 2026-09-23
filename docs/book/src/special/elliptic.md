@@ -7,7 +7,7 @@ conformal mapping. Both are computed via the arithmetic-geometric mean
 
 ## ellipk
 
-**Signature:** `(m: f32) -> f32`
+**Signature:** `[prec: Float](m: prec) -> prec`
 
 Computes the complete elliptic integral of the first kind,
 K(m) = integral(0, pi/2, dt / sqrt(1 - m*sin^2(t))).
@@ -16,7 +16,7 @@ Uses K(m) = pi / (2 * AGM(1, sqrt(1-m))).
 - **Domain:** m in [0, 1)
 - **At m = 1:** returns +inf (logarithmic singularity)
 - **Outside [0, 1]:** returns NaN
-- **Precision:** ~1e-8 relative
+- **Precision:** ~1e-8 relative at f32. The AGM converges to whatever width it is given, so this reaches f64 grade when called at f64.
 
 ```chelis-fragment
 import Nautilus.Special (ellipk)
@@ -27,7 +27,7 @@ k_half = ellipk(cast(0.5, f32))   -- approximately 1.8541
 
 ## ellipe
 
-**Signature:** `(m: f32) -> f32`
+**Signature:** `[prec: Float](m: prec) -> prec`
 
 Computes the complete elliptic integral of the second kind,
 E(m) = integral(0, pi/2, sqrt(1 - m*sin^2(t)) dt).
@@ -37,7 +37,7 @@ Uses the AGM recurrence with an accumulated sum of squared differences.
 - **At m = 0:** returns pi/2
 - **At m = 1:** returns 1.0
 - **Outside [0, 1]:** returns NaN
-- **Precision:** ~1e-8 relative
+- **Precision:** ~1e-8 relative at f32. The AGM converges to whatever width it is given, so this reaches f64 grade when called at f64.
 
 ```chelis-fragment
 import Nautilus.Special (ellipe)

@@ -6,7 +6,7 @@ beta function in both regular and log forms.
 
 ## gamma
 
-**Signature:** `(x: f32) -> f32`
+**Signature:** `[prec: Float](x: prec) -> prec`
 
 Computes the gamma function `Gamma(x)` using the Lanczos approximation
 with `g=7` and 8-term series. For `x < 0.5`, the reflection formula
@@ -14,7 +14,7 @@ with `g=7` and 8-term series. For `x < 0.5`, the reflection formula
 same Lanczos-sum core that `log_gamma` uses.
 
 - **Domain:** all reals except non-positive integers
-- **Precision:** ~1e-7 relative (f32 ceiling on the Lanczos+reflection path)
+- **Precision:** ~1e-7 relative at f32. This one is bounded by f32 rounding, not by the Lanczos coefficients, so it reaches f64 grade when called at f64.
 - **At non-positive integers:** returns +inf (poles)
 
 ```chelis-fragment
@@ -28,14 +28,14 @@ where `Gamma(x)` would underflow or overflow), prefer `log_gamma`.
 
 ## log_gamma
 
-**Signature:** `(x: f32) -> f32`
+**Signature:** `[prec: Float](x: prec) -> prec`
 
 Computes ln(Gamma(x)) using the Lanczos approximation with g=7 and
 8-term series. For x < 0.5, the reflection formula via sin(pi*x) is
 applied.
 
 - **Domain:** all reals except non-positive integers
-- **Precision:** ~1e-9 relative
+- **Precision:** ~1e-9 relative at f32; f64 grade when called at f64
 - **At non-positive integers:** returns +inf
 
 ```chelis-fragment
@@ -46,7 +46,7 @@ lg5 = log_gamma(cast(5.0, f32))   -- ln(24) = approximately 3.1781
 
 ## digamma
 
-**Signature:** `(x: f32) -> f32`
+**Signature:** `[prec: Float](x: prec) -> prec`
 
 Computes the digamma (psi) function, the logarithmic derivative of the
 gamma function. Uses upward recurrence to shift x >= 6, then applies
@@ -64,7 +64,7 @@ psi1 = digamma(cast(1.0, f32))    -- -0.5772 (negative Euler-Mascheroni)
 
 ## trigamma
 
-**Signature:** `(x: f32) -> f32`
+**Signature:** `[prec: Float](x: prec) -> prec`
 
 Computes the trigamma function, the derivative of digamma. Uses the same
 recurrence-then-asymptotic strategy with threshold at x >= 6.
@@ -80,7 +80,7 @@ tg1 = trigamma(cast(1.0, f32))    -- pi^2/6 = approximately 1.6449
 
 ## beta
 
-**Signature:** `(a: f32, b: f32) -> f32`
+**Signature:** `[prec: Float](a: prec, b: prec) -> prec`
 
 Computes the beta function B(a, b) = Gamma(a) * Gamma(b) / Gamma(a+b)
 as exp(lbeta(a, b)).
@@ -95,7 +95,7 @@ b23 = beta(cast(2.0, f32), cast(3.0, f32))  -- 1/12 = approximately 0.0833
 
 ## lbeta
 
-**Signature:** `(a: f32, b: f32) -> f32`
+**Signature:** `[prec: Float](a: prec, b: prec) -> prec`
 
 Computes ln(B(a, b)) = log_gamma(a) + log_gamma(b) - log_gamma(a+b).
 Preferred over `beta` when the result would overflow or underflow in

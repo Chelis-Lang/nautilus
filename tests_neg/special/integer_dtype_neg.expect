@@ -1,0 +1,6 @@
+cannot be instantiated at `i64`
+
+The `prec: Float` bound admits float dtypes only ([04-DTYPE-2]). An integer
+argument to `erf` must be rejected at the bound, not silently promoted or
+truncated inside the approximation. Before nautilus#59 this was rejected by the
+concrete `f32` signature; the generic signature has to keep rejecting it.
