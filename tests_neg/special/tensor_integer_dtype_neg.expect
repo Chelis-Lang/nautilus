@@ -1,0 +1,11 @@
+cannot be instantiated at `i64`
+
+The tensor lane carries the same `prec: Float` bound as the scalar lane, and
+the bound admits float dtypes only ([04-DTYPE-2]).
+
+This replaces an earlier tensor case that pinned only a declared-type echo.
+That one held even when `erf_t` was deleted from the body, so it tested
+nothing about this module. This one names the bound, and deleting the `erf_t`
+call makes the file compile, which the runner reports as an unexpected pass.
+The f32-only module rejects the same file as `tensor precision mismatch: f32
+vs i64`, so this text is specific to the generic signature.

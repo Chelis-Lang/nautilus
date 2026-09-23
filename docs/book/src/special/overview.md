@@ -4,8 +4,39 @@
 underlie probability distributions, physics simulations, and
 numerical analysis. It replaces `scipy.special` for Chelis programs.
 
-All functions are pure (no effects), operate on f32 scalars, and are
-safe to differentiate via `grad`.
+All functions are pure (no effects). Differentiability via `grad` is **not**
+uniform across the module, and two separate limits apply.
+
+First, `grad` needs a function whose dtype is already fixed, so since these
+signatures became generic the point-free `grad(erf)` no longer type-checks.
+Wrap it, which works at either dtype:
+
+```chelis-fragment
+def erf_at(x: f64) -> f64 = erf(x)
+def d_erf(x: f64) -> f64 = grad(erf_at)(x)
+```
+
+Second, and independently of genericity, only eleven of the twenty-one scalar
+exports actually differentiate even when wrapped: `erf`, `erfc`, `erfinv` and
+the eight `bessel_*`. The other ten -- `gamma`, `log_gamma`, `digamma`,
+`trigamma`, `beta`, `lbeta`, `ellipk`, `ellipe`, `airy_ai`, `airy_bi` -- fail
+at lowering, because their bodies recurse or reach a primitive with no
+reverse-mode adjoint. That has always been true of this module and is not
+something the dtype change altered.
+
+Unlike the rest of Nautilus, all twenty-three exports are **dtype-generic over
+the `Float` family**, so the same `erf` serves an f32 caller and an f64 one:
+
+```chelis-fragment
+def narrow(x: f32) -> f32 = erf(x)
+def wide(x: f64) -> f64 = erf(x)
+```
+
+A single call still uses one dtype throughout -- `beta(a: f32, b: f64)` is a
+precision mismatch, not an implicit promotion. And genericity is a signature
+property, not an accuracy one: `erf` and `erfc` carry the same fixed
+coefficients at every width, so calling them at f64 buys wider arithmetic and
+no extra digits. See the [precision guide](../appendix/precision.md).
 
 ## Imports
 

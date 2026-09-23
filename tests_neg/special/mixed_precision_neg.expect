@@ -1,0 +1,12 @@
+precision mismatch: expected f64, got f32
+
+Nautilus.Special is generic over one `prec: Float` binder per function, so
+every argument of a single call shares one float dtype. The first argument
+binds `prec` to f64 and the second must then be f64 too.
+
+The argument order matters, and is what makes this case discriminating. On the
+f32-only module this same file is rejected the other way round -- `expected
+f32, got f64`, because `beta`'s own declared f32 rejects the first argument.
+Only a module whose first argument is free to bind f64 produces the text
+pinned above, so this case cannot pass by accident against the pre-generic
+module.

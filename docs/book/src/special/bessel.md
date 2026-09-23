@@ -7,7 +7,7 @@ separate small-argument and large-argument branches.
 
 ## First kind: bessel_j0, bessel_j1
 
-**Signatures:** `(x: f32) -> f32`
+**Signatures:** `[prec: Float](x: prec) -> prec`
 
 J0 is even; J1 is odd. For |x| < 8, a rational polynomial in x^2 is
 used. For |x| >= 8, an asymptotic trigonometric form sqrt(2/(pi*x)) *
@@ -25,7 +25,7 @@ j1_5 = bessel_j1(cast(5.0, f32))    -- approximately -0.3276
 
 ## Second kind: bessel_y0, bessel_y1
 
-**Signatures:** `(x: f32) -> f32`
+**Signatures:** `[prec: Float](x: prec) -> prec`
 
 Defined for x > 0 only. For x < 8, a rational polynomial with a
 log-singularity term involving J0/J1 is used. For x >= 8, the same
@@ -47,7 +47,7 @@ y1_1 = bessel_y1(cast(1.0, f32))    -- approximately -0.7812
 
 ## Modified first kind: bessel_i0, bessel_i1
 
-**Signatures:** `(x: f32) -> f32`
+**Signatures:** `[prec: Float](x: prec) -> prec`
 
 I0 is even; I1 is odd. For |x| < 3.75, a polynomial in (x/3.75)^2 is
 used. For |x| >= 3.75, an asymptotic form exp(|x|)/sqrt(|x|) * poly
@@ -63,7 +63,7 @@ i0_2 = bessel_i0(cast(2.0, f32))    -- approximately 2.2796
 
 ## Modified second kind: bessel_k0, bessel_k1
 
-**Signatures:** `(x: f32) -> f32`
+**Signatures:** `[prec: Float](x: prec) -> prec`
 
 Defined for x > 0 only. For x <= 2, a polynomial with a log term
 involving I0/I1 is used. For x > 2, an asymptotic form
