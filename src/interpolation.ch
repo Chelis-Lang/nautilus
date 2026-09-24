@@ -1,5 +1,5 @@
 module Nautilus.Interpolation
-import Nautilus.LinAlg (la_basis_n_f32, inner_product, la_vec_saxpy, la_tridiag_solve)
+import Nautilus.LinAlg (la_basis_n, inner_product, la_vec_saxpy, la_tridiag_solve)
 export (linear_interp_uniform, linear_interp_sorted, cubic_hermite, spline_fit, spline_eval)
 -- chelis:provenance/v1 authority
 -- id = NAUT-MOD-INTERPOLATION
@@ -112,8 +112,8 @@ def spline_zeros[m](xs: &tensor[m, f32]) -> tensor[m, f32] = to_tensor(map(fn (v
 def spline_fit_h[m](xs: tensor[m, f32], h0: tensor[m, f32], n_len_m1: i64) -> tensor[m, f32] =
   fold(fn (hacc: tensor[m, f32], i: i64) -> {
     tpl_loc = spline_zeros(copy(hacc))
-    e_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_loc))
-    e_ip1 = la_basis_n_f32(add(i, cast(1, i64)), cast(1.0, f32), tpl_loc)
+    e_i = la_basis_n(i, cast(1.0, f32), copy(tpl_loc))
+    e_ip1 = la_basis_n(add(i, cast(1, i64)), cast(1.0, f32), tpl_loc)
     xi = inner_product(copy(xs), copy(e_i))
     xip1 = inner_product(copy(xs), e_ip1)
     hi = sub(xip1, xi)
@@ -124,16 +124,16 @@ def spline_fit_h[m](xs: tensor[m, f32], h0: tensor[m, f32], n_len_m1: i64) -> te
 def spline_fit_lower[m](h: tensor[m, f32], low0: tensor[m, f32], n_len_m1: i64) -> tensor[m, f32] =
   fold(fn (acc: tensor[m, f32], i: i64) -> {
     tpl_loc = spline_zeros(copy(acc))
-    e_im1 = la_basis_n_f32(sub(i, cast(1, i64)), cast(1.0, f32), copy(tpl_loc))
-    e_i = la_basis_n_f32(i, cast(1.0, f32), tpl_loc)
+    e_im1 = la_basis_n(sub(i, cast(1, i64)), cast(1.0, f32), copy(tpl_loc))
+    e_i = la_basis_n(i, cast(1.0, f32), tpl_loc)
     h_im1 = inner_product(copy(h), e_im1)
     la_vec_saxpy(h_im1, acc, e_i)
   }, low0, range(cast(1, i64), n_len_m1))
 def spline_fit_diag[m](h: tensor[m, f32], d_init: tensor[m, f32], n_len_m1: i64) -> tensor[m, f32] =
   fold(fn (acc: tensor[m, f32], i: i64) -> {
     tpl_loc = spline_zeros(copy(acc))
-    e_im1 = la_basis_n_f32(sub(i, cast(1, i64)), cast(1.0, f32), copy(tpl_loc))
-    e_i = la_basis_n_f32(i, cast(1.0, f32), tpl_loc)
+    e_im1 = la_basis_n(sub(i, cast(1, i64)), cast(1.0, f32), copy(tpl_loc))
+    e_i = la_basis_n(i, cast(1.0, f32), tpl_loc)
     h_im1 = inner_product(copy(h), e_im1)
     h_i = inner_product(copy(h), copy(e_i))
     d_i = mul(cast(2.0, f32), add(h_im1, h_i))
@@ -142,16 +142,16 @@ def spline_fit_diag[m](h: tensor[m, f32], d_init: tensor[m, f32], n_len_m1: i64)
 def spline_fit_upper[m](h: tensor[m, f32], up0: tensor[m, f32], n_len_m1: i64) -> tensor[m, f32] =
   fold(fn (acc: tensor[m, f32], i: i64) -> {
     tpl_loc = spline_zeros(copy(acc))
-    e_i = la_basis_n_f32(i, cast(1.0, f32), tpl_loc)
+    e_i = la_basis_n(i, cast(1.0, f32), tpl_loc)
     h_i = inner_product(copy(h), copy(e_i))
     la_vec_saxpy(h_i, acc, e_i)
   }, up0, range(cast(1, i64), n_len_m1))
 def spline_fit_rhs[m](ys: tensor[m, f32], h: tensor[m, f32], rhs0: tensor[m, f32], n_len_m1: i64) -> tensor[m, f32] =
   fold(fn (acc: tensor[m, f32], i: i64) -> {
     tpl_loc = spline_zeros(copy(acc))
-    e_im1 = la_basis_n_f32(sub(i, cast(1, i64)), cast(1.0, f32), copy(tpl_loc))
-    e_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_loc))
-    e_ip1 = la_basis_n_f32(add(i, cast(1, i64)), cast(1.0, f32), tpl_loc)
+    e_im1 = la_basis_n(sub(i, cast(1, i64)), cast(1.0, f32), copy(tpl_loc))
+    e_i = la_basis_n(i, cast(1.0, f32), copy(tpl_loc))
+    e_ip1 = la_basis_n(add(i, cast(1, i64)), cast(1.0, f32), tpl_loc)
     h_im1 = inner_product(copy(h), copy(e_im1))
     h_i = inner_product(copy(h), copy(e_i))
     y_im1 = inner_product(copy(ys), copy(e_im1))
@@ -168,8 +168,8 @@ def spline_fit[m](xs: &tensor[m, f32], ys: &tensor[m, f32]) -> tensor[m, f32] = 
   zeros0 = spline_zeros(copy(xs))
   h = spline_fit_h(copy(xs), copy(zeros0), n_len_m1)
   lower_v = spline_fit_lower(copy(h), copy(zeros0), n_len_m1)
-  e_0 = la_basis_n_f32(cast(0, i64), cast(1.0, f32), copy(zeros0))
-  e_last = la_basis_n_f32(n_len_m1, cast(1.0, f32), zeros0)
+  e_0 = la_basis_n(cast(0, i64), cast(1.0, f32), copy(zeros0))
+  e_last = la_basis_n(n_len_m1, cast(1.0, f32), zeros0)
   d_init = la_vec_saxpy(cast(1.0, f32), la_vec_saxpy(cast(1.0, f32), spline_zeros(copy(xs)), e_0), e_last)
   diag_v = spline_fit_diag(copy(h), d_init, n_len_m1)
   upper_v = spline_fit_upper(copy(h), spline_zeros(copy(xs)), n_len_m1)
@@ -185,9 +185,9 @@ def spline_eval[m](xs: &tensor[m, f32], ys: &tensor[m, f32], x_query: f32) -> f3
   y_list = to_list(copy(ys))
   zipped = zip(x_list, y_list)
   enum_zipped = enumerate(zipped)
-  first_x = inner_product(copy(xs), la_basis_n_f32(cast(0, i64), cast(1.0, f32), copy(tpl)))
-  first_y = inner_product(copy(ys), la_basis_n_f32(cast(0, i64), cast(1.0, f32), copy(tpl)))
-  last_y = inner_product(copy(ys), la_basis_n_f32(n_len_m1, cast(1.0, f32), copy(tpl)))
+  first_x = inner_product(copy(xs), la_basis_n(cast(0, i64), cast(1.0, f32), copy(tpl)))
+  first_y = inner_product(copy(ys), la_basis_n(cast(0, i64), cast(1.0, f32), copy(tpl)))
+  last_y = inner_product(copy(ys), la_basis_n(n_len_m1, cast(1.0, f32), copy(tpl)))
   init = (false, cast(0.0, f32), first_x, first_y, cast(0.0, f32))
   acc_final = fold(fn (acc: (bool, f32, f32, f32, f32), entry: (i64, (f32, f32))) -> {
     i = entry.0
@@ -199,7 +199,7 @@ def spline_eval[m](xs: &tensor[m, f32], ys: &tensor[m, f32], x_query: f32) -> f3
     prev_x = acc.2
     prev_y = acc.3
     prev_m = acc.4
-    mi_val = inner_product(copy(m_sec), la_basis_n_f32(i, cast(1.0, f32), copy(tpl)))
+    mi_val = inner_product(copy(m_sec), la_basis_n(i, cast(1.0, f32), copy(tpl)))
     is_first = eq(i, cast(0, i64))
     not_found = not(found)
     past_query = gte(xi, x_query)

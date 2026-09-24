@@ -95,7 +95,7 @@
     "inv_2x2": "stable",
     "inv_3x3": "stable",
     "l2_norm_vec": "stable",
-    "la_basis_n_f32": "alpha",
+    "la_basis_n": "alpha",
     "la_tridiag_solve": "alpha",
     "la_vec_add": "stable",
     "la_vec_saxpy": "stable",

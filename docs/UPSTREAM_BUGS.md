@@ -332,6 +332,38 @@ release.
       chelis#2370. On pass, compare the full LM recovery trajectories before
       removing the finite-difference implementation.
 
+- **`chelis build` rejects a generic def whose `if` arms construct tensors
+  through nested generic helpers** — `chelis#2477`
+  ([Chelis-Lang/chelis#2477](https://github.com/Chelis-Lang/chelis/issues/2477)).
+    - **Symptom:** ``block bN in `pkg__...` is reached with inconsistent live
+      owners: live only on this path: %NNN[result]``. `chelis check` scores 1.0
+      and `chelis test` passes; only C host lowering fails.
+    - **Trigger:** genericity alone. A 26-line standalone reproducer computes an
+      owned tensor unconditionally, then returns `if bad then <constructed>
+      else result`, where both arms come from nested `[prec: Float]` helpers.
+      The generic form fails; the byte-identical form with `prec` replaced by a
+      concrete `f32` builds. **No cross-package boundary is needed** — a
+      single-package `chelis build` reproduces it, which makes this cheaper to
+      probe than `chelis#2152`.
+    - **Affected Nautilus surface:** blocks nautilus#12's Float-generic
+      `Nautilus.LinAlg` (branch `fix/12-linalg-float-generic`). Four exports
+      regress **at f32**: `inv_2x2`, `inv_3x3`, `solve_2x2`, `solve_3x3`. All
+      four build against unconverted `main` and fail against the branch, so
+      converting would regress existing f32 C consumers. `cholesky_2x2`,
+      `matvec`, `l2_norm_vec`, `inner_product` and `scale_vec` are unaffected.
+      `det_3x3` and `eig_2x2_real` hit the separate, pre-existing `matmul` host
+      limitation on both sides.
+    - **Why no gate here catches it:** `chelis test` never runs C host lowering,
+      and `scripts/check_release_artifacts.py`'s dependent compile runs only
+      `reef build`. Both were green for this branch throughout.
+    - **Probe:** manual-only, see `tests_blocked/README.md`.
+    - **Workaround:** none adopted. Restructuring the sentinel shape in Nautilus
+      was considered and rejected: it papers over a compiler defect that every
+      other shell converting under nautilus#70 will hit.
+    - **Re-probe trigger:** every pin bump, and before nautilus#12 merges.
+    - **Pass condition:** all four exports build, compile and link at f32 and at
+      f64 from a consumer, and the standalone reproducer builds.
+
 - **A downstream `chelis build` rejects a cast to a `Float`-bounded binder** —
   `chelis#2152`
   ([Chelis-Lang/chelis#2152](https://github.com/Chelis-Lang/chelis/issues/2152)).

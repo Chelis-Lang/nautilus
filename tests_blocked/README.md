@@ -51,6 +51,19 @@ witness is now positive coverage rather than a failing probe.
 
 ## Manual-only current probes
 
+- **A generic def whose `if` arms construct tensors through nested generic
+  helpers is rejected by C host lowering** — `chelis#2477`. `chelis test` never enters that
+  lane, so this cannot be an executable probe either. Unlike the entry below it
+  needs no second package. **Manual recipe:** from a worktree on
+  `fix/12-linalg-float-generic`, write a module importing `Nautilus.LinAlg
+  (inv_2x2)` with `def p(a: &tensor[2, 2, f32]) -> tensor[2, 2, f32] =
+  inv_2x2(a)` and run `chelis build` on it. **Expected while blocked:** exit
+  nonzero with ``inconsistent live owners``. **Control:** the same file against
+  unconverted `main` reaches the `Compile:` step. **On pass:** all four of
+  `inv_2x2`, `inv_3x3`, `solve_2x2`, `solve_3x3` build at f32 and f64 from a
+  consumer, and the LinAlg conversion becomes mergeable subject to its own
+  gates. Re-probe trigger: every pin bump.
+
 - **A downstream `chelis build` rejects a cast to a `Float`-bounded binder** —
   `chelis#2152`. This cannot be a
   `tests_blocked` probe because `chelis test` never runs C host lowering. The

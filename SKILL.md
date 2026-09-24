@@ -1106,40 +1106,40 @@ The `Stability` column is the source of truth for row-level classification. Use
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
-| `transpose` | `[m, n](a: tensor[m, n, f32]) -> tensor[n, m, f32]` | `stable` | General-n, returns tensor |
-| `matmul_wrap` | `[m, k, n](a: tensor[m, k, f32], b: tensor[k, n, f32]) -> tensor[m, n, f32]` | `stable` | General-n, wraps builtin matmul |
-| `gram` | `[m, n](a: tensor[m, n, f32]) -> tensor[n, n, f32]` | `stable` | General-n, returns A^T A |
-| `aat` | `[m, n](a: tensor[m, n, f32]) -> tensor[m, m, f32]` | `stable` | General-n, returns A A^T |
-| `diag` | `[n](a: tensor[n, n, f32]) -> tensor[n, f32]` | `stable` | General-n, returns vector |
-| `trace_mat` | `[n](a: tensor[n, n, f32]) -> tensor[f32]` | `stable` | General-n, returns scalar tensor |
-| `trace_scalar` | `[n](a: tensor[n, n, f32]) -> f32` | `stable` | General-n, returns scalar |
-| `l2_norm_vec` | `[n](v: tensor[n, f32]) -> f32` | `stable` | General-n, returns scalar |
-| `inner_product` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | `stable` | General-n, returns scalar |
-| `frobenius_sq` | `[m, n](a: tensor[m, n, f32]) -> f32` | `stable` | General-n, returns scalar |
-| `frobenius_norm` | `[m, n](a: tensor[m, n, f32]) -> f32` | `stable` | General-n, returns scalar |
-| `scale_vec` | `[n](v: tensor[n, f32], s: f32) -> tensor[n, f32]` | `stable` | General-n, returns tensor |
-| `matvec` | `[m, n](a: tensor[m, n, f32], v: tensor[n, f32]) -> tensor[m, f32]` | `stable` | General-n via einsum, returns vector |
-| `vecmat` | `[m, n](v: tensor[m, f32], a: tensor[m, n, f32]) -> tensor[n, f32]` | `stable` | General-n via einsum, returns vector |
-| `det_2x2` | `(a: tensor[2, 2, f32]) -> f32` | `stable` | Fixed 2x2, returns scalar |
-| `det_3x3` | `(a: tensor[3, 3, f32]) -> f32` | `stable` | Fixed 3x3, returns scalar |
-| `la_vec_add` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `stable` | General-n elementwise add |
-| `la_vec_sub` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `stable` | General-n elementwise sub |
-| `la_vec_saxpy` | `[n](alpha: f32, x: tensor[n, f32], y: tensor[n, f32]) -> tensor[n, f32]` | `stable` | General-n, computes x + alpha*y |
-| `la_basis_n_f32` | `(k: i64, s: f32, template: &tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Basis vector scaled by `s`, using the template length; shared by CurveFit and Ode. |
-| `la_zeros_mat_like` | `(a: &tensor[n, n, f32]) -> tensor[n, n, f32]` | `alpha` | Elementwise `a - a`; a zero matrix for finite input, preserving IEEE behavior for non-finite values. |
-| `la_tridiag_solve` | `[n](lower: tensor[n, f32], diag: tensor[n, f32], upper: tensor[n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | Shared tridiagonal solver used by cubic spline interpolation. Intended for finite inputs with elimination pivots of magnitude at least `1e-30`; smaller pivots are replaced by `1.0` without a singularity diagnostic. |
-| `cg_solve` | `[n](a_mat: tensor[n, n, f32], b: tensor[n, f32], x0: tensor[n, f32], tol: f32, max_iters: i64) -> tensor[n, f32]` | `stable` | General-n conjugate gradient for SPD systems |
-| `inv_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` | Fixed 2x2, Cayley-Hamilton, NaN on singular |
-| `inv_3x3` | `(a: tensor[3, 3, f32]) -> tensor[3, 3, f32]` | `stable` | Fixed 3x3, Cayley-Hamilton, NaN on singular |
-| `solve_2x2` | `(a: tensor[2, 2, f32], b: tensor[2, f32]) -> tensor[2, f32]` | `stable` | Fixed 2x2, via inv_2x2 + matvec |
-| `solve_3x3` | `(a: tensor[3, 3, f32], b: tensor[3, f32]) -> tensor[3, f32]` | `stable` | Fixed 3x3, via inv_3x3 + matvec |
-| `eig_2x2_real` | `(a: tensor[2, 2, f32]) -> (f32, f32)` | `stable` | Fixed 2x2, returns tuple of eigenvalues, NaN if complex |
-| `cholesky_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` | Fixed 2x2, lower-triangular, NaN if not SPD |
-| `cholesky_n` | `[n](a: tensor[n, n, f32]) -> tensor[n, n, f32]` | `alpha` | General-n column-by-column Cholesky, lower-triangular, SPD assumed (no explicit check) |
-| `lu_solve` | `[n](a: tensor[n, n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `alpha` | General-n Doolittle LU, no partial pivoting. Requires all leading submatrices of A to be nonsingular; well-conditioned matrices needing row swaps produce NaN. AD: gradients treat pivot choices as fixed. |
-| `qr_decompose` | `[n](a: tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, n, f32])` | `alpha` | General-n Householder QR (square). Returns (Q, R): Q orthogonal, R upper triangular. AD: Householder sign choices are piecewise-smooth, not globally smooth. |
-| `svd_n` | `[n](a: tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor[n, n, f32])` | `alpha` | General-n square Jacobi SVD. Returns (U, sigma, Vt). Fixed 30n sweeps; poorly-separated singular values may not fully converge. U is orthogonal only for full-rank A. AD: singular-vector bases are discontinuous at repeated singular values. |
-| `eig_n` | `[n](a: tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32])` | `alpha` | Symmetric Jacobi eigendecomposition. Returns (eigenvalues, Q) where Q[:,i] is eigenvector for eigenvalue i. Fixed 30n sweeps. Requires symmetric input — non-symmetric matrices produce wrong results silently. No sorting of eigenvalues guaranteed. |
+| `transpose` | `[m, n, prec: Float](a: tensor[m, n, prec]) -> tensor[n, m, prec]` | `stable` | General-n, returns tensor |
+| `matmul_wrap` | `[m, k, n, prec: Float](a: tensor[m, k, prec], b: tensor[k, n, prec]) -> tensor[m, n, prec]` | `stable` | General-n, wraps builtin matmul |
+| `gram` | `[m, n, prec: Float](a: tensor[m, n, prec]) -> tensor[n, n, prec]` | `stable` | General-n, returns A^T A |
+| `aat` | `[m, n, prec: Float](a: tensor[m, n, prec]) -> tensor[m, m, prec]` | `stable` | General-n, returns A A^T |
+| `diag` | `[n, prec: Float](a: tensor[n, n, prec]) -> tensor[n, prec]` | `stable` | General-n, returns vector |
+| `trace_mat` | `[n, prec: Float](a: tensor[n, n, prec]) -> tensor[prec]` | `stable` | General-n, returns scalar tensor |
+| `trace_scalar` | `[n, prec: Float](a: tensor[n, n, prec]) -> prec` | `stable` | General-n, returns scalar |
+| `l2_norm_vec` | `[n, prec: Float](v: tensor[n, prec]) -> prec` | `stable` | General-n, returns scalar |
+| `inner_product` | `[n, prec: Float](a: tensor[n, prec], b: tensor[n, prec]) -> prec` | `stable` | General-n, returns scalar |
+| `frobenius_sq` | `[m, n, prec: Float](a: tensor[m, n, prec]) -> prec` | `stable` | General-n, returns scalar |
+| `frobenius_norm` | `[m, n, prec: Float](a: tensor[m, n, prec]) -> prec` | `stable` | General-n, returns scalar |
+| `scale_vec` | `[n, prec: Float](v: tensor[n, prec], s: prec) -> tensor[n, prec]` | `stable` | General-n, returns tensor |
+| `matvec` | `[m, n, prec: Float](a: tensor[m, n, prec], v: tensor[n, prec]) -> tensor[m, prec]` | `stable` | General-n via einsum, returns vector |
+| `vecmat` | `[m, n, prec: Float](v: tensor[m, prec], a: tensor[m, n, prec]) -> tensor[n, prec]` | `stable` | General-n via einsum, returns vector |
+| `det_2x2` | `[prec: Float](a: tensor[2, 2, prec]) -> prec` | `stable` | Fixed 2x2, returns scalar |
+| `det_3x3` | `[prec: Float](a: tensor[3, 3, prec]) -> prec` | `stable` | Fixed 3x3, returns scalar |
+| `la_vec_add` | `[n, prec: Float](a: tensor[n, prec], b: tensor[n, prec]) -> tensor[n, prec]` | `stable` | General-n elementwise add |
+| `la_vec_sub` | `[n, prec: Float](a: tensor[n, prec], b: tensor[n, prec]) -> tensor[n, prec]` | `stable` | General-n elementwise sub |
+| `la_vec_saxpy` | `[n, prec: Float](alpha: prec, x: tensor[n, prec], y: tensor[n, prec]) -> tensor[n, prec]` | `stable` | General-n, computes x + alpha*y |
+| `la_basis_n` | `[n, prec: Float](k: i64, s: prec, template: &tensor[n, prec]) -> tensor[n, prec]` | `alpha` | Basis vector scaled by `s`, using the template length; shared by CurveFit and Ode. |
+| `la_zeros_mat_like` | `[prec: Float](a: &tensor[n, n, prec]) -> tensor[n, n, prec]` | `alpha` | Elementwise `a - a`; a zero matrix for finite input, preserving IEEE behavior for non-finite values. |
+| `la_tridiag_solve` | `[n, prec: Float](lower: tensor[n, prec], diag: tensor[n, prec], upper: tensor[n, prec], b: tensor[n, prec]) -> tensor[n, prec]` | `alpha` | Shared tridiagonal solver used by cubic spline interpolation. Intended for finite inputs with elimination pivots of magnitude at least `1e-30`; smaller pivots are replaced by `1.0` without a singularity diagnostic. |
+| `cg_solve` | `[n, prec: Float](a_mat: tensor[n, n, prec], b: tensor[n, prec], x0: tensor[n, prec], tol: prec, max_iters: i64) -> tensor[n, prec]` | `stable` | General-n conjugate gradient for SPD systems |
+| `inv_2x2` | `[prec: Float](a: tensor[2, 2, prec]) -> tensor[2, 2, prec]` | `stable` | Fixed 2x2, Cayley-Hamilton, NaN on singular |
+| `inv_3x3` | `[prec: Float](a: tensor[3, 3, prec]) -> tensor[3, 3, prec]` | `stable` | Fixed 3x3, Cayley-Hamilton, NaN on singular |
+| `solve_2x2` | `[prec: Float](a: tensor[2, 2, prec], b: tensor[2, prec]) -> tensor[2, prec]` | `stable` | Fixed 2x2, via inv_2x2 + matvec |
+| `solve_3x3` | `[prec: Float](a: tensor[3, 3, prec], b: tensor[3, prec]) -> tensor[3, prec]` | `stable` | Fixed 3x3, via inv_3x3 + matvec |
+| `eig_2x2_real` | `[prec: Float](a: tensor[2, 2, prec]) -> (prec, prec)` | `stable` | Fixed 2x2, returns tuple of eigenvalues, NaN if complex |
+| `cholesky_2x2` | `[prec: Float](a: tensor[2, 2, prec]) -> tensor[2, 2, prec]` | `stable` | Fixed 2x2, lower-triangular, NaN if not SPD |
+| `cholesky_n` | `[n, prec: Float](a: tensor[n, n, prec]) -> tensor[n, n, prec]` | `alpha` | General-n column-by-column Cholesky, lower-triangular, SPD assumed (no explicit check) |
+| `lu_solve` | `[n, prec: Float](a: tensor[n, n, prec], b: tensor[n, prec]) -> tensor[n, prec]` | `alpha` | General-n Doolittle LU, no partial pivoting. Requires all leading submatrices of A to be nonsingular; well-conditioned matrices needing row swaps produce NaN. AD: gradients treat pivot choices as fixed. |
+| `qr_decompose` | `[n, prec: Float](a: tensor[n, n, prec]) -> (tensor[n, n, prec], tensor[n, n, prec])` | `alpha` | General-n Householder QR (square). Returns (Q, R): Q orthogonal, R upper triangular. AD: Householder sign choices are piecewise-smooth, not globally smooth. |
+| `svd_n` | `[n, prec: Float](a: tensor[n, n, prec]) -> (tensor[n, n, prec], tensor[n, prec], tensor[n, n, prec])` | `alpha` | General-n square Jacobi SVD. Returns (U, sigma, Vt). Fixed 30n sweeps; poorly-separated singular values may not fully converge. U is orthogonal only for full-rank A. AD: singular-vector bases are discontinuous at repeated singular values. |
+| `eig_n` | `[n, prec: Float](a: tensor[n, n, prec]) -> (tensor[n, prec], tensor[n, n, prec])` | `alpha` | Symmetric Jacobi eigendecomposition. Returns (eigenvalues, Q) where Q[:,i] is eigenvector for eigenvalue i. Fixed 30n sweeps. Requires symmetric input — non-symmetric matrices produce wrong results silently. No sorting of eigenvalues guaranteed. |
 
 ### Nautilus.Stats (28 exports)
 

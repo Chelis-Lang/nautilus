@@ -1,6 +1,15 @@
-tensor precision mismatch: f32 vs i64
+cannot be instantiated at `i64`
 
-Assumption: Nautilus.LinAlg.det_2x2 accepts only tensor[2, 2, f32]. Passing
-an int64 matrix must remain a compile-time PrecisionMismatch rather than being
-implicitly converted or accepted. If mixed-precision policy changes, review the
-public LinAlg contract before updating this diagnostic.
+`Nautilus.LinAlg` is generic over one `prec: Float` binder per function, and
+that bound admits float dtypes only ([04-DTYPE-2]). An integer matrix passed to
+`det_2x2` must be rejected at the bound, not by an arithmetic failure deeper in
+the body.
+
+The pinned diagnostic changed with the conversion, and the new one is stronger.
+The f32-only signature rejected this as `tensor precision mismatch: f32 vs i64`
+-- true, but a statement about one concrete declared dtype, which a caller could
+have read as "LinAlg happens to be f32 today". The bound rejection is a
+statement about the contract: no integer dtype is admissible at any
+instantiation. It also discriminates, where the old text did not: the
+pre-generic module produces the old diagnostic for this same file, so this
+`.expect` cannot pass against it.

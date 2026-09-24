@@ -1,5 +1,5 @@
 module Nautilus.CurveFit
-import Nautilus.LinAlg (inv_2x2, inv_3x3, matvec, l2_norm_vec, la_vec_sub, la_vec_add, scale_vec, la_basis_n_f32, cg_solve, la_zeros_mat_like, inner_product)
+import Nautilus.LinAlg (inv_2x2, inv_3x3, matvec, l2_norm_vec, la_vec_sub, la_vec_add, scale_vec, la_basis_n, cg_solve, la_zeros_mat_like, inner_product)
 export (lm_scalar_1param, lm_scalar_nparam)
 -- chelis:provenance/v1 authority
 -- id = NAUT-MOD-CURVEFIT
@@ -48,7 +48,7 @@ def lm_scalar_1param[n](model: f32 -> f32 -> f32, dmodel: f32 -> f32 -> f32, xs:
 -- concrete Jacobian rows pass, but the attempted full LM replacement loses
 -- runtime-extent binder provenance. See tests_blocked/README.md.
 def lm_jcol[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32], x: &tensor[m, f32], theta: &tensor[n, f32], base_pred: &tensor[m, f32], tpl_n: &tensor[n, f32], i: i64, eps: f32) -> tensor[m, f32] = {
-  eps_vec = la_basis_n_f32(i, eps, tpl_n)
+  eps_vec = la_basis_n(i, eps, tpl_n)
   theta_plus = la_vec_add(theta, eps_vec)
   pred_plus = model(theta_plus, x)
   scale_vec(la_vec_sub(pred_plus, base_pred), div(cast(1.0, f32), eps))
@@ -57,7 +57,7 @@ def lm_jtr_sum[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32]
   if gte(i, n_params) then to_tensor(map(fn (t: f32) -> cast(0.0, f32), to_list(tpl_n))) else {
     j_col = lm_jcol(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), i, eps)
     jtr_i = inner_product(copy(j_col), copy(r))
-    e_i = la_basis_n_f32(i, jtr_i, copy(tpl_n))
+    e_i = la_basis_n(i, jtr_i, copy(tpl_n))
     rest = lm_jtr_sum(model, x, theta, base_pred, r, tpl_n, add(i, cast(1, i64)), n_params, eps)
     la_vec_add(e_i, rest)
   }
@@ -68,7 +68,7 @@ def lm_jtj_row_sum[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, 
   } else {
     j_col_j = lm_jcol(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), j, eps)
     dot_ij = inner_product(copy(j_col_i), j_col_j)
-    e_j = la_basis_n_f32(j, cast(1.0, f32), copy(tpl_n))
+    e_j = la_basis_n(j, cast(1.0, f32), copy(tpl_n))
     this_entry = einsum("i,j->ij", scale_vec(copy(e_i), dot_ij), e_j)
     rest = lm_jtj_row_sum(model, x, theta, base_pred, tpl_n, j_col_i, e_i, add(j, cast(1, i64)), n_params, eps)
     add(this_entry, rest)
@@ -79,7 +79,7 @@ def lm_jtj_sum[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, f32]
     einsum("i,j->ij", copy(ztj), ztj)
   } else {
     j_col_i = lm_jcol(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), i, eps)
-    e_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_n))
+    e_i = la_basis_n(i, cast(1.0, f32), copy(tpl_n))
     row_i = lm_jtj_row_sum(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), j_col_i, e_i, cast(0, i64), n_params, eps)
     rest = lm_jtj_sum(model, x, theta, base_pred, tpl_n, add(i, cast(1, i64)), n_params, eps)
     add(row_i, rest)
@@ -93,8 +93,8 @@ def lm_nparam_step[n, m](model: &tensor[n, f32] -> &tensor[m, f32] -> tensor[m, 
   jtr = lm_jtr_sum(model, copy(x), copy(theta), copy(base_pred), copy(r), copy(tpl_n), cast(0, i64), n_params, eps)
   jtj = lm_jtj_sum(model, copy(x), copy(theta), copy(base_pred), copy(tpl_n), cast(0, i64), n_params, eps)
   lamb_i = fold(fn (acc: tensor[n, n, f32], i: i64) -> {
-    le_i = la_basis_n_f32(i, lambda, copy(tpl_n))
-    ue_i = la_basis_n_f32(i, cast(1.0, f32), copy(tpl_n))
+    le_i = la_basis_n(i, lambda, copy(tpl_n))
+    ue_i = la_basis_n(i, cast(1.0, f32), copy(tpl_n))
     add(acc, einsum("i,j->ij", le_i, ue_i))
   }, la_zeros_mat_like(copy(jtj)), range(cast(0, i64), n_params))
   h = add(jtj, lamb_i)
