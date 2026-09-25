@@ -11,9 +11,9 @@ families. It replaces `scipy.stats` for Chelis programs.
 | LogNormal | `lognormal_pdf` | `lognormal_cdf` | `lognormal_inv_cdf` | `lognormal_sample` |
 | Uniform | `uniform_pdf` | `uniform_cdf` | `uniform_inv_cdf` | `uniform_sample` |
 | Exponential | `exponential_pdf` | `exponential_cdf` | `exponential_inv_cdf` | `exponential_sample` |
-| Gamma | `gamma_pdf` | `gamma_cdf` | `gamma_inv_cdf` | |
-| Chi-squared | `chi_squared_pdf` | `chi_squared_cdf` | `chi_squared_inv_cdf` | |
-| Student-t | `student_t_pdf` | `student_t_cdf` | | |
+| Gamma | `gamma_pdf` | `gamma_cdf` | `gamma_inv_cdf` | `gamma_sample` |
+| Chi-squared | `chi_squared_pdf` | `chi_squared_cdf` | `chi_squared_inv_cdf` | `chi_squared_sample` |
+| Student-t | `student_t_pdf` | `student_t_cdf` | | `student_t_sample` |
 | Poisson | `poisson_pmf` | `poisson_cdf` | | |
 | Binomial | `binomial_pmf` | `binomial_cdf` | | |
 | Beta | `beta_pdf` | `beta_cdf` | | |
@@ -22,31 +22,29 @@ families. It replaces `scipy.stats` for Chelis programs.
 
 ## Parameter conventions
 
-Functions follow scipy's parameter naming:
-
-- Normal: `(x, mean, std)` not `(x, mu, sigma)`
-- Gamma: `(x, shape, scale)` not `(x, shape, rate)`
-- Exponential: `(x, rate)`
+- Normal: `(x, mean, std)`, even for the standard normal
+- Gamma: `(x, shape, scale)`, SciPy's convention, not `(x, shape, rate)`
+- Exponential: `(x, rate)`, unlike SciPy's `scale = 1/rate`
 - Chi-squared: `(x, df)` where df is degrees of freedom
 - Student-t: `(x, df)`
 - Poisson: `(k, lambda)` where k is the count
 - Binomial: `(k, n, p)` where n is trials and p is probability
 - Beta: `(x, a, b)` where a, b are shape parameters
-- F: `(x, df1, df2)`
+- F: `(x, d1, d2)`
 - Weibull: `(x, shape, scale)`
 
 ## Sampling and the Random effect
 
-The four `_sample` functions carry the `! { Random }` effect:
+The seven `_sample` functions carry the `! { Random }` effect:
 
 ```chelis-fragment
 def normal_sample[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random }
 ```
 
 The `template` tensor determines the output shape. The actual values
-in the template are ignored; only its shape is used. Sampling uses
-Box-Muller (Normal), inverse CDF (Exponential, LogNormal), or direct
-scaling (Uniform).
+in the template are ignored; only its shape is used. See
+[Sampling with the Random Effect](sampling.md) for the methods and for
+seeding.
 
 ## Imports
 

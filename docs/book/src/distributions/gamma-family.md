@@ -27,13 +27,20 @@ Returns 0 at q=0, +inf at q=1, NaN outside [0,1].
 
 Marsaglia-Tsang method for shape >= 1. Carries the `Random` effect.
 
-```chelis-fragment
-import Nautilus.Distributions (gamma_pdf, gamma_cdf, gamma_inv_cdf)
-
-pdf = gamma_pdf(cast(2.0, f32), cast(2.0, f32), cast(1.0, f32))  -- approximately 0.2707
-cdf = gamma_cdf(cast(2.0, f32), cast(1.0, f32), cast(3.0, f32))  -- approximately 0.4866
-x = gamma_inv_cdf(cast(0.5, f32), cast(2.0, f32), cast(1.0, f32))
+```chelis
+module Nautilus.BookGammaFamily
+import Nautilus.Distributions (gamma_pdf, gamma_cdf, gamma_inv_cdf, chi_squared_cdf)
+export (pdf_at_2, cdf_at_2, median_shape_2, chi2_critical)
+def pdf_at_2() -> f32 = gamma_pdf(cast(2.0, f32), cast(2.0, f32), cast(1.0, f32))
+def cdf_at_2() -> f32 = gamma_cdf(cast(2.0, f32), cast(1.0, f32), cast(3.0, f32))
+def median_shape_2() -> f32 = gamma_inv_cdf(cast(0.5, f32), cast(2.0, f32), cast(1.0, f32))
+def chi2_critical() -> f32 = chi_squared_cdf(cast(3.84, f32), cast(1.0, f32))
 ```
+
+`pdf_at_2` is approximately 0.2707, `cdf_at_2` (shape 1, scale 3, so
+1 - e^(-2/3)) approximately 0.4866, `median_shape_2` approximately 1.678, and
+`chi2_critical` approximately 0.950: 3.84 is the 95% critical value of a
+chi-squared with one degree of freedom.
 
 ## Chi-squared distribution
 
@@ -48,11 +55,7 @@ shape = df/2 and scale = 2.
 
 **`chi_squared_sample[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! { Random }`**
 
-```chelis-fragment
-import Nautilus.Distributions (chi_squared_cdf)
-
-p = chi_squared_cdf(cast(3.84, f32), cast(1.0, f32))  -- approximately 0.95
-```
+`chi2_critical` in the module above shows `chi_squared_cdf` in use.
 
 ## Student's t distribution
 

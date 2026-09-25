@@ -10,40 +10,40 @@ correlation matrices return a square tensor over the variables.
 
 | Function | Signature | Notes |
 |---|---|---|
-| `mean_vec` | `[n](v: tensor[n, f32]) -> f32` | Arithmetic mean |
-| `median_vec` | `[n](v: tensor[n, f32]) -> f32` | Sorts internally; averages middle two for even n |
-| `trimmed_mean_vec` | `[n](v: tensor[n, f32], proportion: f32) -> f32` | Trims `proportion` from each tail; NaN if proportion >= 0.5 |
+| `mean_vec` | `[n](v: &tensor[n, f32]) -> f32` | Arithmetic mean |
+| `median_vec` | `[n](v: &tensor[n, f32]) -> f32` | Sorts internally; averages middle two for even n |
+| `trimmed_mean_vec` | `[n](v: &tensor[n, f32], proportion: f32) -> f32` | Trims `proportion` from each tail; NaN if proportion >= 0.5 |
 
 ## Dispersion
 
 | Function | Signature | Notes |
 |---|---|---|
-| `variance_vec` | `[n](v: tensor[n, f32], ddof: i64) -> f32` | ddof=0 for population, ddof=1 for sample |
-| `std_vec` | `[n](v: tensor[n, f32], ddof: i64) -> f32` | sqrt(variance_vec) |
-| `range_vec` | `[n](v: tensor[n, f32]) -> f32` | max - min |
+| `variance_vec` | `[n](v: &tensor[n, f32], ddof: i64) -> f32` | ddof=0 for population, ddof=1 for sample |
+| `std_vec` | `[n](v: &tensor[n, f32], ddof: i64) -> f32` | sqrt(variance_vec) |
+| `range_vec` | `[n](v: &tensor[n, f32]) -> f32` | max - min |
 
 ## Shape
 
 | Function | Signature | Notes |
 |---|---|---|
-| `skewness_vec` | `[n](v: tensor[n, f32]) -> f32` | Population skewness (biased, not adjusted) |
-| `kurtosis_vec` | `[n](v: tensor[n, f32]) -> f32` | Excess kurtosis (Fisher convention, subtracts 3) |
+| `skewness_vec` | `[n](v: &tensor[n, f32]) -> f32` | Population skewness (biased, not adjusted) |
+| `kurtosis_vec` | `[n](v: &tensor[n, f32]) -> f32` | Excess kurtosis (Fisher convention, subtracts 3) |
 
 ## Order statistics
 
 | Function | Signature | Notes |
 |---|---|---|
-| `min_vec` | `[n](v: tensor[n, f32]) -> f32` | |
-| `max_vec` | `[n](v: tensor[n, f32]) -> f32` | |
-| `quantile_vec` | `[n](v: tensor[n, f32], q: f32) -> f32` | q in [0,1], linear interpolation, sorts internally |
-| `percentile_vec` | `[n](v: tensor[n, f32], p: f32) -> f32` | p in [0,100], delegates to quantile_vec |
+| `min_vec` | `[n](v: &tensor[n, f32]) -> f32` | |
+| `max_vec` | `[n](v: &tensor[n, f32]) -> f32` | |
+| `quantile_vec` | `[n](v: &tensor[n, f32], q: f32) -> f32` | q in [0,1], linear interpolation, sorts internally |
+| `percentile_vec` | `[n](v: &tensor[n, f32], p: f32) -> f32` | p in [0,100], delegates to quantile_vec |
 
 ## Two-sample
 
 | Function | Signature | Notes |
 |---|---|---|
-| `covariance_scalar` | `[n](a: tensor[n, f32], b: tensor[n, f32], ddof: i64) -> f32` | Scalar covariance between two vectors |
-| `correlation_scalar` | `[n](a: tensor[n, f32], b: tensor[n, f32]) -> f32` | Pearson r (uses ddof=0 internally) |
+| `covariance_scalar` | `[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: i64) -> f32` | Scalar covariance between two vectors |
+| `correlation_scalar` | `[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> f32` | Pearson r (uses ddof=0 internally) |
 
 ## Standardisation and ranks
 
@@ -51,8 +51,8 @@ These return a tensor of the same length rather than a scalar.
 
 | Function | Signature | Notes |
 |---|---|---|
-| `rank_vec` | `[n](v: tensor[n, f32]) -> tensor[n, f32]` | 1-based ranks; ties share the average of the ranks they span |
-| `zscore_vec` | `[n](v: tensor[n, f32], ddof: i64) -> tensor[n, f32]` | `(x - mean) / std`; NaN throughout for a constant vector |
+| `rank_vec` | `[n](v: &tensor[n, f32]) -> tensor[n, f32]` | 1-based ranks; ties share the average of the ranks they span |
+| `zscore_vec` | `[n](v: &tensor[n, f32], ddof: i64) -> tensor[n, f32]` | `(x - mean) / std`; NaN throughout for a constant vector |
 
 For finite input `rank_vec` matches `scipy.stats.rankdata`'s default
 `method="average"`, so `rank_vec([3, 1, 4, 1])` is `[3, 1.5, 4, 1.5]` and the
@@ -66,8 +66,8 @@ markedly slower than the sort-based reductions in this module; prefer
 
 | Function | Signature | Notes |
 |---|---|---|
-| `covariance_matrix` | `[m, n](x: tensor[m, n, f32], ddof: i64) -> tensor[m, m, f32]` | m variables by n observations |
-| `correlation_matrix` | `[m, n](x: tensor[m, n, f32]) -> tensor[m, m, f32]` | Pearson correlation over the same layout |
+| `covariance_matrix` | `[m, n](x: &tensor[m, n, f32], ddof: i64) -> tensor[m, m, f32]` | m variables by n observations |
+| `correlation_matrix` | `[m, n](x: &tensor[m, n, f32]) -> tensor[m, m, f32]` | Pearson correlation over the same layout |
 
 Each **row** is a variable and each **column** an observation, matching
 `numpy.cov`'s default `rowvar=True`. `covariance_matrix` over two stacked
@@ -82,8 +82,8 @@ module Nautilus.BookStatsSummary
 import Nautilus.Stats (mean_vec, variance_vec, median_vec)
 export (summary)
 def summary[n](data: tensor[n, f32]) -> (f32, f32, f32) = {
-  mu = mean_vec(copy(data))
-  v = variance_vec(copy(data), cast(1, i64))
+  mu = mean_vec(data)
+  v = variance_vec(data, cast(1, i64))
   med = median_vec(data)
   (mu, v, med)
 }
@@ -91,8 +91,8 @@ def summary[n](data: tensor[n, f32]) -> (f32, f32, f32) = {
 
 ## Notes
 
-- Use `copy(data)` when passing the same tensor to multiple statistics
-  functions (linear-use discipline).
+- Every function borrows its input (`&tensor`), so the same tensor can be
+  passed to several statistics without `copy`.
 - `skewness_vec` and `kurtosis_vec` use population (biased) moments,
   matching the default behavior of scipy.stats.skew/kurtosis with
   bias=True.
@@ -109,5 +109,5 @@ def summary[n](data: tensor[n, f32]) -> (f32, f32, f32) = {
   `scipy.stats.rankdata` returns all-NaN instead. Screen NaN before
   ranking. `zscore_vec`, `covariance_matrix` and `correlation_matrix` all
   propagate NaN correctly. Infinities rank correctly.
-- The whole module is f32. An f64 caller has no path through it; see
-  nautilus#12 and nautilus#59 for the same gap in sibling modules.
+- The whole module is f32; an f64 caller has no path through it yet.
+  Widening it is tracked in nautilus#70.

@@ -39,7 +39,7 @@
 # Solvers
 
 - [Root Finding (Newton, Bisection, Brent)](solvers/roots.md)
-- [ODE Integration (Euler, RK4)](solvers/ode.md)
+- [ODE Integration (Euler, RK4, RK45)](solvers/ode.md)
 - [SDE Integration](solvers/sde.md)
 - [Numerical Quadrature](solvers/integrate.md)
 - [Scalar Optimization](solvers/optim.md)

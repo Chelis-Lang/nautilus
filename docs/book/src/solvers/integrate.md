@@ -45,24 +45,21 @@ non-weight part of the integrand.
 
 ## Example: compute pi/4
 
-```chelis-fragment
+```chelis
+module Nautilus.BookIntegratePi
 import Nautilus.Integrate (adaptive_simpson, gauss_legendre_10, romberg_5)
-
-def inv_1_x2(x: f32) -> f32 =
-  div(cast(1.0, f32), add(cast(1.0, f32), mul(x, x)))
-
-def pi_over_4_adaptive() -> f32 =
-  adaptive_simpson(inv_1_x2, cast(0.0, f32), cast(1.0, f32),
-                   cast(1.0e-10, f32), cast(20, i64))
-
-def pi_over_4_gl10() -> f32 =
-  gauss_legendre_10(inv_1_x2, cast(0.0, f32), cast(1.0, f32))
-
-def pi_over_4_romberg() -> f32 =
-  romberg_5(inv_1_x2, cast(0.0, f32), cast(1.0, f32))
+export (adaptive_estimate, gl10_estimate, romberg_estimate, gaussian_area)
+def inv_1_x2(x: f32) -> f32 = div(cast(1.0, f32), add(cast(1.0, f32), mul(x, x)))
+def adaptive_estimate() -> f32 = adaptive_simpson(inv_1_x2, cast(0.0, f32), cast(1.0, f32), cast(1e-7, f32), cast(20, i64))
+def gl10_estimate() -> f32 = gauss_legendre_10(inv_1_x2, cast(0.0, f32), cast(1.0, f32))
+def romberg_estimate() -> f32 = romberg_5(inv_1_x2, cast(0.0, f32), cast(1.0, f32))
+def gaussian_area() -> f32 = adaptive_simpson(fn (x: f32) -> exp(neg(mul(x, x))), cast(0.0, f32), cast(1.0, f32), cast(1e-7, f32), cast(20, i64))
 ```
 
-All three return approximately 0.7854 (pi/4).
+The three estimates of the integral of 1/(1+x^2) over [0, 1] return
+approximately 0.785398 (pi/4). `gaussian_area` integrates exp(-x^2) over the
+same interval with a closure and returns approximately 0.746824
+(sqrt(pi)/2 * erf(1)).
 
 ## Notes
 

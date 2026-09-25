@@ -5,7 +5,11 @@ compute a Black-Scholes option price.
 
 ## The program
 
-Create a file called `src/my_first.ch` in your project:
+Chelis requires a module's name to match its path under `src/`, with the
+package's `module_prefix` from `reef.toml` as the first component. To try this
+inside a Nautilus checkout, save it as `src/examplefirstprogram.ch`; in your
+own package, replace `Nautilus` with your own prefix and name the file to
+match.
 
 ```chelis
 module Nautilus.ExampleFirstProgram
@@ -52,7 +56,7 @@ formula.
 ## Type-check it
 
 ```sh
-chelis check src/my_first.ch
+chelis check src/examplefirstprogram.ch
 ```
 
 You should see `"score": 1` with zero errors.
@@ -60,19 +64,24 @@ You should see `"score": 1` with zero errors.
 ## Build and run it
 
 ```sh
-chelis build src/my_first.ch -o /tmp/my_first_out
+chelis build src/examplefirstprogram.ch -o /tmp/my_first_out
 ```
 
-This generates C code in `/tmp/my_first_out/`. The expected result is
-approximately 10.45 (the BS call price for ATM, 1yr, 5% rate, 20% vol).
+This generates C code in `/tmp/my_first_out/`. `chelis build` also enforces
+the formatter and linter, so run `chelis fmt --inplace` on the file first if
+you edited it by hand. The expected result is approximately 10.45, the
+Black-Scholes price of an at-the-money one-year call at a 5% rate and 20%
+volatility.
 
 ## Key things to notice
 
 1. **Imports are explicit.** You import exactly the functions you need
    from each Nautilus module. No wildcard imports.
 
-2. **Everything is f32.** Numeric literals must be wrapped in
-   `cast(value, f32)`. This is Chelis's explicit-precision policy.
+2. **Precision is explicit.** Unsuffixed float literals are `f32`, so
+   `normal_cdf(d1, 0.0, 1.0)` would also type-check; the `cast(value, f32)`
+   calls here only make the dtype visible. Chelis never promotes between
+   precisions implicitly: for f64 write `0.5f64` or `cast(0.5, f64)`.
 
 3. **Math uses named functions.** `add(a, b)` not `a + b`, `mul(a, b)`
    not `a * b`, `log(x)` not `math.log(x)`. Chelis has no operator
@@ -81,5 +90,6 @@ approximately 10.45 (the BS call price for ATM, 1yr, 5% rate, 20% vol).
 4. **`normal_cdf` takes three arguments.** `(x, mean, std)`, not just
    `(x)`. For the standard normal, pass `(x, 0.0, 1.0)`.
 
-5. **AD is free.** To compute delta (dPrice/dSpot), wrap the call in
-   `grad`: `grad(fn (s: f32) -> black_scholes_call(s, strike, rate, vol, t))(spot)`.
+5. **`grad` works through it.** Delta (dPrice/dSpot) is
+   `grad(fn (s: f32) -> black_scholes_call(s, strike, rate, vol, t_years))(spot)`;
+   see [Greeks via grad](../finance/greeks.md) for what is and is not tested.

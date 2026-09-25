@@ -46,12 +46,10 @@ def draw_noise[n](template: tensor[n, f32]) -> tensor[n, f32] ! { Random } =
   normal_sample(template, cast(0.0, f32), cast(1.0, f32))
 ```
 
-The `Random` effect requires a handler that provides the underlying
-uniform random source. In the current Chelis runtime, the bare-build C
-backend uses a deterministic hash-based PRNG seeded at 0 (this matched
-the v0.1.4 runtime where the seam was first documented and has not
-changed through the 0.9.0 pin). For production Monte Carlo, a
-user-configurable seed handler is needed.
+The `Random` effect is discharged by Chelis's `seed` handler, which fixes
+the underlying uniform stream: `with seed(42i64) { draw_noise(template) }`
+returns the same draws on every run, and a different seed gives different
+draws.
 
 ## Computing the price
 
@@ -70,12 +68,13 @@ exotic payoffs (Asian, barrier, lookback) where no closed-form exists.
 
 ## Practical considerations
 
-- **Seed control.** The `Random` effect handler determines reproducibility.
-  For variance reduction (antithetic variates, control variates), the
-  caller must structure the noise generation accordingly.
+- **Seed control.** The `seed` handler determines reproducibility. For
+  variance reduction (antithetic variates, control variates), the caller
+  must structure the noise generation accordingly.
 - **Path count.** Monte Carlo error scales as 1/sqrt(N). For ~1% relative
   error on a $10 option, expect to need ~10,000 paths.
-- **Euler vs Milstein.** For GBM, `milstein_fixed` adds a correction term
-  that improves strong convergence. However, GBM is a special case where
-  Milstein and Euler coincide because d(sigma*S)/dS = sigma. For general
-  SDEs, Milstein provides genuine improvement.
+- **Euler vs Milstein.** Milstein's correction, 0.5 * g * g' * (dW^2 - dt),
+  vanishes only for additive noise (g' = 0). For GBM, g = sigma * S and
+  g' = sigma, so `milstein_fixed` (with `dg_dy` returning sigma) raises the
+  strong order from 0.5 to 1. Terminal-price payoffs depend only on weak
+  accuracy, where the two schemes are both order 1.

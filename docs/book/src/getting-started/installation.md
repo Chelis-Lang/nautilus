@@ -4,14 +4,15 @@
 
 Nautilus requires:
 
-- the published [Chelis 0.18.1](https://github.com/Chelis-Lang/chelis/releases/tag/v0.18.1) toolchain
-- GCC (for compiling generated C code)
+- the Chelis toolchain version pinned in `reef.toml` (currently
+  [Chelis 0.18.11](https://github.com/Chelis-Lang/chelis/releases/tag/v0.18.11))
+- a C compiler such as GCC or Clang, for the generated C code
 - uv and Python 3.12 for the isolated parity project
 
 ## Install the Chelis toolchain
 
 ```sh
-chelisup install 0.18.1
+chelisup install 0.18.11
 ```
 
 `chelisup` installs releases side by side. Its `chelis` shim resolves the
@@ -26,8 +27,8 @@ chelis reef setup
 chelis reef build
 ```
 
-This produces `dist/nautilus-0.7.38.chb`, the reef package that other
-Chelis projects can depend on.
+This produces `dist/nautilus-X.Y.Z.chb`, where `X.Y.Z` is the version in
+`reef.toml`: the Reef package that other Chelis projects can depend on.
 
 ## Verify the installation
 
@@ -35,12 +36,11 @@ Chelis projects can depend on.
 # Type-check all modules
 for f in src/*.ch; do chelis check "$f"; done
 
-# Run the native identity / structural test gate (463 tests)
+# Run the native identity / structural test suite
 chelis test tests/ --jobs auto
 
-# Verify rejection contracts and current upstream blockers
+# Verify that invalid programs are still rejected
 chelis test tests_neg/ --expect neg
-chelis test tests_blocked/ --expect blocked
 
 # Serial fallback for debugging
 chelis test tests/ --jobs 1
@@ -50,8 +50,11 @@ uv sync --project parity --frozen
 uv run --project parity --frozen python parity/run_parity.py --strict
 ```
 
-You should see `463 passed, 0 failed` from `chelis test`, and
-`parity totals: 216 passed, 0 failed` from the parity oracle.
+Every test should pass, and the parity oracle should report
+`parity totals: 216 passed, 0 failed`. When `tests_blocked/` contains
+reproducers of upstream compiler limitations, `chelis test tests_blocked/
+--expect blocked` confirms each still fails with its recorded diagnostic;
+it currently contains none.
 
 Ensure the `chelisup` shim is on `PATH` so parity probes resolve the reef-pinned
 toolchain.

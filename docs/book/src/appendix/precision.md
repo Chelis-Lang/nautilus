@@ -15,10 +15,9 @@ them, here or anywhere else in the repo; the `bessel_y1` figure below is a
 single point, quoted precisely because no single figure covers that function.
 Measure the argument you care about.
 
-Treat the table as an f32 guide with known gaps. It has no rows for `gamma`,
-`beta`, `lbeta` or `erfc`, and its `bessel_y1` row ("~1e-5 near zeros")
-understates that function near its large-x seam around 7.4, where both dtypes
-err by ~1.2e-4 away from any zero.
+Treat the table as an f32 guide. It has no figure for `beta` or `lbeta`, and
+`bessel_y1` errs by about 1.2e-4 at either dtype just below its large-x seam
+at x = 7.5, well away from any zero.
 
 Three cases are stated exactly, because they are measured and they are the ones
 a caller is most likely to get wrong:
@@ -38,22 +37,21 @@ a caller is most likely to get wrong:
 
 Narrowing these means replacing coefficients, not widening dtypes.
 
-This page documents the precision characteristics of each function family and
-known trouble spots.
-
 ## Precision by function family
 
 | Family | Typical relative error | Notes |
 |---|---|---|
 | `erf` | ~1e-7 | Horner rational approximation |
+| `erfc` | same absolute error as `erf` | `1 - erf(x)`, so relative error grows in the upper tail |
 | `erfinv` | ~1e-8 | Acklam rational approximation via `norminv` |
+| `gamma` | ~1e-7 | Lanczos (g=7) with reflection |
 | `log_gamma` | ~1e-9 | Lanczos (g=7) with reflection |
 | `digamma` | ~1e-7 | Recurrence + asymptotic (x >= 6) |
 | `trigamma` | ~1e-6 | Recurrence + asymptotic (x >= 6) |
 | `ellipk`, `ellipe` | ~1e-8 | AGM recurrence (quadratic convergence) |
 | `bessel_j0`, `j1` | ~1e-5 near zeros | Rational polynomial + large-x trig |
 | `bessel_y0` | ~1e-5 near zeros | Rational + log-singularity |
-| `bessel_y1` | ~1e-5 near zeros | Large-x branch now starts at 7.5 to avoid the old seam drift |
+| `bessel_y1` | ~1e-5 near zeros | Large-x branch from x = 7.5; ~1.2e-4 absolute just below it |
 | `bessel_i0`, `i1` | f32 | Polynomial + asymptotic, crossover 3.75 |
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
@@ -98,7 +96,8 @@ than dtype-limited. The other modules remain f32-only.
 
 ## Comparison to scipy
 
-scipy operates in f64 (approximately 15 significant digits). Nautilus's
-f32 is roughly 8-9 orders of magnitude less precise. The 895
-scipy-parity assertions in the test suite use tolerances calibrated to
-f32: typically 1e-4 to 1e-6 relative error, depending on the function.
+SciPy operates in f64 (approximately 15 significant digits); f32 is roughly
+nine orders of magnitude coarser. The 216 reviewed SciPy parity samples in
+`parity/goldens/` therefore use absolute tolerances calibrated to f32,
+between 5e-6 and 5e-2 and most often 5e-4 or 5e-3, depending on the
+function and argument.

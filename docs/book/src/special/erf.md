@@ -35,14 +35,14 @@ neg_val = erf(cast(-1.0, f32))   -- approximately -0.8427
 
 **Signature:** `[prec: Float](x: prec) -> prec`
 
-Computes the complementary error function `erfc(x) = 1 - erf(x)`. Implemented
-as a one-line subtraction off `erf`, so it shares `erf`'s precision and domain.
-Prefer `erfc` over `1 - erf(x)` only when you would otherwise lose significant
-digits in the subtraction (large positive `x`, where `erf(x)` is close to 1).
+Computes the complementary error function `erfc(x) = 1 - erf(x)`, implemented
+literally as that subtraction. It therefore shares `erf`'s absolute error and
+does not avoid the cancellation for large positive `x`, where `erf(x)` is
+close to 1: at f32 it returns exactly 0 from about x = 3.92.
 
 - **Domain:** all reals
 - **Range:** (0, 2)
-- **Precision:** ~1e-7 relative (inherits `erf`'s tolerance)
+- **Precision:** ~1e-7 absolute (inherits `erf`'s error); relative error grows in the upper tail
 
 ```chelis-fragment
 import Nautilus.Special (erfc)

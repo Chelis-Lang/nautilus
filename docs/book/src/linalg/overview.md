@@ -14,8 +14,10 @@ fold-based solver; differentiability requires an executable gradient oracle.
   positive-definite systems (see [CG Solve](cg-solve.md)).
 - **General-n decompositions** (alpha): `lu_solve` (Doolittle LU, no pivoting),
   `qr_decompose` (Householder QR, square), `cholesky_n` (column Cholesky, SPD),
-  `svd_n` (one-sided Jacobi SVD, square, 30n sweeps), and `eig_n` (symmetric
+  `svd_n` (Jacobi SVD, square, 30n sweeps), and `eig_n` (symmetric
   Jacobi eigendecomposition).
+- **Shared helpers** (alpha): `la_basis_n_f32`, `la_zeros_mat_like`, and
+  `la_tridiag_solve`, used by CurveFit, Ode, and spline interpolation.
 - **Matrix utilities**: `transpose`, `matmul_wrap`, `gram` (A^T A),
   `aat` (A A^T), `diag`, `trace_mat`, `trace_scalar`.
 - **Vector utilities**: `l2_norm_vec`, `inner_product`, `scale_vec`,
@@ -48,8 +50,10 @@ def residual_norm[n](a: tensor[n, n, f32], x: tensor[n, f32], b: tensor[n, f32])
 ## Notes
 
 - All inputs and outputs are `f32` tensors. Do not pass `f64`.
-- Tensor arguments follow linear-use discipline. Use `copy(t)` when a
-  tensor is consumed more than once.
+- Most LinAlg functions borrow their tensor arguments (`&tensor` in the
+  signature), so one tensor can feed several calls without `copy`.
+  `cg_solve` and `la_tridiag_solve` take ownership; pass `copy(t)` if you
+  still need `t` afterwards.
 - The closed-form inverses use the Cayley-Hamilton theorem, not Cramer's
   rule. They return NaN-filled matrices when the determinant is near zero
   (threshold: 1e-30).
