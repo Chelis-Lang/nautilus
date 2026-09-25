@@ -1,16 +1,13 @@
 name: nightly
 
-# Slimmed nightly: the per-PR ci.yml already runs `chelis test tests/`
-# (the native roots/optim/etc suite) and a strict `parity/run_parity.py`
-# job against reviewed, checked-in SciPy goldens. Golden regeneration is an
-# explicit local operation and never runs in CI. What remains is the
-# nightly's unique value, none of which fits the PR latency budget:
-#   * the exhaustive per-file `chelis check` score=1 sweep over all
-#     src/*.ch (~9 min — too slow for the PR gate, which runs a whole
-#     -package `chelis reef build` plus a one-file rotating smoke), and
-#   * SKILL.md + mdBook example validation (compile every documented
-#     ```chelis block at score 1 against the pinned toolchain).
-# Runs on a schedule (daily at 06:00 UTC) and on demand, NOT per-PR.
+# Checks too slow for the per-PR gate in ci.yml, which already runs the
+# native tests, negative contracts, blocked probes, and strict SciPy parity:
+#   * the exhaustive per-file `chelis check` score=1 sweep over src/*.ch
+#     (about 25s per file on GitHub runners; ci.yml runs a whole-package
+#     `chelis reef build` plus a one-file rotating smoke instead), and
+#   * SKILL.md and mdBook example validation, which compiles every
+#     documented ```chelis block at score 1 with the style gate on.
+# Runs daily at 06:00 UTC and on demand.
 
 on:
   schedule:
@@ -52,13 +49,7 @@ jobs:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
         run: python3 scripts/install_chelis_std.py
 
-      # Per-file chelis check with score=1 enforcement. Removed from
-      # the PR gate (ci.yml) because each invocation costs ~25s on a
-      # GitHub Actions runner (1000× slower than local). 21 files ×
-      # 25s = ~9 min — fine for a nightly job, unacceptable on PRs.
-      # The PR gate has chelis reef build (whole-package type check)
-      # plus a one-file rotating chelis check smoke; this is the
-      # comprehensive pass.
+      # Per-file chelis check with score=1 enforcement over every module.
       - name: chelis check (all modules, score=1 enforced)
         run: |
           for f in src/*.ch; do
@@ -78,10 +69,9 @@ jobs:
           CHELIS_BIN: chelis
         run: python3 scripts/validate_book_examples.py
 
-  # Surface a nightly failure as a tracking issue (opens on failure, closes on
-  # green) so a red nightly is impossible to miss — scheduled-run failures do
-  # not show a red status on main, which is how this nightly stayed red for
-  # weeks unnoticed (nautilus#11).
+  # Surface a nightly failure as a tracking issue that opens on failure and
+  # closes on the next green run. Scheduled-run failures do not show a red
+  # status on main, so without this a failing nightly is easy to miss.
   report:
     name: Surface nightly status
     needs: documentation-gates
