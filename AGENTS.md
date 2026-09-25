@@ -76,17 +76,20 @@ by editing the pin directly on `main`.
    `chelis reef conform audit` and
    `chelis reef conform bump-check --base origin/main`.
 
-Large or behaviorally significant bumps should also get a one-off migration
-document containing the expected unlocks and per-surface re-probe results.
+Large or behaviorally significant bumps should also record the expected
+unlocks and per-surface re-probe results as a migration note in the bump pull
+request description. Do not check in per-version migration documents: the
+repository describes the current pin, and history lives in `CHANGELOG.md`, pull
+requests, and git.
 
-## Phase Spec
+## Scope and Acceptance
 
-The owning spec section for this shell is checked in at
-`spec/phase3j.md`, extracted verbatim from the Chelis monorepo's
-`spec/design/chelis_phase3_plan.md`. That file is the source of truth
-for module scope, test plan, and acceptance oracle. Update this repo's
-copy in the same change set as any monorepo-side changes to the
-original section.
+[`spec/scope.md`](spec/scope.md) owns Nautilus's intent, architecture,
+acceptance rules, known limitations, and dated deferrals. `SKILL.md` §6 is the
+function-level API inventory with per-export stability labels.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) lists the local gate commands. Deferral
+citations in source (for example `Nautilus.Signal`) point at
+`spec/scope.md` § Deferrals.
 
 ## Shared Local Skills
 
@@ -104,15 +107,12 @@ local_skills`, and shared-skill overrides use the sanctioned trailing
 
 ## Upstream Chelis Bugs
 
-Upstream bugs are tracked in
-[`docs/UPSTREAM_BUGS.md`](docs/UPSTREAM_BUGS.md). The original v0.1.x
-compiler/runtime blockers are archived. Chelis 0.18.11 repairs the isolated
-generic and concrete Jacobian-row witnesses, the scalar generic-cast witness,
-and the untaken masked-select witness; those are now positive tests. The full
-Levenberg-Marquardt exact-AD replacement retains a separately documented
-runtime-extent composition residue, and the imported generic C-lowering matrix
-retains a manual-only higher-order residue. See the operational status sections
-for current reproducers and triggers.
+Upstream limitations are tracked in
+[`docs/UPSTREAM_BUGS.md`](docs/UPSTREAM_BUGS.md), with executable reproducers
+under `tests_blocked/` where the harness can express them and manual recipes in
+[`tests_blocked/README.md`](tests_blocked/README.md) where it cannot. Cite every
+narrowing by issue number at its site; never describe a limitation by prose
+name alone.
 
 ## Authorship Policy
 

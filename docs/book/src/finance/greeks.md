@@ -1,70 +1,56 @@
 # Greeks via Automatic Differentiation
 
-Chelis supports `grad` as a language primitive. Because `black_scholes_call`
-is a composition of differentiable Chelis primitives and library functions
-(no FFI, no opaque runtime calls), `grad` can differentiate through it
-to produce option Greeks.
+Chelis provides reverse-mode differentiation as a language transform, `grad`.
+`grad(f, wrt=x)` returns a function with the same parameters as `f` that
+computes df/dx. Because `black_scholes_call` is an ordinary composition of
+Chelis primitives and `normal_cdf`, with no foreign-function calls, `grad`
+can differentiate through it to produce the option Greeks.
 
-## The composition pattern
+## The Greeks as derivatives
 
-```chelis-fragment
+```chelis
+module Nautilus.BookGreeks
 import Nautilus.Distributions (normal_cdf)
-
-// Delta: dC/dS
-def bs_delta(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 =
-  grad(fn (s_: f32) -> black_scholes_call(s_, k, r, sigma, t))(s)
-
-// Vega: dC/d(sigma)
-def bs_vega(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 =
-  grad(fn (sig: f32) -> black_scholes_call(s, k, r, sig, t))(sigma)
-
-// Theta: -dC/dT (negative by convention)
-def bs_theta(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 =
-  neg(grad(fn (t_: f32) -> black_scholes_call(s, k, r, sigma, t_))(t))
-
-// Rho: dC/dr
-def bs_rho(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 =
-  grad(fn (r_: f32) -> black_scholes_call(s, k, r_, sigma, t))(r)
+export (black_scholes_call, delta, vega, theta, rho, gamma)
+def black_scholes_call(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = {
+  sqrt_t = sqrt(t)
+  d1_num = add(log(div(s, k)), mul(add(r, mul(0.5, mul(sigma, sigma))), t))
+  d1 = div(d1_num, mul(sigma, sqrt_t))
+  d2 = sub(d1, mul(sigma, sqrt_t))
+  nd1 = normal_cdf(d1, 0.0, 1.0)
+  nd2 = normal_cdf(d2, 0.0, 1.0)
+  discount = exp(neg(mul(r, t)))
+  sub(mul(s, nd1), mul(mul(k, discount), nd2))
+}
+def delta(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = grad(black_scholes_call, wrt=s)(s, k, r, sigma, t)
+def vega(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = grad(black_scholes_call, wrt=sigma)(s, k, r, sigma, t)
+def theta(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = neg(grad(black_scholes_call, wrt=t)(s, k, r, sigma, t))
+def rho(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = grad(black_scholes_call, wrt=r)(s, k, r, sigma, t)
+def gamma(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = grad(delta, wrt=s)(s, k, r, sigma, t)
 ```
 
-Each Greek is computed by closing over the other parameters and
-differentiating with respect to the one of interest.
+Each Greek names the parameter to differentiate with `wrt=` and passes every
+argument through. Gamma, the second derivative in the spot price, is `grad`
+applied to `delta`, which is itself a `grad`.
 
-## Gamma (second derivative)
+For an at-the-money call (S = K = 100, r = 5%, sigma = 20%, T = 1 year), the
+evaluator (`chelis eval`) at Chelis 0.18.11 returns these values, which agree
+with the closed-form Greeks to f32 precision:
 
-```chelis-fragment
-// Gamma: d^2 C / dS^2
-def bs_gamma(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 =
-  grad(fn (s_: f32) ->
-    grad(fn (s__: f32) -> black_scholes_call(s__, k, r, sigma, t))(s_)
-  )(s)
-```
-
-Nested `grad` calls produce higher-order derivatives. This works at the
-type level in Chelis because `grad` returns a function of the same type.
-
-## Current status: aspirational
-
-This chapter describes a pattern that **type-checks** in Chelis today.
-`grad` through composed scalar functions works at the type level, and the
-evaluator (`chelis eval`) handles simple cases.
-
-However, **runtime AD through the bare-build C backend path is not yet
-verified** for compositions as deep as Black-Scholes. The bare-build
-test harness concatenates modules into a single C translation unit and
-does not exercise the AD system at runtime. Verifying that `grad` through
-`normal_cdf` (which calls `erf`, which uses a Horner rational
-approximation) produces correct numerical derivatives at runtime is a
-future validation step.
-
-The expected values for an ATM call (S=K=100, r=5%, sigma=20%, T=1y) are:
-
-| Greek | Expected (f64 reference) |
+| Greek | Value |
 |---|---|
-| Delta | ~0.6368 |
-| Vega | ~37.52 |
-| Theta | ~-6.41 (annualized) |
-| Gamma | ~0.0188 |
+| Delta | 0.63683 |
+| Vega | 37.524 |
+| Theta | -6.4140 (per year) |
+| Rho | 53.232 |
+| Gamma | 0.018761 |
 
-These can be cross-checked against finite differences once the runtime
-AD path is validated.
+## Caveats
+
+- **Use `wrt=`, not a closure over the other parameters.** At Chelis 0.18.11,
+  writing delta as `grad(fn (s_: f32) -> black_scholes_call(s_, k, r, sigma, t))(s)`
+  type-checks but fails in the evaluator with `missing required input` for
+  the captured parameters. The `wrt=` form above works.
+- **No test covers these values.** Nautilus's test suite does not yet
+  include a gradient test through `normal_cdf`, so this chapter is a worked
+  example rather than an advertised, regression-tested surface.

@@ -2,89 +2,113 @@
 
 Numerical methods, statistics, and optimization for the
 [Chelis](https://github.com/Chelis-Lang/chelis) programming language.
-Ships as a reef package under the `Nautilus` module prefix.
+Nautilus is a Reef package (Chelis's package format) published under the
+`Nautilus` module prefix.
 
-Everything is implemented in pure Chelis, with no C FFI or hand-written
-adjoint registry. Tensor composition exposes Chelis's primitive adjoints, but
-Nautilus claims differentiability only for surfaces with executable gradient
-coverage; it does not promise blanket AD through every iterative solver or
-decomposition.
+Nautilus is written entirely in Chelis, with no C FFI and no hand-written
+adjoints. Chelis's automatic differentiation can trace through any of it, but
+Nautilus advertises a function as differentiable only when a gradient test
+covers it. See [`spec/scope.md`](spec/scope.md) for the design principles,
+acceptance rules, known limitations, and what is deliberately out of scope.
 
 ## Modules
 
 | Module | What it provides |
 |---|---|
-| `Nautilus.Special` | erf, erfc, erfinv, gamma, log_gamma, digamma, trigamma, beta, lbeta, Bessel (J0/J1/Y0/Y1/I0/I1/K0/K1), Airy (Ai/Bi), elliptic integrals (K/E) |
-| `Nautilus.Distributions` | Normal, LogNormal, Uniform, Exponential, Gamma, Chi-squared, Student-t, Poisson, Binomial, Beta, F, Weibull. PDF, CDF, inverse CDF, and sampling where applicable |
-| `Nautilus.LinAlg` | transpose, matmul, gram, aat, fixed-size det/inv/solve/eig/Cholesky, general square CG/LU/QR/Cholesky/SVD/symmetric eig, vector ops |
-| `Nautilus.Stats` | descriptive statistics, quantiles, covariance/correlation, multiple-testing adjustments, likelihood-ratio helpers |
+| `Nautilus.Special` | `erf`, `erfc`, `erfinv`, `gamma`, `log_gamma`, `digamma`, `trigamma`, `beta`, `lbeta`, Bessel (J0/J1/Y0/Y1/I0/I1/K0/K1), Airy (Ai/Bi), complete elliptic integrals (K/E); generic over f32 and f64 |
+| `Nautilus.Distributions` | Normal, LogNormal, Uniform, Exponential, Gamma, Chi-squared, Student-t, Poisson, Binomial, Beta, F, Weibull: PDF, CDF, inverse CDF, and sampling where applicable |
+| `Nautilus.LinAlg` | transpose, matmul, Gram matrices, fixed-size det/inv/solve/eig/Cholesky, general square conjugate-gradient/LU/QR/Cholesky/SVD/symmetric eig, vector ops |
+| `Nautilus.Stats` | descriptive statistics, quantiles, ranks and z-scores, covariance/correlation matrices, multiple-testing adjustments, likelihood-ratio helpers |
 | `Nautilus.Info` | entropy, cross-entropy, KL divergence |
 | `Nautilus.Distance` | Euclidean, Manhattan, Chebyshev, cosine, Mahalanobis |
 | `Nautilus.Roots` | bisection, Newton, Brent |
-| `Nautilus.Ode` | Euler and RK4 (step and solve), adaptive RK45 endpoint solve |
-| `Nautilus.Integrate` | trapezoidal, Simpson, Gauss-Legendre, adaptive Simpson, Romberg, Gauss-Hermite, Gauss-Laguerre |
-| `Nautilus.Testing` | z/t/chi-squared statistics and p-values, confidence intervals |
-| `Nautilus.Optim` | golden section, Brent minimize, gradient descent, Newton minimize (scalar 1D) |
-| `Nautilus.Optimize` | stable scalar minimize/root wrappers and a smooth AD smoke target |
-| `Nautilus.Interpolation` | linear (uniform and sorted grids), cubic Hermite |
-| `Nautilus.Sde` | Euler-Maruyama, Milstein (caller-supplied noise) |
-| `Nautilus.CurveFit` | Levenberg-Marquardt single- and multi-parameter fitting |
-| `Nautilus.StateSpace` | scalar Kalman prediction/update and local-level models |
-| `Nautilus.TimeSeries` | EWMA/exponential smoothing and AR/ARMA/ARIMA point forecasts |
-| `Nautilus.Signal` | six typed transform/filter stubs under the [Phase 5f deferral](spec/phase3j.md#explicit-deferrals), plus functional `fftfreq` |
-| `Nautilus.Core` | package-version metadata |
+| `Nautilus.Ode` | Euler and RK4 (step and solve), adaptive Dormand–Prince RK45 with endpoint or dense-output solves |
+| `Nautilus.Integrate` | trapezoidal, Simpson, Gauss–Legendre, adaptive Simpson, Romberg, Gauss–Hermite, Gauss–Laguerre |
+| `Nautilus.Testing` | z, t, Welch, and chi-squared statistics and p-values, confidence intervals |
+| `Nautilus.Optim` | golden-section search, Brent minimization, gradient descent, Newton minimization (scalar) |
+| `Nautilus.Optimize` | stable scalar `minimize` and `root` entry points |
+| `Nautilus.Interpolation` | linear (uniform and sorted grids), cubic Hermite, natural cubic spline |
+| `Nautilus.Sde` | Euler–Maruyama and Milstein with caller-supplied noise |
+| `Nautilus.CurveFit` | Levenberg–Marquardt fitting for one or many parameters |
+| `Nautilus.StateSpace` | scalar Kalman filter and local-level model |
+| `Nautilus.TimeSeries` | EWMA, exponential smoothing, and AR(1)/ARMA(1,1)/ARIMA(1,1,0) point forecasts |
+| `Nautilus.Signal` | `fftfreq`; FFT, STFT, and filters are typed stubs until Chelis supports complex numbers |
+| `Nautilus.Core` | package version metadata |
 
-## Getting started
+Every export carries a `stable` or `alpha` label. [`SKILL.md`](SKILL.md) §6
+has the full signature-level inventory, and the
+[book](docs/book/src/SUMMARY.md) has worked examples and per-function
+precision tables.
 
-Targets the published
-[Chelis v0.18.11 release](https://github.com/Chelis-Lang/chelis/releases/tag/v0.18.11).
-Install it through `chelisup`; do not replace the pin-resolving shim with a
-version-specific symlink.
+## Using Nautilus
+
+Install the Chelis toolchain with `chelisup` (see the
+[Chelis installation guide](https://github.com/Chelis-Lang/chelis)), then
+install a Nautilus release into your local Reef registry and declare it as a
+dependency:
 
 ```sh
-chelisup install 0.18.11
-chelis reef setup
+chelis reef install --from-github Chelis-Lang/nautilus@v0.7.46
+```
+
+```toml
+# your project's reef.toml
+[dependencies]
+nautilus = { version = "0.7.46" }
+```
+
+```chelis
+module MyProject.Demo
+import Nautilus.Special (erf)
+import Nautilus.Distributions (normal_cdf)
+export (main)
+def main() -> f32 = {
+  zero = cast(0.0, f32)
+  one = cast(1.0, f32)
+  p = normal_cdf(cast(1.96, f32), zero, one)
+  e = erf(cast(0.5, f32))
+  add(p, e)
+}
+```
+
+The book's [first program](docs/book/src/getting-started/first-program.md)
+walks through a complete Black–Scholes example.
+
+Each release is built against one exact Chelis version, recorded as the
+`compiler` pin in [`reef.toml`](reef.toml). [`docs/releases.md`](docs/releases.md)
+describes the release artifacts and how to verify them.
+
+## Developing
+
+With `chelisup` installed, `chelis reef setup` provisions the pinned compiler
+and dependencies for a fresh clone. The main checks are:
+
+```sh
 chelis reef build
 chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto
-uv sync --project parity --frozen
+chelis test tests_neg/ --expect neg
 uv run --project parity --frozen python parity/run_parity.py --strict
 ```
 
-## Tests
+[`CONTRIBUTING.md`](CONTRIBUTING.md) covers the full local gate, the test
+layout, and how compiler upgrades are handled.
 
-Internal correctness lives in native `tests/*.ch` files run by
-`chelis test`; reviewed SciPy parity lives in `parity/`. The active golden
-corpus is checked in under `parity/goldens/`; normal CI validation never
-regenerates it.
+## Repository layout
 
-```sh
-chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto # 507 native tests
-chelis test tests_neg/ --expect neg                    # rejection contracts
-chelis test tests_blocked/ --expect blocked            # only when probes are present
-chelis test tests/ --jobs 1                            # serial fallback
-uv sync --project parity --frozen                      # locked oracle project
-uv run --project parity --frozen python parity/run_parity.py --strict # 216 samples
-python scripts/extract_stability.py --check            # stability metadata
-```
-
-## Benchmarks
-
-See [docs/benchmark_findings.md](docs/benchmark_findings.md). Highlights
-at n=100k on a single core:
-
-| Kernel | vs scipy | Throughput |
-|---|---|---|
-| erfinv | 6.5x faster | 450M evals/s |
-| normal_inv_cdf | 6.8x | 370M/s |
-| Fused compounds | 3x numpy | 150M/s |
-
-## Project docs
-
-- [spec/phase3j.md](spec/phase3j.md) for scope and acceptance criteria
-- [spec/next_up.md](spec/next_up.md) for the post-v0.1.0 roadmap
-- [docs/nautilus_status.md](docs/nautilus_status.md) for the full status report
-- [docs/UPSTREAM_BUGS.md](docs/UPSTREAM_BUGS.md) for upstream compiler bug history
+| Path | Contents |
+|---|---|
+| `src/` | the library, one file per module, plus runnable example programs |
+| `tests/` | native Chelis tests (`chelis test tests/`) |
+| `tests_neg/` | programs that must fail to compile, each with the diagnostic it must produce |
+| `tests_blocked/` | reproducers for open upstream compiler issues (see its README) |
+| `parity/` | SciPy/NumPy parity checks, an isolated uv project with reviewed goldens |
+| `docs/book/` | the Nautilus book (mdBook) |
+| `docs/` | benchmarks, release notes, the Chelis capability inventory, and upstream issue tracking |
+| `spec/scope.md` | intent, architecture, acceptance rules, limitations, deferrals |
+| `scripts/` | CI and validation tooling (Python, standard library only) |
+| `provenance/` | requirement-to-code provenance records (advisory) |
+| `agent-skills/`, `AGENTS.md` | instructions for AI coding agents, managed by the Chelis toolchain |
 
 ## License
 
-MIT
+[MIT](LICENSE)

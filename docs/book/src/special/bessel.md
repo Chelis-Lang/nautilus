@@ -34,9 +34,10 @@ asymptotic trigonometric form as J0/J1 applies.
 - **Domain:** x > 0
 - **At x = 0:** returns -inf
 - **For x < 0:** returns NaN
-- `bessel_y1` now switches to the large-x branch at `x >= 7.5`, which
-  removes the old seam drift in `(7.5, 8)`. Relative error still grows
-  near zeros, as expected for f32 rational approximations.
+- `bessel_y1` switches to the large-x branch at `x >= 7.5` rather than 8.
+  Just below that seam, around x = 7.4, its absolute error is about 1.2e-4
+  at either dtype. Relative error also grows near zeros, as expected for
+  rational approximations.
 
 ```chelis-fragment
 import Nautilus.Special (bessel_y0, bessel_y1)

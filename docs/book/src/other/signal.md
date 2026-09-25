@@ -1,12 +1,11 @@
 # Signal Processing
 
-The `Nautilus.Signal` module currently has six stubs: all functions except
-`fftfreq` return NaN tensors. The dated
-[Phase 3j explicit deferral](https://github.com/Chelis-Lang/nautilus/blob/main/spec/phase3j.md#explicit-deferrals)
-reserves those names until upstream Chelis adds complex-number support in
-Phase 5f; `fftfreq` is functional today.
+`Nautilus.Signal` exports seven functions. `fftfreq` works; the other six
+are placeholders that return NaN tensors, reserved until Chelis supports
+complex numbers (see the
+[deferrals in `spec/scope.md`](https://github.com/Chelis-Lang/nautilus/blob/main/spec/scope.md#deferrals)).
 
-## Current status
+## Status
 
 | Function | Status | Notes |
 |---|---|---|
@@ -31,20 +30,13 @@ freqs = fftfreq(signal, cast(100.0, f32))
 // Returns: [0, 12.5, 25, 37.5, -50, -37.5, -25, -12.5]
 ```
 
-**Signature:** `[n](x: tensor[n, f32], sample_rate: f32) -> tensor[n, f32]`
+**Signature:** `[n](x: &tensor[n, f32], sample_rate: f32) -> tensor[n, f32]`
 
 The input tensor's values are ignored; only its length `n` is used.
 
-## What will ship with complex numbers
+## Naming
 
-Once Chelis supports a complex type (or a `(f32, f32)` pair convention):
-
-- **FFT/IFFT:** Cooley-Tukey radix-2 for power-of-2 lengths, Bluestein
-  for arbitrary lengths. Magnitude and phase extraction.
-- **STFT:** Windowed FFT with configurable window size and hop.
-- **Filters:** Frequency-domain lowpass, highpass, and bandpass via
-  FFT, mask, IFFT.
-
-The `_stub` suffix on current names is intentional: when real
-implementations ship, they will use the clean names (`fft`, `ifft`,
-`stft`, `lowpass`, `highpass`, `bandpass`).
+The `_stub` suffix is deliberate. Real implementations, once Chelis has
+complex numbers, are expected to take the plain names (`fft`, `ifft`,
+`stft`, `lowpass`, `highpass`, `bandpass`), so code written against the
+placeholders will not silently change behavior.

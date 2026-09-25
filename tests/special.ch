@@ -283,12 +283,12 @@ def test_erf_t_matches_scalar_across_the_cutover() -> unit ! { Test } = {
 }
 -- nautilus#56 / chelis#1464: `erf`'s series arm holds an x^7 term that
 -- overflows f32 for |x| > ~5.5e5. A scalar `if` inside a vmapped region is
--- lowered to a masked select that evaluates BOTH arms, so the overflowing arm
--- reaches the result even though the branch does not select it. `erf` clamps
--- the series input to the branch domain for exactly this reason.
+-- lowered to a masked select that evaluates BOTH arms, so before the upstream
+-- fix the overflowing untaken arm poisoned the result and `erf` had to clamp
+-- the series input. The fix removed the need for the clamp; this test keeps
+-- the reachable shape covered so a regression shows up as NaN here.
 --
--- This is a real reachable path, not a hypothetical: with the clamp removed
--- this test evaluates to NaN. `vmap(erf)` itself is NOT the shape that breaks
+-- `vmap(erf)` itself is NOT the shape that breaks
 -- -- spec/06 §3.1 types vmap over tensor-valued functions, and §3.6 broadcasts
 -- non-tensor arguments -- so the witness has to call `erf` on a scalar derived
 -- from the batched tensor.

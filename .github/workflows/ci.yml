@@ -70,9 +70,8 @@ jobs:
           fi
           echo "OK: no AI authorship trailers in $RANGE"
 
-      # Guard 1: no Python under tests/ — the .ch test directory is the
-      # Chelis-native gate. Any .py / .pyc / .pyi here is a backslide of
-      # the cutover.
+      # Guard 1: no Python under tests/. The native suite is written in
+      # Chelis; external oracles live only in parity/.
       - name: Hard rule — no Python under tests/
         run: |
           hits=$(find tests -type f \( -name '*.py' -o -name '*.pyc' -o -name '*.pyi' \) 2>/dev/null || true)
@@ -88,10 +87,8 @@ jobs:
       - name: Hard rule — external oracle isolation
         run: python3 scripts/check_oracle_isolation.py
 
-      # Guard 3: at least one tests/*.ch exists. The chelis-tests matrix
-      # used to be generated dynamically from `find tests -name '*.ch'`;
-      # keep this guard after the node-local `chelis test --jobs auto`
-      # cutover so an empty suite cannot silently report 0 failures.
+      # Guard 3: at least one tests/*.ch exists, so an empty suite cannot
+      # silently report 0 failures.
       - name: Hard rule — tests/ contains at least one .ch file
         run: |
           n=$(find tests -maxdepth 1 -name '*.ch' -type f | wc -l)
@@ -123,13 +120,10 @@ jobs:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
         run: python3 scripts/install_chelis_std.py
 
-      # chelis reef build does whole-package type checking — if any src
-      # file fails type-check or has unresolved imports, the build fails.
-      # The per-file `chelis check` loop with score=1 enforcement that
-      # used to live here was costing 8m22s in CI (~25s per file × 21 —
-      # a 1000× slowdown vs the 21ms-per-file local probe; cause is in
-      # chelis itself, not our setup). Moved to nightly.yml where the
-      # cost is acceptable.
+      # chelis reef build type-checks the whole package: any src file that
+      # fails type-checking or has unresolved imports fails the build. The
+      # exhaustive per-file `chelis check` sweep costs roughly 25s per file on
+      # GitHub runners, so it runs in nightly.yml instead.
       - name: chelis reef build
         run: chelis reef build
 
@@ -139,13 +133,13 @@ jobs:
           chelis reef build
           python3 scripts/check_release_artifacts.py
 
-      # One chelis check as a smoke that the binary works + the score=1
-      # field is still emitted. Rotates through the alphabet by day to
-      # catch a slow drift if score-1 ever stops being universal.
+      # One chelis check as a smoke test that the binary works and still
+      # reports score=1. The file rotates by day of year so every module is
+      # covered over time.
       - name: chelis check smoke (one file)
         run: |
           files=(src/*.ch)
-          # Pick a file based on day-of-year mod 21 so coverage rotates.
+          # Pick a file by day of year so coverage rotates.
           idx=$(( $(date -u +%j) % ${#files[@]} ))
           f="${files[$idx]}"
           echo "smoke check: $f"
@@ -202,15 +196,11 @@ jobs:
         run: python3 scripts/install_chelis_std.py
 
       - name: chelis test (node-local parallel)
-        # --suite-timeout is raised above its 600s default because this tensor /
-        # Monte-Carlo suite runs ~800-940s on GitHub's Linux runners (measured on
-        # this same suite under both chelis 0.18.9 and 0.18.10). That wall time is
-        # intrinsic suite weight on a comparatively slow runner, NOT the chelis#2059
-        # interpreter regression: #2059 degraded the closure-heavy package/prove
-        # route (fixed in 0.18.10; see CHANGELOG and docs/UPSTREAM_BUGS.md), a
-        # different workload from these compute-bound tests. Every test passes; only
-        # wall time exceeds the default cap. Proper fix is to shard tests/ across a
-        # CI matrix so each shard fits the default; tracked for a follow-up.
+        # --suite-timeout is raised above its 600s default because this tensor
+        # and Monte Carlo suite takes roughly 800-940s on GitHub's Linux
+        # runners. That is the suite's own weight, not a compiler regression.
+        # Sharding tests/ across a CI matrix would let each shard fit the
+        # default (nautilus#78).
         run: chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto
 
       # Shell contract §6: every case must fail with the diagnostic substring
@@ -290,9 +280,3 @@ jobs:
           python3 scripts/check_release_artifacts.py --write-checksums
           chelis reef build
           python3 scripts/check_release_artifacts.py
-
-  # legacy-harness moved to .github/workflows/nightly.yml — runs on a
-  # schedule, not on every PR. It's the dual-run safety net during the
-  # cutover window; once tests/*.ch reaches 100% coverage parity with
-  # the legacy assertions, the nightly job is removed (Phase 4 of the
-  # cutover plan).

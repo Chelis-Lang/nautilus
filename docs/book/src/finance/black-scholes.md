@@ -49,8 +49,8 @@ def main() -> f32 = black_scholes_call(
 // Expected result: approximately 10.45
 ```
 
-The ATM call price of ~10.45 matches the scipy/numpy reference to within
-f32 precision (~1e-5 relative error). This is Pattern 4 in SKILL.md.
+The ATM call price of about 10.4506 matches the closed-form f64 value to
+within f32 precision.
 
 ## How it works
 

@@ -33,35 +33,27 @@ Distributions module.
 | `t_p_value_lower` | `(t, df: f32) -> f32` | Lower-tail |
 | `chi_squared_p_value` | `(statistic, df: f32) -> f32` | 1 - chi_squared_cdf(statistic, df) |
 
-## Example: two-sided z-test
+## Example: a z-test and a Welch t-test
 
-```chelis-fragment
-import Nautilus.Testing (z_statistic, z_p_value_two_sided)
-
+```chelis
+module Nautilus.BookTestingDemo
+import Nautilus.Testing (z_statistic, z_p_value_two_sided, welch_t_statistic, welch_t_df, t_p_value_two_sided)
+export (z_test_demo, welch_demo)
 def z_test_demo() -> f32 = {
-  z = z_statistic(cast(5.2, f32), cast(5.0, f32),
-                  cast(1.5, f32), cast(36.0, f32))
-  p = z_p_value_two_sided(z)
-  p
+  z = z_statistic(cast(5.2, f32), cast(5.0, f32), cast(1.5, f32), cast(36.0, f32))
+  z_p_value_two_sided(z)
 }
-```
-
-This computes z = (5.2 - 5.0) / (1.5 / sqrt(36)) = 0.8 and the
-corresponding two-sided p-value of approximately 0.424.
-
-## Example: Welch's t-test
-
-```chelis-fragment
-import Nautilus.Testing (welch_t_statistic, welch_t_df, t_p_value_two_sided)
-
 def welch_demo() -> f32 = {
-  t = welch_t_statistic(cast(12.0, f32), cast(2.0, f32), cast(30.0, f32),
-                        cast(10.0, f32), cast(3.0, f32), cast(25.0, f32))
-  df = welch_t_df(cast(2.0, f32), cast(30.0, f32),
-                  cast(3.0, f32), cast(25.0, f32))
+  t = welch_t_statistic(cast(12.0, f32), cast(2.0, f32), cast(30.0, f32), cast(10.0, f32), cast(3.0, f32), cast(25.0, f32))
+  df = welch_t_df(cast(2.0, f32), cast(30.0, f32), cast(3.0, f32), cast(25.0, f32))
   t_p_value_two_sided(t, df)
 }
 ```
+
+`z_test_demo` computes z = (5.2 - 5.0) / (1.5 / sqrt(36)) = 0.8 and its
+two-sided p-value, approximately 0.424. `welch_demo` compares two samples
+with unequal variances (means 12 and 10, standard deviations 2 and 3, sizes
+30 and 25) and returns a two-sided p-value of approximately 0.0069.
 
 ## Notes
 

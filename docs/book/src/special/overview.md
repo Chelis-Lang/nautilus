@@ -7,9 +7,9 @@ numerical analysis. It replaces `scipy.special` for Chelis programs.
 All functions are pure (no effects). Differentiability via `grad` is **not**
 uniform across the module, and two separate limits apply.
 
-First, `grad` needs a function whose dtype is already fixed, so since these
-signatures became generic the point-free `grad(erf)` no longer type-checks.
-Wrap it, which works at either dtype:
+First, `grad` needs a function whose dtype is already fixed, so because these
+signatures are generic the point-free `grad(erf)` does not type-check. Wrap it
+in a concrete-dtype definition, which works at either dtype:
 
 ```chelis-fragment
 def erf_at(x: f64) -> f64 = erf(x)
@@ -21,8 +21,7 @@ exports actually differentiate even when wrapped: `erf`, `erfc`, `erfinv` and
 the eight `bessel_*`. The other ten -- `gamma`, `log_gamma`, `digamma`,
 `trigamma`, `beta`, `lbeta`, `ellipk`, `ellipe`, `airy_ai`, `airy_bi` -- fail
 at lowering, because their bodies recurse or reach a primitive with no
-reverse-mode adjoint. That has always been true of this module and is not
-something the dtype change altered.
+reverse-mode adjoint.
 
 Unlike the rest of Nautilus, all twenty-three exports are **dtype-generic over
 the `Float` family**, so the same `erf` serves an f32 caller and an f64 one:

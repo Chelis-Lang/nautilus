@@ -2,14 +2,16 @@
 
 Fixed-size closed-form routines for 2x2 and 3x3 matrices. These use the
 Cayley-Hamilton theorem for inversion and determinants, avoiding
-pivoting or iteration entirely. AD flows through all of them.
+pivoting or iteration entirely. Every input matrix is a read-only borrow
+(`&tensor`). No gradient test covers these routines, so they are not
+advertised as differentiable.
 
 ## Determinants
 
 | Function | Signature |
 |---|---|
-| `det_2x2` | `(a: tensor[2, 2, f32]) -> f32` |
-| `det_3x3` | `(a: tensor[3, 3, f32]) -> f32` |
+| `det_2x2` | `(a: &tensor[2, 2, f32]) -> f32` |
+| `det_3x3` | `(a: &tensor[3, 3, f32]) -> f32` |
 
 Both compute the determinant from traces of matrix powers (Newton's
 identities), not cofactor expansion.
@@ -18,8 +20,8 @@ identities), not cofactor expansion.
 
 | Function | Signature |
 |---|---|
-| `inv_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` |
-| `inv_3x3` | `(a: tensor[3, 3, f32]) -> tensor[3, 3, f32]` |
+| `inv_2x2` | `(a: &tensor[2, 2, f32]) -> tensor[2, 2, f32]` |
+| `inv_3x3` | `(a: &tensor[3, 3, f32]) -> tensor[3, 3, f32]` |
 
 Returns a NaN-filled matrix when `|det| < 1e-30` (singular or
 near-singular).
@@ -28,8 +30,8 @@ near-singular).
 
 | Function | Signature |
 |---|---|
-| `solve_2x2` | `(a: tensor[2, 2, f32], b: tensor[2, f32]) -> tensor[2, f32]` |
-| `solve_3x3` | `(a: tensor[3, 3, f32], b: tensor[3, f32]) -> tensor[3, f32]` |
+| `solve_2x2` | `(a: &tensor[2, 2, f32], b: &tensor[2, f32]) -> tensor[2, f32]` |
+| `solve_3x3` | `(a: &tensor[3, 3, f32], b: &tensor[3, f32]) -> tensor[3, f32]` |
 
 Each delegates to the corresponding inverse followed by `matvec`.
 
@@ -37,7 +39,7 @@ Each delegates to the corresponding inverse followed by `matvec`.
 
 | Function | Signature |
 |---|---|
-| `eig_2x2_real` | `(a: tensor[2, 2, f32]) -> (f32, f32)` |
+| `eig_2x2_real` | `(a: &tensor[2, 2, f32]) -> (f32, f32)` |
 
 Returns the two real eigenvalues as a tuple using the trace/determinant
 formula. If the discriminant is negative (complex eigenvalues), both
@@ -47,8 +49,8 @@ entries are NaN.
 
 | Function | Signature | Stability |
 |---|---|---|
-| `cholesky_2x2` | `(a: tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` |
-| `cholesky_n` | `[n](a: tensor[n, n, f32]) -> tensor[n, n, f32]` | `alpha` |
+| `cholesky_2x2` | `(a: &tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` |
+| `cholesky_n` | `[n](a: &tensor[n, n, f32]) -> tensor[n, n, f32]` | `alpha` |
 
 Returns the lower-triangular Cholesky factor L such that A = L L^T.
 
@@ -61,13 +63,14 @@ non-SPD matrix the output is undefined.
 
 ## General-N Decompositions
 
-`alpha` stability. Square matrices only unless noted.
+`alpha` stability. Square matrices only.
 
 | Function | Signature | Stability |
 |---|---|---|
-| `lu_solve` | `[n](a: tensor[n, n, f32], b: tensor[n, f32]) -> tensor[n, f32]` | `alpha` |
-| `qr_decompose` | `[n, m](a: tensor[n, m, f32]) -> (tensor[n, n, f32], tensor[n, m, f32])` | `alpha` |
-| `svd_n` | `[n](a: tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor[n, n, f32])` | `alpha` |
+| `lu_solve` | `[n](a: &tensor[n, n, f32], b: &tensor[n, f32]) -> tensor[n, f32]` | `alpha` |
+| `qr_decompose` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, n, f32])` | `alpha` |
+| `svd_n` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor[n, n, f32])` | `alpha` |
+| `eig_n` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32])` | `alpha` |
 
 **`lu_solve`** solves `A x = b` via Doolittle LU factorization (no partial
 pivoting). Requires all leading principal submatrices of A to be nonsingular —
@@ -75,13 +78,19 @@ well-conditioned matrices that need row swaps (e.g. `[[0,1],[1,0]]`) will
 produce wrong results, not an error.
 
 **`qr_decompose`** applies Householder reflections and returns `(Q, R)` where
-Q is n×n orthogonal and R is n×m upper triangular, so `A = Q R`. Piecewise-smooth
-AD (Householder sign choices are not globally smooth).
+Q is orthogonal and R is upper triangular, so `A = Q R`. Householder sign
+choices make the factors piecewise-smooth functions of A, not globally smooth
+ones.
 
 **`svd_n`** returns `(U, sigma, Vt)` where sigma is the vector of singular
-values in descending order and `A ≈ U diag(sigma) Vt`. Uses a fixed 30n Jacobi
+values, in the order the Jacobi sweeps leave them rather than sorted, and `A ≈ U diag(sigma) Vt`. Uses a fixed 30n Jacobi
 sweeps; poorly separated singular values may not fully converge (use abs
 tolerance ≥ 1e-3 for sigma comparisons). U is orthogonal only for full-rank A.
+
+**`eig_n`** is a symmetric Jacobi eigendecomposition returning
+`(eigenvalues, Q)`, where column i of Q is the eigenvector for eigenvalue i.
+It uses a fixed 30n sweeps, silently gives wrong results for a non-symmetric
+input, and does not guarantee eigenvalue order.
 
 ## Example
 
@@ -99,4 +108,5 @@ def demo_solve(a: tensor[2, 2, f32], b: tensor[2, f32]) -> f32 =
   `inv_2x2` is a type error caught by `chelis check`.
 - For general-n linear solve use `lu_solve` (Doolittle, no partial pivoting)
   or `cg_solve` (iterative, SPD only). For decompositions use `qr_decompose`
-  (Householder QR) or `svd_n` (Jacobi SVD). All three are `alpha` stability.
+  (Householder QR), `svd_n` (Jacobi SVD), or `eig_n` (symmetric
+  eigendecomposition). All are `alpha` stability.

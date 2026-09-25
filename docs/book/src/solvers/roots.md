@@ -25,7 +25,7 @@ root, or NaN on failure.
   bisection fallback. Requires a sign-change bracket like bisection but
   converges superlinearly. The best general-purpose choice.
 
-## Example: find sqrt(2) via Brent's method
+## Example: Brent's method and Newton's method
 
 ```chelis
 module Nautilus.BookRootsExamples
@@ -36,13 +36,15 @@ def find_sqrt2() -> f32 = {
   brent(f, cast(1.0, f32), cast(2.0, f32), cast(1e-10, f32), cast(100, i64))
 }
 def find_cos_eq_x() -> f32 = {
-  f = fn (x: f32) -> sub(sin(add(x, cast(1.5707963267948966, f32))), x)
+  f = fn (x: f32) -> sub(cos(x), x)
   df = fn (x: f32) -> sub(neg(sin(x)), cast(1.0, f32))
   newton(f, df, cast(0.5, f32), cast(1e-10, f32), cast(50, i64))
 }
 ```
 
-## Example: Newton's method with analytic derivative
+`find_sqrt2` returns approximately 1.414213. `find_cos_eq_x` solves
+cos(x) = x with the analytic derivative -sin(x) - 1 and returns approximately
+0.739085.
 
 ## Edge cases
 

@@ -2,7 +2,9 @@
 
 `cg_solve` implements the conjugate gradient method for solving linear
 systems Ax = b where A is symmetric positive-definite (SPD). It works
-at any dimension `n` and AD flows through the entire solve.
+at any dimension `n`. It is not advertised as differentiable: the iteration
+is recursive with a data-dependent stopping rule, and no gradient test covers
+it.
 
 ## Signature
 
@@ -15,6 +17,9 @@ def cg_solve[n](
   max_iters: i64
 ) -> tensor[n, f32]
 ```
+
+All three tensor arguments are taken by value (no `&`), so pass `copy(t)`
+for any of them you still need afterwards.
 
 **Parameters:**
 - `a_mat` -- the SPD coefficient matrix.

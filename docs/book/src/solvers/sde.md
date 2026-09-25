@@ -29,38 +29,30 @@ This design makes paths reproducible and avoids effect annotations
 (`! { Random }`) on the solver itself. Generate noise separately using
 `normal_sample` or pass a fixed tensor for testing.
 
-## Example: Euler-Maruyama
+## Example: Euler-Maruyama and Milstein
 
-```chelis-fragment
-import Nautilus.Sde (euler_maruyama_fixed)
-
-def em_drift(y: f32, t: f32) -> f32 = neg(y)
-def em_diffusion(y: f32, t: f32) -> f32 = cast(0.1, f32)
-
-def demo_em[n](noise: tensor[n, f32]) -> f32 =
-  euler_maruyama_fixed(em_drift, em_diffusion,
-    cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), noise)
+```chelis
+module Nautilus.BookSdePaths
+import Nautilus.Sde (euler_maruyama_fixed, milstein_fixed)
+export (euler_maruyama_path, milstein_path)
+def drift(y: f32, t: f32) -> f32 = neg(y)
+def diffusion(y: f32, t: f32) -> f32 = cast(0.1, f32)
+def scaled_diffusion(y: f32, t: f32) -> f32 = mul(cast(0.3, f32), y)
+def scale_slope(y: f32, t: f32) -> f32 = cast(0.3, f32)
+def euler_maruyama_path[n](noise: tensor[n, f32]) -> f32 = euler_maruyama_fixed(drift, diffusion, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), noise)
+def milstein_path[n](noise: tensor[n, f32]) -> f32 = milstein_fixed(drift, scaled_diffusion, scale_slope, cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), noise)
 ```
 
-With zero noise, this reproduces exponential decay (e^{-1}).
+`euler_maruyama_path` simulates dY = -Y dt + 0.1 dW from Y(0) = 1 to t = 1;
+with an all-zero noise tensor it reduces to Euler's method on exponential
+decay. `milstein_path` uses the multiplicative diffusion g(y) = 0.3y, whose
+derivative with respect to y is the constant 0.3.
 
 ## Milstein correction
 
 Milstein adds the term `0.5 * g(y,t) * g'(y,t) * (dW^2 - dt)`, which
 improves the strong convergence order from 0.5 to 1.0. The user must
-supply `dg_dy` analytically.
-
-```chelis-fragment
-import Nautilus.Sde (milstein_fixed)
-
-def m_drift(y: f32, t: f32) -> f32 = neg(y)
-def m_diff(y: f32, t: f32) -> f32 = mul(cast(0.3, f32), y)
-def m_ddiff(y: f32, t: f32) -> f32 = cast(0.3, f32)
-
-def demo_milstein[n](noise: tensor[n, f32]) -> f32 =
-  milstein_fixed(m_drift, m_diff, m_ddiff,
-    cast(1.0, f32), cast(0.0, f32), cast(1.0, f32), noise)
-```
+supply `dg_dy` analytically, as `scale_slope` does in the module above.
 
 ## Notes
 

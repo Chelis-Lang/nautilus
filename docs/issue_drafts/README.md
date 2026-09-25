@@ -1,16 +1,12 @@
 # Parked upstream issue drafts
 
-Ready-to-file issue bodies awaiting a stated filing condition.
+This directory holds ready-to-file bodies for upstream Chelis issues that are
+waiting on a stated filing condition. While a draft is parked, Nautilus cites
+it by path (`docs/issue_drafts/<file>.md`) at the narrowing site and in the
+Parked section of [`docs/UPSTREAM_BUGS.md`](../UPSTREAM_BUGS.md).
 
-No drafts are currently parked. The prior drafts are filed upstream:
+No drafts are currently parked.
 
-| Prior draft | Filed as |
-|---|---|
-| `grad_generic_vector_model_dims.md` | [`chelis#847`](https://github.com/Chelis-Lang/chelis/issues/847) |
-| `grad_vector_model_wrapper_backward_dag.md` | [`chelis#676`](https://github.com/Chelis-Lang/chelis/issues/676) — function-valued-model-capture witness on the tensor-capture issue (same backward-DAG verifier class) |
-| `eval_unused_reef_import_symbolic_input.md` | [`chelis#848`](https://github.com/Chelis-Lang/chelis/issues/848) |
-| `c_build_float_binder_cast_target.md` | [`chelis#2152`](https://github.com/Chelis-Lang/chelis/issues/2152) — measured on `main` `1703a2e32` before filing |
-
-Before filing a new draft, search the upstream tracker for duplicates. After
-filing, remove the draft and replace every path citation with `chelis#NNN` in
-the same change.
+Before filing a draft, search the upstream tracker for duplicates. After
+filing, delete the draft and replace every citation of its path with the new
+`chelis#NNN` in the same change.

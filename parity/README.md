@@ -21,12 +21,6 @@ uv run --project parity --frozen python parity/run_parity.py --strict
 Set `CHELIS_BIN=/path/to/chelis` to validate an explicit toolchain binary;
 otherwise the runner resolves `chelis` from `PATH`.
 
-Inside the Devenv shell, the equivalent convenience command is:
-
-```sh
-nautilus-parity --strict
-```
-
 Strict mode fails on tolerance misses, missing or malformed goldens, recipe /
 golden metadata drift, and any case lacking at least two distinct configurations.
 

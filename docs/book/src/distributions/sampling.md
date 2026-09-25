@@ -16,6 +16,13 @@ def my_sampler[n](t: tensor[n, f32]) -> tensor[n, f32] ! { Random } =
   normal_sample(t, cast(0.0, f32), cast(1.0, f32))
 ```
 
+To handle the effect, wrap the call in Chelis's `seed` handler. The same seed
+gives the same draws:
+
+```chelis-fragment
+draws = with seed(42i64) { my_sampler(template) }
+```
+
 ## Template tensors
 
 Every sample function takes a `template: tensor[n, f32]` as its first
@@ -35,9 +42,8 @@ z = sqrt(-2 * ln(u1)) * cos(2 * pi * u2)
 result = mean + std * z
 ```
 
-The implementation computes cos(2*pi*u2) via the identity
-sin(pi/2 - 2*pi*u2). That keeps the implementation within the scalar
-builtins available on the pinned toolchain.
+The implementation evaluates cos(2*pi*u2) as sin(pi/2 - 2*pi*u2) over the
+whole tensor.
 
 ```chelis-fragment
 import Nautilus.Distributions (normal_sample)
@@ -85,7 +91,7 @@ def student_t_sample[n](template: tensor[n, f32], df: f32)
 
 - `uniform_like` is the internal Chelis primitive that generates raw
   uniform variates. It is not part of the Nautilus public API.
-- `gamma_sample` requires shape >= 1. For shape < 1, no sampling
-  function is currently provided.
-- All sample functions draw independent samples. There is no
-  correlation structure or seeding API exposed at the Nautilus level.
+- `gamma_sample` requires shape >= 1. No sampler covers shape < 1.
+- All sample functions draw independent samples; there is no correlation
+  structure. Reproducibility comes from the Chelis `seed` handler, not
+  from a Nautilus-level API.

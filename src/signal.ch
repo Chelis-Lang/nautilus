@@ -1,8 +1,8 @@
 module Nautilus.Signal
 export (fft_magnitude_stub, ifft_magnitude_stub, stft_magnitude_stub, lowpass_stub, highpass_stub, bandpass_stub, fftfreq)
--- Dated deferral accepted 2026-07-14: spec/phase3j.md § Explicit Deferrals.
+-- Dated deferral accepted 2026-07-14: spec/scope.md § Deferrals.
 -- Applies to all six exported *_stub definitions below; each remains a NaN
--- sentinel until Phase 5f complex-number support. fftfreq is functional.
+-- sentinel until Chelis supports complex numbers. fftfreq is functional.
 -- chelis:provenance/v1 authority
 -- id = NAUT-MOD-SIGNAL
 -- kind = behavioral

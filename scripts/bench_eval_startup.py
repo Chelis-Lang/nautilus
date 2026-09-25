@@ -21,8 +21,8 @@ BASELINE_EXPR = "add(cast(1, f32), cast(2, f32))"
 BASELINE_FILE = "bench = add(cast(1, f32), cast(2, f32))\n"
 
 # These intentionally evaluate an independent root to isolate import startup.
-# Chelis 0.16.1 through the 0.17.4 release reject that unused-import shape; keep it visible and
-# cited rather than silently changing the measured surface: chelis#848.
+# Chelis releases before 0.17.5 rejected this unused-import shape (chelis#848);
+# the recommendation below still recognizes that failure if it regresses.
 IMPORT_SNIPPETS: dict[str, str] = {
     "Nautilus.Special": "import Nautilus.Special (erf)\nbench = cast(0, f32)\n",
     "Nautilus.Distributions": "import Nautilus.Distributions (normal_cdf)\nbench = cast(0, f32)\n",
