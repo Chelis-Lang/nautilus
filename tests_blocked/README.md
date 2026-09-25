@@ -33,6 +33,15 @@ witness is now positive coverage rather than a failing probe.
   widening `erf` to f64 sees the constants are copied elsewhere too. Re-probe
   trigger: none; drop the citation when shoals#61 closes.
 
+- **`chelis#2520`** — `match` does not release a branch arm's owner when only
+  a sibling arm consumed it. `chelis test` never enters C host lowering, so
+  this cannot be an executable probe. No Nautilus module reaches it today, so
+  there is nothing here to reproduce against the shipped surface. **Re-probe
+  trigger:** before any conversion under nautilus#70 that introduces a `match`
+  over an owned value on one arm — such a conversion does not inherit
+  nautilus#12's C-lane clearance. Reproducers are in the upstream issue; the
+  `if` half was `chelis#2477`, fixed on chelis `main` as `967bf696b`.
+
 - **`chelis#2152`** — the failure occurs only during C host lowering of an
   imported generic definition across two packages. `chelis test --expect
   blocked` does not enter that lane; use the manual recipe below.

@@ -332,6 +332,31 @@ release.
       chelis#2370. On pass, compare the full LM recovery trajectories before
       removing the finite-difference implementation.
 
+- **`match` does not release a branch arm's owner when only a sibling arm
+  consumed it** — `chelis#2520`
+  ([Chelis-Lang/chelis#2520](https://github.com/Chelis-Lang/chelis/issues/2520)).
+    - **Symptom:** ``block bN in `f` is reached with inconsistent live owners``
+      during C host lowering. `chelis check`, `chelis test`, `chelis lint` and
+      `reef build` all pass; only `chelis build` enters the failing lane.
+    - **History:** the `if` half of this defect was `chelis#2477`, fixed by
+      Chelis-Lang/chelis#2519 and on chelis `main` as `967bf696b`.
+      `lower_match_option` and `lower_match_adt` are unfixed, and [04-LIN-5]
+      names `if` and `match` together, so the class is half-closed.
+    - **Affected Nautilus surface:** none today — no converted module has a
+      `match` over an owned value on one arm. It becomes live for any
+      conversion under nautilus#70 that introduces one, which is why such a
+      conversion must re-probe its own C lane rather than inherit
+      nautilus#12's clearance.
+    - **Trigger:** the owner must be bound from a block expression, which keeps
+      `owner_depth` deep enough that `consume` moves rather than copies it in
+      the arm. A plain binding copies and owes no release. `result` must also
+      be in the FIRST arm; the mirror passes, because the desugared pattern
+      chain puts a later arm one scope deeper.
+    - **Probe:** manual-only, same reason as `chelis#2152` — `chelis test`
+      never enters C host lowering. Reproducers are in chelis#2520.
+    - **Re-probe trigger:** every pin bump, and before any conversion that adds
+      a `match` over an owned value merges.
+
 - **A downstream `chelis build` rejects a cast to a `Float`-bounded binder** —
   `chelis#2152`
   ([Chelis-Lang/chelis#2152](https://github.com/Chelis-Lang/chelis/issues/2152)).
