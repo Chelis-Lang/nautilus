@@ -882,7 +882,7 @@ Expected result: approximately 2.0 (the exact integral of sin(x) from 0 to pi).
 ## 4. Module Quick Reference
 
 ### Nautilus.Special
-Special mathematical functions. All pure, f32, no effects.
+Special mathematical functions. All pure, no effects, and generic over the `Float` family -- the same `erf` serves an f32 caller and an f64 one. Genericity is a signature property, not an accuracy one: the approximations carry one fixed coefficient set for every dtype. **Use f32 or f64 only.** `Float` is the narrowest bound the language offers, so every signature below also typechecks at `f16`/`bf16`, where the f32-tuned constants return garbage with no diagnostic -- `bf16` `gamma(5.5)` is 10.8% wrong and `f16` `bessel_j0` is NaN (nautilus#75).
 Key exports: `erf`, `erfc`, `erfinv`, `gamma`, `log_gamma`, `digamma`, `trigamma`, `beta`, `lbeta`.
 Bessel: `bessel_j0`, `bessel_j1`, `bessel_y0`, `bessel_y1`, `bessel_i0`, `bessel_i1`, `bessel_k0`, `bessel_k1`.
 Airy: `airy_ai`, `airy_bi`. Elliptic: `ellipk`, `ellipe`.
@@ -1028,33 +1028,33 @@ decision in `chelis/spec/design/chelis_canonical_reference.md`:
 The `Stability` column is the source of truth for row-level classification. Use
 `dist/stability.json` when a downstream consumer needs the machine-readable surface.
 
-### Nautilus.Special (21 exports)
+### Nautilus.Special (23 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
-| `erf` | `(x: f32) -> f32` | `stable` | Horner rational approx, ~1e-7 relative, all reals |
-| `erfc` | `(x: f32) -> f32` | `stable` | `1 - erf(x)`, same precision domain as `erf` |
-| `erfinv` | `(x: f32) -> f32` | `stable` | Acklam inverse normal + rescale, ~1e-8, domain (-1, 1) |
-| `erf_t` | `[n](x: &tensor[n, f32]) -> tensor[n, f32]` | `stable` | tensor-lane erf without the host List round-trip |
-| `erfinv_t` | `[n](x: &tensor[n, f32]) -> tensor[n, f32]` | `stable` | tensor-lane erfinv without the host List round-trip |
-| `gamma` | `(x: f32) -> f32` | `stable` | Lanczos (g=7) with reflection, ~1e-7 relative, +inf at non-positive integers |
-| `log_gamma` | `(x: f32) -> f32` | `stable` | Lanczos (g=7) with reflection, ~1e-9, +inf at non-positive integers |
-| `digamma` | `(x: f32) -> f32` | `stable` | Recurrence + asymptotic (x>=6), ~1e-7, NaN at non-positive integers |
-| `beta` | `(a: f32, b: f32) -> f32` | `stable` | exp(lbeta(a,b)), a,b > 0 |
-| `lbeta` | `(a: f32, b: f32) -> f32` | `stable` | Via log_gamma, a,b > 0, NaN otherwise |
-| `trigamma` | `(x: f32) -> f32` | `stable` | Recurrence + asymptotic (x>=6), ~1e-6, x > 0 only |
-| `bessel_i0` | `(x: f32) -> f32` | `stable` | Polynomial + asymptotic, crossover at 3.75, even function |
-| `bessel_i1` | `(x: f32) -> f32` | `stable` | Polynomial + asymptotic, crossover at 3.75, odd function |
-| `bessel_k0` | `(x: f32) -> f32` | `stable` | Polynomial/log + asymptotic, crossover at 2.0, x > 0, +inf at 0 |
-| `bessel_k1` | `(x: f32) -> f32` | `stable` | Polynomial/log + asymptotic, crossover at 2.0, x > 0, +inf at 0 |
-| `bessel_j0` | `(x: f32) -> f32` | `stable` | Rational polynomial + large-x trig, even function, ~1e-5 near zeros |
-| `bessel_j1` | `(x: f32) -> f32` | `stable` | Rational polynomial + large-x trig, odd function, ~1e-5 near zeros |
-| `bessel_y0` | `(x: f32) -> f32` | `stable` | Rational + log-singularity + large-x trig, x > 0, -inf at 0 |
-| `bessel_y1` | `(x: f32) -> f32` | `stable` | Rational + log + large-x trig, x > 0, -inf at 0, large-x branch starts at 7.5 to avoid the old seam drift |
-| `airy_ai` | `(x: f32) -> f32` | `alpha` | Power series (|x|<=5) + exponential asymptotic (x>5), oscillatory for large negative x |
-| `airy_bi` | `(x: f32) -> f32` | `stable` | Power series (|x|<=5) + exponential asymptotic (x>5) |
-| `ellipk` | `(m: f32) -> f32` | `stable` | AGM recurrence, ~1e-8, m in [0,1), +inf at m=1, NaN outside |
-| `ellipe` | `(m: f32) -> f32` | `stable` | AGM recurrence, ~1e-8, m in [0,1], NaN for m>1 |
+| `erf` | `[prec: Float](x: prec) -> prec` | `stable` | Horner rational approx, ~1e-7 relative, all reals |
+| `erfc` | `[prec: Float](x: prec) -> prec` | `stable` | `1 - erf(x)`, same precision domain as `erf` |
+| `erfinv` | `[prec: Float](x: prec) -> prec` | `stable` | Acklam inverse normal + rescale, ~1e-8, domain (-1, 1) |
+| `erf_t` | `[n, prec: Float](x: &tensor[n, prec]) -> tensor[n, prec]` | `stable` | tensor-lane erf without the host List round-trip |
+| `erfinv_t` | `[n, prec: Float](x: &tensor[n, prec]) -> tensor[n, prec]` | `stable` | tensor-lane erfinv without the host List round-trip |
+| `gamma` | `[prec: Float](x: prec) -> prec` | `stable` | Lanczos (g=7) with reflection, ~1e-7 relative, +inf at non-positive integers |
+| `log_gamma` | `[prec: Float](x: prec) -> prec` | `stable` | Lanczos (g=7) with reflection, ~1e-9, +inf at non-positive integers |
+| `digamma` | `[prec: Float](x: prec) -> prec` | `stable` | Recurrence + asymptotic (x>=6), ~1e-7, NaN at non-positive integers |
+| `beta` | `[prec: Float](a: prec, b: prec) -> prec` | `stable` | exp(lbeta(a,b)), a,b > 0 |
+| `lbeta` | `[prec: Float](a: prec, b: prec) -> prec` | `stable` | Via log_gamma, a,b > 0, NaN otherwise |
+| `trigamma` | `[prec: Float](x: prec) -> prec` | `stable` | Recurrence + asymptotic (x>=6), ~1e-6, x > 0 only |
+| `bessel_i0` | `[prec: Float](x: prec) -> prec` | `stable` | Polynomial + asymptotic, crossover at 3.75, even function |
+| `bessel_i1` | `[prec: Float](x: prec) -> prec` | `stable` | Polynomial + asymptotic, crossover at 3.75, odd function |
+| `bessel_k0` | `[prec: Float](x: prec) -> prec` | `stable` | Polynomial/log + asymptotic, crossover at 2.0, x > 0, +inf at 0 |
+| `bessel_k1` | `[prec: Float](x: prec) -> prec` | `stable` | Polynomial/log + asymptotic, crossover at 2.0, x > 0, +inf at 0 |
+| `bessel_j0` | `[prec: Float](x: prec) -> prec` | `stable` | Rational polynomial + large-x trig, even function, ~1e-5 near zeros |
+| `bessel_j1` | `[prec: Float](x: prec) -> prec` | `stable` | Rational polynomial + large-x trig, odd function, ~1e-5 near zeros |
+| `bessel_y0` | `[prec: Float](x: prec) -> prec` | `stable` | Rational + log-singularity + large-x trig, x > 0, -inf at 0 |
+| `bessel_y1` | `[prec: Float](x: prec) -> prec` | `stable` | Rational + log + large-x trig, x > 0, -inf at 0, large-x branch starts at 7.5 to avoid the old seam drift |
+| `airy_ai` | `[prec: Float](x: prec) -> prec` | `alpha` | Power series (|x|<=5) + exponential asymptotic (x>5), oscillatory for large negative x |
+| `airy_bi` | `[prec: Float](x: prec) -> prec` | `stable` | Power series (|x|<=5) + exponential asymptotic (x>5) |
+| `ellipk` | `[prec: Float](m: prec) -> prec` | `stable` | AGM recurrence, ~1e-8, m in [0,1), +inf at m=1, NaN outside |
+| `ellipe` | `[prec: Float](m: prec) -> prec` | `stable` | AGM recurrence, ~1e-8, m in [0,1], NaN for m>1 |
 
 ### Nautilus.Distributions (38 exports)
 
