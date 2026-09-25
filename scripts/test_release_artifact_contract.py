@@ -299,18 +299,8 @@ class ReleaseArtifactContractTests(unittest.TestCase):
         tracked = subprocess.check_output(
             ["git", "ls-files", "--", "dist"], cwd=ROOT, text=True
         ).splitlines()
-        tracked_packages = {
-            path for path in tracked if path.endswith((".chb", ".tar.zst"))
-        }
-        self.assertEqual(
-            tracked_packages,
-            {
-                "dist/nautilus-0.1.4.chb",
-                "dist/nautilus-0.1.4.tar.zst",
-            },
-        )
-        for path in tracked_packages:
-            self.assertIn(path, release_docs)
+        self.assertEqual(tracked, ["dist/stability.json"])
+        self.assertIn("dist/stability.json", release_docs)
 
         name, version = artifacts.package_identity(ROOT / "reef.toml")
         for suffix in ("chb", "tar.zst"):

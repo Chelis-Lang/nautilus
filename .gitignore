@@ -35,3 +35,6 @@ devenv.local.yaml
 /devenv.lock
 /devenv.nix
 /.envrc
+
+# Claude Code session state
+.claude/scheduled_tasks.lock
