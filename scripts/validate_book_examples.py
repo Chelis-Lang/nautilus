@@ -25,7 +25,7 @@ from scripts.chelis_toolchain import resolve_chelis_bin
 
 
 CHELIS = resolve_chelis_bin()
-MIN_CHELIS_BLOCKS = int(os.environ.get("MIN_BOOK_CHELIS_BLOCKS", "4"))
+MIN_CHELIS_BLOCKS = int(os.environ.get("MIN_BOOK_CHELIS_BLOCKS", "13"))
 
 
 def extract_chelis_blocks(text: str) -> list[str]:
@@ -51,16 +51,14 @@ def validate_block(code: str, source_file: str, index: int) -> bool:
         output = (result.stdout + result.stderr).strip()
         try:
             d = json.loads(output)
-            if d.get("score", 0) >= 0.95 and not d.get("errors"):
+            if d.get("score") == 1 and not d.get("errors"):
                 return True
             print(f"  FAIL: {source_file} block {index} "
                   f"(score={d.get('score')}, errors={d.get('errors', [])})")
             return False
         except json.JSONDecodeError:
-            if "error:" in output:
-                print(f"  FAIL: {source_file} block {index}: {output[:200]}")
-                return False
-            return True
+            print(f"  FAIL: {source_file} block {index}: {output[:400]}")
+            return False
     finally:
         tmp.unlink(missing_ok=True)
 
