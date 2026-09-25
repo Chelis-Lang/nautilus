@@ -359,8 +359,9 @@ release.
       `match` over an owned value on one arm merges. **Not scoped to
       `[prec: Float]` conversions**: chelis#2520's reproducers are concrete
       `i64` with no dtype binder, and the trigger bullet above is
-      dtype-agnostic. Genericity mattered for the `if` half only, because a
-      concrete float `if` folds into a DAG masked select and never branches.
+      dtype-agnostic. chelis#2477's concrete-dtype control does build, so
+      genericity mattered for that half; neither issue pins the mechanism, and
+      no mechanism should be inferred here.
 
 - **A downstream `chelis build` rejects a cast to a `Float`-bounded binder** —
   `chelis#2152`
