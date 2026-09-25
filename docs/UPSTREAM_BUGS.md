@@ -339,14 +339,15 @@ release.
       during C host lowering. `chelis check`, `chelis test`, `chelis lint` and
       `reef build` all pass; only `chelis build` enters the failing lane.
     - **History:** the `if` half of this defect was `chelis#2477`, fixed by
-      Chelis-Lang/chelis#2519 and on chelis `main` as `967bf696b`.
+      Chelis-Lang/chelis#2519 and on chelis `main` as `967bf696b`, which is
+      **not in the `0.18.11` pin this package uses** — at that pin even the
+      `if` half is unfixed.
       `lower_match_option` and `lower_match_adt` are unfixed, and [04-LIN-5]
       names `if` and `match` together, so the class is half-closed.
-    - **Affected Nautilus surface:** none today — no converted module has a
-      `match` over an owned value on one arm. It becomes live for any
-      conversion under nautilus#70 that introduces one, which is why such a
-      conversion must re-probe its own C lane rather than inherit
-      nautilus#12's clearance.
+    - **Affected Nautilus surface:** none today. There is no `match`, no ADT
+      and no `Option` anywhere in `src/`, so nothing can reach it. It becomes
+      live for any change that introduces a `match` over an owned value on one
+      arm, and such a change must probe its own C lane.
     - **Trigger:** the owner must be bound from a block expression, which keeps
       `owner_depth` deep enough that `consume` moves rather than copies it in
       the arm. A plain binding copies and owes no release. `result` must also
@@ -354,8 +355,12 @@ release.
       chain puts a later arm one scope deeper.
     - **Probe:** manual-only, same reason as `chelis#2152` — `chelis test`
       never enters C host lowering. Reproducers are in chelis#2520.
-    - **Re-probe trigger:** every pin bump, and before any conversion that adds
-      a `match` over an owned value merges.
+    - **Re-probe trigger:** every pin bump, and before any change that adds a
+      `match` over an owned value on one arm merges. **Not scoped to
+      `[prec: Float]` conversions**: chelis#2520's reproducers are concrete
+      `i64` with no dtype binder, and the trigger bullet above is
+      dtype-agnostic. Genericity mattered for the `if` half only, because a
+      concrete float `if` folds into a DAG masked select and never branches.
 
 - **A downstream `chelis build` rejects a cast to a `Float`-bounded binder** —
   `chelis#2152`

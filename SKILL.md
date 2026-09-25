@@ -882,7 +882,7 @@ Expected result: approximately 2.0 (the exact integral of sin(x) from 0 to pi).
 ## 4. Module Quick Reference
 
 ### Nautilus.Special
-Special mathematical functions. All pure, no effects, and generic over the `Float` family -- the same `erf` serves an f32 caller and an f64 one. Genericity is a signature property, not an accuracy one: the approximations carry one fixed coefficient set for every dtype.
+Special mathematical functions. All pure, no effects, and generic over the `Float` family -- the same `erf` serves an f32 caller and an f64 one. Genericity is a signature property, not an accuracy one: the approximations carry one fixed coefficient set for every dtype. **Use f32 or f64 only.** `Float` is the narrowest bound the language offers, so every signature below also typechecks at `f16`/`bf16`, where the f32-tuned constants return garbage with no diagnostic -- `bf16` `gamma(5.5)` is 10.8% wrong and `f16` `bessel_j0` is NaN (nautilus#75).
 Key exports: `erf`, `erfc`, `erfinv`, `gamma`, `log_gamma`, `digamma`, `trigamma`, `beta`, `lbeta`.
 Bessel: `bessel_j0`, `bessel_j1`, `bessel_y0`, `bessel_y1`, `bessel_i0`, `bessel_i1`, `bessel_k0`, `bessel_k1`.
 Airy: `airy_ai`, `airy_bi`. Elliptic: `ellipk`, `ellipe`.
@@ -1028,7 +1028,7 @@ decision in `chelis/spec/design/chelis_canonical_reference.md`:
 The `Stability` column is the source of truth for row-level classification. Use
 `dist/stability.json` when a downstream consumer needs the machine-readable surface.
 
-### Nautilus.Special (21 exports)
+### Nautilus.Special (23 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
