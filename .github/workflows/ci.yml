@@ -54,6 +54,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: OpenSpec governance gate
+        uses: Chelis-Lang/ci/actions/openspec-governance@8b240a2d0ea55f161e69b44b2ee42733ee197230 # commit:8b240a2d0ea5
+
       - name: Reject AI-author commits
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then

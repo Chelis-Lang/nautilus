@@ -114,6 +114,46 @@ under `tests_blocked/` where the harness can express them and manual recipes in
 narrowing by issue number at its site; never describe a limitation by prose
 name alone.
 
+## OpenSpec Change Governance
+
+Significant changes to observable numerical behavior, public or machine-facing
+contracts, architecture, algorithms or supported domains, dependency strategy,
+data formats, assurance or security posture, or operations require one OpenSpec
+`spec-driven` lifecycle on a dedicated branch or isolated worktree. Create the
+proposal, capability deltas, design, and tasks under `openspec/changes/<id>/` and
+make every apply-required artifact complete before normal implementation begins.
+
+OpenSpec records intent and traceability; it does not replace Nautilus's owning
+authorities. Preserve `spec/phase3j.md`, public-surface documentation, reviewed
+SciPy goldens, Chelis-native positive and negative tests, blocked probes,
+compiler-pin checks, shell conformance, numerical tolerances, stability and AD
+behavior, and downstream compatibility as the acceptance evidence for the work.
+
+Editorial or behavior-preserving maintenance may omit a lifecycle only when the
+branch adds exactly one regular non-symlink
+`openspec/exemptions/YYYY-MM-DD-<kebab-case-id>.toml` with
+`kind = "maintenance"`, a non-empty `reason`, and an exact `paths` list covering
+every changed non-governance path. If scope becomes significant, remove the
+exemption and make a lifecycle apply-ready before continuing. An active security
+or production incident may start earlier only after recording its reference,
+reason, bounded scope, and artifact owner; all normal evidence remains required
+before merge.
+
+Use the lock-backed command surface:
+
+1. `nix run ./ci#openspec -- <args>` runs OpenSpec 1.6.0 directly.
+2. `nix run ./ci#openspec-gate -- --pre-archive` validates one complete active
+   lifecycle against `origin/main`; do not edit `openspec/specs/` while the
+   lifecycle is active.
+3. `nix run ./ci#openspec -- archive <change-id> --yes` performs the single
+   synchronization and archive operation after implementation evidence passes.
+4. `nix run ./ci#openspec-gate` is the final merge-bound gate and requires zero
+   active lifecycles plus synchronized archived evidence.
+
+Do not use project-local OpenSpec schemas, reuse archived identifiers, approve
+incomplete-task warnings, or place symbolic links anywhere under `openspec/`.
+Keep unrelated work in a separate change and branch.
+
 ## Authorship Policy
 
 No commit may carry a `Co-Authored-By:` trailer attributing authorship to an
@@ -141,3 +181,15 @@ a red pin audit or bump-check must prevent Nautilus's numerical jobs from
 independently reporting green. It adds no workflow, layout, manifest shape, or
 GitHub ruleset, and should be revisited when pin-guard ordering is standardized
 across all shells.
+
+### Recorded shell-local divergence: OpenSpec governance pilot
+
+As accepted on 2026-07-21, Nautilus carries the first shell-local OpenSpec
+planning lifecycle, scoped `ci/` Nix tooling, and governance step. Numerical
+changes couple supported domains, tolerances, stability, AD behavior, reviewed
+SciPy parity, compiler diagnostics, and downstream API compatibility, making
+Nautilus the selected pilot for testing whether one archived requirements
+lifecycle improves review without weakening executable evidence. Do not mirror
+this scaffolding into sibling shells until a separately governed decision uses
+pilot evidence to approve, revise, or reject a broader cascade. Chelis-managed
+blocks and shared skill content remain unchanged.

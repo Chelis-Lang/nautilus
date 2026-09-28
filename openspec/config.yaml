@@ -1,0 +1,19 @@
+schema: spec-driven
+
+context: |
+  Nautilus is the numerical-methods, statistics, and optimization shell for Chelis.
+  Preserve numerical semantics, tolerances, AD behavior, parity evidence, exact compiler-pin compatibility, and downstream shell contracts.
+  Follow AGENTS.md, spec/phase3j.md, docs/CHELIS_SURFACE.md, parity/README.md, and the owning numerical specifications before proposing implementation.
+
+rules:
+  proposal:
+    - State the affected numerical API, accuracy or AD contract, assurance boundary, and explicit non-goals.
+    - Identify upstream Chelis dependencies and downstream shell compatibility impact.
+  design:
+    - Record algorithms considered, numerical stability, failure behavior, migration or rollback, and evidence trust boundaries.
+  specs:
+    - Use SHALL requirements with nominal, boundary, invalid-domain, unsupported-path, AD, and parity scenarios where applicable.
+    - State tolerances and supported numeric domains explicitly; separate future claims from currently enforced behavior.
+  tasks:
+    - Order work as specs, reference fixtures, positive and negative tests, implementation, documentation, benchmarks where relevant, and validation.
+    - Include strict OpenSpec validation and one authoritative repository acceptance oracle.
