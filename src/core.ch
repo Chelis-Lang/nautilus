@@ -5,4 +5,4 @@ export (version)
 -- kind = behavioral
 -- scopes = nautilus
 -- statement = Nautilus.Core MUST report the exact package version metadata.
-def version() -> i32 = 1000
+def version() -> string = "0.7.47"

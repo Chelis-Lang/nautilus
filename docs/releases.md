@@ -8,10 +8,10 @@ Each Nautilus release is a GitHub Release tagged `vX.Y.Z` with three assets:
 
 The version and the exact Chelis compiler a release was built with are both
 recorded in `reef.toml` at the tagged commit.
-The current source checkout pins Chelis 0.18.12, while the last published
-Nautilus package, v0.7.46, predates that pin. The source change does not
-update the published package; use each release's tagged manifest when
-installing it.
+The current source checkout prepares Nautilus 0.7.47 with Chelis 0.18.12.
+The last published Nautilus package, v0.7.46, predates that pin. The source
+change does not update the published package; use each release's tagged
+manifest when installing it.
 
 ## How a release is built
 

@@ -14,12 +14,13 @@ in `Chelis-Lang/chelis`.
 
 | Item | Value |
 |---|---|
+| Source package version | Nautilus `0.7.47` candidate; last published Nautilus package is `v0.7.46` |
 | Pinned compiler | Published `chelis 0.18.12` (`reef.toml`: `=0.18.12`) |
 | Latest upstream release | `chelis 0.18.12` (checked 2026-09-30) |
 | Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.12` in the regenerated local `reef.lock` (ignored build output) |
 | Upstream release identity | Tag `v0.18.12` at source commit `c81d8188de6ebad032c1bb1c0a427eb0408feee3`; release workflow run `36769966221` succeeded; Linux glibc-2.31 asset SHA-256 `f82ab4e2a9667cc08047a2732d61aec02501d29c9355b195bee6a64186a81c66` |
 | Installed compiler payload | Darwin arm64 binary SHA-256 `b0df096e2b43eb28d4a40138fdcc2f8807d39bffeab5b2145e639f5b9d4d3351`, byte-identical to the binary extracted from `chelis-v0.18.12-darwin-arm64.tar.gz`; tarball SHA-256 `8cdcbf598c3f04e37a9a211e7abaa67fbaf6d4c135a34f00c1944b1e43b8e90d`, verified against the release sidecar |
-| Validation status | Official Darwin arm64 binary, 2026-09-30: 543 positive tests, 12 negative contracts, no executable blocked probes, 216/216 strict SciPy parity, 4/4 SKILL and 14/14 book examples, 65/65 Surf format checks, lint, `reef build`, mdBook build, shell tooling tests, conform audit, and bump-check passed. Manual upstream re-probes are recorded in `docs/UPSTREAM_BUGS.md`. |
+| Validation status | Official Darwin arm64 binary, 2026-09-30: 544 positive tests, 13 negative contracts, no executable blocked probes, 216/216 strict SciPy parity, 4/4 SKILL and 14/14 book examples, 67/67 Surf format checks, lint, `reef build`, local release-artifact seal and byte-identical rebuild, mdBook build, 52 shell tooling tests, conform audit, and bump-check passed. Manual upstream re-probes are recorded in `docs/UPSTREAM_BUGS.md`. |
 | Last refreshed | 2026-09-30 |
 
 `@pin` means the row describes behavior available (or a limitation verified)

@@ -3,10 +3,10 @@
 This file records the upstream Chelis compiler issues that currently shape
 Nautilus: what each one blocks, how Nautilus works around it, and when to check
 it again. It describes the state at the current **pin**, the exact compiler
-release that `reef.toml` requires. This checkout pins published
-`chelis 0.18.12` (`compiler = "=0.18.12"`); its release identity and asset
-hashes are recorded in [`docs/CHELIS_SURFACE.md`](CHELIS_SURFACE.md). The last
-published Nautilus package, v0.7.46, predates this source pin. Earlier
+release that `reef.toml` requires. This Nautilus 0.7.47 source candidate pins
+published `chelis 0.18.12` (`compiler = "=0.18.12"`); its release identity and
+asset hashes are recorded in [`docs/CHELIS_SURFACE.md`](CHELIS_SURFACE.md).
+The last published Nautilus package, v0.7.46, predates this source pin. Earlier
 re-probe records are in git history and [`CHANGELOG.md`](../CHANGELOG.md).
 
 ## How this file works

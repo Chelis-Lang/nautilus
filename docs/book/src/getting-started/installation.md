@@ -17,8 +17,9 @@ chelisup install 0.18.12
 
 `chelisup` installs releases side by side. Its `chelis` shim resolves the
 version from the nearest `reef.toml`; never replace it with a fixed symlink.
-The last published Nautilus package, v0.7.46, predates this source pin; use
-the compiler recorded in that package's tagged `reef.toml` when installing it.
+This source checkout prepares Nautilus 0.7.47. The last published Nautilus
+package, v0.7.46, predates this source pin; use the compiler recorded in that
+package's tagged `reef.toml` when installing it.
 
 ## Clone and build Nautilus
 

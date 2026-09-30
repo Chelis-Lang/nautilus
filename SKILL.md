@@ -9,7 +9,8 @@ entirely in Chelis with no foreign-function layer. It covers the ground of
 `Nautilus.Special` is generic over the `Float` dtype family and accepts f32 or
 f64; every other module works in f32. Section 6 lists every export with its
 signature and a stability label. The one export outside those tables,
-`Nautilus.Core.version`, returns the package version.
+`Nautilus.Core.version`, returns the exact package-version string
+(`"0.7.47"` in this source checkout).
 
 ## 2. Import Patterns
 
@@ -265,8 +266,8 @@ Every exported function below carries a `Stability` label:
 The `Stability` column is the source of truth, and `dist/stability.json` is
 the same map in machine-readable form, generated from these tables by
 `scripts/extract_stability.py`. A `&` before a tensor type marks a read-only
-borrow (see Section 4). `Nautilus.Core.version`, which returns the package
-version, is the one export not listed here.
+borrow (see Section 4). `Nautilus.Core.version`, which returns the exact
+package-version string, is the one export not listed here.
 
 ### Nautilus.Special (23 exports)
 
