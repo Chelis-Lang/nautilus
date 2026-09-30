@@ -77,6 +77,9 @@ walks through a complete Black–Scholes example.
 Each release is built against one exact Chelis version, recorded as the
 `compiler` pin in [`reef.toml`](reef.toml). [`docs/releases.md`](docs/releases.md)
 describes the release artifacts and how to verify them.
+The v0.7.46 install example above is the last published Nautilus package.
+This source checkout pins Chelis 0.18.12 and uses explicit keys for sampling;
+the published package retains the API and compiler pin of its own tag.
 
 ## Developing
 

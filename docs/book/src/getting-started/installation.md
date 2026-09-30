@@ -4,19 +4,21 @@
 
 Nautilus requires:
 
-- the Chelis toolchain version pinned in `reef.toml` (currently
-  [Chelis 0.18.11](https://github.com/Chelis-Lang/chelis/releases/tag/v0.18.11))
+- the Chelis toolchain version pinned in this source checkout's `reef.toml`
+  (currently [Chelis 0.18.12](https://github.com/Chelis-Lang/chelis/releases/tag/v0.18.12))
 - a C compiler such as GCC or Clang, for the generated C code
 - uv and Python 3.12 for the isolated parity project
 
 ## Install the Chelis toolchain
 
 ```sh
-chelisup install 0.18.11
+chelisup install 0.18.12
 ```
 
 `chelisup` installs releases side by side. Its `chelis` shim resolves the
 version from the nearest `reef.toml`; never replace it with a fixed symlink.
+The last published Nautilus package, v0.7.46, predates this source pin; use
+the compiler recorded in that package's tagged `reef.toml` when installing it.
 
 ## Clone and build Nautilus
 
