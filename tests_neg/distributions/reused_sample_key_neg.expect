@@ -1,0 +1,3 @@
+key-carrying variable `k` was already consumed
+A Nautilus sampler consumes its affine key, so the same bound key cannot
+be passed to another sampler call.

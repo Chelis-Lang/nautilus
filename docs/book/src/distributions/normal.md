@@ -51,17 +51,17 @@ x = normal_inv_cdf(cast(0.975, f32), cast(0.0, f32), cast(1.0, f32))  -- approxi
 
 ## normal_sample
 
-**Signature:** `[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random }`
+**Signature:** `[n](k: key, template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]`
 
 Generates n samples from Normal(mean, std) using the Box-Muller
 transform. The `template` tensor determines the output shape; its
-values are ignored. Carries the `Random` effect.
+values are ignored. The key is consumed and split for two uniform draws.
 
 ```chelis-fragment
 import Nautilus.Distributions (normal_sample)
 
 -- template shape determines output length
-samples = normal_sample(zeros, cast(0.0, f32), cast(1.0, f32))
+samples = normal_sample(key_from_seed(42i64), zeros, cast(0.0, f32), cast(1.0, f32))
 ```
 
 ## Edge cases
