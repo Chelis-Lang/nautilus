@@ -31,8 +31,8 @@ def uniform_inv_cdf(q: f32, lo: f32, hi: f32) -> f32 = {
   width = sub(hi, lo)
   add(lo, mul(q, width))
 }
-def uniform_sample[n](template: tensor[n, f32], lo: f32, hi: f32) -> tensor[n, f32] ! { Random } = {
-  u = uniform_like(template, 0.0, 1.0)
+def uniform_sample[n](k: key, template: tensor[n, f32], lo: f32, hi: f32) -> tensor[n, f32] = {
+  u = uniform_like(k, template, 0.0, 1.0)
   widths = dist_lift_t(u, sub(hi, lo))
   los = dist_lift_t(u, lo)
   add(los, mul(widths, u))
@@ -55,8 +55,8 @@ def exponential_inv_cdf(q: f32, rate: f32) -> f32 =
     l = log(omq)
     neg(div(l, rate))
   }
-def exponential_sample[n](template: tensor[n, f32], rate: f32) -> tensor[n, f32] ! { Random } = {
-  u = uniform_like(template, 1e-7, 1.0)
+def exponential_sample[n](k: key, template: tensor[n, f32], rate: f32) -> tensor[n, f32] = {
+  u = uniform_like(k, template, 1e-7, 1.0)
   rates = dist_lift_t(u, rate)
   div(neg(log(u)), rates)
 }
@@ -80,9 +80,10 @@ def normal_inv_cdf(q: f32, mean: f32, std: f32) -> f32 =
     z = erfinv(two_q_minus_one)
     add(mean, mul(std, mul(sqrt_two_f(), z)))
   }
-def normal_sample[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random } = {
-  u1 = uniform_like(copy(template), 1e-7, 1.0)
-  u2 = uniform_like(template, 0.0, 1.0)
+def normal_sample[n](k: key, template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] = {
+  ks = split_key(k)
+  u1 = uniform_like(ks.0, copy(template), 1e-7, 1.0)
+  u2 = uniform_like(ks.1, template, 0.0, 1.0)
   two_pis = dist_lift_t(u2, two_pi_f())
   half_pis = dist_lift_t(u2, mul(half_f(), pi_f()))
   twos = dist_lift_t(u1, two_f())
@@ -112,8 +113,8 @@ def lognormal_inv_cdf(q: f32, mu: f32, sigma: f32) -> f32 = {
   y = normal_inv_cdf(q, mu, sigma)
   exp(y)
 }
-def lognormal_sample[n](template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32] ! { Random } = {
-  z = normal_sample(template, mu, sigma)
+def lognormal_sample[n](k: key, template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32] = {
+  z = normal_sample(k, template, mu, sigma)
   exp(z)
 }
 def gamma_pdf(x: f32, shape: f32, scale: f32) -> f32 =
@@ -444,11 +445,13 @@ def chi_squared_inv_cdf(q: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_inv_cdf(q, half_df, two_f())
 }
-def gamma_sample_ge1_try[n](template: tensor[n, f32], d: f32, c: f32, attempts: i64) -> tensor[n, f32] ! { Random } = {
+def gamma_sample_ge1_try[n](k: key, template: tensor[n, f32], d: f32, c: f32, attempts: i64) -> tensor[n, f32] = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
-  z_t = normal_sample(copy(template), zero_f(), one_f())
-  u_t = uniform_like(copy(template), 1e-7, 1.0)
+  ks = split_key(k)
+  kd = split_key(ks.0)
+  z_t = normal_sample(kd.0, copy(template), zero_f(), one_f())
+  u_t = uniform_like(kd.1, copy(template), 1e-7, 1.0)
   z_list = to_list(z_t)
   u_list = to_list(u_t)
   head_z = fold(fn (acc: f32, x: f32) -> acc, zero_f(), z_list)
@@ -458,7 +461,7 @@ def gamma_sample_ge1_try[n](template: tensor[n, f32], d: f32, c: f32, attempts: 
   if lte(attempts, zero_i) then {
     result_val = mul(d, if gt(v, zero_f()) then v else one_f())
     to_tensor(map(fn (x: f32) -> result_val, to_list(copy(template))))
-  } else if lte(v, zero_f()) then gamma_sample_ge1_try(template, d, c, sub(attempts, one_i)) else {
+  } else if lte(v, zero_f()) then gamma_sample_ge1_try(ks.1, template, d, c, sub(attempts, one_i)) else {
     lv = log(v)
     z2 = mul(head_z, head_z)
     half_z2 = mul(half_f(), z2)
@@ -471,24 +474,25 @@ def gamma_sample_ge1_try[n](template: tensor[n, f32], d: f32, c: f32, attempts: 
     if accept then {
       result_val = mul(d, v)
       to_tensor(map(fn (x: f32) -> result_val, to_list(template)))
-    } else gamma_sample_ge1_try(template, d, c, sub(attempts, one_i))
+    } else gamma_sample_ge1_try(ks.1, template, d, c, sub(attempts, one_i))
   }
 }
-def gamma_sample[n](template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32] ! { Random } = {
+def gamma_sample[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32] = {
   d = sub(shape, cast(0.3333333333, f32))
   inv_3 = cast(0.3333333333, f32)
   sqrt_d = sqrt(d)
   c = div(inv_3, sqrt_d)
-  raw = gamma_sample_ge1_try(template, d, c, cast(64, i64))
+  raw = gamma_sample_ge1_try(k, template, d, c, cast(64, i64))
   to_tensor(map(fn (x: f32) -> mul(x, scale), to_list(raw)))
 }
-def chi_squared_sample[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! { Random } = {
+def chi_squared_sample[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32] = {
   half_df = mul(half_f(), df)
-  gamma_sample(template, half_df, two_f())
+  gamma_sample(k, template, half_df, two_f())
 }
-def student_t_sample[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! { Random } = {
-  z = normal_sample(copy(template), zero_f(), one_f())
-  v = chi_squared_sample(template, df)
+def student_t_sample[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32] = {
+  ks = split_key(k)
+  z = normal_sample(ks.0, copy(template), zero_f(), one_f())
+  v = chi_squared_sample(ks.1, template, df)
   to_tensor(map(fn (pair: (f32, f32)) -> {
     zi = pair.0
     vi = pair.1
