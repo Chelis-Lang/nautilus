@@ -54,7 +54,7 @@ entries are NaN.
 
 Returns the lower-triangular Cholesky factor L such that A = L L^T.
 
-`cholesky_2x2` is the closed-form 2×2 variant — returns NaN if the
+`cholesky_2x2` is the closed-form 2×2 variant. It returns NaN if the
 matrix is not symmetric positive-definite (symmetry tolerance: 1e-6).
 
 `cholesky_n` is the general-`n` column-by-column variant (Banachiewicz
@@ -73,8 +73,8 @@ non-SPD matrix the output is undefined.
 | `eig_n` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32])` | `alpha` |
 
 **`lu_solve`** solves `A x = b` via Doolittle LU factorization (no partial
-pivoting). Requires all leading principal submatrices of A to be nonsingular —
-well-conditioned matrices that need row swaps (e.g. `[[0,1],[1,0]]`) will
+pivoting). Requires all leading principal submatrices of A to be nonsingular.
+Well-conditioned matrices that need row swaps (e.g. `[[0,1],[1,0]]`) will
 produce wrong results, not an error.
 
 **`qr_decompose`** applies Householder reflections and returns `(Q, R)` where

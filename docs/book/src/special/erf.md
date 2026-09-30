@@ -8,7 +8,7 @@ called at f32 or f64.
 `erf` gains least of all from f64: its coefficients cap it near 1.4e-7 at f64,
 where f32 reaches 4.4e-7, so the dtype buys a factor of three rather than the
 orders of magnitude it buys elsewhere in the module. `erfc` is the opposite and
-gains a working tail -- at f32 it underflows to exactly 0 from about x = 3.92, and at
+gains a working tail: at f32 it underflows to exactly 0 from about x = 3.92, and at
 f64 it keeps returning values to about x = 5.5. See the
 [precision guide](../appendix/precision.md).
 

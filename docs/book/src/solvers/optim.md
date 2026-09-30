@@ -73,5 +73,5 @@ def find_min_newton() -> f32 =
   converged point is positive and above 0.01. If not, it returns NaN
   to signal that the point may be a saddle or inflection.
 - All methods are pure Chelis. AD flows through the objective function
-  but you must supply `df`/`ddf` explicitly -- the optimizer does not
+  but you must supply `df`/`ddf` explicitly. The optimizer does not
   call `grad` internally.

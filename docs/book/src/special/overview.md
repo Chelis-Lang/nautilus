@@ -19,8 +19,8 @@ def d_erf(x: f64) -> f64 = grad(erf_at)(x)
 
 Second, and independently of genericity, only eleven of the twenty-one scalar
 exports actually differentiate even when wrapped: `erf`, `erfc`, `erfinv` and
-the eight `bessel_*`. The other ten -- `gamma`, `log_gamma`, `digamma`,
-`trigamma`, `beta`, `lbeta`, `ellipk`, `ellipe`, `airy_ai`, `airy_bi` -- fail
+the eight `bessel_*`. The other ten (`gamma`, `log_gamma`, `digamma`,
+`trigamma`, `beta`, `lbeta`, `ellipk`, `ellipe`, `airy_ai`, `airy_bi`) fail
 at lowering, because their bodies recurse or reach a primitive with no
 reverse-mode adjoint.
 
@@ -32,7 +32,7 @@ def narrow(x: f32) -> f32 = erf(x)
 def wide(x: f64) -> f64 = erf(x)
 ```
 
-A single call still uses one dtype throughout -- `beta(a: f32, b: f64)` is a
+A single call still uses one dtype throughout: `beta(a: f32, b: f64)` is a
 precision mismatch, not an implicit promotion. Generic signatures also do
 not promise f64 accuracy for every function. For example, f64 improves
 `erf`'s measured accuracy by a smaller amount than it improves `gamma`;

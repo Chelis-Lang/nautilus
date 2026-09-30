@@ -1,7 +1,7 @@
 # Black-Scholes Pricing
 
 The Black-Scholes formula for a European call option composes `log`,
-`exp`, `sqrt`, and `normal_cdf` -- all available in Nautilus without any
+`exp`, `sqrt`, and `normal_cdf`. All are available in Nautilus without any
 special imports beyond `Nautilus.Distributions`.
 
 ## The formula
