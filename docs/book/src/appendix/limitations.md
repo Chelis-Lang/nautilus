@@ -8,15 +8,13 @@ package's scope, and what is deliberately out of it, is set out in
 
 **Only `Nautilus.Special` runs at f64.** Its functions are generic over the
 `Float` dtype family; every other module is f32-only, which gives about seven
-significant digits against SciPy's f64. Widening the other modules is tracked
-in nautilus#70. Calling Special at f64 widens the arithmetic but keeps the
-same approximation coefficients, so several functions gain little; see the
+significant digits. Calling Special at f64 widens the arithmetic but keeps the
+same approximation coefficients, so accuracy gains vary by function; see the
 [Precision appendix](precision.md).
 
-**`f16` and `bf16` type-check but give wrong answers.** `Float` is the
-narrowest bound Chelis offers, so Special's signatures also admit the 16-bit
-dtypes, where its f32-tuned constants break down without a diagnostic
-(nautilus#75).
+**`f16` and `bf16` are not reliable for `Nautilus.Special`.** Its `Float`
+signatures admit these dtypes, but f32-tuned constants can produce
+incorrect values without a diagnostic. Use f32 or f64.
 
 ## Differentiation
 
@@ -24,8 +22,7 @@ dtypes, where its f32-tuned constants break down without a diagnostic
 test exercises it. Solvers built on recursion or `fold`, such as `rk4_solve`,
 do not lower under `grad` at the pinned compiler.
 
-**`lm_scalar_nparam` uses a finite-difference Jacobian.** Exact AD through the
-full Levenberg-Marquardt solver fails upstream (chelis#2370). See the
+**`lm_scalar_nparam` uses a finite-difference Jacobian.** See the
 [Curve Fitting chapter](../other/curvefit.md).
 
 ## Linear algebra
@@ -56,13 +53,17 @@ also rejects genuine but very flat minima (for example f(x) = x^4 near 0). Use
 
 ## Sampling
 
-**`gamma_sample` assumes shape >= 1.** It implements Marsaglia-Tsang without
-the boost for shape < 1, and no other sampler covers that range.
+**`gamma_sample` does not produce gamma draws.** For finite shape >= 1
+and positive finite scale, its current output is a constant tensor,
+`(shape - 1/3) * scale`, independent of the seed. It does not cover
+shape < 1. `chi_squared_sample` and
+`student_t_sample` use this output and do not sample their stated
+distributions. See [Sampling](../distributions/sampling.md#sampling-limits).
 
 ## Signal processing
 
 **Six Signal functions are placeholders.** The transform and filter functions
-named `*_stub` return NaN tensors until Chelis supports complex numbers;
+named `*_stub` return NaN tensors;
 `fftfreq` is a working real-valued utility. See the
 [Signal chapter](../other/signal.md).
 

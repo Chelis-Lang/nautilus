@@ -6,17 +6,17 @@ Nautilus is a Reef package (Chelis's package format) published under the
 `Nautilus` module prefix.
 
 Nautilus is written entirely in Chelis, with no C FFI and no hand-written
-adjoints. Chelis's automatic differentiation can trace through any of it, but
-Nautilus advertises a function as differentiable only when a gradient test
-covers it. See [`spec/scope.md`](spec/scope.md) for the design principles,
-acceptance rules, known limitations, and what is deliberately out of scope.
+adjoints. Differentiation is supported only on tested paths; pure Chelis
+source alone does not guarantee that `grad` lowers for every function.
+See [`spec/scope.md`](spec/scope.md) for the library's
+scope and numerical acceptance rules.
 
 ## Modules
 
 | Module | What it provides |
 |---|---|
 | `Nautilus.Special` | `erf`, `erfc`, `erfinv`, `gamma`, `log_gamma`, `digamma`, `trigamma`, `beta`, `lbeta`, Bessel (J0/J1/Y0/Y1/I0/I1/K0/K1), Airy (Ai/Bi), complete elliptic integrals (K/E); generic over f32 and f64 |
-| `Nautilus.Distributions` | Normal, LogNormal, Uniform, Exponential, Gamma, Chi-squared, Student-t, Poisson, Binomial, Beta, F, Weibull: PDF, CDF, inverse CDF, and sampling where applicable |
+| `Nautilus.Distributions` | Normal, LogNormal, Uniform, Exponential, Gamma, Chi-squared, Student-t, Poisson, Binomial, Beta, F, Weibull: PDF or PMF and CDF, with inverse CDF and sampling where available; see [sampling limits](docs/book/src/distributions/sampling.md) |
 | `Nautilus.LinAlg` | transpose, matmul, Gram matrices, fixed-size det/inv/solve/eig/Cholesky, general square conjugate-gradient/LU/QR/Cholesky/SVD/symmetric eig, vector ops |
 | `Nautilus.Stats` | descriptive statistics, quantiles, ranks and z-scores, covariance/correlation matrices, multiple-testing adjustments, likelihood-ratio helpers |
 | `Nautilus.Info` | entropy, cross-entropy, KL divergence |
@@ -26,53 +26,43 @@ acceptance rules, known limitations, and what is deliberately out of scope.
 | `Nautilus.Integrate` | trapezoidal, Simpson, Gauss–Legendre, adaptive Simpson, Romberg, Gauss–Hermite, Gauss–Laguerre |
 | `Nautilus.Testing` | z, t, Welch, and chi-squared statistics and p-values, confidence intervals |
 | `Nautilus.Optim` | golden-section search, Brent minimization, gradient descent, Newton minimization (scalar) |
-| `Nautilus.Optimize` | stable scalar `minimize` and `root` entry points |
+| `Nautilus.Optimize` | scalar `minimize` and `root` entry points (`alpha`) |
 | `Nautilus.Interpolation` | linear (uniform and sorted grids), cubic Hermite, natural cubic spline |
 | `Nautilus.Sde` | Euler–Maruyama and Milstein with caller-supplied noise |
 | `Nautilus.CurveFit` | Levenberg–Marquardt fitting for one or many parameters |
 | `Nautilus.StateSpace` | scalar Kalman filter and local-level model |
 | `Nautilus.TimeSeries` | EWMA, exponential smoothing, and AR(1)/ARMA(1,1)/ARIMA(1,1,0) point forecasts |
-| `Nautilus.Signal` | `fftfreq`; FFT, STFT, and filters are typed stubs until Chelis supports complex numbers |
+| `Nautilus.Signal` | `fftfreq`; FFT, STFT, and filter names ending in `_stub` return NaN tensors |
 | `Nautilus.Core` | package version metadata |
 
-Every export carries a `stable` or `alpha` label. [`SKILL.md`](SKILL.md) §6
-has the full signature-level inventory, and the
-[book](docs/book/src/SUMMARY.md) has worked examples and per-function
-precision tables.
+Every export carries a `stable` or `alpha` label. The
+[book](docs/book/src/SUMMARY.md) provides signatures, worked examples, and
+precision guidance; its [API map](docs/book/src/appendix/api.md) lists modules.
 
 ## Using Nautilus
 
-Install the Chelis toolchain with `chelisup` (see the
-[Chelis installation guide](https://github.com/Chelis-Lang/chelis)), then
-install a Nautilus release into your local Reef registry and declare it as a
-dependency:
+The Chelis and Nautilus releases require access to their GitHub repositories.
+Install `chelisup`, then install the Chelis version pinned by this release
+and Nautilus itself. [Installation](docs/book/src/getting-started/installation.md)
+gives the `chelisup` bootstrap and GitHub sign-in steps.
 
 ```sh
+chelisup install 0.18.11
 chelis reef install --from-github Chelis-Lang/nautilus@v0.7.46
+chelis reef init demo --module-prefix Demo --output demo
+cd demo
 ```
 
+Add this line under `[dependencies]` in the generated `reef.toml`:
+
 ```toml
-# your project's reef.toml
-[dependencies]
 nautilus = { version = "0.7.46" }
 ```
 
-```chelis
-module MyProject.Demo
-import Nautilus.Special (erf)
-import Nautilus.Distributions (normal_cdf)
-export (main)
-def main() -> f32 = {
-  zero = cast(0.0, f32)
-  one = cast(1.0, f32)
-  p = normal_cdf(cast(1.96, f32), zero, one)
-  e = erf(cast(0.5, f32))
-  add(p, e)
-}
-```
-
-The book's [first program](docs/book/src/getting-started/first-program.md)
-walks through a complete Black–Scholes example.
+Use the book's [first program](docs/book/src/getting-started/first-program.md)
+as `src/main.ch`, then run `chelis fmt --inplace src/main.ch` and
+`chelis eval --file src/main.ch`. Run `chelis reef build` to build
+the package.
 
 Each release is built against one exact Chelis version, recorded as the
 `compiler` pin in [`reef.toml`](reef.toml). [`docs/releases.md`](docs/releases.md)
@@ -100,14 +90,13 @@ layout, and how compiler upgrades are handled.
 | `src/` | the library, one file per module, plus runnable example programs |
 | `tests/` | native Chelis tests (`chelis test tests/`) |
 | `tests_neg/` | programs that must fail to compile, each with the diagnostic it must produce |
-| `tests_blocked/` | reproducers for open upstream compiler issues (see its README) |
+| `tests_blocked/` | compiler compatibility fixtures |
 | `parity/` | SciPy/NumPy parity checks, an isolated uv project with reviewed goldens |
 | `docs/book/` | the Nautilus book (mdBook) |
-| `docs/` | benchmarks, release notes, the Chelis capability inventory, and upstream issue tracking |
+| `docs/` | benchmarks, release notes, and the Chelis capability inventory |
 | `spec/scope.md` | intent, architecture, acceptance rules, limitations, deferrals |
 | `scripts/` | CI and validation tooling (Python, standard library only) |
 | `provenance/` | requirement-to-code provenance records (advisory) |
-| `agent-skills/`, `AGENTS.md` | instructions for AI coding agents, managed by the Chelis toolchain |
 
 ## License
 

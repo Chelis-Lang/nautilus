@@ -25,7 +25,11 @@ Returns 0 at q=0, +inf at q=1, NaN outside [0,1].
 
 **`gamma_sample[n](template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32] ! { Random }`**
 
-Marsaglia-Tsang method for shape >= 1. Carries the `Random` effect.
+Accepts shape >= 1 and carries the `Random` effect. For finite shape
+>= 1 and positive finite scale, its current output is a constant tensor,
+equal to `(shape - 1/3) * scale` regardless of the seed. It does not
+sample a gamma distribution.
+See [Sampling limits](sampling.md#sampling-limits).
 
 ```chelis
 module Nautilus.BookGammaFamily
@@ -56,6 +60,9 @@ shape = df/2 and scale = 2.
 **`chi_squared_sample[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! { Random }`**
 
 `chi2_critical` in the module above shows `chi_squared_cdf` in use.
+The sampler requires df >= 2 because it calls `gamma_sample` with
+shape df/2. Its output is constant, so it does not sample a chi-squared
+distribution.
 
 ## Student's t distribution
 
@@ -70,7 +77,9 @@ a = df/2, b = 0.5, x = df/(df + t^2). Returns NaN if df <= 0.
 
 **`student_t_sample[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! { Random }`**
 
-Generates Normal(0,1) / sqrt(ChiSq(df)/df).
+Computes Normal(0,1) / sqrt(ChiSq(df)/df) in form, but the current
+chi-squared term is a constant. Its output therefore does not have a
+Student-t distribution. Use df >= 2 for the gamma sampler's supported shape.
 
 ```chelis-fragment
 import Nautilus.Distributions (student_t_pdf, student_t_cdf)

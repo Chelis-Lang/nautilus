@@ -2,8 +2,8 @@
 
 Two discrete distribution families: Poisson and Binomial. Both provide
 a probability mass function (PMF) and a cumulative distribution function
-(CDF). The count parameter `k` is passed as f32 but must be
-integer-valued; non-integer k returns 0.
+(CDF). Pass counts as integer-valued `f32` values. The PMFs return zero
+for non-integer `k`, but the CDFs do not round `k` to a count.
 
 ## Poisson
 
@@ -61,7 +61,7 @@ cdf = binomial_cdf(cast(3.0, f32), cast(10.0, f32), cast(0.3, f32))
 
 | Condition | PMF | CDF |
 |---|---|---|
-| Non-integer k | 0.0 | uses floor(k) implicitly |
+| Non-integer k | 0.0 | no count rounding; pass an integer-valued `f32` |
 | k < 0 | 0.0 | 0.0 |
 | lambda < 0 (Poisson) | NaN | NaN |
 | p outside [0,1] (Binomial) | NaN | NaN |

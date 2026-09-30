@@ -1,76 +1,69 @@
 # Installation
 
-## Prerequisites
+Nautilus 0.7.46 is a Reef package for Chelis 0.18.11. Reef installs the package
+for use from your own Chelis project. Building Nautilus from source is an
+alternative when you want to work on the library.
 
-Nautilus requires:
+## Install the toolchain
 
-- the Chelis toolchain version pinned in `reef.toml` (currently
-  [Chelis 0.18.11](https://github.com/Chelis-Lang/chelis/releases/tag/v0.18.11))
-- a C compiler such as GCC or Clang, for the generated C code
-- uv and Python 3.12 for the isolated parity project
-
-## Install the Chelis toolchain
+The Chelis and Nautilus releases require access to their GitHub repositories.
+Sign in with the GitHub CLI (`gh`), then install `chelisup` and the version
+Nautilus pins:
 
 ```sh
+gh auth login
+gh release download --repo Chelis-Lang/chelis --pattern chelisup.sh --output - | sh
+export PATH="$HOME/.chelis/bin:$PATH"
 chelisup install 0.18.11
+chelis --version
 ```
 
-`chelisup` installs releases side by side. Its `chelis` shim resolves the
-version from the nearest `reef.toml`; never replace it with a fixed symlink.
+The version command should print `chelis 0.18.11`. If you already have
+`chelisup`, start with `chelisup install`. `chelisup` keeps versions side by
+side, and its `chelis` command selects the exact compiler named in a nearby
+`reef.toml`.
 
-## Clone and build Nautilus
+## Install Nautilus
+
+```sh
+chelis reef install --from-github Chelis-Lang/nautilus@v0.7.46
+```
+
+This puts the released package in your local Reef registry. The command uses
+`GITHUB_TOKEN` when set, or your `gh` login, to access the release. It does not
+add Nautilus to a project's dependencies.
+
+Create a project with the same compiler:
+
+```sh
+chelis reef init demo --module-prefix Demo --output demo
+cd demo
+```
+
+In the generated `reef.toml`, add this line under the existing
+`[dependencies]` table:
+
+```toml
+nautilus = { version = "0.7.46" }
+```
+
+Keep the generated `compiler = "=0.18.11"` pin. Continue with
+[Your first Nautilus program](first-program.md) to evaluate a calculation.
+
+## Work from a source checkout
+
+To inspect or change Nautilus itself, clone the repository and build its Reef
+package with the pinned toolchain:
 
 ```sh
 git clone https://github.com/Chelis-Lang/nautilus.git
 cd nautilus
+chelisup install 0.18.11
 chelis reef setup
 chelis reef build
 ```
 
-This produces `dist/nautilus-X.Y.Z.chb`, where `X.Y.Z` is the version in
-`reef.toml`: the Reef package that other Chelis projects can depend on.
-
-## Verify the installation
-
-```sh
-# Type-check all modules
-for f in src/*.ch; do chelis check "$f"; done
-
-# Run the native identity / structural test suite
-chelis test tests/ --jobs auto
-
-# Verify that invalid programs are still rejected
-chelis test tests_neg/ --expect neg
-
-# Serial fallback for debugging
-chelis test tests/ --jobs 1
-
-# Validate against the reviewed SciPy goldens in the locked uv project
-uv sync --project parity --frozen
-uv run --project parity --frozen python parity/run_parity.py --strict
-```
-
-Every test should pass, and the parity oracle should report
-`parity totals: 216 passed, 0 failed`. When `tests_blocked/` contains
-reproducers of upstream compiler limitations, `chelis test tests_blocked/
---expect blocked` confirms each still fails with its recorded diagnostic;
-it currently contains none.
-
-Ensure the `chelisup` shim is on `PATH` so parity probes resolve the reef-pinned
-toolchain.
-
-## Using Nautilus in your project
-
-Add Nautilus as a reef dependency in your project's `reef.toml`:
-
-```toml
-[dependencies]
-nautilus = { path = "../nautilus" }
-```
-
-Then import the modules you need:
-
-```chelis-fragment
-import Nautilus.Special (erf, erfinv)
-import Nautilus.Distributions (normal_cdf, normal_inv_cdf)
-```
+`chelis reef build` writes `dist/nautilus-0.7.46.chb` and a source archive. It
+does not produce an executable. [CONTRIBUTING.md](https://github.com/Chelis-Lang/nautilus/blob/main/CONTRIBUTING.md)
+has the native tests and optional SciPy parity commands. Parity needs uv and
+Python 3.12; ordinary use of the Reef package does not.

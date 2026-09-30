@@ -21,7 +21,8 @@ Uses the Abramowitz & Stegun rational (Horner) approximation with a linear
 fallback for |x| < 1e-5. The function is odd: erf(-x) = -erf(x).
 
 - **Domain:** all reals
-- **Range:** (-1, 1)
+- **Range:** [-1, 1] at finite precision; values round to the endpoints
+  for sufficiently large magnitudes
 - **Precision:** ~1e-7 relative
 
 ```chelis-fragment
@@ -41,7 +42,8 @@ does not avoid the cancellation for large positive `x`, where `erf(x)` is
 close to 1: at f32 it returns exactly 0 from about x = 3.92.
 
 - **Domain:** all reals
-- **Range:** (0, 2)
+- **Range:** [0, 2] at finite precision; the result can round to either
+  endpoint
 - **Precision:** ~1e-7 absolute (inherits `erf`'s error); relative error grows in the upper tail
 
 ```chelis-fragment

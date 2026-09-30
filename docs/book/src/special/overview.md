@@ -2,7 +2,8 @@
 
 `Nautilus.Special` provides the mathematical special functions that
 underlie probability distributions, physics simulations, and
-numerical analysis. It replaces `scipy.special` for Chelis programs.
+numerical analysis. The module exposes the families listed below;
+the [precision guide](../appendix/precision.md) describes their accuracy.
 
 All functions are pure (no effects). Differentiability via `grad` is **not**
 uniform across the module, and two separate limits apply.
@@ -32,10 +33,11 @@ def wide(x: f64) -> f64 = erf(x)
 ```
 
 A single call still uses one dtype throughout -- `beta(a: f32, b: f64)` is a
-precision mismatch, not an implicit promotion. And genericity is a signature
-property, not an accuracy one: `erf` and `erfc` carry the same fixed
-coefficients at every width, so calling them at f64 buys wider arithmetic and
-no extra digits. See the [precision guide](../appendix/precision.md).
+precision mismatch, not an implicit promotion. Generic signatures also do
+not promise f64 accuracy for every function. For example, f64 improves
+`erf`'s measured accuracy by a smaller amount than it improves `gamma`;
+`erfc` at f64 returns nonzero values farther into the positive tail.
+See the [precision guide](../appendix/precision.md).
 
 ## Imports
 

@@ -10,10 +10,8 @@ Six functions -- `gamma`, `log_gamma`, `beta`, `lbeta`, `ellipk` and `ellipe`
 -- are limited by f32 rounding rather than by their own coefficients, so at f64
 they land far below whatever their row says. The rest are limited by their
 approximations and improve by less, by amounts that differ per function and per
-argument. No f64 figure per function and per domain is established for any of
-them, here or anywhere else in the repo; the `bessel_y1` figure below is a
-single point, quoted precisely because no single figure covers that function.
-Measure the argument you care about.
+argument. The `bessel_y1` figure below is a single measurement near a
+branch boundary. Measure the argument range you care about.
 
 Treat the table as an f32 guide. It has no figure for `beta` or `lbeta`, and
 `bessel_y1` errs by about 1.2e-4 at either dtype just below its large-x seam
@@ -34,8 +32,6 @@ a caller is most likely to get wrong:
   still poor -- 2.8e-3 at x = 4, because `1 - erf(x)` cancels against an
   absolutely-bounded `erf` -- so use it for a tail that exists at all, not for
   a tail you need three good digits from.
-
-Narrowing these means replacing coefficients, not widening dtypes.
 
 ## Precision by function family
 

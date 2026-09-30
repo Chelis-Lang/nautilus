@@ -53,14 +53,14 @@ samples = normal_sample(template, cast(0.0, f32), cast(1.0, f32))
 
 ## Other sampling methods
 
-| Distribution | Function | Method |
+| Distribution | Function | Current behavior |
 |---|---|---|
 | Uniform | `uniform_sample` | Direct scaling of uniform variates |
 | Exponential | `exponential_sample` | Inverse CDF: -ln(u) / rate |
 | LogNormal | `lognormal_sample` | exp(normal_sample(mu, sigma)) |
-| Gamma | `gamma_sample` | Marsaglia-Tsang (shape >= 1) |
-| Chi-squared | `chi_squared_sample` | Via gamma_sample(df/2, 2) |
-| Student-t | `student_t_sample` | Normal(0,1) / sqrt(ChiSq(df)/df) |
+| Gamma | `gamma_sample` | Constant tensor for shape >= 1; see limits below |
+| Chi-squared | `chi_squared_sample` | Constant tensor via `gamma_sample(df/2, 2)` |
+| Student-t | `student_t_sample` | Normal draw divided by a constant, not a Student-t draw |
 
 ## Signatures
 
@@ -87,11 +87,17 @@ def student_t_sample[n](template: tensor[n, f32], df: f32)
     -> tensor[n, f32] ! { Random }
 ```
 
-## Notes
+## Sampling limits
 
-- `uniform_like` is the internal Chelis primitive that generates raw
-  uniform variates. It is not part of the Nautilus public API.
-- `gamma_sample` requires shape >= 1. No sampler covers shape < 1.
-- All sample functions draw independent samples; there is no correlation
-  structure. Reproducibility comes from the Chelis `seed` handler, not
-  from a Nautilus-level API.
+- `gamma_sample` requires shape >= 1. Its current acceptance step discards
+  the generated random values. For finite shape >= 1 and positive finite
+  scale, every element equals `(shape - 1/3) * scale` regardless of the
+  seed. Do not use it to sample a gamma distribution.
+- `chi_squared_sample` uses `gamma_sample`, and `student_t_sample` uses
+  `chi_squared_sample`. The chi-squared result is a constant tensor, and
+  the Student-t result uses a constant denominator instead of a
+  chi-squared draw. Do not use either function for those distributions.
+  They need df >= 2 to meet the gamma sampler's shape requirement.
+- `uniform_sample`, `exponential_sample`, `normal_sample`, and
+  `lognormal_sample` generate a tensor of draws from the Chelis random
+  stream. The `seed` handler makes that stream reproducible.

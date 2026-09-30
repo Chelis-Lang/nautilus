@@ -14,8 +14,8 @@ as a tensor, the x-range endpoints, and a query point.
 ```chelis-fragment
 import Nautilus.Interpolation (linear_interp_uniform)
 
-// ys: 5 equally-spaced y-values over [0, 4]
-// Query at x = 1.5 (between indices 1 and 2)
+-- ys: 5 equally-spaced y-values over [0, 4]
+-- Query at x = 1.5 (between indices 1 and 2)
 result = linear_interp_uniform(ys, cast(0.0, f32), cast(4.0, f32), cast(1.5, f32))
 ```
 

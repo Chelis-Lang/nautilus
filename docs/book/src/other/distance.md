@@ -18,9 +18,9 @@ def distances[n](a: tensor[n, f32], b: tensor[n, f32]) -> (f32, f32, f32, f32) =
 ```chelis-fragment
 import Nautilus.Distance (euclidean, manhattan, chebyshev)
 
-d2 = euclidean(a, b)    // L2: sqrt(sum((a_i - b_i)^2))
-d1 = manhattan(a, b)    // L1: sum(|a_i - b_i|)
-dinf = chebyshev(a, b)  // L-inf: max(|a_i - b_i|)
+d2 = euclidean(a, b)    -- L2: sqrt(sum((a_i - b_i)^2))
+d1 = manhattan(a, b)    -- L1: sum(|a_i - b_i|)
+dinf = chebyshev(a, b)  -- L-inf: max(|a_i - b_i|)
 ```
 
 | Function | Formula | Signature |
@@ -35,8 +35,8 @@ dinf = chebyshev(a, b)  // L-inf: max(|a_i - b_i|)
 ```chelis-fragment
 import Nautilus.Distance (cosine_similarity, cosine_distance)
 
-sim = cosine_similarity(a, b)  // dot(a,b) / (||a|| * ||b||)
-dist = cosine_distance(a, b)   // 1 - sim
+sim = cosine_similarity(a, b)  -- dot(a,b) / (||a|| * ||b||)
+dist = cosine_distance(a, b)   -- 1 - sim
 ```
 
 Uses `inner_product` and `l2_norm_vec` from `Nautilus.LinAlg` internally.
@@ -48,7 +48,7 @@ by zero (zero-norm vector) produces inf/NaN per IEEE 754.
 ```chelis-fragment
 import Nautilus.Distance (mahalanobis, mahalanobis_squared)
 
-// Caller must supply the inverse covariance matrix
+-- Caller must supply the inverse covariance matrix
 d = mahalanobis(a, b, cov_inv)
 d2 = mahalanobis_squared(a, b, cov_inv)
 ```
@@ -56,9 +56,12 @@ d2 = mahalanobis_squared(a, b, cov_inv)
 **Signature:** `[n](a: &tensor[n, f32], b: &tensor[n, f32], cov_inv: &tensor[n, n, f32]) -> f32`
 
 Computes `sqrt(diff^T * cov_inv * diff)` where `diff = a - b`. The caller
-is responsible for providing the inverse covariance matrix; use `inv_2x2`
-or `inv_3x3` from `Nautilus.LinAlg` to compute it, or `cg_solve` for
-larger SPD systems.
+is responsible for providing the inverse covariance matrix. `inv_2x2`
+and `inv_3x3` from `Nautilus.LinAlg` cover those small sizes. `cg_solve`
+solves `Ax = b` for one vector; it does not return an inverse matrix.
+For a larger positive-definite covariance matrix, solve
+`covariance * x = a - b` and compute `sqrt((a - b)^T * x)` directly,
+checking the solve's residual.
 
 Internally uses `matvec` and `inner_product` from LinAlg. The
 `mahalanobis_squared` variant skips the final `sqrt`.

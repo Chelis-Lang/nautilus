@@ -36,9 +36,10 @@ A matrix A is symmetric positive-definite when:
 1. A = A^T (symmetric).
 2. For every nonzero vector v, v^T A v > 0 (positive-definite).
 
-Common sources of SPD matrices: Gram matrices (A^T A), covariance
-matrices, Hessians of strictly convex functions, stiffness matrices in
-FEM.
+`A^T A` is SPD when `A` has full column rank; otherwise it is only
+positive semidefinite. A covariance matrix likewise needs a positive
+definiteness check before use here. A Hessian of a strictly convex
+quadratic is an SPD example.
 
 ## Convergence behavior
 
@@ -49,7 +50,8 @@ well-conditioned matrix converges quickly, while an ill-conditioned
 one may stall.
 
 The solver terminates when the squared residual norm drops below `tol`,
-or after `max_iters` iterations, whichever comes first.
+or after `max_iters` iterations, whichever comes first. Check the
+returned residual if convergence matters to your calculation.
 
 ## Example
 

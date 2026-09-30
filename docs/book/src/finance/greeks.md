@@ -1,10 +1,9 @@
 # Greeks via Automatic Differentiation
 
-Chelis provides reverse-mode differentiation as a language transform, `grad`.
+Chelis provides reverse-mode differentiation through `grad`.
 `grad(f, wrt=x)` returns a function with the same parameters as `f` that
-computes df/dx. Because `black_scholes_call` is an ordinary composition of
-Chelis primitives and `normal_cdf`, with no foreign-function calls, `grad`
-can differentiate through it to produce the option Greeks.
+computes df/dx. With the pinned evaluator, this form differentiates
+the Black-Scholes call formula through `normal_cdf`.
 
 ## The Greeks as derivatives
 
@@ -45,12 +44,10 @@ with the closed-form Greeks to f32 precision:
 | Rho | 53.232 |
 | Gamma | 0.018761 |
 
-## Caveats
+## Evaluation scope
 
-- **Use `wrt=`, not a closure over the other parameters.** At Chelis 0.18.11,
-  writing delta as `grad(fn (s_: f32) -> black_scholes_call(s_, k, r, sigma, t))(s)`
-  type-checks but fails in the evaluator with `missing required input` for
-  the captured parameters. The `wrt=` form above works.
-- **No test covers these values.** Nautilus's test suite does not yet
-  include a gradient test through `normal_cdf`, so this chapter is a worked
-  example rather than an advertised, regression-tested surface.
+The values above are from `chelis eval` with Chelis 0.18.11. Use the
+explicit `wrt=` argument as shown for a function with several parameters.
+This chapter demonstrates evaluator behavior; it does not establish the
+same result for generated C. Nautilus's test suite does not include a
+gradient test for this pricing path.
