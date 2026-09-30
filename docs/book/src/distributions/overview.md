@@ -33,18 +33,18 @@ families. It replaces `scipy.stats` for Chelis programs.
 - F: `(x, d1, d2)`
 - Weibull: `(x, shape, scale)`
 
-## Sampling and the Random effect
+## Sampling with explicit keys
 
-The seven `_sample` functions carry the `! { Random }` effect:
+The seven `_sample` functions take a `key` as their first argument:
 
 ```chelis-fragment
-def normal_sample[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random }
+def normal_sample[n](k: key, template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]
 ```
 
 The `template` tensor determines the output shape. The actual values
 in the template are ignored; only its shape is used. See
-[Sampling with the Random Effect](sampling.md) for the methods and for
-seeding.
+[Sampling with Explicit Keys](sampling.md) for the methods and for key
+derivation.
 
 ## Imports
 

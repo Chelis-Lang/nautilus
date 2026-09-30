@@ -11,7 +11,7 @@ Parameterized by `rate` (not scale). PDF: rate * exp(-rate * x) for x >= 0.
 - **`exponential_pdf(x: f32, rate: f32) -> f32`**
 - **`exponential_cdf(x: f32, rate: f32) -> f32`** -- 1 - exp(-rate * x)
 - **`exponential_inv_cdf(q: f32, rate: f32) -> f32`** -- -ln(1 - q) / rate
-- **`exponential_sample[n](template, rate) -> tensor ! { Random }`**
+- **`exponential_sample[n](k, template, rate) -> tensor`**
 
 ```chelis-fragment
 import Nautilus.Distributions (exponential_cdf)
@@ -27,7 +27,7 @@ to `normal_cdf`/`normal_inv_cdf` after taking log(x).
 - **`lognormal_pdf(x: f32, mu: f32, sigma: f32) -> f32`** -- 0 for x <= 0
 - **`lognormal_cdf(x: f32, mu: f32, sigma: f32) -> f32`** -- normal_cdf(ln(x), mu, sigma)
 - **`lognormal_inv_cdf(q: f32, mu: f32, sigma: f32) -> f32`** -- exp(normal_inv_cdf(q))
-- **`lognormal_sample[n](template, mu, sigma) -> tensor ! { Random }`**
+- **`lognormal_sample[n](k, template, mu, sigma) -> tensor`**
 
 ```chelis-fragment
 import Nautilus.Distributions (lognormal_cdf)
@@ -42,7 +42,7 @@ Parameterized by `lo` and `hi` endpoints. 1/(hi - lo) inside, 0 outside.
 - **`uniform_pdf(x: f32, lo: f32, hi: f32) -> f32`**
 - **`uniform_cdf(x: f32, lo: f32, hi: f32) -> f32`**
 - **`uniform_inv_cdf(q: f32, lo: f32, hi: f32) -> f32`** -- lo + q*(hi-lo)
-- **`uniform_sample[n](template, lo, hi) -> tensor ! { Random }`**
+- **`uniform_sample[n](k, template, lo, hi) -> tensor`**
 
 ```chelis-fragment
 import Nautilus.Distributions (uniform_cdf)

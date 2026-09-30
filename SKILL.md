@@ -180,11 +180,14 @@ approximately 2.408.
   `cg_solve`'s inputs, `la_tridiag_solve`, the SDE noise tensor, the ODE
   grid's `y0`, `lm_scalar_nparam`'s `theta0`) takes ownership; pass `copy(t)`
   if you still need `t` afterwards.
-- **Sampling.** The `*_sample` functions carry the `! { Random }` effect.
-  Handle it with Chelis's `with seed(42i64) { ... }`, which makes draws
-  reproducible, or declare the effect on the calling function. The template
-  argument supplies only the output shape. `gamma_sample` assumes
-  `shape >= 1`.
+- **Sampling.** The `*_sample` functions take a `key` as their first
+  argument; Chelis has no randomness effect. `key_from_seed(42i64)` builds a
+  root key and makes draws reproducible. Keys are affine, so a function that
+  draws more than once derives children with `split_key` / `split_keys` /
+  `fold_in` rather than reusing one - **a reused key redraws identical values
+  rather than failing.** The template argument supplies only the output shape.
+  `gamma_sample` assumes `shape >= 1` and currently replicates one trial
+  across the template rather than sampling per element (nautilus#84).
 - **Math builtins.** `cos`, `tan`, `atan`, `abs`, `floor`, and `ceil` are
   Chelis builtins alongside `exp`, `log`, `sin`, and `sqrt`.
 - **Fixed-size LinAlg.** `inv_2x2`, `solve_3x3`, and the other closed forms
@@ -299,33 +302,33 @@ version, is the one export not listed here.
 | `uniform_pdf` | `(x: f32, lo: f32, hi: f32) -> f32` | `stable` |  |
 | `uniform_cdf` | `(x: f32, lo: f32, hi: f32) -> f32` | `stable` |  |
 | `uniform_inv_cdf` | `(q: f32, lo: f32, hi: f32) -> f32` | `stable` |  |
-| `uniform_sample` | `[n](template: tensor[n, f32], lo: f32, hi: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random |
+| `uniform_sample` | `[n](k: key, template: tensor[n, f32], lo: f32, hi: f32) -> tensor[n, f32]` | `alpha` | Explicit key |
 | `exponential_pdf` | `(x: f32, rate: f32) -> f32` | `stable` | rate param (not scale) |
 | `exponential_cdf` | `(x: f32, rate: f32) -> f32` | `stable` | rate param |
 | `exponential_inv_cdf` | `(q: f32, rate: f32) -> f32` | `stable` | rate param |
-| `exponential_sample` | `[n](template: tensor[n, f32], rate: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random; rate param |
+| `exponential_sample` | `[n](k: key, template: tensor[n, f32], rate: f32) -> tensor[n, f32]` | `alpha` | Explicit key; rate param |
 | `normal_pdf` | `(x: f32, mean: f32, std: f32) -> f32` | `stable` | (mean, std) parameterization |
 | `normal_cdf` | `(x: f32, mean: f32, std: f32) -> f32` | `stable` | Via erf |
 | `normal_inv_cdf` | `(q: f32, mean: f32, std: f32) -> f32` | `stable` | Acklam rational approx via erfinv |
 | `normal_cdf_t` | `[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane normal CDF via erf_t |
 | `normal_pdf_t` | `[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane normal PDF |
 | `normal_inv_cdf_t` | `[n](q: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane inverse CDF via erfinv_t |
-| `normal_sample` | `[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random; Box-Muller |
+| `normal_sample` | `[n](k: key, template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `alpha` | Explicit key; Box-Muller, splits its key |
 | `lognormal_pdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | `stable` | (mu, sigma) of underlying normal |
 | `lognormal_cdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | `stable` | Via normal_cdf |
 | `lognormal_inv_cdf` | `(q: f32, mu: f32, sigma: f32) -> f32` | `stable` | Via normal_inv_cdf + exp |
-| `lognormal_sample` | `[n](template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random |
+| `lognormal_sample` | `[n](k: key, template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32]` | `alpha` | Explicit key |
 | `gamma_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | (shape, scale) -- not (shape, rate) |
 | `gamma_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Series (gammap) + continued fraction (gammaq) |
 | `gamma_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Wilson-Hilferty init + Newton refinement |
-| `gamma_sample` | `[n](template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random; Marsaglia-Tsang, shape >= 1 |
+| `gamma_sample` | `[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]` | `alpha` | Explicit key; Marsaglia-Tsang, shape >= 1; replicates one trial (nautilus#84) |
 | `chi_squared_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_pdf(x, df/2, 2) |
 | `chi_squared_cdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_cdf |
 | `chi_squared_inv_cdf` | `(q: f32, df: f32) -> f32` | `stable` | Via gamma_inv_cdf |
-| `chi_squared_sample` | `[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random; via gamma_sample |
+| `chi_squared_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; via gamma_sample (inherits nautilus#84) |
 | `student_t_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via log_gamma |
 | `student_t_cdf` | `(t: f32, df: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
-| `student_t_sample` | `[n](template: tensor[n, f32], df: f32) -> tensor[n, f32] ! { Random }` | `alpha` | Effect: Random; normal/chi-squared ratio |
+| `student_t_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; normal/chi-squared ratio (inherits nautilus#84) |
 | `poisson_pmf` | `(k: f32, lambda: f32) -> f32` | `stable` | k as f32 (integer-valued), discrete PMF |
 | `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | `stable` | Via gamma_cdf complement |
 | `binomial_pmf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | k, n as f32 (integer-valued), discrete PMF |
