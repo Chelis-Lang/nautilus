@@ -54,6 +54,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Test secret scan contract
+        run: python3 -m unittest discover -v -s .github/scripts -p test_secret_scan.py
+
       - name: Reject AI-author commits
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
