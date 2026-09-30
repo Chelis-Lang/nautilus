@@ -14,14 +14,14 @@ near-zero derivatives, and exhausted iteration limits can produce NaN.
 
 ## When to use which
 
-- **bisection** -- simplest and most robust. Requires a bracket [lo, hi]
+- **bisection:** Simplest and most robust. Requires a bracket [lo, hi]
   where f changes sign. Converges linearly (one bit per iteration). Use
   when you have a reliable bracket and do not need speed.
-- **newton** -- quadratic convergence near simple roots, but requires the
+- **newton:** Quadratic convergence near simple roots, but requires the
   user to supply the derivative `df`. Can fail if `df` is near zero or
   the initial guess is far from the root. Use when you have analytic
   derivatives and a good starting point.
-- **brent** -- combines inverse quadratic interpolation, secant, and
+- **brent:** Combines inverse quadratic interpolation, secant, and
   bisection fallback. Requires a sign-change bracket like bisection but
   converges superlinearly. The best general-purpose choice.
 
