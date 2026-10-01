@@ -108,11 +108,23 @@ validation pass, or verification of a fix that a red team reported.
 ## Nautilus Worktree Handoff And Verification
 
 - Capture `git rev-parse HEAD`, `git status --porcelain --untracked-files=all`,
-  and `git worktree list --porcelain`. Inventory all processes with a cwd or
-  open file under the worktree with `lsof -nP -x f +D "$PWD"`; `-x f`
-  includes mounted subdirectories. Check a shared target separately with
-  `lsof -nP -x f +D "$target"`. Do not filter by process name before the
-  ownership scan. Use `ps -p PID -o pid,ppid,command` to
+  and `git worktree list --porcelain`. From any directory in the proposed
+  worktree, set `review_worktree="$(realpath "$(git rev-parse --show-toplevel)")"`
+  and `review_git_dir="$(realpath "$(git rev-parse --path-format=absolute --git-dir)")"`.
+  From outside those paths, run `lsof -nP -x f +D "$review_worktree"` and
+  `lsof -nP -x f +D "$review_git_dir"`. The second scan covers a linked
+  worktree's index and lock outside its source directory; `-x f` crosses
+  mounts. Use `git -C "$review_worktree" ls-files -s` to identify tracked
+  symlinks (mode `120000`); resolve each listed path from that root and
+  scan any external source target;
+  scan an external directory with `lsof -nP -x f +D <resolved-directory>`
+  or an external file with `lsof -nP -- <resolved-file>`. A target you cannot
+  resolve or scan makes the handoff unavailable. Check for remaining Git
+  locks with `find "$review_git_dir" -name '*.lock' -print`; any lock blocks
+  handoff.
+  Resolve a shared target with `target="$(realpath "$target")"` and scan it
+  separately with `lsof -nP -x f +D "$target"`. Do not filter by process
+  name before the ownership scans. Use `ps -p PID -o pid,ppid,command` to
   identify each returned PID, disregarding only scan processes after they
   exit. Inspect `lsof` output even when it exits nonzero. Paste the output
   with a timestamp into each round or verification brief. A dirty tree,

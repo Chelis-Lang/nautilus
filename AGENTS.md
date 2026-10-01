@@ -180,10 +180,14 @@ links and edit routes for compiler files absent from Nautilus.
   reads it.
 - Before handing off a worktree, record its exact head and
   `git status --porcelain --untracked-files=all`, list worktrees, and scan
-  all working-directory and open-file owners with
-  `lsof -nP -x f +D "$PWD"`.
-  `-x f` includes mounted subdirectories. Scan a shared target separately
-  with `lsof -nP -x f +D "$target"`; the
+  the worktree and its separate Git directory for open handles. From any
+  directory in that worktree, set
+  `review_worktree="$(realpath "$(git rev-parse --show-toplevel)")"` and
+  `review_git_dir="$(realpath "$(git rev-parse --path-format=absolute --git-dir)")"`.
+  From outside those paths, scan each with `lsof -nP -x f +D <path>`;
+  `-x f` crosses mounts. Resolve tracked symlinks and shared targets
+  separately; an unscanned external target, open handle, or Git lock
+  makes the worktree unavailable. The
   `redteam-exec` skill gives the full handoff procedure. Treat unclear
   ownership as busy and use a separate worktree and target.
 - After a PR merges, remove only its clean, idle task worktree with
