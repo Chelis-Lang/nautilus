@@ -179,10 +179,20 @@ links and edit routes for compiler files absent from Nautilus.
   unrelated worktree. Do not write or build in a worktree while a reviewer
   reads it.
 - Before handing off a worktree, record its exact head and
-  `git status --porcelain --untracked-files=all`, list worktrees, and inspect
-  candidate processes with `ps -axo pid,ppid,command`. For a candidate PID,
-  check its working directory with `lsof -a -d cwd -p PID`. Treat unclear
-  ownership as busy and use a separate worktree.
+  `git status --porcelain --untracked-files=all`, list worktrees, and scan
+  the worktree, its separate Git directory, and Git's shared common
+  directory for open handles. From any
+  directory in that worktree, set
+  `review_worktree="$(realpath "$(git rev-parse --show-toplevel)")"` and
+  `review_git_dir="$(realpath "$(git rev-parse --path-format=absolute --git-dir)")"`,
+  and `review_git_common_dir="$(realpath "$(git rev-parse --path-format=absolute --git-common-dir)")"`.
+  From outside those paths, scan each with `lsof -nP -x f +D <path>`;
+  `-x f` crosses mounts. Resolve tracked symlinks and shared targets
+  separately; check both Git directories for remaining locks. An unscanned
+  external target, open handle, or Git lock
+  makes the worktree unavailable. The
+  `redteam-exec` skill gives the full handoff procedure. Treat unclear
+  ownership as busy and use a separate worktree and target.
 - After a PR merges, remove only its clean, idle task worktree with
   `git worktree remove <path>`. Preserve uncertain artifacts; decide branch
   deletion separately.
