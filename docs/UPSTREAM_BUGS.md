@@ -3,9 +3,10 @@
 This file records the upstream Chelis compiler issues that currently shape
 Nautilus: what each one blocks, how Nautilus works around it, and when to check
 it again. It describes the state at the current **pin**, the exact compiler
-release that `reef.toml` requires. Nautilus 0.7.46 pins `chelis 0.18.11`
-(`compiler = "=0.18.11"`); the release identity and asset hashes of that
-toolchain are recorded in [`docs/CHELIS_SURFACE.md`](CHELIS_SURFACE.md). Earlier
+release that `reef.toml` requires. This Nautilus 0.7.47 source candidate pins
+published `chelis 0.18.12` (`compiler = "=0.18.12"`); its release identity and
+asset hashes are recorded in [`docs/CHELIS_SURFACE.md`](CHELIS_SURFACE.md).
+The last published Nautilus package, v0.7.46, predates this source pin. Earlier
 re-probe records are in git history and [`CHANGELOG.md`](../CHANGELOG.md).
 
 ## How this file works
@@ -42,9 +43,9 @@ blocked` reports each probe as OK (still fails as pinned), FIX-DETECTED (now
 passes, so the upstream fix has landed and the workaround should be removed),
 or DRIFTED (fails with a different diagnostic, so the failure mode moved and
 needs investigation before the citation is reused). There are no executable
-blocked probes at the 0.18.11 pin. All three live entries below fail only in
-lanes `chelis test` does not enter (C host lowering, or a full algorithm
-replacement), so they are re-probed manually;
+blocked probes at the 0.18.12 pin. The three live entries below require manual
+probes in lanes `chelis test` does not enter (C host lowering, or a full
+algorithm replacement);
 [`tests_blocked/README.md`](../tests_blocked/README.md) lists them and gives the
 recipes.
 
@@ -63,10 +64,10 @@ release.
   `chelis#2370`
   ([Chelis-Lang/chelis#2370](https://github.com/Chelis-Lang/chelis/issues/2370)),
   filed under the runtime-extent tracking issue `chelis#1277`.
-    - **Symptom:** the individual Jacobian-row helpers work, but composing them
-      into the complete Levenberg-Marquardt (LM) solver fails during
-      evaluation with a missing runtime-extent binder once `grad` crosses the
-      helper.
+    - **Earlier symptom:** at 0.18.11 the individual Jacobian-row helpers
+      worked, but composing them into the complete Levenberg-Marquardt (LM)
+      solver failed during evaluation with a missing runtime-extent binder
+      once `grad` crossed the helper.
     - **Affected Nautilus surface:** `Nautilus.CurveFit.lm_scalar_nparam`,
       whose Jacobian cannot yet be computed by exact automatic differentiation.
     - **Workaround:** `lm_jcol` in `src/curvefit.ch` builds the Jacobian by
@@ -80,6 +81,14 @@ release.
       `tests/curvefit_lm_jacobian_generic_dims.ch` and
       `tests/curvefit_lm_jacobian_model_wrapper.ch`, so no bounded blocked
       probe exists yet.
+    - **0.18.12 re-probe:** both isolated row witnesses and the shipped
+      finite-difference recovery suite pass. A task-local exact-AD replacement
+      that differentiated one seeded output at a time failed all six
+      multi-parameter recoveries before reaching the earlier provenance
+      boundary: `grad` rejected the models' host `to_list` with
+      `[05-HOST-1]`. This distinct failure does not establish whether the
+      original provenance error persists. No valid full-LM exact-AD
+      replacement has passed.
     - **Re-probe trigger:** every pin bump and the release resolving
       chelis#2370. On pass, compare the full LM recovery trajectories before
       removing the finite-difference implementation.
@@ -90,10 +99,11 @@ release.
     - **Symptom:** ``block bN in `f` is reached with inconsistent live owners``
       during C host lowering. `chelis check`, `chelis test`, `chelis lint` and
       `chelis reef build` all pass; only `chelis build` enters the failing lane.
-    - **Scope at the pin:** the `if` half of this ownership defect is
-      `chelis#2477`, fixed on chelis `main` in commit `967bf696b` but not
-      included in 0.18.11, so both `if` and `match` are affected at this pin.
-      Upstream, `lower_match_option` and `lower_match_adt` remain unfixed.
+    - **Scope at the pin:** the `if` half, `chelis#2477`, is fixed in 0.18.12.
+      A concrete block-bound-owner `if` probe emits C. The same owner shape
+      with `Option` and ADT `match` still rejects in `chelis build` with
+      `inconsistent live owners`, so `lower_match_option` and
+      `lower_match_adt` remain blocked.
     - **Affected Nautilus surface:** none today. `src/` contains no `match`,
       no ADT and no `Option`. The entry becomes live for any change that
       introduces a `match` over an owned value consumed on one arm, and such a
@@ -112,50 +122,59 @@ release.
     - **Re-probe trigger:** every pin bump, and before merging any change that
       adds a `match` over an owned value consumed on one arm.
 
-- **A downstream `chelis build` rejects a cast to a `Float`-bounded binder** —
+- **Float-generic downstream C consumers still require full verification** —
   `chelis#2152`
   ([Chelis-Lang/chelis#2152](https://github.com/Chelis-Lang/chelis/issues/2152)).
-    - **Symptom:** at 0.18.11 the issue's headline shape, an imported
+    - **Earlier symptom:** at 0.18.11 the issue's headline shape, an imported
       `cast(numel(v), prec)`, emits C from a concrete f32 consumer. The
       remaining minimal shape combines a function-typed parameter with a
       scalar cast, `apply_cast[prec: Float](g: prec -> prec, x: prec)`: both
       packages pass `chelis reef build`, then the consumer's `chelis build`
       rejects with ``unsupported: dtype `prec` on a `cast` target in host
       lowering``, at f32 and at f64.
+    - **0.18.12 re-probe:** that function-parameter-plus-cast shape, installed
+      as a separate library in an isolated Reef home, passed consumer
+      `chelis build`, clang link, and execution at both f32 and f64; outputs
+      were 1.5. A copy of the work-in-progress generic Stats branch built
+      after Surf migration, and its `mean_vec` consumer emitted C, linked,
+      and returned 2.0 at both widths. A broader Stats consumer covering
+      mean, standard deviation, quantile, trimmed mean, and correlation had
+      no C verdict after roughly 80 seconds and was stopped. These successes
+      narrow the blocker; they do not certify every generic Stats or Roots
+      consumer. The upstream issue remains open for its separate IR-lane
+      residue.
     - **Related issues:** `chelis#1418` reported the same diagnostic and is
       closed; its fixes first shipped in 0.18.7. The checker-side mirror,
       `chelis#2151`, is fixed at this pin (see Archived).
-    - **Affected Nautilus surface:** the Float-generic `Nautilus.Stats` of
-      `nautilus#69`. Converting Stats as it stands would regress existing f32
-      C consumers: the f32 Stats on `main` builds and links for the same
-      consumer, and the converted version does not. The same pattern
-      threatens the LinAlg, Interpolation and Roots conversions (`nautilus#12`,
-      `nautilus#67`) tracked under `nautilus#70`.
-    - **Not affected:** the Float-generic `Nautilus.Special` (`nautilus#59`).
+    - **Affected Nautilus surface:** `Nautilus.Stats` remains f32-only under
+      `nautilus#69`. The old C failure blocked its generic branch at 0.18.11;
+      this pin has not completed that branch's full f32/f64 consumer gate.
+      Generic Roots (`nautilus#67`) and LinAlg (`nautilus#12`) need their own
+      measured consumers rather than inheriting a verdict from this probe.
+    - **Prior Special control:** the Float-generic `Nautilus.Special`
+      (`nautilus#59`) did not hit this defect at 0.18.11.
       A two-package probe at 0.18.11 built a consumer calling `erf`, `erfc`,
       `gamma`, `log_gamma` and `ellipk` at f32 and f64; `chelis build`
       emitted C, `clang` compiled and linked it, and the f32 results were
       bit-identical to the same consumer built against the f32-only module.
-      The residue needs a scalar cast to a `Float` binder in the consumer's
-      own definition (`apply_special[prec: Float](g: prec -> prec, x: prec) =
-      add(g(x), cast(1.0, prec))` is rejected, while the same definition
-      without the cast builds), and `Nautilus.Special` has no function-typed
-      parameter that would reach it.
+      Its source remains generic in this pin; the official full package
+      build and positive/parity suites pass. A fresh separate-package C
+      control is still needed before claiming that exact lane.
     - **Why no automated gate catches it:** the dependent compile in
       `scripts/check_release_artifacts.py` runs `chelis reef build`, never
       `chelis build`.
-    - **Workaround:** none. Modules other than `Nautilus.Special` stay
-      f32-only, and no further `[prec: Float]` conversion merges before a
-      downstream C build of it passes.
+    - **Current narrowing:** modules other than `Nautilus.Special` remain
+      f32-only. Promote a generic module only after its own downstream C
+      consumers build, compile, link, and run at both widths.
     - **Reproducer:** manual only; see
       [`tests_blocked/README.md`](../tests_blocked/README.md). The two-package
       reproducer and its variant table are in chelis#2152.
     - **Re-probe trigger:** every pin bump, and before any `[prec: Float]`
       conversion under nautilus#70 merges.
-    - **Pass condition:** at f32 and f64, the function-parameter-plus-cast
-      reproducer and every affected Float-generic Nautilus consumer build,
-      compile and link. The headline shape passing on its own does not close
-      the entry.
+    - **Pass condition for de-narrowing:** every affected Float-generic
+      Nautilus consumer builds, compiles, links, and runs at f32 and f64.
+      The minimal reproducer and one `mean_vec` consumer passing do not
+      establish that full result.
 
 ## Tracking
 

@@ -1,7 +1,7 @@
 # Your first Nautilus program
 
 Start in the `demo` project from [Installation](installation.md). Its
-`reef.toml` pins Chelis 0.18.11 and lists Nautilus 0.7.46 as a dependency.
+`reef.toml` pins Chelis 0.18.12 and lists Nautilus 0.7.47 as a dependency.
 Replace `src/main.ch` with this program:
 
 ```chelis-fragment

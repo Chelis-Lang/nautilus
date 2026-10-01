@@ -33,19 +33,18 @@ families. The table shows which operations each family exposes.
 - F: `(x, d1, d2)`
 - Weibull: `(x, shape, scale)`
 
-## Sampling and the Random effect
+## Sampling with explicit keys
 
-The seven `_sample` functions carry the `! { Random }` effect:
+The seven `_sample` functions take a `key` as their first argument:
 
 ```chelis-fragment
-def normal_sample[n](template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] ! { Random }
+def normal_sample[n](k: key, template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]
 ```
 
 The `template` tensor determines the output shape. The actual values
 in the template are ignored; only its shape is used. See
-[Sampling with the Random Effect](sampling.md) for the methods and for
-seeding. The gamma, chi-squared, and Student-t samplers have output
-limitations described there.
+[Sampling with Explicit Keys](sampling.md) for key derivation, methods,
+and the gamma, chi-squared, and Student-t sampling limits.
 
 ## Imports
 

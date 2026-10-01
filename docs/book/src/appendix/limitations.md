@@ -20,7 +20,9 @@ incorrect values without a diagnostic. Use f32 or f64.
 
 **No blanket `grad` support.** Nautilus claims differentiability only where a
 test exercises it. Solvers built on recursion or `fold`, such as `rk4_solve`,
-do not lower under `grad` at the pinned compiler.
+do not lower under `grad` at the pinned compiler. The second spot
+derivative of the [Black-Scholes example](../finance/greeks.md) also rejects
+during nested `grad` evaluation.
 
 **`lm_scalar_nparam` uses a finite-difference Jacobian.** See the
 [Curve Fitting chapter](../other/curvefit.md).
@@ -55,7 +57,7 @@ also rejects genuine but very flat minima (for example f(x) = x^4 near 0). Use
 
 **`gamma_sample` does not produce gamma draws.** For finite shape >= 1
 and positive finite scale, its current output is a constant tensor,
-`(shape - 1/3) * scale`, independent of the seed. It does not cover
+`(shape - 1/3) * scale`, independent of the key. It does not cover
 shape < 1. `chi_squared_sample` and
 `student_t_sample` use this output and do not sample their stated
 distributions. See [Sampling](../distributions/sampling.md#sampling-limits).

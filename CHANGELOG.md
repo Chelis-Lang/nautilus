@@ -8,6 +8,8 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Add a pinned, redacted secret scan for pull requests and branch pushes, with a manual full-history scan.
+
 - **`Nautilus.Special` is dtype-generic over the `Float` family**
   (nautilus#59). All 23 exports -- `erf`, `erfc`, `erfinv`, `erf_t`,
   `erfinv_t`, `gamma`, `log_gamma`, `digamma`, `beta`, `lbeta`, `trigamma`,

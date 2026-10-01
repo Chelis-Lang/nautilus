@@ -1,0 +1,2 @@
+rounds to infinity
+An unsuffixed literal must be finite at every admissible Float instantiation.

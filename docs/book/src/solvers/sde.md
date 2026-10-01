@@ -25,9 +25,9 @@ number of timesteps: `dt = (t1 - t0) / numel(noise)`. The solvers
 scale each noise element by `sqrt(dt)` internally to produce the
 Brownian increment dW.
 
-This design makes paths reproducible and avoids effect annotations
-(`! { Random }`) on the solver itself. Generate noise separately using
-`normal_sample` or pass a fixed tensor for testing.
+This design makes paths reproducible and keeps keys out of the solver
+signature entirely. Generate noise separately using `normal_sample` with its
+own key, or pass a fixed tensor for testing.
 
 ## Example: Euler-Maruyama and Milstein
 

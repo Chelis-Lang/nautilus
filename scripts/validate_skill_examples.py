@@ -54,16 +54,18 @@ def validate_block(code: str, lang: str, index: int) -> bool:
             [CHELIS, "check", str(tmp)],
             capture_output=True, text=True, cwd=str(REPO),
         )
-        output = (result.stdout + result.stderr).strip()
+        output = result.stdout.strip()
         try:
             d = json.loads(output)
-            if d.get("score") == 1 and not d.get("errors"):
+            if result.returncode == 0 and d.get("score") == 1 and not d.get("errors"):
                 return True
-            print(f"  FAIL: {lang} block {index} (score={d.get('score')}, "
-                  f"errors={d.get('errors', [])})")
+            print(f"  FAIL: {lang} block {index} (exit={result.returncode}, "
+                  f"score={d.get('score')}, errors={d.get('errors', [])}, "
+                  f"stderr={result.stderr[:200]})")
             return False
         except json.JSONDecodeError:
-            print(f"  FAIL: {lang} block {index}: {output[:400]}")
+            print(f"  FAIL: {lang} block {index}: "
+                  f"stdout={output[:300]}, stderr={result.stderr[:200]}")
             return False
     finally:
         tmp.unlink(missing_ok=True)

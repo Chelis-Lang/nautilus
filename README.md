@@ -33,7 +33,7 @@ scope and numerical acceptance rules.
 | `Nautilus.StateSpace` | scalar Kalman filter and local-level model |
 | `Nautilus.TimeSeries` | EWMA, exponential smoothing, and AR(1)/ARMA(1,1)/ARIMA(1,1,0) point forecasts |
 | `Nautilus.Signal` | `fftfreq`; FFT, STFT, and filter names ending in `_stub` return NaN tensors |
-| `Nautilus.Core` | package version metadata |
+| `Nautilus.Core` | exact package version as a string |
 
 Every export carries a `stable` or `alpha` label. The
 [book](docs/book/src/SUMMARY.md) provides signatures, worked examples, and
@@ -47,8 +47,8 @@ and Nautilus itself. [Installation](docs/book/src/getting-started/installation.m
 gives the `chelisup` bootstrap and GitHub sign-in steps.
 
 ```sh
-chelisup install 0.18.11
-chelis reef install --from-github Chelis-Lang/nautilus@v0.7.46
+chelisup install 0.18.12
+chelis reef install --from-github Chelis-Lang/nautilus@v0.7.47
 chelis reef init demo --module-prefix Demo --output demo
 cd demo
 ```
@@ -56,7 +56,7 @@ cd demo
 Add this line under `[dependencies]` in the generated `reef.toml`:
 
 ```toml
-nautilus = { version = "0.7.46" }
+nautilus = { version = "0.7.47" }
 ```
 
 Use the book's [first program](docs/book/src/getting-started/first-program.md)
