@@ -33,7 +33,7 @@ acceptance rules, known limitations, and what is deliberately out of scope.
 | `Nautilus.StateSpace` | scalar Kalman filter and local-level model |
 | `Nautilus.TimeSeries` | EWMA, exponential smoothing, and AR(1)/ARMA(1,1)/ARIMA(1,1,0) point forecasts |
 | `Nautilus.Signal` | `fftfreq`; FFT, STFT, and filters are typed stubs until Chelis supports complex numbers |
-| `Nautilus.Core` | package version metadata |
+| `Nautilus.Core` | exact package version as a string |
 
 Every export carries a `stable` or `alpha` label. [`SKILL.md`](SKILL.md) §6
 has the full signature-level inventory, and the
@@ -77,6 +77,10 @@ walks through a complete Black–Scholes example.
 Each release is built against one exact Chelis version, recorded as the
 `compiler` pin in [`reef.toml`](reef.toml). [`docs/releases.md`](docs/releases.md)
 describes the release artifacts and how to verify them.
+The v0.7.46 install example above is the last published Nautilus package.
+This source checkout prepares Nautilus 0.7.47, pins Chelis 0.18.12, and uses
+explicit keys for sampling; the published package retains the API and
+compiler pin of its own tag. Nautilus 0.7.47 has not been released.
 
 ## Developing
 

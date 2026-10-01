@@ -23,7 +23,7 @@
 - [Gamma, Chi-squared, Student-t](distributions/gamma-family.md)
 - [Discrete Distributions (Poisson, Binomial)](distributions/discrete.md)
 - [Other Continuous (Exponential, Weibull, Beta, F)](distributions/other-continuous.md)
-- [Sampling with the Random Effect](distributions/sampling.md)
+- [Sampling with Explicit Keys](distributions/sampling.md)
 
 # Linear Algebra
 
@@ -55,7 +55,7 @@
 
 - [Black-Scholes Pricing](finance/black-scholes.md)
 - [Greeks via grad](finance/greeks.md)
-- [Monte Carlo with Random Effect](finance/monte-carlo.md)
+- [Monte Carlo with Explicit Keys](finance/monte-carlo.md)
 
 # Performance
 

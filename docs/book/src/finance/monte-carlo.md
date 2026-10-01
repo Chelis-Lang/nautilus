@@ -37,19 +37,20 @@ determines the number of timesteps.
 
 ## Generating noise
 
-The `normal_sample` function carries the `Random` effect:
+The `normal_sample` function takes a key:
 
 ```chelis-fragment
 import Nautilus.Distributions (normal_sample)
 
-def draw_noise[n](template: tensor[n, f32]) -> tensor[n, f32] ! { Random } =
-  normal_sample(template, cast(0.0, f32), cast(1.0, f32))
+def draw_noise[n](k: key, template: tensor[n, f32]) -> tensor[n, f32] =
+  normal_sample(k, template, cast(0.0, f32), cast(1.0, f32))
 ```
 
-The `Random` effect is discharged by Chelis's `seed` handler, which fixes
-the underlying uniform stream: `with seed(42i64) { draw_noise(template) }`
-returns the same draws on every run, and a different seed gives different
-draws.
+The key fixes the underlying uniform stream:
+`draw_noise(key_from_seed(42i64), template)` returns the same draws on every
+run, and a different seed gives different draws. To draw several independent
+noise tensors, derive a child key per draw with `split_key` or
+`split_keys` rather than passing one key twice.
 
 ## Computing the price
 

@@ -25,7 +25,7 @@ helper, and six NaN-returning `Nautilus.Signal` placeholders.
 - **Nautilus.Optimize** -- 3 entries: bracketed `minimize` and `root` wrappers and an AD smoke target
 - **Nautilus.StateSpace** -- 6 scalar Kalman and local-level helpers
 - **Nautilus.TimeSeries** -- 7 smoothing and AR/ARMA/ARIMA forecast helpers
-- **Nautilus.Core** -- 1 package-version metadata helper
+- **Nautilus.Core** -- 1 helper returning the package-version string
 
 Each table in SKILL.md includes the function name, full type signature,
 row-level stability label, and implementation notes (domain
