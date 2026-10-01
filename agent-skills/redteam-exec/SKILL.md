@@ -109,19 +109,21 @@ validation pass, or verification of a fix that a red team reported.
 
 - Capture `git rev-parse HEAD`, `git status --porcelain --untracked-files=all`,
   and `git worktree list --porcelain`. From any directory in the proposed
-  worktree, set `review_worktree="$(realpath "$(git rev-parse --show-toplevel)")"`
-  and `review_git_dir="$(realpath "$(git rev-parse --path-format=absolute --git-dir)")"`.
+  worktree, set `review_worktree="$(realpath "$(git rev-parse --show-toplevel)")"`,
+  `review_git_dir="$(realpath "$(git rev-parse --path-format=absolute --git-dir)")"`,
+  and `review_git_common_dir="$(realpath "$(git rev-parse --path-format=absolute --git-common-dir)")"`.
   From outside those paths, run `lsof -nP -x f +D "$review_worktree"` and
-  `lsof -nP -x f +D "$review_git_dir"`. The second scan covers a linked
-  worktree's index and lock outside its source directory; `-x f` crosses
-  mounts. Use `git -C "$review_worktree" ls-files -s` to identify tracked
-  symlinks (mode `120000`); resolve each listed path from that root and
-  scan any external source target;
-  scan an external directory with `lsof -nP -x f +D <resolved-directory>`
+  `lsof -nP -x f +D "$review_git_dir"` and
+  `lsof -nP -x f +D "$review_git_common_dir"`. The Git scans cover
+  the linked worktree's private index and shared branch refs and locks;
+  `-x f` crosses mounts. Use `git -C "$review_worktree" ls-files -s` to
+  identify tracked symlinks (mode `120000`); resolve each listed path from
+  that root and scan any external source target. Scan an external directory
+  with `lsof -nP -x f +D <resolved-directory>`
   or an external file with `lsof -nP -- <resolved-file>`. A target you cannot
   resolve or scan makes the handoff unavailable. Check for remaining Git
-  locks with `find "$review_git_dir" -name '*.lock' -print`; any lock blocks
-  handoff.
+  locks with `find "$review_git_dir" -name '*.lock' -print` and
+  `find "$review_git_common_dir" -name '*.lock' -print`; any lock blocks handoff.
   Resolve a shared target with `target="$(realpath "$target")"` and scan it
   separately with `lsof -nP -x f +D "$target"`. Do not filter by process
   name before the ownership scans. Use `ps -p PID -o pid,ppid,command` to
