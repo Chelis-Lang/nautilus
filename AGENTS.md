@@ -5,7 +5,7 @@ to this file so Claude-style and Codex-style entry points do not drift.
 
 ## Repo Identity
 
-<!-- BEGIN CHELIS MANAGED BLOCK: agents-inheritance chelis@0.18.12 (sha256:ba2c4adc45022f00) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: agents-inheritance chelis@0.18.12 (sha256:7a29d33c9cfe7d57) -->
 # Chelis Agent Contract
 
 Keep this file concise and relevant to every agent working in this repository.
@@ -78,93 +78,7 @@ function of those inputs, and feedback that varies between identical runs is a d
 
 ## Review And Merge
 
-### Red Team Rounds
-
-Run every round through the [`redteam-exec` skill](agent-skills/redteam-exec/SKILL.md).
-It carries the brief shape, the worktree-reuse rules, and the verify mode.
-
-- Red team against the spec, the code, the tests, the examples, and the CLI behavior.
-  Execute tests and commands; source inspection is not proof.
-- Every pull request, documentation-only work included, gets at least one round before
-  merge. A round is the whole live back-and-forth between one reviewer and the author,
-  not a single review pass:
-  1. A fresh local subagent reviews the exact head from an inline brief and reports
-     its findings.
-  2. The reviewer stays alive. The author repairs the findings in the worktree.
-  3. The author hands the repair back, and the same reviewer verifies it and looks for
-     similar issues the repair may have missed or introduced.
-  4. Any further finding goes back to the author, and steps 2 and 3 repeat.
-  5. The round ends only when that reviewer states it is satisfied.
-  A reviewer that has reported is not finished; it is waiting for the fix. Ending the
-  loop after the first report, or verifying a repair with a different reviewer, is not
-  a round.
-- A pull request gets at most three fresh rounds; a fourth needs the user's explicit
-  approval. A prose-only pull request gets one, and a second needs the same approval.
-  The pull request's round record is the counter. Verification by the standing reviewer
-  does not count; the end-of-pull-request round does.
-- A finding is in scope only when the pull request introduces it, worsens it, or claims
-  to correct it. Discovery during review does not bring a pre-existing defect into scope.
-- A confirmed in-scope P0 or P1 merits a fresh round after the current round finishes,
-  within the cap. Unmigrated assertions, old comments, and minor documentation drift do
-  not. A rebase does not by itself merit a round: send a hand-resolved intersection that
-  stays within files the standing reviewer already read to that reviewer for focused
-  verification, and use a fresh round only when the rebase introduces a new mechanism or
-  touches files that reviewer did not read. A targeted review of substantial rebase
-  overlap needs no permission and never counts toward the cap.
-- For documentation and design reviews, severity follows contract impact. A wrong
-  normative rule, or a plan that cannot close a named in-scope deliverable, is P0 or P1.
-  A design document that misdescribes current `main`, or exposes a sequencing seam while
-  the contract stays achievable, is P2 or P3 and is recorded as residual work, never
-  promoted to a merge blocker. Wording, line-level accuracy of the pull request body,
-  staleness against a sibling pull request's moving head, and anything whose fix would
-  add text without a necessity sentence are out of scope.
-- State a pull request's claim at the granularity its oracle proves. An unbounded
-  universal claim invites sampling in every round and can never be closed.
-- A finding class is the defect category, not its file, line, or wording instance.
-  Every round record names the class of each finding. When two consecutive rounds
-  report the same class, or replace a repaired finding with a different class, stop
-  patching witnesses: change the representation, the oracle, the claim, or the brief
-  before running another round.
-- Repairs may correct, remove, or narrow the pull request's content. They must not add
-  design scope, mechanisms, inventories, or promises merely to absorb a finding. When a
-  correction would need that, reduce the claim and track the rest outside the pull
-  request.
-- Freshness is a property of the reviewer's context, not the filesystem. Hand a
-  reviewer an existing worktree and its warm target only when it is at the exact review
-  head, has a known clean baseline, and has no concurrent writer, and paste the output of
-  `.venv/bin/python scripts/worktree_status.py` into the brief as the evidence. Unknown
-  or not-clean means wait, and free is the probe's best answer rather than a proof: a
-  run that takes no lease, `--fast` among them, is caught only by a scan of the
-  processes it spawned. A reviewer whose probes mutate tracked source gets its own
-  worktree, and you never edit a worktree a reviewer is reading.
-- Before spawning a fresh round, retire only your own stale or failed subagent handles;
-  a standing reviewer awaiting a fix is neither. If a spawn routes to remote
-  infrastructure, errors, or comes back broken, retire it and retry until you have a
-  working fresh local subagent, or state that red-team validation is blocked.
-
 ## Environment And Tooling
-
-### Worktree And Branch Discipline
-
-- The primary checkout (the main worktree in `git worktree list --porcelain`) is live
-  developer state. Read-only queries are fine there; never switch branches, edit, build,
-  or create scratch artifacts in it.
-- Create a dedicated worktree before the first write of every task, including small
-  documentation edits and throwaway probes, and give it its own `.venv` with
-  `uv venv --python 3.11`; never copy or symlink another checkout's `.venv`.
-- A worktree isolates the working tree, the index, and its HEAD reflog. The stash
-  stack, `.git/info/exclude`, the hooks directory, and branch reflogs are shared by
-  every worktree on the clone. Do not run `git stash` in a shared clone: to discard your
-  own changes use `git checkout -- <paths>`; to park them, copy the files to task-owned
-  scratch space or commit them on your branch.
-- Do not repurpose an unrelated worktree because it appears idle. Reuse only for the
-  same PR or immediate follow-up after checking ownership, exact head, status, and active
-  processes. Never share a worktree with a reviewer while either of you writes to it.
-- After a PR merges, remove its worktree and task-owned target with individual
-  `git worktree remove <path>` and `cargo clean --target-dir <path>` commands, never a
-  blanket loop, after confirming the PR is merged, nothing uncommitted is worth keeping,
-  and no process owns the target. Squash merges mean "commits ahead of `origin/main`"
-  proves nothing; compare patch ids when in doubt. Branch deletion is a separate decision.
 
 ## Subagents
 
@@ -223,33 +137,6 @@ AST contract. `spec/02-surf-syntax.md` §0.1 is the authority.
 - `chelis build` emits C, a header, runtime artifacts, and compile flags; `--target hip`
   emits host code with embedded kernel strings. Neither invokes the native compiler.
 
-## Pointers
-
-- **Shared skills** live in `agent-skills/`; `.claude/skills` and `.codex/skills` are
-  symlinks to that one authored tree, `.claude/commands/` and `.codex/commands/` stay byte-identical, and the
-  `red-team` alias is wired to `redteam-exec` with its fresh-round and verify modes. The
-  set: `redteam-exec`, `spec-sync`, `phase-gate`, `backend-numerics`, `example-corpus`,
-  `cli-surface`, `packaging-install`, `issue-resolution`.
-- **Toolchain and packaging.** `chelisup` is the installer and pin-resolving `chelis`
-  shim; `chelis reef setup` is the orchestrator. Use the
-  [`packaging-install` skill](agent-skills/packaging-install/SKILL.md) for any change
-  there. One trap it enforces at compile time: `reef setup` subprocesses the real
-  `chelisup` binary, never `chelisup::install::install` in-process, because that helper
-  copies `current_exe()` over the shim. Design:
-  [`spec/design/chelis_packaging_and_install.md`](spec/design/chelis_packaging_and_install.md).
-- **Downstream shells** inherit this complete contract through a stamped managed block
-  and must satisfy [`spec/design/shell_repo_contract.md`](spec/design/shell_repo_contract.md),
-  shipped in the toolchain as `chelis reef conform`. Full inheritance is the default,
-  but each shell decides which portions apply. Shell-owned additions stay outside the
-  block and should remain when they are relevant and current. To omit an inherited
-  section, put its exact ATX heading in a shell-owned span such as
-  `<!-- shell-local:exclude:begin -->`,
-  `<!-- ### Numeric Surface Discipline -->`, `<!-- shell-local:exclude:end -->`; sync
-  removes that heading and its section, while deleting the selector restores it. The
-  root `# Chelis Agent Contract` selector omits the entire inherited body.
-  Contract changes land here first, editing the doc and the conformance
-  `MANIFEST`/`REGISTRY` in lockstep. §7.1 of that doc is the audit a `conform bump` wave
-  still owes after the mechanical starter runs.
 <!-- END CHELIS MANAGED BLOCK: agents-inheritance -->
 
 - Nautilus is a downstream **shell repo** for the
@@ -262,24 +149,43 @@ AST contract. `spec/02-surf-syntax.md` §0.1 is the authority.
 
 ## Inherited Contract Scope
 
-The selectors below omit Chelis compiler-only PR, spec, release, issue, and
-build machinery. Nautilus's Pin Bump Checklist, `CONTRIBUTING.md`, and
-`spec/scope.md` own those local procedures. The final selector removes an
-upstream inventory that calls Chelis "this repository."
+The selectors below omit Chelis compiler-only review commands, PR, spec,
+release, issue, worktree cleanup, and build machinery. Nautilus's review and
+worktree rules below, Pin Bump Checklist, `CONTRIBUTING.md`, and
+`spec/scope.md` own those local procedures. The pointer selector removes
+links and edit routes for compiler files absent from Nautilus.
 
 <!-- shell-local:exclude:begin -->
+<!-- ### Red Team Rounds -->
 <!-- ### Pull Request Lifecycle -->
 <!-- ## Spec Authority And Design Discipline -->
 <!-- ## Change Hygiene -->
 <!-- ## Issue Tracking -->
+<!-- ### Worktree And Branch Discipline -->
 <!-- ### Python And Scripts -->
 <!-- ### Build And Gate Commands -->
+<!-- ## Pointers -->
 <!-- ## The Chelis-Lang Repositories -->
 <!-- shell-local:exclude:end -->
 
-The retained red-team protocol applies here. For worktree evidence, use
-`git status --short --branch`, `git worktree list --porcelain`, and a scan of
-task-owned processes; `scripts/worktree_status.py` is a Chelis-only helper.
+## Nautilus Review And Worktrees
+
+- Every PR receives a red-team round before merge. Keep the reporting reviewer
+  through local repair verification and push the repair only after that reviewer
+  is satisfied. The retained `redteam-exec` skill owns the round protocol; its
+  shell-local block owns the Nautilus handoff.
+- Keep the primary checkout read-only. Create a dedicated task worktree with its
+  own `.venv` before writing, and never use the shared stash or repurpose an
+  unrelated worktree. Do not write or build in a worktree while a reviewer
+  reads it.
+- Before handing off a worktree, record its exact head and
+  `git status --porcelain --untracked-files=all`, list worktrees, and inspect
+  candidate processes with `ps -axo pid,ppid,command`. For a candidate PID,
+  check its working directory with `lsof -a -d cwd -p PID`. Treat unclear
+  ownership as busy and use a separate worktree.
+- After a PR merges, remove only its clean, idle task worktree with
+  `git worktree remove <path>`. Preserve uncertain artifacts; decide branch
+  deletion separately.
 
 ## Toolchain Policy
 
