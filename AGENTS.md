@@ -180,8 +180,9 @@ links and edit routes for compiler files absent from Nautilus.
   reads it.
 - Before handing off a worktree, record its exact head and
   `git status --porcelain --untracked-files=all`, list worktrees, and scan
-  all working-directory owners with `lsof -nP -a -d cwd +D "$PWD"`. Scan a
-  shared target separately with `lsof -nP +D "$target"`; the
+  all working-directory owners with `lsof -nP -a -d cwd -x f +D "$PWD"`.
+  `-x f` includes mounted subdirectories. Scan a shared target separately
+  with `lsof -nP -x f +D "$target"`; the
   `redteam-exec` skill gives the full handoff procedure. Treat unclear
   ownership as busy and use a separate worktree and target.
 - After a PR merges, remove only its clean, idle task worktree with
