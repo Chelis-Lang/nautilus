@@ -72,8 +72,23 @@ describes the release artifacts and how to verify them.
 
 ## Developing
 
-With `chelisup` installed, `chelis reef setup` provisions the pinned compiler
-and dependencies for a fresh clone. The main checks are:
+From a fresh home, sign in to GitHub, install `chelisup`, and install the
+compiler pinned by Nautilus before running `chelis` in the clone:
+
+```sh
+gh auth login
+gh release download --repo Chelis-Lang/chelis --pattern chelisup.sh --output - | sh
+export PATH="$HOME/.chelis/bin:$PATH"
+git clone https://github.com/Chelis-Lang/nautilus.git
+cd nautilus
+chelisup install 0.18.12
+chelis reef setup
+```
+
+The `chelis` shim reads this checkout's compiler pin before it can start
+`reef setup`, so the explicit `chelisup install` is required. The
+[installation guide](docs/book/src/getting-started/installation.md) has more
+detail. The main checks are:
 
 ```sh
 chelis reef build
