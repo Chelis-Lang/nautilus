@@ -108,8 +108,8 @@ validation pass, or verification of a fix that a red team reported.
 ## Nautilus Worktree Handoff And Verification
 
 - Capture `git rev-parse HEAD`, `git status --porcelain --untracked-files=all`,
-  and `git worktree list --porcelain`. Inventory all processes whose cwd is
-  under the worktree with `lsof -nP -a -d cwd -x f +D "$PWD"`; `-x f`
+  and `git worktree list --porcelain`. Inventory all processes with a cwd or
+  open file under the worktree with `lsof -nP -x f +D "$PWD"`; `-x f`
   includes mounted subdirectories. Check a shared target separately with
   `lsof -nP -x f +D "$target"`. Do not filter by process name before the
   ownership scan. Use `ps -p PID -o pid,ppid,command` to

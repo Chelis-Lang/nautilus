@@ -180,7 +180,8 @@ links and edit routes for compiler files absent from Nautilus.
   reads it.
 - Before handing off a worktree, record its exact head and
   `git status --porcelain --untracked-files=all`, list worktrees, and scan
-  all working-directory owners with `lsof -nP -a -d cwd -x f +D "$PWD"`.
+  all working-directory and open-file owners with
+  `lsof -nP -x f +D "$PWD"`.
   `-x f` includes mounted subdirectories. Scan a shared target separately
   with `lsof -nP -x f +D "$target"`; the
   `redteam-exec` skill gives the full handoff procedure. Treat unclear
