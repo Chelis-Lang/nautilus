@@ -35,7 +35,9 @@ scope and numerical acceptance rules.
 | `Nautilus.Signal` | `fftfreq`; FFT, STFT, and filter names ending in `_stub` return NaN tensors |
 | `Nautilus.Core` | exact package version as a string |
 
-Every export carries a `stable` or `alpha` label. The
+The [stability inventory](SKILL.md) labels library exports `stable` or
+`alpha`; the package metadata export `Nautilus.Core.version` is outside that
+inventory. The
 [book](docs/book/src/SUMMARY.md) provides signatures, worked examples, and
 precision guidance; its [API map](docs/book/src/appendix/api.md) lists modules.
 
