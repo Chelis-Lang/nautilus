@@ -179,10 +179,11 @@ links and edit routes for compiler files absent from Nautilus.
   unrelated worktree. Do not write or build in a worktree while a reviewer
   reads it.
 - Before handing off a worktree, record its exact head and
-  `git status --porcelain --untracked-files=all`, list worktrees, and inspect
-  candidate processes with `ps -axo pid,ppid,command`. For a candidate PID,
-  check its working directory with `lsof -a -d cwd -p PID`. Treat unclear
-  ownership as busy and use a separate worktree.
+  `git status --porcelain --untracked-files=all`, list worktrees, and scan
+  all working-directory owners with `lsof -nP -a -d cwd +D "$PWD"`. Scan a
+  shared target separately with `lsof -nP +D "$target"`; the
+  `redteam-exec` skill gives the full handoff procedure. Treat unclear
+  ownership as busy and use a separate worktree and target.
 - After a PR merges, remove only its clean, idle task worktree with
   `git worktree remove <path>`. Preserve uncertain artifacts; decide branch
   deletion separately.

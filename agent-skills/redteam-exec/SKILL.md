@@ -108,12 +108,15 @@ validation pass, or verification of a fix that a red team reported.
 ## Nautilus Worktree Handoff And Verification
 
 - Capture `git rev-parse HEAD`, `git status --porcelain --untracked-files=all`,
-  and `git worktree list --porcelain`. Inspect
-  `ps -axo pid,ppid,command` for candidate `chelis`, `python`, `uv`, and
-  gate processes; check a candidate's worktree with
-  `lsof -a -d cwd -p PID`. Paste the output with a timestamp into each
-  round or verification brief. A dirty tree, active owner, or uncertain
-  scope forbids reuse. Never write or build concurrently with a reviewer.
+  and `git worktree list --porcelain`. Inventory all processes whose cwd is
+  under the worktree with `lsof -nP -a -d cwd +D "$PWD"`; check a shared
+  target separately with `lsof -nP +D "$target"`. Do not filter by process
+  name before the ownership scan. Use `ps -p PID -o pid,ppid,command` to
+  identify each returned PID, disregarding only scan processes after they
+  exit. Inspect `lsof` output even when it exits nonzero. Paste the output
+  with a timestamp into each round or verification brief. A dirty tree,
+  active owner, unavailable scan, or uncertain scope forbids reuse. Never
+  write or build concurrently with a reviewer.
 - Consolidate repairs into an unpushed local commit. Send its exact head,
   changed paths, handoff evidence, and the original reproduction to the
   same reporting reviewer. Repeat until that reviewer confirms the repair;
