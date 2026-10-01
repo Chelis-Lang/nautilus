@@ -10,8 +10,8 @@
 
 ```chelis-fragment
 lm_scalar_1param(
-  model: f32 -> f32 -> f32,    // model(x, theta) -> predicted y
-  dmodel: f32 -> f32 -> f32,   // dmodel(x, theta) -> d(predicted_y)/d(theta)
+  model: f32 -> f32 -> f32,    -- model(x, theta) -> predicted y
+  dmodel: f32 -> f32 -> f32,   -- dmodel(x, theta) -> d(predicted_y)/d(theta)
   xs: &tensor[n, f32],
   ys: &tensor[n, f32],
   theta0: f32,
@@ -51,17 +51,13 @@ lm_scalar_nparam(
 ) -> tensor[n, f32]
 ```
 
-`model(theta)(x)` predicts the `m` observations. The fitter forms
+`model(theta, x)` predicts the `m` observations. The fitter forms
 `J^T J + 0.01 I`, solves the damped normal equations with conjugate gradient,
 and updates the `n` parameters. It runs exactly `max_iters` iterations;
-`tol` is accepted for API compatibility but does not stop early.
+`tol` is currently unused and does not stop iterations early.
 
-The Jacobian uses forward differences with `eps=1e-5`. Exact AD works for a
-single Jacobian row (`tests/curvefit_lm_jacobian_*.ch` pin this), but
-composing it into the full solver fails upstream with a lost runtime-extent
-binder, tracked as
-[`chelis#2370`](https://github.com/Chelis-Lang/chelis/issues/2370). The
-finite-difference Jacobian stays until that is fixed.
+The Jacobian uses forward differences with `eps=1e-5`. The fitter does
+not differentiate through the full optimization loop.
 
 Scale parameters and predictions to roughly O(1). At larger magnitudes an
 `eps=1e-5` perturbation can fall below an f32 ULP, produce a zero Jacobian
@@ -73,4 +69,4 @@ column, and permanently stall the fit.
 - `lm_scalar_1param` requires an analytical derivative and keeps its supplied
   damping factor fixed.
 - `lm_scalar_nparam` keeps lambda fixed at `0.01`, does not use `tol` for
-  early exit, and uses finite differences until chelis#2370 is fixed.
+  early exit, and uses finite differences for the Jacobian.

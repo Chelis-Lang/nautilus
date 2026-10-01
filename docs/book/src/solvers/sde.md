@@ -59,5 +59,5 @@ supply `dg_dy` analytically, as `scale_slope` does in the module above.
 - An empty noise tensor (length 0) returns NaN.
 - Both solvers return only the terminal value y(t1). Intermediate path
   values are not stored.
-- The drift and diffusion functions are curried: `f(y, t)` takes two
-  separate `f32` arguments.
+- Call drift and diffusion functions with both arguments at once:
+  `f(y, t)` and `g(y, t)`.

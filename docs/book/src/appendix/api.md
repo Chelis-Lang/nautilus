@@ -1,36 +1,32 @@
-# API Reference
+# API Map
 
-The full API surface for all Nautilus modules is maintained in
-[SKILL.md, Section 6](https://github.com/Chelis-Lang/nautilus/blob/main/SKILL.md#6-api-surface).
+Nautilus 0.7.47 exports functions from the modules below. Each source module
+contains the exact signatures for this release; the book chapters explain
+common calls and limits. Use the [release source tree](https://github.com/Chelis-Lang/nautilus/tree/v0.7.47/src)
+when you need an export beyond a chapter's examples.
 
-That section has one signature table per module. Nautilus exports 204
-functions: 197 numerical functions, the `Nautilus.Core.version` metadata
-helper, and six NaN-returning `Nautilus.Signal` placeholders.
+| Module | Start here |
+|---|---|
+| `Nautilus.Special` | [Special functions](../special/overview.md) |
+| `Nautilus.Distributions` | [Distributions](../distributions/overview.md) and [sampling limits](../distributions/sampling.md#sampling-limits) |
+| `Nautilus.LinAlg` | [Linear algebra](../linalg/overview.md) and [conjugate gradient](../linalg/cg-solve.md) |
+| `Nautilus.Stats` | [Descriptive statistics](../stats/descriptive.md) |
+| `Nautilus.Testing` | [Hypothesis testing](../stats/testing.md) |
+| `Nautilus.Integrate` | [Numerical quadrature](../solvers/integrate.md) |
+| `Nautilus.Distance` | [Distance metrics](../other/distance.md) |
+| `Nautilus.Ode` | [ODE solvers](../solvers/ode.md) |
+| `Nautilus.Optim` | [Scalar optimization](../solvers/optim.md) |
+| `Nautilus.Roots` | [Root finding](../solvers/roots.md) |
+| `Nautilus.Interpolation` | [Interpolation](../other/interpolation.md) |
+| `Nautilus.Sde` | [SDE solvers](../solvers/sde.md) |
+| `Nautilus.CurveFit` | [Curve fitting](../other/curvefit.md) |
+| `Nautilus.Signal` | [`fftfreq` and placeholders](../other/signal.md) |
+| `Nautilus.Info` | [Release source](https://github.com/Chelis-Lang/nautilus/blob/v0.7.47/src/info.ch) |
+| `Nautilus.Optimize` | [Release source](https://github.com/Chelis-Lang/nautilus/blob/v0.7.47/src/optimize.ch) |
+| `Nautilus.StateSpace` | [Release source](https://github.com/Chelis-Lang/nautilus/blob/v0.7.47/src/statespace.ch) |
+| `Nautilus.TimeSeries` | [Release source](https://github.com/Chelis-Lang/nautilus/blob/v0.7.47/src/timeseries.ch) |
+| `Nautilus.Core` | [Release source](https://github.com/Chelis-Lang/nautilus/blob/v0.7.47/src/core.ch) |
 
-- **Nautilus.Special** -- 23 special functions (erf, erfc, erfinv and their tensor forms, gamma family, Bessel, Airy, elliptic integrals), generic over the `Float` dtype family
-- **Nautilus.Distributions** -- 41 exports across 12 distribution families
-- **Nautilus.LinAlg** -- 34 linear algebra operations (fixed-size and general-n)
-- **Nautilus.Stats** -- 28 descriptive, adjustment, likelihood, and matrix-statistics helpers
-- **Nautilus.Testing** -- 13 hypothesis-test helpers
-- **Nautilus.Integrate** -- 8 quadrature methods
-- **Nautilus.Distance** -- 8 distance metrics
-- **Nautilus.Ode** -- 6 ODE solvers including adaptive endpoint and grid solvers
-- **Nautilus.Optim** -- 4 scalar optimizers
-- **Nautilus.Roots** -- 3 root-finders
-- **Nautilus.Interpolation** -- 5 interpolation and spline operations
-- **Nautilus.Sde** -- 2 stochastic ODE integrators
-- **Nautilus.CurveFit** -- 2 Levenberg-Marquardt fitters
-- **Nautilus.Signal** -- 7 exports: `fftfreq`, plus 6 stubs [deferred until Chelis supports complex numbers](https://github.com/Chelis-Lang/nautilus/blob/main/spec/scope.md#deferrals)
-- **Nautilus.Info** -- 3 information measures
-- **Nautilus.Optimize** -- 3 entries: bracketed `minimize` and `root` wrappers and an AD smoke target
-- **Nautilus.StateSpace** -- 6 scalar Kalman and local-level helpers
-- **Nautilus.TimeSeries** -- 7 smoothing and AR/ARMA/ARIMA forecast helpers
-- **Nautilus.Core** -- 1 helper returning the package-version string
-
-Each table in SKILL.md includes the function name, full type signature,
-row-level stability label, and implementation notes (domain
-restrictions, precision, effect annotations). The same row-level
-surface is emitted in machine-readable form at `dist/stability.json`.
-
-For worked examples, see the module chapters in this book and the core
-patterns in SKILL.md Section 3.
+The [release stability inventory](https://github.com/Chelis-Lang/nautilus/blob/v0.7.47/dist/stability.json)
+lists machine-readable `stable` and `alpha` labels for exports. Review
+an `alpha` function's domain and numerical limits before relying on it.

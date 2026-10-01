@@ -19,7 +19,7 @@ composite rules to adaptive and Gaussian quadrature.
 | `gauss_legendre_10` | `(f: f32 -> f32, a, b: f32) -> f32` | 10-point; exact for polynomials up to degree 19 |
 
 Pre-tabulated nodes and weights mapped from [-1, 1] to [a, b]. No
-subdivision -- accuracy depends on how well a low-degree polynomial
+subdivision. Accuracy depends on how well a low-degree polynomial
 approximates the integrand.
 
 ## Adaptive and Richardson methods

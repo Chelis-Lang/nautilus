@@ -1,8 +1,8 @@
 # Root Finding
 
-The `Nautilus.Roots` module provides three scalar root-finders. All take
-a function-typed argument `f: f32 -> f32` and return the approximate
-root, or NaN on failure.
+The `Nautilus.Roots` module provides three scalar root-finders. Each takes
+a function `f: f32 -> f32` and returns an approximate root. Invalid brackets,
+near-zero derivatives, and exhausted iteration limits can produce NaN.
 
 ## Functions
 
@@ -14,14 +14,14 @@ root, or NaN on failure.
 
 ## When to use which
 
-- **bisection** -- simplest and most robust. Requires a bracket [lo, hi]
+- **bisection:** Simplest and most robust. Requires a bracket [lo, hi]
   where f changes sign. Converges linearly (one bit per iteration). Use
   when you have a reliable bracket and do not need speed.
-- **newton** -- quadratic convergence near simple roots, but requires the
+- **newton:** Quadratic convergence near simple roots, but requires the
   user to supply the derivative `df`. Can fail if `df` is near zero or
   the initial guess is far from the root. Use when you have analytic
   derivatives and a good starting point.
-- **brent** -- combines inverse quadratic interpolation, secant, and
+- **brent:** Combines inverse quadratic interpolation, secant, and
   bisection fallback. Requires a sign-change bracket like bisection but
   converges superlinearly. The best general-purpose choice.
 
@@ -33,7 +33,7 @@ import Nautilus.Roots (brent, newton)
 export (find_sqrt2, find_cos_eq_x)
 def find_sqrt2() -> f32 = {
   f = fn (x: f32) -> sub(mul(x, x), cast(2.0, f32))
-  brent(f, cast(1.0, f32), cast(2.0, f32), cast(1e-10, f32), cast(100, i64))
+  brent(f, cast(1.0, f32), cast(2.0, f32), cast(1e-6, f32), cast(100, i64))
 }
 def find_cos_eq_x() -> f32 = {
   f = fn (x: f32) -> sub(cos(x), x)
@@ -52,7 +52,11 @@ cos(x) = x with the analytic derivative -sin(x) - 1 and returns approximately
   `f(lo) * f(hi) > 0`.
 - **Zero derivative**: `newton` returns NaN if `|df(x)| < 1e-30` at
   any step.
-- **Non-convergence**: all three return NaN if `max_iters` is exhausted
-  without meeting the tolerance.
-- **Tolerance semantics**: the solvers check both interval width and
-  `|f(x)|` against `tol`. A value of 1e-8 to 1e-10 is typical.
+- **Iteration limit**: all three return NaN when `max_iters` is exhausted
+  before any stopping condition. They can also return a finite point
+  before reaching the requested tolerance when f32 arithmetic makes an
+  iteration stop changing the point.
+- **Tolerance**: bisection and Brent compare bracket width or `|f(x)|`
+  with a threshold; Newton compares `|f(x)|`. Brent uses at least
+  `1e-6` inside its iteration even if you pass a smaller `tol`.
+  Check `|f(root)|` yourself when a particular residual is required.

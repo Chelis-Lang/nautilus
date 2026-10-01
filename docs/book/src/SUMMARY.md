@@ -59,10 +59,10 @@
 
 # Performance
 
-- [Benchmark Results](performance/results.md)
+- [Performance](performance/results.md)
 
 # Appendices
 
-- [Full API Reference](appendix/api.md)
+- [API Map](appendix/api.md)
 - [Precision and Tolerance Guide](appendix/precision.md)
 - [Known Limitations](appendix/limitations.md)

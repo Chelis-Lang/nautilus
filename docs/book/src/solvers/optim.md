@@ -15,16 +15,16 @@ NaN on failure).
 
 ## When to use which
 
-- **golden_section_search** -- requires only function evaluations on a
+- **golden_section_search:** Requires only function evaluations on a
   bracket [lo, hi] where f is unimodal. Linear convergence (golden
   ratio reduction per step). Simplest and most robust.
-- **brent_minimize** -- alternates parabolic interpolation with golden
+- **brent_minimize:** Alternates parabolic interpolation with golden
   section fallback. Superlinear convergence for smooth functions while
   staying within [lo, hi]. Best general-purpose choice.
-- **gradient_descent_1d** -- fixed learning rate, needs the derivative
+- **gradient_descent_1d:** Uses a fixed learning rate and needs the derivative
   `df`. Returns NaN on divergence (|x| > 1e15). Useful when you have
   analytic gradients and want to tune learning rate.
-- **newton_minimize_1d** -- uses both first and second derivatives
+- **newton_minimize_1d:** Uses both first and second derivatives
   (`df`, `ddf`). Quadratic convergence near a minimum with positive
   curvature. Returns NaN if the Hessian is non-positive or below 0.01
   at convergence, guarding against saddle points.
@@ -73,5 +73,5 @@ def find_min_newton() -> f32 =
   converged point is positive and above 0.01. If not, it returns NaN
   to signal that the point may be a saddle or inflection.
 - All methods are pure Chelis. AD flows through the objective function
-  but you must supply `df`/`ddf` explicitly -- the optimizer does not
+  but you must supply `df`/`ddf` explicitly. The optimizer does not
   call `grad` internally.

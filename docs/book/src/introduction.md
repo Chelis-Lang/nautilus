@@ -1,20 +1,21 @@
 # Nautilus
 
 Nautilus is the numerical computing library for the Chelis programming
-language. It provides the functions you need for scientific computing,
-statistics, and optimization, comparable to scipy and numpy in Python.
+language. It includes special functions, distributions, linear algebra,
+statistics, and numerical solvers. The chapters show which operations are
+available and where their inputs or precision need care.
 
 Everything in Nautilus is written in pure Chelis. There is no C FFI,
 nalgebra bridge, or hand-written adjoint registry. Linear algebra composes
 Chelis tensor primitives (`matmul`, `permute`, `trace`, `einsum`, and
-elementwise operations), but composition alone is not a blanket AD guarantee:
-Nautilus advertises differentiability only where an executable gradient test
-exists.
+elementwise operations), but composition alone does not guarantee that
+`grad` lowers. Follow each chapter's differentiation notes and tests for
+the path you use.
 
 ## What Nautilus provides
 
 - **Special functions**: erf, erfc, erfinv, gamma, log_gamma, digamma, trigamma, beta, lbeta, Bessel, Airy, elliptic integrals
-- **Probability distributions**: 12 families (Normal, Gamma, Student-t, Poisson, Binomial, etc.) with PDF, CDF, inverse CDF, and sampling
+- **Probability distributions**: 12 families (Normal, Gamma, Student-t, Poisson, Binomial, etc.) with PDF or PMF and CDF; inverse CDF and sampling for selected families
 - **Linear algebra**: fixed-size formulas plus general square CG, LU, QR, Cholesky, SVD, and symmetric eigendecomposition
 - **Statistics and information**: descriptive/inferential statistics, adjustments, entropy, cross-entropy, and KL divergence
 - **Root finding**: bisection, Newton, Brent-Dekker

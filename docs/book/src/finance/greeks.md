@@ -1,17 +1,16 @@
 # Greeks via Automatic Differentiation
 
-Chelis provides reverse-mode differentiation as a language transform, `grad`.
+Chelis provides reverse-mode differentiation through `grad`.
 `grad(f, wrt=x)` returns a function with the same parameters as `f` that
-computes df/dx. Because `black_scholes_call` is an ordinary composition of
-Chelis primitives and `normal_cdf`, with no foreign-function calls, `grad`
-can differentiate through it to produce the option Greeks.
+computes df/dx. With the pinned evaluator, this form differentiates
+the Black-Scholes call formula through `normal_cdf`.
 
 ## The Greeks as derivatives
 
 ```chelis
 module Nautilus.BookGreeks
 import Nautilus.Distributions (normal_cdf)
-export (black_scholes_call, delta, vega, theta, rho, gamma)
+export (black_scholes_call, delta, vega, theta, rho)
 def black_scholes_call(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = {
   sqrt_t = sqrt(t)
   d1_num = add(log(div(s, k)), mul(add(r, mul(0.5, mul(sigma, sigma))), t))
@@ -26,16 +25,14 @@ def delta(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = grad(black_schole
 def vega(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = grad(black_scholes_call, wrt=sigma)(s, k, r, sigma, t)
 def theta(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = neg(grad(black_scholes_call, wrt=t)(s, k, r, sigma, t))
 def rho(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = grad(black_scholes_call, wrt=r)(s, k, r, sigma, t)
-def gamma(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = grad(delta, wrt=s)(s, k, r, sigma, t)
 ```
 
-Each Greek names the parameter to differentiate with `wrt=` and passes every
-argument through. Gamma, the second derivative in the spot price, is `grad`
-applied to `delta`, which is itself a `grad`.
+Each function names the parameter to differentiate with `wrt=` and passes
+every argument through.
 
 For an at-the-money call (S = K = 100, r = 5%, sigma = 20%, T = 1 year), the
-evaluator (`chelis eval`) at Chelis 0.18.11 returns these values, which agree
-with the closed-form Greeks to f32 precision:
+evaluator (`chelis eval`) at Chelis 0.18.12 returns these first derivatives,
+which agree with the closed-form Greeks to f32 precision:
 
 | Greek | Value |
 |---|---|
@@ -43,14 +40,14 @@ with the closed-form Greeks to f32 precision:
 | Vega | 37.524 |
 | Theta | -6.4140 (per year) |
 | Rho | 53.232 |
-| Gamma | 0.018761 |
 
-## Caveats
+## Evaluation scope
 
-- **Use `wrt=`, not a closure over the other parameters.** At Chelis 0.18.11,
-  writing delta as `grad(fn (s_: f32) -> black_scholes_call(s_, k, r, sigma, t))(s)`
-  type-checks but fails in the evaluator with `missing required input` for
-  the captured parameters. The `wrt=` form above works.
-- **No test covers these values.** Nautilus's test suite does not yet
-  include a gradient test through `normal_cdf`, so this chapter is a worked
-  example rather than an advertised, regression-tested surface.
+The four values above are from `chelis eval` with Chelis 0.18.12. Gamma,
+the second spot derivative, is not available through nested `grad` at this
+compiler version: evaluating `grad(delta, wrt=s)` rejects a logical operation
+on the gradient path. Use the
+explicit `wrt=` argument as shown for a function with several parameters.
+This chapter demonstrates evaluator behavior; it does not establish the
+same result for generated C. Nautilus's test suite does not include a
+gradient test for this pricing path.

@@ -109,5 +109,4 @@ def summary[n](data: tensor[n, f32]) -> (f32, f32, f32) = {
   `scipy.stats.rankdata` returns all-NaN instead. Screen NaN before
   ranking. `zscore_vec`, `covariance_matrix` and `correlation_matrix` all
   propagate NaN correctly. Infinities rank correctly.
-- The whole module is f32; an f64 caller has no path through it yet.
-  Widening it is tracked in nautilus#70.
+- The whole module is f32; its functions do not accept f64 inputs.

@@ -1,7 +1,7 @@
 # Distributions
 
-`Nautilus.Distributions` provides 12 probability distribution
-families. It replaces `scipy.stats` for Chelis programs.
+`Nautilus.Distributions` provides functions for 12 probability distribution
+families. The table shows which operations each family exposes.
 
 ## Distribution families
 
@@ -43,8 +43,8 @@ def normal_sample[n](k: key, template: tensor[n, f32], mean: f32, std: f32) -> t
 
 The `template` tensor determines the output shape. The actual values
 in the template are ignored; only its shape is used. See
-[Sampling with Explicit Keys](sampling.md) for the methods and for key
-derivation.
+[Sampling with Explicit Keys](sampling.md) for key derivation, methods,
+and the gamma, chi-squared, and Student-t sampling limits.
 
 ## Imports
 

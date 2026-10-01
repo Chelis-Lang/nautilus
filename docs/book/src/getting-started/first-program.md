@@ -1,20 +1,12 @@
-# Your First Nautilus Program
+# Your first Nautilus program
 
-This chapter walks through a complete program that uses Nautilus to
-compute a Black-Scholes option price.
+Start in the `demo` project from [Installation](installation.md). Its
+`reef.toml` pins Chelis 0.18.12 and lists Nautilus 0.7.47 as a dependency.
+Replace `src/main.ch` with this program:
 
-## The program
-
-Chelis requires a module's name to match its path under `src/`, with the
-package's `module_prefix` from `reef.toml` as the first component. To try this
-inside a Nautilus checkout, save it as `src/examplefirstprogram.ch`; in your
-own package, replace `Nautilus` with your own prefix and name the file to
-match.
-
-```chelis
-module Nautilus.ExampleFirstProgram
+```chelis-fragment
+module Demo.Main
 import Nautilus.Distributions (normal_cdf)
-export (main)
 def black_scholes_call(spot: f32, strike: f32, rate: f32, vol: f32, t_years: f32) -> f32 = {
   ln_ratio = log(div(spot, strike))
   half_vol_sq = mul(cast(0.5, f32), mul(vol, vol))
@@ -30,66 +22,46 @@ def black_scholes_call(spot: f32, strike: f32, rate: f32, vol: f32, t_years: f32
   discount = exp(neg_rt)
   sub(mul(spot, nd1), mul(mul(strike, discount), nd2))
 }
-def main() -> f32 = {
-  spot = cast(100.0, f32)
-  strike = cast(100.0, f32)
-  rate = cast(0.05, f32)
-  vol = cast(0.2, f32)
-  t_years = cast(1.0, f32)
-  black_scholes_call(spot, strike, rate, vol, t_years)
-}
+price = black_scholes_call(cast(100.0, f32), cast(100.0, f32), cast(0.05, f32), cast(0.2, f32), cast(1.0, f32))
 ```
 
-## What this does
+The inputs are a spot and strike of 100, a 5% annual rate, 20% volatility,
+and one year to expiry. `normal_cdf(d1, zero, one)` evaluates the standard
+normal distribution at `d1`; it takes the value, mean, and standard deviation.
 
-The program computes the Black-Scholes call option price for:
-- Spot price: 100
-- Strike price: 100 (at-the-money)
-- Risk-free rate: 5%
-- Volatility: 20%
-- Time to expiry: 1 year
+## Check and evaluate
 
-It imports `normal_cdf` from `Nautilus.Distributions` to evaluate the
-cumulative normal distribution, which is the core of the Black-Scholes
-formula.
-
-## Type-check it
+From the `demo` directory, run:
 
 ```sh
-chelis check src/examplefirstprogram.ch
+chelis fmt --inplace src/main.ch
+chelis check src/main.ch
+chelis eval --file src/main.ch
 ```
 
-You should see `"score": 1` with zero errors.
+`chelis check` should report a score of `1` and an empty error list. The
+evaluator prints `price = 10.450584` for this example. Formatting
+comes first because both `check` and `eval --file` enforce Chelis's source
+style gate.
 
-## Build and run it
+For machine-readable output, add `--json` to the evaluation command.
+Its `roots` array contains the `price` result; the `f32` value is
+encoded in the `bits` field.
 
-```sh
-chelis build src/examplefirstprogram.ch -o /tmp/my_first_out
-```
+To build the Reef package, run `chelis reef build`. To emit C source, run
+`chelis build src/main.ch --target c --output out/`. The C command writes
+source, a header, and runtime files; it prints a separate compile command
+and does not run the calculation.
 
-This generates C code in `/tmp/my_first_out/`. `chelis build` also enforces
-the formatter and linter, so run `chelis fmt --inplace` on the file first if
-you edited it by hand. The expected result is approximately 10.45, the
-Black-Scholes price of an at-the-money one-year call at a 5% rate and 20%
-volatility.
+## Reading the program
 
-## Key things to notice
+- The file is `src/main.ch`, so its module name is `Demo.Main`. The import
+  names the Nautilus module and the one function this program uses.
+- Unsuffixed floating literals have `f32` precision. The explicit `cast`
+  calls make that choice visible here; Chelis does not promote a value to
+  `f64` implicitly.
+- Math uses named functions such as `add`, `mul`, and `log`.
+- `price` is a top-level value, which gives `chelis eval` a result to print.
+  Defining a function alone does not evaluate it.
 
-1. **Imports are explicit.** You import exactly the functions you need
-   from each Nautilus module. No wildcard imports.
-
-2. **Precision is explicit.** Unsuffixed float literals are `f32`, so
-   `normal_cdf(d1, 0.0, 1.0)` would also type-check; the `cast(value, f32)`
-   calls here only make the dtype visible. Chelis never promotes between
-   precisions implicitly: for f64 write `0.5f64` or `cast(0.5, f64)`.
-
-3. **Math uses named functions.** `add(a, b)` not `a + b`, `mul(a, b)`
-   not `a * b`, `log(x)` not `math.log(x)`. Chelis has no operator
-   overloading.
-
-4. **`normal_cdf` takes three arguments.** `(x, mean, std)`, not just
-   `(x)`. For the standard normal, pass `(x, 0.0, 1.0)`.
-
-5. **`grad` works through it.** Delta (dPrice/dSpot) is
-   `grad(fn (s: f32) -> black_scholes_call(s, strike, rate, vol, t_years))(spot)`;
-   see [Greeks via grad](../finance/greeks.md) for what is and is not tested.
+For the pricing formula and its domain, see [Black-Scholes pricing](../finance/black-scholes.md).
