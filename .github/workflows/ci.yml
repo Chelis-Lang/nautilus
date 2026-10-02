@@ -90,7 +90,13 @@ jobs:
       - name: Hard rule — external oracle isolation
         run: python3 scripts/check_oracle_isolation.py
 
-      # Guard 3: at least one tests/*.ch exists, so an empty suite cannot
+      # Guard 3: every Nautilus.Rolling tensor export is a literal delegation
+      # to its list twin, and every list export has one. Source-only, so it
+      # runs here rather than waiting for a toolchain.
+      - name: Hard rule — Nautilus.Rolling tensor delegation
+        run: python3 scripts/check_rolling_tensor_parity.py
+
+      # Guard 4: at least one tests/*.ch exists, so an empty suite cannot
       # silently report 0 failures.
       - name: Hard rule — tests/ contains at least one .ch file
         run: |
@@ -210,6 +216,12 @@ jobs:
       # pinned on line 1 of its paired .expect sidecar.
       - name: chelis test (negative contracts)
         run: chelis test tests_neg/ --expect neg
+
+      # nautilus#85: Nautilus.Rolling's warm-up and min_periods must match
+      # pandas. The goldens are committed, so this step needs the compiler but
+      # not pandas; `parity/rolling_goldens.py` regenerates them manually.
+      - name: Nautilus.Rolling pandas parity
+        run: python3 scripts/check_rolling_parity.py
 
       # Shell contract §5: blockers must keep failing with their pinned
       # diagnostic. A pass is FIX-DETECTED and fails until de-narrowed.

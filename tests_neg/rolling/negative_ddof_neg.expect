@@ -1,0 +1,6 @@
+Nautilus.Rolling: ddof must be >= 0
+
+A negative ddof widens the denominator past the observation count and has no
+statistical reading. A ddof at or above the window count is NOT an error: that
+denominator is zero or negative and the result is a present infinity or NaN,
+which tests/rolling.ch pins.

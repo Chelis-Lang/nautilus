@@ -1,0 +1,6 @@
+Nautilus.Rolling: min_periods must be >= 1
+
+pandas accepts min_periods=0, where a rolling sum over an empty window is 0
+and a rolling mean over the same window is NaN. Nautilus.Rolling does not
+follow pandas there: it has no reduction defined on an empty window, so it
+names the argument rather than inventing an identity element per reducer.

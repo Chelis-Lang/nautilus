@@ -1,0 +1,5 @@
+Nautilus.Rolling: window must be >= 1
+
+A window of zero or less has no correct reduction. It traps rather than
+returning an all-absent series, which would report "not enough data" for a
+call that was simply wrong.

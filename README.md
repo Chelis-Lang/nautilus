@@ -32,6 +32,7 @@ scope and numerical acceptance rules.
 | `Nautilus.CurveFit` | Levenberg–Marquardt fitting for one or many parameters |
 | `Nautilus.StateSpace` | scalar Kalman filter and local-level model |
 | `Nautilus.TimeSeries` | EWMA, exponential smoothing, and AR(1)/ARMA(1,1)/ARIMA(1,1,0) point forecasts |
+| `Nautilus.Rolling` | f64 rolling and expanding windows over `List[f64]` -- `rolling_mean`, `rolling_std`, `expanding_var` and their siblings -- plus `shift`, `shift_fill`, `shift_clamped`, `diff` and `pct_change` |
 | `Nautilus.Signal` | `fftfreq`; FFT, STFT, and filter names ending in `_stub` return NaN tensors |
 | `Nautilus.Core` | exact package version as a string |
 

@@ -1,0 +1,4 @@
+Nautilus.Rolling: min_periods must be <= window
+
+A min_periods above the window can never be satisfied, so every entry would
+be absent. pandas rejects the same combination.

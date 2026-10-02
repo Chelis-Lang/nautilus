@@ -1,0 +1,5 @@
+precision mismatch: expected f64, got f32
+
+Nautilus.Rolling is f64 and does not widen its argument. An f32 caller casts
+explicitly, which is a decision at the call site rather than a silent
+promotion.

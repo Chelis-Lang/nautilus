@@ -1,0 +1,7 @@
+type mismatch: f64 vs Option f64
+
+The load-bearing negative for this module's return type. A warm-up cannot be
+dropped by accident: the result of a rolling reduction is not a List[f64] and
+will not flow into anything that wants one, so a caller has to decide what the
+absent positions mean before it can compose. A NaN sentinel in a List[f64]
+would have type-checked here and propagated silently.

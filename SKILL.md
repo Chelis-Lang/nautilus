@@ -7,7 +7,8 @@ entirely in Chelis with no foreign-function layer. It covers the ground of
 `numpy.linalg`, the `numpy.random` distributions, and SciPy's `special`,
 `stats`, `optimize`, `integrate`, `interpolate`, and `spatial.distance`.
 `Nautilus.Special` is generic over the `Float` dtype family and accepts f32 or
-f64; every other module works in f32. Section 6 lists every export with its
+f64, and `Nautilus.Rolling` is f64 over `List[f64]`; every other module works
+in f32. Section 6 lists every export with its
 signature and a stability label. The one export outside those tables,
 `Nautilus.Core.version`, returns the exact package-version string
 (`"0.7.47"` in this source checkout).
@@ -552,6 +553,53 @@ The six `*_stub` rows return NaN tensors until Chelis supports complex numbers; 
 | `local_level_predict` | `(mean: f32, covariance: f32, process_var: f32) -> (f32, f32)` | `alpha` | Local-level model predict (transition=1, no control) |
 | `local_level_update` | `(predicted_mean: f32, predicted_covariance: f32, observation: f32, observation_var: f32) -> (f32, f32, f32)` | `alpha` | Local-level model update (observation_matrix=1) |
 | `local_level_step` | `(mean: f32, covariance: f32, observation: f32, process_var: f32, observation_var: f32) -> (f32, f32, f32)` | `alpha` | Local-level predict+update step |
+
+### Nautilus.Rolling (34 exports)
+
+The one f64 module, and the one that answers "no value here" with `Option`
+rather than a NaN sentinel. Warm-up and `min_periods` match pandas; the
+`shift`, `diff` and `pct_change` family is total in `k`, where a negative `k`
+is pandas' lead. `parity/goldens/rolling.json` records what pandas answers
+and `scripts/check_rolling_parity.py` replays it. Reductions re-reduce each
+window rather than carrying a running accumulator, so a variance stays exact
+on a large mean with a small spread at O(window) per position.
+
+| Function | Signature | Stability | Notes |
+|---|---|---|---|
+| `rolling_sum` | `(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Rolling sum; `None` while fewer than `min_periods` observations |
+| `rolling_mean` | `(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Rolling arithmetic mean over the available window |
+| `rolling_var` | `(xs: List[f64], window: i64, min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Rolling variance about the window mean; `ddof` 1 is pandas' default |
+| `rolling_std` | `(xs: List[f64], window: i64, min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Square root of `rolling_var` at the same arguments |
+| `rolling_min` | `(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Rolling minimum; O(window) per position, not a monotonic deque |
+| `rolling_max` | `(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Rolling maximum; O(window) per position, not a monotonic deque |
+| `expanding_sum` | `(xs: List[f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Sum of every observation up to each position |
+| `expanding_mean` | `(xs: List[f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Mean of every observation up to each position |
+| `expanding_var` | `(xs: List[f64], min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Expanding variance about the running mean |
+| `expanding_std` | `(xs: List[f64], min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Square root of `expanding_var` at the same arguments |
+| `expanding_min` | `(xs: List[f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Running minimum |
+| `expanding_max` | `(xs: List[f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Running maximum |
+| `shift` | `(xs: List[f64], k: i64) -> List[Option[f64]]` | `alpha` | `out[i] = xs[i - k]`; total in `k`, and `None` off either end |
+| `shift_fill` | `(xs: List[f64], k: i64, fill: f64) -> List[f64]` | `alpha` | `shift` with a named pad value, so the result carries no `Option` |
+| `shift_clamped` | `(xs: List[f64], k: i64) -> List[f64]` | `alpha` | `shift` clamped to the first and last observation |
+| `diff` | `(xs: List[f64], k: i64) -> List[Option[f64]]` | `alpha` | `out[i] = xs[i] - xs[i - k]`; a negative `k` is a forward difference |
+| `pct_change` | `(xs: List[f64], k: i64) -> List[Option[f64]]` | `alpha` | `(xs[i] - xs[i - k]) / xs[i - k]`; a zero base is a present infinity |
+| `tensor_rolling_sum` | `[n](xs: &tensor[n, f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `rolling_sum` |
+| `tensor_rolling_mean` | `[n](xs: &tensor[n, f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `rolling_mean` |
+| `tensor_rolling_var` | `[n](xs: &tensor[n, f64], window: i64, min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `rolling_var` |
+| `tensor_rolling_std` | `[n](xs: &tensor[n, f64], window: i64, min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `rolling_std` |
+| `tensor_rolling_min` | `[n](xs: &tensor[n, f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `rolling_min` |
+| `tensor_rolling_max` | `[n](xs: &tensor[n, f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `rolling_max` |
+| `tensor_expanding_sum` | `[n](xs: &tensor[n, f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `expanding_sum` |
+| `tensor_expanding_mean` | `[n](xs: &tensor[n, f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `expanding_mean` |
+| `tensor_expanding_var` | `[n](xs: &tensor[n, f64], min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `expanding_var` |
+| `tensor_expanding_std` | `[n](xs: &tensor[n, f64], min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `expanding_std` |
+| `tensor_expanding_min` | `[n](xs: &tensor[n, f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `expanding_min` |
+| `tensor_expanding_max` | `[n](xs: &tensor[n, f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `expanding_max` |
+| `tensor_shift` | `[n](xs: &tensor[n, f64], k: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `shift` |
+| `tensor_shift_fill` | `[n](xs: &tensor[n, f64], k: i64, fill: f64) -> tensor[n, f64]` | `alpha` | Delegates to `shift_fill`; returns a tensor because the result has no absent position |
+| `tensor_shift_clamped` | `[n](xs: &tensor[n, f64], k: i64) -> tensor[n, f64]` | `alpha` | Delegates to `shift_clamped`; returns a tensor because the result has no absent position |
+| `tensor_diff` | `[n](xs: &tensor[n, f64], k: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `diff` |
+| `tensor_pct_change` | `[n](xs: &tensor[n, f64], k: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `pct_change` |
 
 ### Nautilus.TimeSeries (7 exports)
 

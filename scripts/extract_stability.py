@@ -47,6 +47,7 @@ def exported_surface() -> dict[str, list[str]]:
         "Nautilus.Optimize": SRC / "optimize.ch",
         "Nautilus.StateSpace": SRC / "statespace.ch",
         "Nautilus.TimeSeries": SRC / "timeseries.ch",
+        "Nautilus.Rolling": SRC / "rolling.ch",
     }
     return {module: parse_exports(path) for module, path in mapping.items()}
 

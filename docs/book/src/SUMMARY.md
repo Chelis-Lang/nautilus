@@ -35,6 +35,7 @@
 
 - [Descriptive Statistics](stats/descriptive.md)
 - [Hypothesis Testing](stats/testing.md)
+- [Rolling and Expanding Windows](stats/rolling.md)
 
 # Solvers
 
