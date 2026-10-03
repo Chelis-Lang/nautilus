@@ -325,6 +325,28 @@ def test_input_nan_propagates_through_every_reduction() -> unit ! { Test } = {
   -- positional rather than whole-series.
   assert_close(value_or(index(rolling_min(nan_series(), w, mp), cast(0, i64)), cast(0.0, f64)), cast(5.0, f64), tol(), "a window that does not reach the NaN is unaffected")
 }
+-- Every divergence from pandas that the docs claim is pinned here, so a
+-- sentence in the book cannot drift from the behaviour. Two rounds of review
+-- ended on prose claims no executable artifact checked; these are the
+-- remaining ones.
+def inf_pair() -> List[f64] = [div(cast(1.0, f64), cast(0.0, f64)), div(cast(-1.0, f64), cast(0.0, f64))]
+def signed_zero_pair() -> List[f64] = [cast(0.0, f64), neg(cast(0.0, f64))]
+def test_documented_divergences_from_pandas() -> unit ! { Test } = {
+  -- An infinity is a value and propagates, where pandas gives NaN for both.
+  sums = rolling_sum(inf_pair(), cast(2, i64), cast(1, i64))
+  _ = assert_true(lt(cast(1e300, f64), value_or(index(sums, cast(0, i64)), cast(0.0, f64))), "rolling_sum of [inf, -inf]: the first window is inf, where pandas gives NaN")
+  _ = assert_true(is_nan_f(value_or(index(sums, cast(1, i64)), cast(0.0, f64))), "and the second is NaN because inf + -inf is")
+  -- Signed zero is not preserved: the comparison folds keep the first of two
+  -- values that compare equal, so a caller cannot observe this by comparison.
+  mins = rolling_min(signed_zero_pair(), cast(2, i64), cast(1, i64))
+  both = value_or(index(mins, cast(1, i64)), cast(1.0, f64))
+  _ = assert_true(eq(both, cast(0.0, f64)), "rolling_min over [0.0, -0.0] is a zero")
+  _ = assert_true(eq(both, neg(cast(0.0, f64))), "and no comparison can tell which zero it is, which is why the divergence is benign")
+  -- The claim that is easy to get backwards: a NaN-free finite series has NO
+  -- divergence, so the scoping sentence is not vacuous.
+  clean = rolling_min([cast(5.0, f64), cast(2.0, f64), cast(7.0, f64)], cast(2, i64), cast(2, i64))
+  assert_true(series_agrees(clean, [None, Some(cast(2.0, f64)), Some(cast(2.0, f64))], tol()), "a finite NaN-free series matches pandas exactly")
+}
 -- Two-pass variance. The exact sample variance of 4, 7, 13, 16 is 30, and
 -- shifting all four by 1e8 does not change it. An implementation that
 -- accumulated the sum and the sum of squares and subtracted would lose

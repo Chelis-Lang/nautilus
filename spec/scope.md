@@ -82,6 +82,20 @@ rather than re-derive it.
 - **Documentation is executable.** `chelis reef build` must produce non-empty
   package artifacts. The API-smoke imports, stability metadata, `SKILL.md`
   examples, and mdBook examples must all validate against the pinned compiler.
+- **In `Nautilus.Rolling`, a documented domain limit needs an executable pin.**
+  Two red-team rounds on this module ended on prose that no artifact checked: a
+  trapping set stated as one value when it scales with the series length, and
+  three successive wrong statements of an upstream blocker's condition. The
+  rule adopted in response, which applies to anyone editing this module: a
+  sentence asserting a limit, a divergence, or a condition is either pinned by
+  a test in `tests/rolling.ch` or by a `.expect` sidecar, or it is deleted
+  rather than reworded. `test_lag_trapping_set_scales_with_length`,
+  `test_warmup_is_clipped_to_the_series`,
+  `test_ddof_at_or_above_the_count_is_nan`,
+  `test_input_nan_propagates_through_every_reduction` and
+  `test_documented_divergences_from_pandas` exist for exactly that reason, and
+  `docs/UPSTREAM_BUGS.md` now says the function-value condition is
+  uncharacterised instead of guessing a fourth time.
 - **`Nautilus.Rolling`'s C lane has its own oracle, because the package gates
   cannot see it.** `chelis reef build` type-checks without entering host
   lowering, so a module can pass every package-level gate while no consumer can
