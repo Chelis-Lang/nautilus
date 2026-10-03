@@ -249,6 +249,13 @@ def test_lag_past_either_end() -> unit ! { Test } = {
 def test_lag_trapping_set_scales_with_length() -> unit ! { Test } = {
   pair = [cast(1.0, f64), cast(2.0, f64)]
   almost = cast(-9223372036854775806, i64)
+  -- The LENGTH axis must vary, or a fixed trapping set of {MIN, MIN + 1} would
+  -- satisfy every assertion here while the claim says the set scales. On three
+  -- elements `i64::MIN + 2` traps, and `tests_neg/rolling/` pins that it does
+  -- not on two; on one element `i64::MIN + 1` does not trap either.
+  triple = [cast(1.0, f64), cast(2.0, f64), cast(3.0, f64)]
+  single = [cast(1.0, f64)]
+  _ = assert_true(eq(present_count(shift(single, cast(-9223372036854775807, i64))), cast(0, i64)), "a one-element series does not trap at i64::MIN + 1, where a two-element one does")
   _ = assert_true(eq(present_count(shift(pair, almost)), cast(0, i64)), "shift at i64::MIN + 2 on a two-element series is all absent, not a trap")
   _ = assert_true(eq(len(shift(pair, almost)), cast(2, i64)), "and still returns one entry per observation")
   _ = assert_true(eq(present_count(diff(pair, almost)), cast(0, i64)), "diff at i64::MIN + 2 is all absent too")
