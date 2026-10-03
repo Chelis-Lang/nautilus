@@ -1,0 +1,6 @@
+declared type is `(&tensor[4, f64]) -> tensor[4, f64]`
+
+Pins the rule src/rolling.ch states: a tensor element is a precision type and
+has no inhabitant for "absent", so the fifteen Option-returning tensor forms
+return a list. Only tensor_shift_fill and tensor_shift_clamped, whose results
+have no absent position, return a tensor.

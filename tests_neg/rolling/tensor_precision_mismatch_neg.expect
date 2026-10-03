@@ -1,0 +1,5 @@
+tensor precision mismatch: f64 vs f32
+
+The tensor entry points are f64 for the same reason the list ones are. They are
+not generic over the Float family, so an f32 tensor is rejected rather than
+admitted at a precision whose results nobody has checked (nautilus#75).

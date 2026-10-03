@@ -1,0 +1,11 @@
+overflow in sub at i64
+
+The length axis of the trapping set. `i64::MIN + 2` does NOT trap on a
+two-element series -- `tests/rolling.ch` asserts it returns `[None, None]` --
+but it DOES trap on a three-element one, because the largest index is 2 and
+`2 - (i64::MIN + 2)` overflows.
+
+Without this case every pin on the trapping set would hold the series length at
+2, and an implementation with a fixed trapping set of `{i64::MIN, i64::MIN + 1}`
+would satisfy all of them while the documented claim says the set scales with
+`len(xs)`.

@@ -1,0 +1,1109 @@
+{
+ "cases": [
+  {
+   "configuration": "window=3,min_periods=3",
+   "expected": [
+    null,
+    null,
+    8.0,
+    6.0,
+    10.0,
+    15.0,
+    16.0,
+    17.0
+   ],
+   "expression": "rolling_sum(FIXTURE, cast(3, i64), cast(3, i64))",
+   "fixture": "xs",
+   "label": "rolling_sum",
+   "oracle": "pd.Series(xs).rolling(window=3, min_periods=3).sum()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=3",
+   "expected": [
+    null,
+    null,
+    2.6666666666666665,
+    2.0,
+    3.3333333333333335,
+    5.0,
+    5.333333333333333,
+    5.666666666666667
+   ],
+   "expression": "rolling_mean(FIXTURE, cast(3, i64), cast(3, i64))",
+   "fixture": "xs",
+   "label": "rolling_mean",
+   "oracle": "pd.Series(xs).rolling(window=3, min_periods=3).mean()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=3",
+   "expected": [
+    null,
+    null,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    2.0,
+    2.0
+   ],
+   "expression": "rolling_min(FIXTURE, cast(3, i64), cast(3, i64))",
+   "fixture": "xs",
+   "label": "rolling_min",
+   "oracle": "pd.Series(xs).rolling(window=3, min_periods=3).min()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=3",
+   "expected": [
+    null,
+    null,
+    4.0,
+    4.0,
+    5.0,
+    9.0,
+    9.0,
+    9.0
+   ],
+   "expression": "rolling_max(FIXTURE, cast(3, i64), cast(3, i64))",
+   "fixture": "xs",
+   "label": "rolling_max",
+   "oracle": "pd.Series(xs).rolling(window=3, min_periods=3).max()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=1",
+   "expected": [
+    3.0,
+    4.0,
+    8.0,
+    6.0,
+    10.0,
+    15.0,
+    16.0,
+    17.0
+   ],
+   "expression": "rolling_sum(FIXTURE, cast(3, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "rolling_sum",
+   "oracle": "pd.Series(xs).rolling(window=3, min_periods=1).sum()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=1",
+   "expected": [
+    3.0,
+    2.0,
+    2.6666666666666665,
+    2.0,
+    3.3333333333333335,
+    5.0,
+    5.333333333333333,
+    5.666666666666667
+   ],
+   "expression": "rolling_mean(FIXTURE, cast(3, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "rolling_mean",
+   "oracle": "pd.Series(xs).rolling(window=3, min_periods=1).mean()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=1",
+   "expected": [
+    3.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    2.0,
+    2.0
+   ],
+   "expression": "rolling_min(FIXTURE, cast(3, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "rolling_min",
+   "oracle": "pd.Series(xs).rolling(window=3, min_periods=1).min()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=1",
+   "expected": [
+    3.0,
+    3.0,
+    4.0,
+    4.0,
+    5.0,
+    9.0,
+    9.0,
+    9.0
+   ],
+   "expression": "rolling_max(FIXTURE, cast(3, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "rolling_max",
+   "oracle": "pd.Series(xs).rolling(window=3, min_periods=1).max()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=1,min_periods=1",
+   "expected": [
+    3.0,
+    1.0,
+    4.0,
+    1.0,
+    5.0,
+    9.0,
+    2.0,
+    6.0
+   ],
+   "expression": "rolling_sum(FIXTURE, cast(1, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "rolling_sum",
+   "oracle": "pd.Series(xs).rolling(window=1, min_periods=1).sum()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=1,min_periods=1",
+   "expected": [
+    3.0,
+    1.0,
+    4.0,
+    1.0,
+    5.0,
+    9.0,
+    2.0,
+    6.0
+   ],
+   "expression": "rolling_mean(FIXTURE, cast(1, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "rolling_mean",
+   "oracle": "pd.Series(xs).rolling(window=1, min_periods=1).mean()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=1,min_periods=1",
+   "expected": [
+    3.0,
+    1.0,
+    4.0,
+    1.0,
+    5.0,
+    9.0,
+    2.0,
+    6.0
+   ],
+   "expression": "rolling_min(FIXTURE, cast(1, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "rolling_min",
+   "oracle": "pd.Series(xs).rolling(window=1, min_periods=1).min()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=1,min_periods=1",
+   "expected": [
+    3.0,
+    1.0,
+    4.0,
+    1.0,
+    5.0,
+    9.0,
+    2.0,
+    6.0
+   ],
+   "expression": "rolling_max(FIXTURE, cast(1, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "rolling_max",
+   "oracle": "pd.Series(xs).rolling(window=1, min_periods=1).max()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=4,min_periods=2",
+   "expected": [
+    null,
+    -2.0,
+    -3.25,
+    0.5,
+    2.25
+   ],
+   "expression": "rolling_sum(FIXTURE, cast(4, i64), cast(2, i64))",
+   "fixture": "ys",
+   "label": "rolling_sum",
+   "oracle": "pd.Series(ys).rolling(window=4, min_periods=2).sum()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=4,min_periods=2",
+   "expected": [
+    null,
+    -1.0,
+    -1.0833333333333333,
+    0.125,
+    0.5625
+   ],
+   "expression": "rolling_mean(FIXTURE, cast(4, i64), cast(2, i64))",
+   "fixture": "ys",
+   "label": "rolling_mean",
+   "oracle": "pd.Series(ys).rolling(window=4, min_periods=2).mean()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=4,min_periods=2",
+   "expected": [
+    null,
+    -2.5,
+    -2.5,
+    -2.5,
+    -1.25
+   ],
+   "expression": "rolling_min(FIXTURE, cast(4, i64), cast(2, i64))",
+   "fixture": "ys",
+   "label": "rolling_min",
+   "oracle": "pd.Series(ys).rolling(window=4, min_periods=2).min()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=4,min_periods=2",
+   "expected": [
+    null,
+    0.5,
+    0.5,
+    3.75,
+    3.75
+   ],
+   "expression": "rolling_max(FIXTURE, cast(4, i64), cast(2, i64))",
+   "fixture": "ys",
+   "label": "rolling_max",
+   "oracle": "pd.Series(ys).rolling(window=4, min_periods=2).max()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=3,ddof=1",
+   "expected": [
+    null,
+    null,
+    2.3333333333333335,
+    3.0,
+    4.333333333333333,
+    16.0,
+    12.333333333333332,
+    12.333333333333332
+   ],
+   "expression": "rolling_var(FIXTURE, cast(3, i64), cast(3, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "rolling_var",
+   "oracle": "pd.Series(xs).rolling(window=3, min_periods=3).var(ddof=1)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=3,ddof=1",
+   "expected": [
+    null,
+    null,
+    1.5275252316519468,
+    1.7320508075688772,
+    2.0816659994661326,
+    4.0,
+    3.511884584284246,
+    3.511884584284246
+   ],
+   "expression": "rolling_std(FIXTURE, cast(3, i64), cast(3, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "rolling_std",
+   "oracle": "pd.Series(xs).rolling(window=3, min_periods=3).std(ddof=1)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=3,ddof=0",
+   "expected": [
+    null,
+    null,
+    1.5555555555555556,
+    2.0,
+    2.888888888888889,
+    10.666666666666666,
+    8.222222222222221,
+    8.222222222222221
+   ],
+   "expression": "rolling_var(FIXTURE, cast(3, i64), cast(3, i64), cast(0, i64))",
+   "fixture": "xs",
+   "label": "rolling_var",
+   "oracle": "pd.Series(xs).rolling(window=3, min_periods=3).var(ddof=0)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=3,ddof=0",
+   "expected": [
+    null,
+    null,
+    1.247219128924647,
+    1.4142135623730951,
+    1.699673171197595,
+    3.265986323710904,
+    2.8674417556808756,
+    2.8674417556808756
+   ],
+   "expression": "rolling_std(FIXTURE, cast(3, i64), cast(3, i64), cast(0, i64))",
+   "fixture": "xs",
+   "label": "rolling_std",
+   "oracle": "pd.Series(xs).rolling(window=3, min_periods=3).std(ddof=0)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=4,min_periods=2,ddof=1",
+   "expected": [
+    null,
+    2.0,
+    2.3333333333333335,
+    2.25,
+    4.25,
+    10.916666666666666,
+    12.916666666666666,
+    8.333333333333334
+   ],
+   "expression": "rolling_var(FIXTURE, cast(4, i64), cast(2, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "rolling_var",
+   "oracle": "pd.Series(xs).rolling(window=4, min_periods=2).var(ddof=1)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=4,min_periods=2,ddof=1",
+   "expected": [
+    null,
+    1.4142135623730951,
+    1.5275252316519468,
+    1.5,
+    2.0615528128088303,
+    3.304037933599835,
+    3.593976442141304,
+    2.886751345948129
+   ],
+   "expression": "rolling_std(FIXTURE, cast(4, i64), cast(2, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "rolling_std",
+   "oracle": "pd.Series(xs).rolling(window=4, min_periods=2).std(ddof=1)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=2,ddof=0",
+   "expected": [
+    null,
+    2.25,
+    1.513888888888889,
+    4.291666666666667,
+    5.055555555555556
+   ],
+   "expression": "rolling_var(FIXTURE, cast(3, i64), cast(2, i64), cast(0, i64))",
+   "fixture": "ys",
+   "label": "rolling_var",
+   "oracle": "pd.Series(ys).rolling(window=3, min_periods=2).var(ddof=0)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "window=3,min_periods=2,ddof=0",
+   "expected": [
+    null,
+    1.5,
+    1.2304019216861168,
+    2.071633815776009,
+    2.2484562605386738
+   ],
+   "expression": "rolling_std(FIXTURE, cast(3, i64), cast(2, i64), cast(0, i64))",
+   "fixture": "ys",
+   "label": "rolling_std",
+   "oracle": "pd.Series(ys).rolling(window=3, min_periods=2).std(ddof=0)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=1",
+   "expected": [
+    3.0,
+    4.0,
+    8.0,
+    9.0,
+    14.0,
+    23.0,
+    25.0,
+    31.0
+   ],
+   "expression": "expanding_sum(FIXTURE, cast(1, i64))",
+   "fixture": "xs",
+   "label": "expanding_sum",
+   "oracle": "pd.Series(xs).expanding(min_periods=1).sum()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=1",
+   "expected": [
+    3.0,
+    2.0,
+    2.6666666666666665,
+    2.25,
+    2.8,
+    3.8333333333333335,
+    3.5714285714285716,
+    3.875
+   ],
+   "expression": "expanding_mean(FIXTURE, cast(1, i64))",
+   "fixture": "xs",
+   "label": "expanding_mean",
+   "oracle": "pd.Series(xs).expanding(min_periods=1).mean()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=1",
+   "expected": [
+    3.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "expression": "expanding_min(FIXTURE, cast(1, i64))",
+   "fixture": "xs",
+   "label": "expanding_min",
+   "oracle": "pd.Series(xs).expanding(min_periods=1).min()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=1",
+   "expected": [
+    3.0,
+    3.0,
+    4.0,
+    4.0,
+    5.0,
+    9.0,
+    9.0,
+    9.0
+   ],
+   "expression": "expanding_max(FIXTURE, cast(1, i64))",
+   "fixture": "xs",
+   "label": "expanding_max",
+   "oracle": "pd.Series(xs).expanding(min_periods=1).max()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=3",
+   "expected": [
+    null,
+    null,
+    8.0,
+    9.0,
+    14.0,
+    23.0,
+    25.0,
+    31.0
+   ],
+   "expression": "expanding_sum(FIXTURE, cast(3, i64))",
+   "fixture": "xs",
+   "label": "expanding_sum",
+   "oracle": "pd.Series(xs).expanding(min_periods=3).sum()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=3",
+   "expected": [
+    null,
+    null,
+    2.6666666666666665,
+    2.25,
+    2.8,
+    3.8333333333333335,
+    3.5714285714285716,
+    3.875
+   ],
+   "expression": "expanding_mean(FIXTURE, cast(3, i64))",
+   "fixture": "xs",
+   "label": "expanding_mean",
+   "oracle": "pd.Series(xs).expanding(min_periods=3).mean()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=3",
+   "expected": [
+    null,
+    null,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "expression": "expanding_min(FIXTURE, cast(3, i64))",
+   "fixture": "xs",
+   "label": "expanding_min",
+   "oracle": "pd.Series(xs).expanding(min_periods=3).min()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=3",
+   "expected": [
+    null,
+    null,
+    4.0,
+    4.0,
+    5.0,
+    9.0,
+    9.0,
+    9.0
+   ],
+   "expression": "expanding_max(FIXTURE, cast(3, i64))",
+   "fixture": "xs",
+   "label": "expanding_max",
+   "oracle": "pd.Series(xs).expanding(min_periods=3).max()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=2",
+   "expected": [
+    null,
+    -2.0,
+    -3.25,
+    0.5,
+    -0.25
+   ],
+   "expression": "expanding_sum(FIXTURE, cast(2, i64))",
+   "fixture": "ys",
+   "label": "expanding_sum",
+   "oracle": "pd.Series(ys).expanding(min_periods=2).sum()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=2",
+   "expected": [
+    null,
+    -1.0,
+    -1.0833333333333333,
+    0.125,
+    -0.05
+   ],
+   "expression": "expanding_mean(FIXTURE, cast(2, i64))",
+   "fixture": "ys",
+   "label": "expanding_mean",
+   "oracle": "pd.Series(ys).expanding(min_periods=2).mean()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=2",
+   "expected": [
+    null,
+    -2.5,
+    -2.5,
+    -2.5,
+    -2.5
+   ],
+   "expression": "expanding_min(FIXTURE, cast(2, i64))",
+   "fixture": "ys",
+   "label": "expanding_min",
+   "oracle": "pd.Series(ys).expanding(min_periods=2).min()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=2",
+   "expected": [
+    null,
+    0.5,
+    0.5,
+    3.75,
+    3.75
+   ],
+   "expression": "expanding_max(FIXTURE, cast(2, i64))",
+   "fixture": "ys",
+   "label": "expanding_max",
+   "oracle": "pd.Series(ys).expanding(min_periods=2).max()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=2,ddof=1",
+   "expected": [
+    null,
+    2.0,
+    2.3333333333333335,
+    2.25,
+    3.2,
+    8.966666666666667,
+    7.9523809523809526,
+    7.553571428571429
+   ],
+   "expression": "expanding_var(FIXTURE, cast(2, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "expanding_var",
+   "oracle": "pd.Series(xs).expanding(min_periods=2).var(ddof=1)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=2,ddof=1",
+   "expected": [
+    null,
+    1.4142135623730951,
+    1.5275252316519468,
+    1.5,
+    1.7888543819998317,
+    2.9944392908634274,
+    2.819996622760558,
+    2.748376143938713
+   ],
+   "expression": "expanding_std(FIXTURE, cast(2, i64), cast(1, i64))",
+   "fixture": "xs",
+   "label": "expanding_std",
+   "oracle": "pd.Series(xs).expanding(min_periods=2).std(ddof=1)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=2,ddof=0",
+   "expected": [
+    null,
+    1.0,
+    1.5555555555555556,
+    1.6875,
+    2.56,
+    7.472222222222222,
+    6.816326530612245,
+    6.609375
+   ],
+   "expression": "expanding_var(FIXTURE, cast(2, i64), cast(0, i64))",
+   "fixture": "xs",
+   "label": "expanding_var",
+   "oracle": "pd.Series(xs).expanding(min_periods=2).var(ddof=0)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=2,ddof=0",
+   "expected": [
+    null,
+    1.0,
+    1.247219128924647,
+    1.299038105676658,
+    1.6,
+    2.733536577809454,
+    2.610809554642438,
+    2.5708704751503917
+   ],
+   "expression": "expanding_std(FIXTURE, cast(2, i64), cast(0, i64))",
+   "fixture": "xs",
+   "label": "expanding_std",
+   "oracle": "pd.Series(xs).expanding(min_periods=2).std(ddof=0)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=3,ddof=1",
+   "expected": [
+    null,
+    null,
+    2.2708333333333335,
+    7.354166666666667,
+    5.66875
+   ],
+   "expression": "expanding_var(FIXTURE, cast(3, i64), cast(1, i64))",
+   "fixture": "ys",
+   "label": "expanding_var",
+   "oracle": "pd.Series(ys).expanding(min_periods=3).var(ddof=1)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "min_periods=3,ddof=1",
+   "expected": [
+    null,
+    null,
+    1.506928443335427,
+    2.7118566825454966,
+    2.380913690161825
+   ],
+   "expression": "expanding_std(FIXTURE, cast(3, i64), cast(1, i64))",
+   "fixture": "ys",
+   "label": "expanding_std",
+   "oracle": "pd.Series(ys).expanding(min_periods=3).std(ddof=1)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=1",
+   "expected": [
+    null,
+    3.0,
+    1.0,
+    4.0,
+    1.0,
+    5.0,
+    9.0,
+    2.0
+   ],
+   "expression": "shift(FIXTURE, cast(1, i64))",
+   "fixture": "xs",
+   "label": "shift",
+   "oracle": "pd.Series(xs).shift(1)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=1",
+   "expected": [
+    null,
+    -2.0,
+    3.0,
+    -3.0,
+    4.0,
+    4.0,
+    -7.0,
+    4.0
+   ],
+   "expression": "diff(FIXTURE, cast(1, i64))",
+   "fixture": "xs",
+   "label": "diff",
+   "oracle": "pd.Series(xs).diff(1)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=2",
+   "expected": [
+    null,
+    null,
+    3.0,
+    1.0,
+    4.0,
+    1.0,
+    5.0,
+    9.0
+   ],
+   "expression": "shift(FIXTURE, cast(2, i64))",
+   "fixture": "xs",
+   "label": "shift",
+   "oracle": "pd.Series(xs).shift(2)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=2",
+   "expected": [
+    null,
+    null,
+    1.0,
+    0.0,
+    1.0,
+    8.0,
+    -3.0,
+    -3.0
+   ],
+   "expression": "diff(FIXTURE, cast(2, i64))",
+   "fixture": "xs",
+   "label": "diff",
+   "oracle": "pd.Series(xs).diff(2)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=-1",
+   "expected": [
+    1.0,
+    4.0,
+    1.0,
+    5.0,
+    9.0,
+    2.0,
+    6.0,
+    null
+   ],
+   "expression": "shift(FIXTURE, cast(-1, i64))",
+   "fixture": "xs",
+   "label": "shift",
+   "oracle": "pd.Series(xs).shift(-1)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=-1",
+   "expected": [
+    2.0,
+    -3.0,
+    3.0,
+    -4.0,
+    -4.0,
+    7.0,
+    -4.0,
+    null
+   ],
+   "expression": "diff(FIXTURE, cast(-1, i64))",
+   "fixture": "xs",
+   "label": "diff",
+   "oracle": "pd.Series(xs).diff(-1)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=0",
+   "expected": [
+    3.0,
+    1.0,
+    4.0,
+    1.0,
+    5.0,
+    9.0,
+    2.0,
+    6.0
+   ],
+   "expression": "shift(FIXTURE, cast(0, i64))",
+   "fixture": "xs",
+   "label": "shift",
+   "oracle": "pd.Series(xs).shift(0)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=0",
+   "expected": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "expression": "diff(FIXTURE, cast(0, i64))",
+   "fixture": "xs",
+   "label": "diff",
+   "oracle": "pd.Series(xs).diff(0)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=3",
+   "expected": [
+    null,
+    null,
+    null,
+    -2.5,
+    0.5
+   ],
+   "expression": "shift(FIXTURE, cast(3, i64))",
+   "fixture": "ys",
+   "label": "shift",
+   "oracle": "pd.Series(ys).shift(3)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=3",
+   "expected": [
+    null,
+    null,
+    null,
+    6.25,
+    -1.25
+   ],
+   "expression": "diff(FIXTURE, cast(3, i64))",
+   "fixture": "ys",
+   "label": "diff",
+   "oracle": "pd.Series(ys).diff(3)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=1",
+   "expected": [
+    null,
+    -0.6666666666666667,
+    3.0,
+    -0.75,
+    4.0,
+    0.8,
+    -0.7777777777777778,
+    2.0
+   ],
+   "expression": "pct_change(FIXTURE, cast(1, i64))",
+   "fixture": "xs",
+   "label": "pct_change",
+   "oracle": "pd.Series(xs).pct_change(periods=1, fill_method=None)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=2",
+   "expected": [
+    null,
+    null,
+    0.33333333333333326,
+    0.0,
+    0.25,
+    8.0,
+    -0.6,
+    -0.33333333333333337
+   ],
+   "expression": "pct_change(FIXTURE, cast(2, i64))",
+   "fixture": "xs",
+   "label": "pct_change",
+   "oracle": "pd.Series(xs).pct_change(periods=2, fill_method=None)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=-1",
+   "expected": [
+    2.0,
+    -0.75,
+    3.0,
+    -0.8,
+    -0.4444444444444444,
+    3.5,
+    -0.6666666666666667,
+    null
+   ],
+   "expression": "pct_change(FIXTURE, cast(-1, i64))",
+   "fixture": "xs",
+   "label": "pct_change",
+   "oracle": "pd.Series(xs).pct_change(periods=-1, fill_method=None)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=1",
+   "expected": [
+    null,
+    -1.2,
+    -3.5,
+    -4.0,
+    -1.2
+   ],
+   "expression": "pct_change(FIXTURE, cast(1, i64))",
+   "fixture": "ys",
+   "label": "pct_change",
+   "oracle": "pd.Series(ys).pct_change(periods=1, fill_method=None)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=1,fill=0.0",
+   "expected": [
+    0.0,
+    3.0,
+    1.0,
+    4.0,
+    1.0,
+    5.0,
+    9.0,
+    2.0
+   ],
+   "expression": "shift_fill(FIXTURE, cast(1, i64), cast(0.0, f64))",
+   "fixture": "xs",
+   "label": "shift_fill",
+   "oracle": "pd.Series(xs).shift(1).fillna(0.0)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=-2,fill=-1.0",
+   "expected": [
+    4.0,
+    1.0,
+    5.0,
+    9.0,
+    2.0,
+    6.0,
+    -1.0,
+    -1.0
+   ],
+   "expression": "shift_fill(FIXTURE, cast(-2, i64), cast(-1.0, f64))",
+   "fixture": "xs",
+   "label": "shift_fill",
+   "oracle": "pd.Series(xs).shift(-2).fillna(-1.0)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=2,fill=9.5",
+   "expected": [
+    9.5,
+    9.5,
+    -2.5,
+    0.5,
+    -1.25
+   ],
+   "expression": "shift_fill(FIXTURE, cast(2, i64), cast(9.5, f64))",
+   "fixture": "ys",
+   "label": "shift_fill",
+   "oracle": "pd.Series(ys).shift(2).fillna(9.5)",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=1",
+   "expected": [
+    3.0,
+    3.0,
+    1.0,
+    4.0,
+    1.0,
+    5.0,
+    9.0,
+    2.0
+   ],
+   "expression": "shift_clamped(FIXTURE, cast(1, i64))",
+   "fixture": "xs",
+   "label": "shift_clamped",
+   "oracle": "pd.Series(xs).shift(1).bfill().ffill()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=-2",
+   "expected": [
+    4.0,
+    1.0,
+    5.0,
+    9.0,
+    2.0,
+    6.0,
+    6.0,
+    6.0
+   ],
+   "expression": "shift_clamped(FIXTURE, cast(-2, i64))",
+   "fixture": "xs",
+   "label": "shift_clamped",
+   "oracle": "pd.Series(xs).shift(-2).bfill().ffill()",
+   "rel_tolerance": 1e-12
+  },
+  {
+   "configuration": "k=3",
+   "expected": [
+    -2.5,
+    -2.5,
+    -2.5,
+    -2.5,
+    0.5
+   ],
+   "expression": "shift_clamped(FIXTURE, cast(3, i64))",
+   "fixture": "ys",
+   "label": "shift_clamped",
+   "oracle": "pd.Series(ys).shift(3).bfill().ffill()",
+   "rel_tolerance": 1e-12
+  }
+ ],
+ "fixtures": {
+  "xs": {
+   "literal": "[cast(3.0, f64), cast(1.0, f64), cast(4.0, f64), cast(1.0, f64), cast(5.0, f64), cast(9.0, f64), cast(2.0, f64), cast(6.0, f64)]",
+   "values": [
+    3.0,
+    1.0,
+    4.0,
+    1.0,
+    5.0,
+    9.0,
+    2.0,
+    6.0
+   ]
+  },
+  "ys": {
+   "literal": "[cast(-2.5, f64), cast(0.5, f64), cast(-1.25, f64), cast(3.75, f64), cast(-0.75, f64)]",
+   "values": [
+    -2.5,
+    0.5,
+    -1.25,
+    3.75,
+    -0.75
+   ]
+  },
+  "zs": {
+   "literal": "[cast(100000004.0, f64), cast(100000007.0, f64), cast(100000013.0, f64), cast(100000016.0, f64)]",
+   "values": [
+    100000004.0,
+    100000007.0,
+    100000013.0,
+    100000016.0
+   ]
+  }
+ },
+ "generated_with": {
+  "pandas": "2.3.3",
+  "python": "3.11.16"
+ },
+ "rel_tolerance": 1e-12,
+ "schema": "nautilus-rolling-goldens/1"
+}

@@ -44,6 +44,7 @@ MODULES = {
     "Nautilus.Optimize":      SRC / "optimize.ch",
     "Nautilus.StateSpace":    SRC / "statespace.ch",
     "Nautilus.TimeSeries":    SRC / "timeseries.ch",
+    "Nautilus.Rolling":       SRC / "rolling.ch",
 }
 
 

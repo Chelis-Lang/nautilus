@@ -1,0 +1,6 @@
+Nautilus.Rolling: min_periods must be >= 1
+
+The expanding family validates min_periods exactly as the rolling family does.
+It does NOT additionally require min_periods <= len(xs): a min_periods beyond
+the series length yields an all-absent series, matching pandas, and
+tests/rolling.ch pins that case.

@@ -18,7 +18,8 @@ import Nautilus.Integrate (trapezoidal, simpsons, gauss_legendre_5, adaptive_sim
 import Nautilus.CurveFit (lm_scalar_1param, lm_scalar_nparam)
 import Nautilus.StateSpace (kalman_predict_scalar, kalman_update_scalar, kalman_step_scalar, local_level_predict, local_level_update, local_level_step)
 import Nautilus.TimeSeries (ts_ewma_next, ts_ewma_series, exponential_smoothing_next, exponential_smoothing_series, ar1_predict_next, arma11_predict_next, arima110_predict_next)
-export (smoke_special, smoke_distributions, smoke_linalg, smoke_roots, smoke_ode, smoke_stats, smoke_integrate, smoke_testing, smoke_distance, smoke_signal, smoke_optim, smoke_interpolation, smoke_cg_solve, smoke_sde, smoke_linalg_inv, smoke_integrate_adaptive, smoke_integrate_hl, smoke_curvefit, smoke_distributions_p4, smoke_stats_p4, smoke_stats_rank_cov, smoke_qr, smoke_svd_n, smoke_lm_nparam, smoke_eig_n, smoke_ode_grid, smoke_spline, smoke_optimize, smoke_info, smoke_stats_inference, smoke_statespace, smoke_timeseries)
+import Nautilus.Rolling (rolling_mean, rolling_std, expanding_sum, shift, shift_fill, shift_clamped, diff, pct_change, tensor_rolling_max, tensor_shift_clamped)
+export (smoke_special, smoke_distributions, smoke_linalg, smoke_roots, smoke_ode, smoke_stats, smoke_integrate, smoke_testing, smoke_distance, smoke_signal, smoke_optim, smoke_interpolation, smoke_cg_solve, smoke_sde, smoke_linalg_inv, smoke_integrate_adaptive, smoke_integrate_hl, smoke_curvefit, smoke_distributions_p4, smoke_stats_p4, smoke_stats_rank_cov, smoke_qr, smoke_svd_n, smoke_lm_nparam, smoke_eig_n, smoke_ode_grid, smoke_spline, smoke_optimize, smoke_info, smoke_stats_inference, smoke_statespace, smoke_timeseries, smoke_rolling)
 -- chelis:provenance/v1 surface
 -- id = NAUT-SUPPORT-SURFACE
 -- member-key-schema = nautilus-module-key/v1
@@ -338,4 +339,27 @@ def smoke_timeseries[n](values: tensor[n, f32]) -> f32 = {
   arma = arma11_predict_next(copy(values), cast(0.1, f32), cast(0.9, f32), cast(0.2, f32), cast(0.3, f32))
   arima = arima110_predict_next(values, cast(0.1, f32), cast(0.9, f32), cast(0.2, f32), cast(0.3, f32))
   add(add(add(a, l2_norm_vec(s)), add(e, l2_norm_vec(es))), add(add(ar, arma), arima))
+}
+def smoke_rolling_present_sum(xs: List[Option[f64]]) -> f64 =
+  fold(fn (acc: f64, o: Option[f64]) -> match o with {
+    | None => acc
+    | Some(v) => add(acc, v)
+  }, cast(0.0, f64), xs)
+def smoke_rolling_dense_sum(xs: List[f64]) -> f64 = fold(fn (acc: f64, x: f64) -> add(acc, x), cast(0.0, f64), xs)
+-- Nautilus.Rolling is f64 where the rest of this file is f32, so the smoke
+-- reduces to f64 and is not mixed into the f32 totals above.
+def smoke_rolling() -> f64 = {
+  xs = [cast(5.0, f64), cast(2.0, f64), cast(7.0, f64), cast(3.0, f64)]
+  windowed = add(smoke_rolling_present_sum(rolling_mean(xs, cast(2, i64), cast(1, i64))), smoke_rolling_present_sum(rolling_std(xs, cast(3, i64), cast(2, i64), cast(1, i64))))
+  growing = smoke_rolling_present_sum(expanding_sum(xs, cast(1, i64)))
+  lagged = add(smoke_rolling_present_sum(shift(xs, cast(1, i64))), smoke_rolling_present_sum(diff(xs, cast(1, i64))))
+  ratios = smoke_rolling_present_sum(pct_change(xs, cast(1, i64)))
+  padded = add(smoke_rolling_dense_sum(shift_fill(xs, cast(1, i64), cast(0.0, f64))), smoke_rolling_dense_sum(shift_clamped(xs, cast(2, i64))))
+  borrowed = add(smoke_rolling_present_sum(tensor_rolling_max(to_tensor(xs), cast(2, i64), cast(2, i64))), smoke_rolling_dense_sum(to_list(tensor_shift_clamped(to_tensor(xs), cast(1, i64)))))
+  windowed
+  |> add(growing)
+  |> add(lagged)
+  |> add(ratios)
+  |> add(padded)
+  |> add(borrowed)
 }

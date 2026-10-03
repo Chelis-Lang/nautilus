@@ -1,0 +1,11 @@
+Nautilus.Rolling: ddof must be >= 0
+
+A negative ddof widens the denominator past the observation count and has no
+statistical reading, so it traps at the argument.
+
+A ddof at or ABOVE the observation count is not an error: that window is
+`Some(NaN)`, which is what pandas returns, and `tests/rolling.ch`'s
+`test_ddof_at_or_above_the_count_is_nan` pins all three regions -- below, equal
+to, and above the count, including `i64::MAX`. Without that guard the
+arithmetic divides by a negative denominator once ddof exceeds the count and
+yields a finite negative number presented as a variance.
