@@ -8,10 +8,30 @@ while every package-level gate stayed green. nautilus#70 records that class and
 says package-level green is not evidence for a consumer. No other job in this
 repository runs `chelis build` at all.
 
-This script is that oracle for this module. It generates one consumer module
-calling all 34 exports, runs `chelis build`, and then runs the clang line
-`chelis build` printed, so the check covers host lowering AND the C compile
-rather than stopping at code generation.
+This script is that oracle for this module, in two legs.
+
+**In-package leg:** generate one module under `src/` calling all 34 exports,
+run `chelis build`, then run the clang line it printed, so the check covers
+host lowering AND the C compile rather than stopping at code generation.
+
+**Cross-package leg:** rebuild this package from the CURRENT source, install it
+into a throwaway Reef store, then build a *separate* package that depends on
+it. Two reasons, and the second is the one that earned it.
+
+An in-package module shares the package's own compilation context, so it cannot
+see a package-boundary failure. And `dist/` is a build output that nobody
+rebuilds before reading: a review round left artifacts there built from a
+mutated source, a cross-package probe was run against those stale artifacts,
+and the resulting "32 of 34 exports build" finding was an artifact of the stale
+`.chb`, not a property of the module. This leg rebuilds first, so that cannot
+recur here. The failure mode it reproduces is real -- a function-value kernel
+does fail a consumer with `[05-UNS-1]` -- which is what makes the leg worth its
+runtime.
+
+The cross-package leg sets `CHELIS_REEF_HOME` to a temporary directory, so it
+never writes the shared `~/.chelis/reef/` and never makes a branch build
+resolvable as a release for another checkout. Verified: the shared store's
+digest is unchanged across a run.
 
     uv run --no-project --python 3.12 python scripts/check_rolling_c_lane.py
 
@@ -41,6 +61,7 @@ SOURCE = REPO / "src" / "rolling.ch"
 # own domain shorthand, and the style gate runs before the build.
 PROBE = REPO / "src" / "lanecheck.ch"
 MODULE = "Nautilus.LaneCheck"
+NAME = "nautilus"
 COMPILE_RE = re.compile(r"^Compile:\s*(.+)$", re.M)
 
 # Exports whose result has no absent position, so they return a plain list or
@@ -100,9 +121,112 @@ def run(command: list[str], cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(command, cwd=str(cwd), capture_output=True, text=True, timeout=1200)
 
 
+def package_version() -> str:
+    text = (REPO / "reef.toml").read_text()
+    match = re.search(r'^version\s*=\s*"([^"]+)"', text, re.M)
+    if match is None:
+        raise LaneError("cannot read version from reef.toml")
+    return match.group(1)
+
+
+def cross_package(chelis: str, names: list[str]) -> None:
+    """Build a separate package against this one, in a throwaway Reef store.
+
+    The in-package leg compiles a module inside `src/`, which shares the
+    package's own compilation context. A consumer in a different package does
+    not, and the difference has already hidden a real failure, so this leg is
+    not redundant with it.
+    """
+    version = package_version()
+    built = run([chelis, "reef", "build"], REPO)
+    if built.returncode != 0:
+        raise LaneError(
+            f"chelis reef build failed, so no artifact to install "
+            f"(rc={built.returncode}):\n{(built.stderr or built.stdout).strip()[-600:]}"
+        )
+
+    sandbox = Path(tempfile.mkdtemp(prefix="rolling-cross-"))
+    try:
+        mono = sandbox / "mono" / "packages" / NAME
+        (mono / "dist").mkdir(parents=True)
+        shutil.copy(REPO / "reef.toml", mono / "reef.toml")
+        for suffix in (".chb", ".tar.zst"):
+            artifact = REPO / "dist" / f"{NAME}-{version}{suffix}"
+            if not artifact.exists():
+                raise LaneError(f"missing build artifact {artifact}")
+            shutil.copy(artifact, mono / "dist" / artifact.name)
+
+        # The isolated store. Nothing here touches ~/.chelis/reef.
+        store = sandbox / "store"
+        store.mkdir()
+        env = dict(os.environ, CHELIS_REEF_HOME=str(store))
+        installed = subprocess.run(
+            [chelis, "reef", "install", "--from-monorepo", str(sandbox / "mono"), NAME],
+            cwd=str(REPO), capture_output=True, text=True, timeout=1200, env=env,
+        )
+        if installed.returncode != 0:
+            raise LaneError(
+                f"reef install into the isolated store failed "
+                f"(rc={installed.returncode}):\n"
+                f"{(installed.stderr or installed.stdout).strip()[-600:]}"
+            )
+
+        consumer = sandbox / "consumer"
+        (consumer / "src").mkdir(parents=True)
+        (consumer / "reef.toml").write_text(
+            "[package]\n"
+            'name = "rollingconsumer"\n'
+            'version = "0.0.0"\n'
+            f'compiler = "={compiler_pin()}"\n'
+            'module_prefix = "Downstream"\n'
+            "\n[dependencies]\n"
+            'chelis-std = { version = "0.4.0" }\n'
+            f'{NAME} = {{ version = "{version}" }}\n'
+        )
+        source = probe_source(names).replace(f"module {MODULE}", "module Downstream.Lane", 1)
+        (consumer / "src" / "lane.ch").write_text(source)
+
+        formatted = subprocess.run(
+            [chelis, "fmt", "--inplace", "src/lane.ch"],
+            cwd=str(consumer), capture_output=True, text=True, timeout=600, env=env,
+        )
+        if formatted.returncode != 0:
+            raise LaneError(
+                f"chelis fmt failed on the consumer probe: "
+                f"{formatted.stderr.strip()[-400:]}"
+            )
+        out = sandbox / "out"
+        consumed = subprocess.run(
+            [chelis, "build", "-o", str(out), "src/lane.ch"],
+            cwd=str(consumer), capture_output=True, text=True, timeout=1800, env=env,
+        )
+        if consumed.returncode != 0:
+            raise LaneError(
+                "a SEPARATE package could not build against this one "
+                f"(rc={consumed.returncode}). The in-package leg passed, so this "
+                f"is a package-boundary failure:\n"
+                f"{(consumed.stderr or consumed.stdout).strip()[-1200:]}"
+            )
+    finally:
+        shutil.rmtree(sandbox, ignore_errors=True)
+
+
+def compiler_pin() -> str:
+    text = (REPO / "reef.toml").read_text()
+    match = re.search(r'^compiler\s*=\s*"=?([^"]+)"', text, re.M)
+    if match is None:
+        raise LaneError("cannot read the compiler pin from reef.toml")
+    return match.group(1)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--keep", action="store_true", help="keep the generated artifacts")
+    parser.add_argument(
+        "--in-package-only",
+        action="store_true",
+        help="skip the cross-package leg (it builds and installs the package)",
+    )
     args = parser.parse_args()
 
     chelis = os.environ.get("CHELIS_BIN", "chelis")
@@ -140,8 +264,15 @@ def main() -> int:
                 f"(rc={compiled.returncode}):\n{(compiled.stderr or compiled.stdout).strip()[-1200:]}"
             )
 
-        print(f"{len(names)} exports lowered to C and compiled by the emitted clang line")
-        print(f"  {compile_line.group(1)[:140]}")
+        print(f"in-package: {len(names)} exports lowered to C and compiled by the "
+              f"emitted clang line")
+
+        if args.in_package_only:
+            print("cross-package: SKIPPED (--in-package-only)")
+        else:
+            cross_package(chelis, names)
+            print(f"cross-package: {len(names)} exports built from a separate "
+                  f"package in an isolated Reef store")
         print("ROLLING C LANE: PASS")
         return 0
     except (LaneError, subprocess.TimeoutExpired, OSError) as exc:

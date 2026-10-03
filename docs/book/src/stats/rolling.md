@@ -257,5 +257,7 @@ lowering and so cannot see whether a consumer can compile against this module:
 uv run --no-project --python 3.12 python scripts/check_rolling_c_lane.py
 ```
 
-It builds a consumer calling all 34 exports and then runs the clang line
-`chelis build` emits. Success is exit 0 with `ROLLING C LANE: PASS`.
+It builds a consumer calling all 34 exports and runs the clang line
+`chelis build` emits, then repeats the check from a *separate package* that
+depends on this one, installed into a throwaway Reef store. Success is exit 0
+with `ROLLING C LANE: PASS`.

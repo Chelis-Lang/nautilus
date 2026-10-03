@@ -225,7 +225,9 @@ jobs:
 
       # The only `chelis build` in this repository. `chelis reef build` does
       # not enter host lowering, so without this step a module can pass every
-      # other gate while no consumer can compile against it (nautilus#70).
+      # other gate while no consumer can compile against it (nautilus#70). The
+      # second leg rebuilds the package and installs it into a throwaway
+      # CHELIS_REEF_HOME, so it never writes the runner's shared store.
       - name: Nautilus.Rolling C lane
         run: python3 scripts/check_rolling_c_lane.py
 

@@ -102,9 +102,15 @@ rather than re-derive it.
   compile against it -- which is the class nautilus#70's 2026-09-17 comment
   records, and which this module hit during review on two independent upstream
   limitations (both in `docs/UPSTREAM_BUGS.md`). `scripts/check_rolling_c_lane.py`
-  builds a consumer of all 34 exports and runs the clang line `chelis build`
-  emits; acceptance is exit 0 with `ROLLING C LANE: PASS`, and CI runs it in the
-  `chelis-tests` job. No other job in this repository runs `chelis build`.
+  covers it in two legs: an in-package consumer of all 34 exports plus the clang
+  line `chelis build` emits, and a **separate package** that depends on this one,
+  rebuilt from current source and installed into a throwaway Reef store so the
+  shared `~/.chelis/reef/` is never written. Acceptance is exit 0 with
+  `ROLLING C LANE: PASS`, and CI runs it in the `chelis-tests` job. No other job
+  in this repository runs `chelis build`. The cross-package leg rebuilds before
+  installing on purpose: `dist/` is a build output, and a review round that read
+  it without rebuilding produced a confident cross-package finding that the
+  committed source does not reproduce.
 - **`Nautilus.Rolling`'s pandas contract has its own oracle.**
   `scripts/check_rolling_parity.py` replays the committed goldens in
   `parity/goldens/rolling.json` against `chelis eval`; acceptance is exit 0
