@@ -340,8 +340,14 @@ def test_documented_divergences_from_pandas() -> unit ! { Test } = {
   -- values that compare equal, so a caller cannot observe this by comparison.
   mins = rolling_min(signed_zero_pair(), cast(2, i64), cast(1, i64))
   both = value_or(index(mins, cast(1, i64)), cast(1.0, f64))
+  -- `eq` cannot tell the two zeros apart, so asserting it twice pins nothing.
+  -- `1 / x` can: +inf for +0.0 and -inf for -0.0. That is what makes this an
+  -- actual pin on WHICH zero is returned, rather than a restatement that the
+  -- two compare equal.
   _ = assert_true(eq(both, cast(0.0, f64)), "rolling_min over [0.0, -0.0] is a zero")
-  _ = assert_true(eq(both, neg(cast(0.0, f64))), "and no comparison can tell which zero it is, which is why the divergence is benign")
+  _ = assert_true(lt(cast(1e300, f64), div(cast(1.0, f64), both)), "and it is +0.0, where pandas returns -0.0: 1/x is +inf")
+  reversed_pair = rolling_min([neg(cast(0.0, f64)), cast(0.0, f64)], cast(2, i64), cast(1, i64))
+  _ = assert_true(lt(div(cast(1.0, f64), value_or(index(reversed_pair, cast(1, i64)), cast(1.0, f64))), neg(cast(1e300, f64))), "reversing the input returns -0.0, so the fold keeps the first of two equal values rather than a fixed sign")
   -- The claim that is easy to get backwards: a NaN-free finite series has NO
   -- divergence, so the scoping sentence is not vacuous.
   clean = rolling_min([cast(5.0, f64), cast(2.0, f64), cast(7.0, f64)], cast(2, i64), cast(2, i64))
