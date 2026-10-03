@@ -145,13 +145,28 @@ release.
       `match`, instead of taking `red: List[f64] -> f64`. A tag is as
       expressive as the function value here, since the reducer set is closed
       and internal, so there is nothing to de-narrow when the ABI lands.
-    - **Reproducer** (fails at this pin):
+    - **Reproducer** (fails at this pin). A function-typed parameter cannot be
+      called on the C host at all; neither a statically known callee nor a
+      caller in the same module changes that, and no `map` or `Option` is
+      needed to show it:
 
       ```text
-      def probe(xs: List[f64], red: List[f64] -> f64) -> List[f64] =
-        map(fn (i: i64) -> red(xs), range(cast(0, i64), cast(4, i64)))
+      def probe_sum(ws: List[f64]) -> f64 =
+        fold(fn (a: f64, x: f64) -> add(a, x), cast(0.0, f64), ws)
+      def probe(xs: List[f64], red: List[f64] -> f64) -> f64 = red(xs)
+      def probe_use(xs: List[f64]) -> f64 = probe(xs, probe_sum)
       ```
 
+      Measured variants that fail the same way: the parameter called inside a
+      `map` lambda, the argument supplied as an immediate lambda, and the def
+      left with no caller at all.
+    - **What the old kernel actually emitted, so a future reader is not
+      misled:** reverting to `red: List[f64] -> f64` while keeping the
+      `Option` return fails with `[05-UNS-1]` *"unresolved host inference
+      variable"*, not with `[04-TOT-2]` — the `Option` inference gives out
+      before the ABI projection is reached. Both limitations were present; only
+      the first diagnostic was visible. Hoisting the `Option` bodies alone does
+      NOT fix that shape, which is why the function value had to go.
     - **Re-probe trigger:** none required. Revisit only if a future reducer
       set has to be open, which would make the function value necessary rather
       than convenient.
