@@ -145,9 +145,22 @@ release.
       `match`, instead of taking `red: List[f64] -> f64`. A tag is as
       expressive as the function value here, since the reducer set is closed
       and internal, so there is nothing to de-narrow when the ABI lands.
-    - **Reproducer** (fails at this pin). A function-typed parameter cannot be
-      called on the C host at all; neither a statically known callee nor a
-      caller in the same module changes that, and no `map` or `Option` is
+    - **The condition, measured.** A function-typed parameter survives host
+      lowering only when every call site reaching it is specialised from a
+      **concrete nullary root**. Adding `def driver() -> f64 =
+      probe_use([cast(1.0, f64)])` to the reproducer below makes it BUILD OK,
+      because the compiler then specialises the call and needs no ABI. Reached
+      only through a root whose own parameters are unresolved, the ABI
+      projection is required and there is none. **Library code cannot assume
+      the nullary case**: `roll_core` is a parameterised def reached from a
+      consumer's code, never from a driver inside this package, which is why
+      the function value had to go. Neither "no statically resolvable callee"
+      nor "cannot be called at all" is the condition; the root shape is, and
+      it was the axis two reviewers held constant while varying everything
+      else.
+    - **Reproducer** (fails at this pin, with no nullary root present).
+      Neither a statically known callee, nor a caller in the same module, nor
+      the absence of an export clause changes it, and no `map` or `Option` is
       needed to show it:
 
       ```text
@@ -157,9 +170,12 @@ release.
       def probe_use(xs: List[f64]) -> f64 = probe(xs, probe_sum)
       ```
 
-      Measured variants that fail the same way: the parameter called inside a
-      `map` lambda, the argument supplied as an immediate lambda, and the def
-      left with no caller at all.
+      Measured variants that fail the same way, all without a nullary root:
+      the parameter called inside a `map` lambda, the argument supplied as an
+      immediate lambda, and the def left with no caller at all. Each of those
+      BUILDS once a nullary root is added. An `if`-selected or returned
+      function value is a distinct sub-shape that fails with `no target ABI
+      representation` rather than `[04-TOT-2]`.
     - **What the old kernel actually emitted, so a future reader is not
       misled:** reverting to `red: List[f64] -> f64` while keeping the
       `Option` return fails with `[05-UNS-1]` *"unresolved host inference
