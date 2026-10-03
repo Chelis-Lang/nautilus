@@ -93,6 +93,69 @@ release.
       chelis#2370. On pass, compare the full LM recovery trajectories before
       removing the finite-difference implementation.
 
+- **A bare `None` fixed only by its sibling arm does not lower to C** —
+  `chelis#2599`
+  ([Chelis-Lang/chelis#2599](https://github.com/Chelis-Lang/chelis/issues/2599)),
+  **fixed upstream by chelis#2888 and NOT in this pin.**
+    - **Symptom:** `chelis build` fails with ``host type did not resolve
+      before the code-generation boundary: unresolved host inference variable
+      `N` ([05-UNS-1]; chelis#730)``. `chelis check`, `chelis eval`,
+      `chelis test` and `chelis reef build` are all green, and `chelis reef
+      build` cannot see it because it does not enter host lowering.
+    - **Why it is live here:** chelis#2888 merged 2026-10-02; v0.18.12 was
+      published 2026-09-30. Both of chelis#2599's own verbatim reproducers
+      still fail at this pin, measured, and so does the same shape at `f64`.
+    - **Affected Nautilus surface:** every `Nautilus.Rolling` export that can
+      report absence, which is 15 of its 17 list exports and their `tensor_`
+      twins.
+    - **Workaround:** each `Option`-producing body is a named def with an
+      explicit `-> Option[f64]`, rather than a bare `None` in a lambda arm:
+      `roll_entry`, `roll_diff_at`, `roll_pct_at` and `roll_at` in
+      `src/rolling.ch`. An annotated named def fixes the type locally, which
+      is what lowering needs.
+    - **Reproducer** (fails at this pin, in a scratch module under `src/`):
+
+      ```text
+      def probe(n: i64) -> List[Option[f64]] =
+        map(fn (i: i64) -> if lt(i, n) then None else Some(cast(1.0, f64)),
+            range(cast(0, i64), cast(4, i64)))
+      ```
+
+      `chelis build -o <dir> src/<probe>.ch`. Not expressible as a
+      `tests_blocked/` probe: the failure is in the build lane, and
+      `chelis test` never invokes `chelis build`. See
+      `tests_blocked/README.md` §cannot-be-probed.
+    - **Re-probe trigger:** the next pin bump past v0.18.12. On pass, inline
+      those four helpers back into their lambdas, delete this entry, and keep
+      `scripts/check_rolling_c_lane.py` green.
+
+- **A function-typed parameter cannot cross the C host boundary** —
+  `chelis#909`
+  ([Chelis-Lang/chelis#909](https://github.com/Chelis-Lang/chelis/issues/909)),
+  with `chelis#867` recording that no issue owns that ABI, so the rejection
+  cites the plan rather than a defect.
+    - **Symptom:** `chelis build` fails with ``unsupported: verified
+      user-function call site has no direct-call authority on verified C host
+      ownership emission (codegen:c) ... [04-TOT-2]``. Package-level gates are
+      green.
+    - **Affected Nautilus surface:** none as shipped. It constrains how
+      `Nautilus.Rolling`'s kernel may be written, not what it exports.
+    - **Workaround — and this one is the design, not a narrowing to retire.**
+      `roll_core` selects its reduction with the closed `Reducer` tag and a
+      `match`, instead of taking `red: List[f64] -> f64`. A tag is as
+      expressive as the function value here, since the reducer set is closed
+      and internal, so there is nothing to de-narrow when the ABI lands.
+    - **Reproducer** (fails at this pin):
+
+      ```text
+      def probe(xs: List[f64], red: List[f64] -> f64) -> List[f64] =
+        map(fn (i: i64) -> red(xs), range(cast(0, i64), cast(4, i64)))
+      ```
+
+    - **Re-probe trigger:** none required. Revisit only if a future reducer
+      set has to be open, which would make the function value necessary rather
+      than convenient.
+
 - **`match` does not release a branch arm's owner when only a sibling arm
   consumed it** — `chelis#2520`
   ([Chelis-Lang/chelis#2520](https://github.com/Chelis-Lang/chelis/issues/2520)).

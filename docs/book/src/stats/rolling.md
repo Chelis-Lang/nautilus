@@ -9,6 +9,11 @@ deliberate. It is **f64**, not `f32` and not generic over the `Float` family.
 And it reports a position with no value as **`None`**, where every other module
 returns a NaN sentinel. The reasons are at the end of this chapter.
 
+The pandas agreement below is for input that contains no NaN and no infinity.
+An input NaN is a **value** here, not a missing observation; pandas treats it
+as missing and counts only non-NaN observations toward `min_periods`. See
+"Non-finite input" below.
+
 ## Rolling reductions
 
 Each reduction takes the series, a `window`, and a `min_periods`.
@@ -55,19 +60,26 @@ whatever is available.
 
 ## Expanding windows
 
-An expanding window is a rolling window as wide as the series, so
-`expanding_sum(xs, m)` and `rolling_sum(xs, len(xs), m)` agree. The expanding
+An expanding window is a rolling window as wide as the series, so on a
+nonempty series `expanding_sum(xs, m)` and `rolling_sum(xs, len(xs), m)` agree.
+(On an empty series only the expanding form answers: a `window` of `len(xs)` is
+then zero, which the rolling form rejects.) The expanding
 family takes no `window` argument, and unlike the rolling family it does not
 require `min_periods <= len(xs)`: a `min_periods` beyond the series length
 gives an all-absent result, as it does in pandas.
 
 ## The lag family
 
-`shift`, `diff` and `pct_change` are **total in `k`**. A positive `k` reaches
-backward, a negative `k` reaches forward (pandas' lead), `k = 0` is the
-identity, and any `|k|` at or beyond the series length absents every entry.
-None of those traps, because `Option` can report "no value" without inventing
-one.
+`shift`, `diff` and `pct_change` are defined at **every `k` the index
+arithmetic can represent**. A positive `k` reaches backward, a negative `k`
+reaches forward (pandas' lead), `k = 0` is the identity, and any `|k|` at or
+beyond the series length absents every entry. None of those traps, because
+`Option` can report "no value" without inventing one.
+
+The one exception is `k = i64::MIN`: `out[i] = xs[i - k]`, and `i - k`
+overflows there, so the whole family traps with `numeric trap: overflow in sub
+at i64` rather than returning a series. That is loud, and
+`tests_neg/rolling/shift_i64_min_overflow_neg.ch` pins it.
 
 ```chelis
 module Nautilus.BookRollingLags
@@ -100,8 +112,15 @@ than `None`:
 | call | result | why |
 |---|---|---|
 | `pct_change` over a zero base | `Some(inf)` or `Some(NaN)` | the earlier observation exists; the ratio does not |
-| `ddof` equal to the window count | `Some(inf)` or `Some(NaN)` | the window had its observations; the denominator is zero |
-| a one-wide window at `ddof` 1 | `Some(NaN)` | zero deviation over a zero denominator |
+| a window with `ddof` at or above its observation count | `Some(NaN)` | the window had its observations; the variance does not exist |
+| a one-wide window at `ddof` 1 | `Some(NaN)` | the same case, at the smallest window |
+
+The variance rule is pandas': NaN whenever the window's observation count is
+not greater than `ddof`. It is a guard rather than a consequence of the
+arithmetic, because `count - ddof` is *negative* once `ddof` exceeds the count,
+and dividing by it would yield a finite **negative number presented as a
+variance** — which `rolling_std` would then turn into NaN with a `sqrt` while
+`rolling_var` went on reporting it.
 
 Collapsing any of these into `None` would make them indistinguishable from a
 warm-up, which is a different fact about the data. Arguments that cannot be
@@ -121,6 +140,27 @@ above the window, a negative `ddof` — trap instead.
 - pandas accepts `min_periods=0`. Nautilus does not: there is no reduction
   defined on an empty window, and naming the argument is better than inventing
   a different identity element for each reducer.
+
+## Non-finite input
+
+This module has one rule for a non-finite input value: it is a value, and it
+propagates. All six reductions agree on that, including `rolling_min` and
+`rolling_max`, which need an explicit check to do it because `lt` is false for
+NaN in either operand — without one they would ignore a NaN anywhere but the
+first window position and absorb one there, reporting a confident minimum at
+one index and NaN at the next.
+
+pandas has a different and also-reasonable rule: NaN means *missing*, it does
+not propagate, and only non-NaN observations count toward `min_periods`. So
+`rolling_min` over `[5, NaN, 7, 3]` at `window = 3, min_periods = 1` is
+`[Some(5), Some(NaN), Some(NaN), Some(NaN)]` here and `[5, 5, 5, 3]` in pandas.
+An infinity diverges in the other direction: `rolling_sum([inf, 2, 7], 2, 2)`
+is `Some(inf)` here, where pandas' incremental accumulator gives NaN.
+
+Neither behaviour is in the pandas golden set, and
+`tests/rolling.ch`'s `test_input_nan_propagates_through_every_reduction` pins
+this module's. If you need pandas' missing-data semantics, drop or impute the
+non-finite values before calling in.
 
 ## Tensor entry points
 
@@ -157,6 +197,11 @@ observation count. Concrete f64 also matches what the measured demand actually
 writes. Widening f64 to generic later breaks no existing call site; narrowing
 a generic signature back to f64 would.
 
+nautilus#70's own 2026-09-17 comment is more directive than the policy
+sentence: "Until that leg passes, no instance here should merge a
+`[prec: Float]` conversion". And nautilus#85's "Suggested API" asks for "All
+f64" outright.
+
 **Why `Option`.** Every other Nautilus module answers "absent or undefined"
 with a NaN sentinel. This one does not, because absence here has to survive
 composition. Any sibling channel for validity — a count, a parallel `bool`
@@ -185,7 +230,18 @@ reviewed before it is committed:
 uv run --with 'pandas==2.3.3' --no-project python parity/rolling_goldens.py --write
 ```
 
-The parity set deliberately contains no non-finite expectation and no
-cancellation fixture. pandas accumulates a window incrementally where this
-module re-reduces it, so a parity gate cannot tell the two algorithms apart on
-well-scaled data; `tests/rolling.ch` carries that case.
+The parity set deliberately contains no non-finite expectation, no
+cancellation fixture, and no non-finite input. pandas accumulates a window
+incrementally where this module re-reduces it, so a parity gate cannot tell
+the two algorithms apart on well-scaled data; `tests/rolling.ch` carries that
+case, and the degenerate-`ddof` and NaN-input cases with it.
+
+The C lane has its own oracle, because `chelis reef build` does not enter host
+lowering and so cannot see whether a consumer can compile against this module:
+
+```sh
+uv run --no-project --python 3.12 python scripts/check_rolling_c_lane.py
+```
+
+It builds a consumer calling all 34 exports and then runs the clang line
+`chelis build` emits. Success is exit 0 with `ROLLING C LANE: PASS`.

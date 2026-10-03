@@ -557,9 +557,11 @@ The six `*_stub` rows return NaN tensors until Chelis supports complex numbers; 
 ### Nautilus.Rolling (34 exports)
 
 The one f64 module, and the one that answers "no value here" with `Option`
-rather than a NaN sentinel. Warm-up and `min_periods` match pandas; the
-`shift`, `diff` and `pct_change` family is total in `k`, where a negative `k`
-is pandas' lead. `parity/goldens/rolling.json` records what pandas answers
+rather than a NaN sentinel. Warm-up and `min_periods` match pandas for
+NaN-free, finite input -- a non-finite input value is a value here and
+propagates, where pandas treats NaN as missing; the
+`shift`, `diff` and `pct_change` family is defined at every `k` the index
+arithmetic can represent, where a negative `k` is pandas' lead. `parity/goldens/rolling.json` records what pandas answers
 and `scripts/check_rolling_parity.py` replays it. Reductions re-reduce each
 window rather than carrying a running accumulator, so a variance stays exact
 on a large mean with a small spread at O(window) per position.
@@ -568,21 +570,21 @@ on a large mean with a small spread at O(window) per position.
 |---|---|---|---|
 | `rolling_sum` | `(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Rolling sum; `None` while fewer than `min_periods` observations |
 | `rolling_mean` | `(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Rolling arithmetic mean over the available window |
-| `rolling_var` | `(xs: List[f64], window: i64, min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Rolling variance about the window mean; `ddof` 1 is pandas' default |
+| `rolling_var` | `(xs: List[f64], window: i64, min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Rolling variance about the window mean; `ddof` 1 is pandas' default. A window whose observation count is not above `ddof` is `Some(NaN)`, as in pandas |
 | `rolling_std` | `(xs: List[f64], window: i64, min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Square root of `rolling_var` at the same arguments |
 | `rolling_min` | `(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Rolling minimum; O(window) per position, not a monotonic deque |
 | `rolling_max` | `(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Rolling maximum; O(window) per position, not a monotonic deque |
 | `expanding_sum` | `(xs: List[f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Sum of every observation up to each position |
 | `expanding_mean` | `(xs: List[f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Mean of every observation up to each position |
-| `expanding_var` | `(xs: List[f64], min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Expanding variance about the running mean |
+| `expanding_var` | `(xs: List[f64], min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Expanding variance about the running mean; a count not above `ddof` is `Some(NaN)`, as in pandas |
 | `expanding_std` | `(xs: List[f64], min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Square root of `expanding_var` at the same arguments |
 | `expanding_min` | `(xs: List[f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Running minimum |
 | `expanding_max` | `(xs: List[f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Running maximum |
-| `shift` | `(xs: List[f64], k: i64) -> List[Option[f64]]` | `alpha` | `out[i] = xs[i - k]`; total in `k`, and `None` off either end |
+| `shift` | `(xs: List[f64], k: i64) -> List[Option[f64]]` | `alpha` | `out[i] = xs[i - k]`; `None` off either end. Defined at every `k` but `i64::MIN`, which overflows the index |
 | `shift_fill` | `(xs: List[f64], k: i64, fill: f64) -> List[f64]` | `alpha` | `shift` with a named pad value, so the result carries no `Option` |
 | `shift_clamped` | `(xs: List[f64], k: i64) -> List[f64]` | `alpha` | `shift` clamped to the first and last observation |
 | `diff` | `(xs: List[f64], k: i64) -> List[Option[f64]]` | `alpha` | `out[i] = xs[i] - xs[i - k]`; a negative `k` is a forward difference |
-| `pct_change` | `(xs: List[f64], k: i64) -> List[Option[f64]]` | `alpha` | `(xs[i] - xs[i - k]) / xs[i - k]`; a zero base is a present infinity |
+| `pct_change` | `(xs: List[f64], k: i64) -> List[Option[f64]]` | `alpha` | `(xs[i] - xs[i - k]) / xs[i - k]`; a zero base is a present infinity, or NaN when the numerator is zero too |
 | `tensor_rolling_sum` | `[n](xs: &tensor[n, f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `rolling_sum` |
 | `tensor_rolling_mean` | `[n](xs: &tensor[n, f64], window: i64, min_periods: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `rolling_mean` |
 | `tensor_rolling_var` | `[n](xs: &tensor[n, f64], window: i64, min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Converts with `to_list` and delegates to `rolling_var` |

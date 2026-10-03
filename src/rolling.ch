@@ -20,6 +20,7 @@ export (rolling_sum, rolling_mean, rolling_var, rolling_std, rolling_min, rollin
 def roll_min_i(a: i64, b: i64) -> i64 = if lt(a, b) then a else b
 def roll_max_i(a: i64, b: i64) -> i64 = if lt(a, b) then b else a
 def roll_zero() -> f64 = cast(0.0, f64)
+def roll_nan() -> f64 = div(roll_zero(), roll_zero())
 def roll_one_i() -> i64 = cast(1, i64)
 def roll_zero_i() -> i64 = cast(0, i64)
 -- Out-of-domain arguments trap. These are caller bugs with no correct
@@ -34,8 +35,16 @@ def roll_require_ddof(ddof: i64) -> i64 = if lt(ddof, roll_zero_i()) then fail("
 -- observations are available, so `index(ws, 0)` is always in range.
 def roll_sum_list(ws: List[f64]) -> f64 = fold(fn (acc: f64, x: f64) -> add(acc, x), roll_zero(), ws)
 def roll_mean_list(ws: List[f64]) -> f64 = div(roll_sum_list(ws), cast(len(ws), f64))
-def roll_min_list(ws: List[f64]) -> f64 = fold(fn (acc: f64, x: f64) -> if lt(x, acc) then x else acc, index(ws, roll_zero_i()), ws)
-def roll_max_list(ws: List[f64]) -> f64 = fold(fn (acc: f64, x: f64) -> if lt(acc, x) then x else acc, index(ws, roll_zero_i()), ws)
+-- `lt` is false for NaN in either operand, so a plain comparison fold would
+-- IGNORE a NaN anywhere but the seed position and ABSORB one at the seed --
+-- reporting a confident minimum at one index and NaN at the next, which is an
+-- artifact of the seed rather than a policy. These propagate instead, so all
+-- six reductions agree: this module treats an input NaN as a value, not as a
+-- missing observation. pandas treats it as missing and counts only non-NaN
+-- observations toward `min_periods`, so the pandas agreement below is stated
+-- for NaN-free input. `spec/scope.md` records that divergence.
+def roll_min_list(ws: List[f64]) -> f64 = fold(fn (acc: f64, x: f64) -> if eq(x, x) then if lt(x, acc) then x else acc else roll_nan(), index(ws, roll_zero_i()), ws)
+def roll_max_list(ws: List[f64]) -> f64 = fold(fn (acc: f64, x: f64) -> if eq(x, x) then if lt(acc, x) then x else acc else roll_nan(), index(ws, roll_zero_i()), ws)
 -- Two-pass variance: the window mean, then the sum of squared deviations
 -- about it. A running accumulator of x and x^2 would make the whole surface
 -- O(n) instead of O(n*w), and is how the hand-written prefix-sum version in
@@ -43,19 +52,26 @@ def roll_max_list(ws: List[f64]) -> f64 = fold(fn (acc: f64, x: f64) -> if lt(ac
 -- series with a large mean relative to its spread. A library whose callers
 -- cannot see the accumulation should not make that trade for them.
 --
--- `len(ws) <= ddof` gives a nonpositive denominator and therefore `Some` of
--- an infinity or NaN. That is pandas' answer too, and it is deliberately not
--- `None`: the window HAD its `min_periods` observations, so the value is
--- undefined rather than absent, and collapsing the two would make
--- `rolling_var(xs, 1, 1, 1)` indistinguishable from a warm-up.
-def roll_var_list(ws: List[f64], ddof: i64) -> f64 = {
-  mu = roll_mean_list(ws)
-  ss = fold(fn (acc: f64, x: f64) -> {
-    d = sub(x, mu)
-    add(acc, mul(d, d))
-  }, roll_zero(), ws)
-  div(ss, cast(sub(len(ws), ddof), f64))
-}
+-- A window with no more observations than `ddof` is `Some(NaN)`, which is
+-- what pandas returns for every such window. The guard is explicit because
+-- the arithmetic alone does not give it: `len(ws) - ddof` is NEGATIVE once
+-- `ddof` exceeds the count, and dividing by it yields a finite NEGATIVE
+-- number presented as a variance, which `sqrt` would then quietly turn into
+-- NaN in `rolling_std` while `rolling_var` kept reporting it.
+--
+-- It is `Some(NaN)` and deliberately not `None`: the window HAD its
+-- `min_periods` observations, so the value is undefined rather than absent,
+-- and collapsing the two would make `rolling_var(xs, 1, 1, 1)`
+-- indistinguishable from a warm-up.
+def roll_var_list(ws: List[f64], ddof: i64) -> f64 =
+  if lte(len(ws), ddof) then roll_nan() else {
+    mu = roll_mean_list(ws)
+    ss = fold(fn (acc: f64, x: f64) -> {
+      d = sub(x, mu)
+      add(acc, mul(d, d))
+    }, roll_zero(), ws)
+    div(ss, cast(sub(len(ws), ddof), f64))
+  }
 def roll_std_list(ws: List[f64], ddof: i64) -> f64 = sqrt(roll_var_list(ws, ddof))
 -- The window ending at `i`, clipped at the start of the series:
 -- xs[max(0, i - window + 1) .. i], so its length is min(i + 1, window).
@@ -70,17 +86,57 @@ def roll_window(xs: List[f64], window: i64, i: i64) -> List[f64] = {
 -- indices min_periods-1 .. window-2, and those positions reduce over a
 -- SHORTER window rather than being absent. That is pandas' behaviour and it
 -- is the specific off-by-one the hand-written versions get wrong.
-def roll_core(xs: List[f64], window: i64, min_periods: i64, red: List[f64] -> f64) -> List[Option[f64]] = map(fn (i: i64) -> if lt(add(i, roll_one_i()), min_periods) then None else Some(red(roll_window(xs, window, i))), range(roll_zero_i(), len(xs)))
+-- The reduction is selected by a closed tag, not by passing the reducer as a
+-- function value. A function-typed parameter has no C host ABI, so a
+-- consumer's `chelis build` rejects the call site with "no direct-call
+-- authority" while `chelis check`, `chelis eval`, `chelis test` and
+-- `chelis reef build` are all green; the owning entry is in
+-- docs/UPSTREAM_BUGS.md §Actively blocking. The tag keeps one kernel without
+-- the function value, and because the reducer set is closed and internal it is
+-- the permanent design rather than a narrowing to retire. `ddof` is threaded
+-- for every tag and ignored by the four that do not use it, which is cheaper
+-- than a second kernel. `scripts/check_rolling_c_lane.py` is the guard.
+type Reducer =
+  | ReduceSum
+  | ReduceMean
+  | ReduceVar
+  | ReduceStd
+  | ReduceMin
+  | ReduceMax
+def roll_reduce(ws: List[f64], kind: Reducer, ddof: i64) -> f64 =
+  match kind with {
+    | ReduceSum => roll_sum_list(ws)
+    | ReduceMean => roll_mean_list(ws)
+    | ReduceVar => roll_var_list(ws, ddof)
+    | ReduceStd => roll_std_list(ws, ddof)
+    | ReduceMin => roll_min_list(ws)
+    | ReduceMax => roll_max_list(ws)
+  }
+-- Every `Option`-producing body is a named def with an explicit return type.
+-- A bare `None` whose type is fixed only by its sibling arm does not lower:
+-- `chelis build` fails with "unresolved host inference variable" ([05-UNS-1])
+-- where eval is fine, and an annotated named def fixes the type locally. That
+-- limitation is fixed upstream in a release later than this pin, so it is the
+-- one narrowing here that expires: docs/UPSTREAM_BUGS.md §Actively blocking
+-- carries the reproducer and the de-narrowing step, which is to inline these
+-- bodies back into their lambdas at the next pin bump.
+def roll_entry(xs: List[f64], window: i64, min_periods: i64, kind: Reducer, ddof: i64, i: i64) -> Option[f64] = if lt(add(i, roll_one_i()), min_periods) then None else Some(roll_reduce(roll_window(xs, window, i), kind, ddof))
+def roll_core(xs: List[f64], window: i64, min_periods: i64, kind: Reducer, ddof: i64) -> List[Option[f64]] = map(fn (i: i64) -> roll_entry(xs, window, min_periods, kind, ddof, i), range(roll_zero_i(), len(xs)))
 -- An expanding window is a rolling window as wide as the series. `len(xs)`
 -- is raised to 1 so an empty input does not trip `roll_require_window`:
 -- the result is the empty list either way, and an empty series is not a
 -- caller bug.
 def roll_expanding_window(xs: List[f64]) -> i64 = roll_max_i(len(xs), roll_one_i())
--- Positional reads for the lag family. `j` outside the series is absent,
--- which is what makes `shift`, `diff` and `pct_change` total in `k`: a
--- negative `k` reads later values (pandas' lead), `k = 0` is the identity,
--- and any `|k| >= len(xs)` is all-`None`. None of those is a trap here,
--- because `Option` can say "no value" without inventing one.
+-- Positional reads for the lag family. `j` outside the series is absent, so
+-- `shift`, `diff` and `pct_change` are defined at every `k` the index
+-- arithmetic can represent: a negative `k` reads later values (pandas' lead),
+-- `k = 0` is the identity, and any `|k| >= len(xs)` is all-`None`. None of
+-- those is a trap, because `Option` can say "no value" without inventing one.
+--
+-- The exception, and it is not absence: `i - k` overflows i64 at `k` equal to
+-- `i64::MIN`, so the whole family traps there with `numeric trap: overflow in
+-- sub at i64` rather than returning a series. That is loud, and it is the one
+-- `k` at which "defined everywhere" would be false.
 --
 -- A lead is a look-ahead when the series is a trading signal. Nautilus is a
 -- numerical library, not a signal library, and forward differences and
@@ -90,44 +146,44 @@ def roll_in_range(j: i64, m: i64) -> bool = if lt(j, roll_zero_i()) then false e
 def roll_at(xs: List[f64], j: i64) -> Option[f64] = if roll_in_range(j, len(xs)) then Some(index(xs, j)) else None
 def rolling_sum(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]] = {
   w = roll_require_window(window)
-  roll_core(xs, w, roll_require_min_periods_window(min_periods, w), roll_sum_list)
+  roll_core(xs, w, roll_require_min_periods_window(min_periods, w), ReduceSum, roll_zero_i())
 }
 def rolling_mean(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]] = {
   w = roll_require_window(window)
-  roll_core(xs, w, roll_require_min_periods_window(min_periods, w), roll_mean_list)
+  roll_core(xs, w, roll_require_min_periods_window(min_periods, w), ReduceMean, roll_zero_i())
 }
 def rolling_var(xs: List[f64], window: i64, min_periods: i64, ddof: i64) -> List[Option[f64]] = {
   w = roll_require_window(window)
   mp = roll_require_min_periods_window(min_periods, w)
   dd = roll_require_ddof(ddof)
-  roll_core(xs, w, mp, fn (ws: List[f64]) -> roll_var_list(ws, dd))
+  roll_core(xs, w, mp, ReduceVar, dd)
 }
 def rolling_std(xs: List[f64], window: i64, min_periods: i64, ddof: i64) -> List[Option[f64]] = {
   w = roll_require_window(window)
   mp = roll_require_min_periods_window(min_periods, w)
   dd = roll_require_ddof(ddof)
-  roll_core(xs, w, mp, fn (ws: List[f64]) -> roll_std_list(ws, dd))
+  roll_core(xs, w, mp, ReduceStd, dd)
 }
 def rolling_min(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]] = {
   w = roll_require_window(window)
-  roll_core(xs, w, roll_require_min_periods_window(min_periods, w), roll_min_list)
+  roll_core(xs, w, roll_require_min_periods_window(min_periods, w), ReduceMin, roll_zero_i())
 }
 def rolling_max(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]] = {
   w = roll_require_window(window)
-  roll_core(xs, w, roll_require_min_periods_window(min_periods, w), roll_max_list)
+  roll_core(xs, w, roll_require_min_periods_window(min_periods, w), ReduceMax, roll_zero_i())
 }
-def expanding_sum(xs: List[f64], min_periods: i64) -> List[Option[f64]] = roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), roll_sum_list)
-def expanding_mean(xs: List[f64], min_periods: i64) -> List[Option[f64]] = roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), roll_mean_list)
+def expanding_sum(xs: List[f64], min_periods: i64) -> List[Option[f64]] = roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), ReduceSum, roll_zero_i())
+def expanding_mean(xs: List[f64], min_periods: i64) -> List[Option[f64]] = roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), ReduceMean, roll_zero_i())
 def expanding_var(xs: List[f64], min_periods: i64, ddof: i64) -> List[Option[f64]] = {
   dd = roll_require_ddof(ddof)
-  roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), fn (ws: List[f64]) -> roll_var_list(ws, dd))
+  roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), ReduceVar, dd)
 }
 def expanding_std(xs: List[f64], min_periods: i64, ddof: i64) -> List[Option[f64]] = {
   dd = roll_require_ddof(ddof)
-  roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), fn (ws: List[f64]) -> roll_std_list(ws, dd))
+  roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), ReduceStd, dd)
 }
-def expanding_min(xs: List[f64], min_periods: i64) -> List[Option[f64]] = roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), roll_min_list)
-def expanding_max(xs: List[f64], min_periods: i64) -> List[Option[f64]] = roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), roll_max_list)
+def expanding_min(xs: List[f64], min_periods: i64) -> List[Option[f64]] = roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), ReduceMin, roll_zero_i())
+def expanding_max(xs: List[f64], min_periods: i64) -> List[Option[f64]] = roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), ReduceMax, roll_zero_i())
 -- out[i] = xs[i - k], absent where that index is off either end.
 def shift(xs: List[f64], k: i64) -> List[Option[f64]] = map(fn (i: i64) -> roll_at(xs, sub(i, k)), range(roll_zero_i(), len(xs)))
 -- out[i] = xs[i - k], or `fill` off the end. The caller supplying a fill has
@@ -139,26 +195,29 @@ def shift_fill(xs: List[f64], k: i64, fill: f64) -> List[f64] =
     j = sub(i, k)
     if roll_in_range(j, len(xs)) then index(xs, j) else fill
   }, range(roll_zero_i(), len(xs)))
--- out[i] = xs[clamp(i - k, 0, len - 1)]: the `at_c` edge-clamp shape. Total
--- and `Option`-free on a nonempty series for the same reason as `shift_fill`.
+-- out[i] = xs[clamp(i - k, 0, len - 1)]: the `at_c` edge-clamp shape.
+-- `Option`-free on a nonempty series for the same reason as `shift_fill`, and
+-- subject to the same `i64::MIN` overflow as the rest of the family.
 def shift_clamped(xs: List[f64], k: i64) -> List[f64] = {
   last = sub(len(xs), roll_one_i())
   map(fn (i: i64) -> index(xs, roll_min_i(roll_max_i(sub(i, k), roll_zero_i()), last)), range(roll_zero_i(), len(xs)))
 }
 -- out[i] = xs[i] - xs[i - k].
-def diff(xs: List[f64], k: i64) -> List[Option[f64]] =
-  map(fn (i: i64) -> match roll_at(xs, sub(i, k)) with {
+def roll_diff_at(xs: List[f64], k: i64, i: i64) -> Option[f64] =
+  match roll_at(xs, sub(i, k)) with {
     | None => None
     | Some(prev) => Some(sub(index(xs, i), prev))
-  }, range(roll_zero_i(), len(xs)))
+  }
+def diff(xs: List[f64], k: i64) -> List[Option[f64]] = map(fn (i: i64) -> roll_diff_at(xs, k, i), range(roll_zero_i(), len(xs)))
 -- out[i] = (xs[i] - xs[i - k]) / xs[i - k]. A zero base is `Some` of an
 -- infinity or NaN, not `None`: the observation exists and the ratio does
 -- not, which is a different fact from the series not reaching back that far.
-def pct_change(xs: List[f64], k: i64) -> List[Option[f64]] =
-  map(fn (i: i64) -> match roll_at(xs, sub(i, k)) with {
+def roll_pct_at(xs: List[f64], k: i64, i: i64) -> Option[f64] =
+  match roll_at(xs, sub(i, k)) with {
     | None => None
     | Some(prev) => Some(div(sub(index(xs, i), prev), prev))
-  }, range(roll_zero_i(), len(xs)))
+  }
+def pct_change(xs: List[f64], k: i64) -> List[Option[f64]] = map(fn (i: i64) -> roll_pct_at(xs, k, i), range(roll_zero_i(), len(xs)))
 -- Tensor entry points. Each converts and delegates; none has semantics of
 -- its own, and `scripts/check_rolling_tensor_parity.py` proves that
 -- mechanically rather than by assertion.

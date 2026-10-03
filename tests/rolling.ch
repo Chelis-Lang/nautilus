@@ -246,17 +246,61 @@ def test_lag_past_either_end() -> unit ! { Test } = {
 -- not. Collapsing either into `None` would make them indistinguishable from
 -- a warm-up, which is a different fact about the data.
 def zero_base() -> List[f64] = [cast(0.0, f64), cast(4.0, f64), cast(0.0, f64)]
+def is_nan_f(x: f64) -> bool = if eq(x, x) then false else true
+def all_nan(xs: List[Option[f64]]) -> bool = fold(fn (acc: bool, o: Option[f64]) -> if acc then if present(o) then is_nan_f(value_or(o, cast(0.0, f64))) else true else false, true, xs)
 def test_undefined_is_present_not_absent() -> unit ! { Test } = {
   ratios = pct_change(zero_base(), cast(1, i64))
   _ = assert_true(eq(present_count(ratios), cast(2, i64)), "pct_change over a zero base still reports a value")
   _ = assert_true(lt(cast(1e300, f64), value_or(index(ratios, cast(1, i64)), cast(0.0, f64))), "a positive change from a zero base is an infinity, not an absence")
-  degenerate = rolling_var(ns(), cast(2, i64), cast(2, i64), cast(2, i64))
-  _ = assert_true(eq(present_count(degenerate), cast(5, i64)), "ddof equal to the window count still reports a value")
-  _ = assert_true(lt(cast(1e300, f64), value_or(index(degenerate, cast(1, i64)), cast(0.0, f64))), "a zero denominator over a nonzero deviation is an infinity")
   single = rolling_var(ns(), cast(1, i64), cast(1, i64), cast(1, i64))
-  only = value_or(index(single, cast(0, i64)), cast(0.0, f64))
   _ = assert_true(eq(present_count(single), cast(6, i64)), "a one-wide window at ddof 1 reports a value at every position")
-  assert_true(if eq(only, only) then false else true, "and that value is NaN: zero deviation over a zero denominator")
+  assert_true(is_nan_f(value_or(index(single, cast(0, i64)), cast(0.0, f64))), "and that value is NaN, not an absence")
+}
+-- A window with no more observations than `ddof` is `Some(NaN)` at every
+-- position, which is what pandas returns. Before the guard existed the
+-- arithmetic divided by a NEGATIVE denominator once `ddof` exceeded the count
+-- and produced a finite negative number presented as a variance, with
+-- `rolling_std` hiding it behind a `sqrt`. These pin all three regions:
+-- `ddof` below, equal to, and above the observation count.
+def test_ddof_at_or_above_the_count_is_nan() -> unit ! { Test } = {
+  _ = assert_true(all_nan(rolling_var(ns(), cast(2, i64), cast(2, i64), cast(2, i64))), "rolling_var: ddof equal to the window count is NaN")
+  _ = assert_true(all_nan(rolling_var(ns(), cast(2, i64), cast(2, i64), cast(3, i64))), "rolling_var: ddof above the window count is NaN, not a negative variance")
+  _ = assert_true(all_nan(rolling_var(ns(), cast(2, i64), cast(2, i64), cast(9223372036854775807, i64))), "rolling_var: a huge ddof is NaN, not a tiny negative number")
+  _ = assert_true(all_nan(rolling_std(ns(), cast(2, i64), cast(2, i64), cast(3, i64))), "rolling_std: the same, rather than a sqrt of a negative variance")
+  _ = assert_true(all_nan(rolling_var(ns(), cast(1, i64), cast(1, i64), cast(1, i64))), "rolling_var: a one-wide window at ddof 1 is NaN")
+  -- Only the short leading windows are degenerate here: at window 4 and ddof 2
+  -- the first two positions have 1 and 2 observations, the rest have 3 and 4.
+  partial = rolling_var(ns(), cast(4, i64), cast(1, i64), cast(2, i64))
+  _ = assert_true(is_nan_f(value_or(index(partial, cast(0, i64)), cast(0.0, f64))), "a window of one observation at ddof 2 is NaN")
+  _ = assert_true(is_nan_f(value_or(index(partial, cast(1, i64)), cast(0.0, f64))), "a window of two observations at ddof 2 is NaN")
+  _ = assert_close(value_or(index(partial, cast(2, i64)), cast(0.0, f64)), cast(12.666666666666666, f64), cast(1e-12, f64), "and a window of three observations at ddof 2 is a real variance")
+  expand = expanding_var(ns(), cast(1, i64), cast(2, i64))
+  _ = assert_true(is_nan_f(value_or(index(expand, cast(0, i64)), cast(0.0, f64))), "expanding_var: the same guard applies before the count passes ddof")
+  assert_close(value_or(index(expand, cast(2, i64)), cast(0.0, f64)), cast(12.666666666666666, f64), cast(1e-12, f64), "expanding_var: and it clears once the count does")
+}
+-- An input NaN is a value here, not a missing observation, and all six
+-- reductions agree on that. `lt` is false for NaN in either operand, so a
+-- plain comparison fold would ignore a NaN anywhere but the seed position and
+-- absorb one at the seed -- a confident minimum at one index and NaN at the
+-- next, from the seed rather than from a policy. pandas instead treats NaN as
+-- missing and counts only non-NaN observations toward min_periods, so this
+-- family is outside the pandas agreement and `spec/scope.md` says so.
+def nan_series() -> List[f64] = [cast(5.0, f64), div(cast(0.0, f64), cast(0.0, f64)), cast(7.0, f64), cast(3.0, f64)]
+def test_input_nan_propagates_through_every_reduction() -> unit ! { Test } = {
+  w = cast(3, i64)
+  mp = cast(1, i64)
+  _ = assert_true(is_nan_f(value_or(index(rolling_min(nan_series(), w, mp), cast(1, i64)), cast(0.0, f64))), "rolling_min: a NaN at window position 1 propagates")
+  _ = assert_true(is_nan_f(value_or(index(rolling_min(nan_series(), w, mp), cast(3, i64)), cast(0.0, f64))), "rolling_min: and so does a NaN at the seed position")
+  _ = assert_true(is_nan_f(value_or(index(rolling_max(nan_series(), w, mp), cast(1, i64)), cast(0.0, f64))), "rolling_max: a NaN at window position 1 propagates")
+  _ = assert_true(is_nan_f(value_or(index(rolling_max(nan_series(), w, mp), cast(3, i64)), cast(0.0, f64))), "rolling_max: and so does a NaN at the seed position")
+  _ = assert_true(is_nan_f(value_or(index(rolling_sum(nan_series(), w, mp), cast(1, i64)), cast(0.0, f64))), "rolling_sum: propagates too")
+  _ = assert_true(is_nan_f(value_or(index(rolling_mean(nan_series(), w, mp), cast(1, i64)), cast(0.0, f64))), "rolling_mean: propagates too")
+  _ = assert_true(is_nan_f(value_or(index(rolling_var(nan_series(), w, cast(2, i64), cast(1, i64)), cast(1, i64)), cast(0.0, f64))), "rolling_var: propagates too")
+  _ = assert_true(is_nan_f(value_or(index(rolling_std(nan_series(), w, cast(2, i64), cast(1, i64)), cast(1, i64)), cast(0.0, f64))), "rolling_std: propagates too")
+  -- The first position reduces a one-element window holding the only non-NaN
+  -- value before the NaN, so it is a real number and pins that propagation is
+  -- positional rather than whole-series.
+  assert_close(value_or(index(rolling_min(nan_series(), w, mp), cast(0, i64)), cast(0.0, f64)), cast(5.0, f64), tol(), "a window that does not reach the NaN is unaffected")
 }
 -- Two-pass variance. The exact sample variance of 4, 7, 13, 16 is 30, and
 -- shifting all four by 1e8 does not change it. An implementation that

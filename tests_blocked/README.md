@@ -32,6 +32,23 @@ the current verdicts.
 
 ## §cannot-be-probed
 
+- **`chelis#2599`**: a bare `None` whose type is fixed only by its sibling arm
+  fails `chelis build` with an unresolved host inference variable
+  ([05-UNS-1]). The failure is in the **build** lane, and `chelis test` never
+  invokes `chelis build`, so a probe placed here would evaluate cleanly and be
+  reported FIX-DETECTED while the limitation was still present -- the opposite
+  of fail-closed. Fixed upstream by chelis#2888, which landed after v0.18.12
+  was cut, so it is live at this pin only.
+  `scripts/check_rolling_c_lane.py` is the executable guard, and
+  [`docs/UPSTREAM_BUGS.md`](../docs/UPSTREAM_BUGS.md) carries the reproducer
+  and the de-narrowing steps for the next pin bump.
+- **`chelis#909`**: a function-typed parameter has no C host ABI, so a
+  consumer's `chelis build` rejects the call site ([04-TOT-2]). Build-lane
+  again, so not expressible here for the same reason. `Nautilus.Rolling`
+  selects its reduction with a closed tag instead, which is the permanent
+  design rather than a narrowing awaiting a fix, so there is nothing to
+  de-narrow. `chelis#867` records that no issue owns that ABI.
+
 - **`chelis#2370`**: exact-AD Levenberg-Marquardt composition loses
   runtime-extent binder provenance (under the tracking issue `chelis#1277`).
   The old provenance failure appeared only when the shipped

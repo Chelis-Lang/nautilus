@@ -82,6 +82,15 @@ rather than re-derive it.
 - **Documentation is executable.** `chelis reef build` must produce non-empty
   package artifacts. The API-smoke imports, stability metadata, `SKILL.md`
   examples, and mdBook examples must all validate against the pinned compiler.
+- **`Nautilus.Rolling`'s C lane has its own oracle, because the package gates
+  cannot see it.** `chelis reef build` type-checks without entering host
+  lowering, so a module can pass every package-level gate while no consumer can
+  compile against it -- which is the class nautilus#70's 2026-09-17 comment
+  records, and which this module hit during review on two independent upstream
+  limitations (both in `docs/UPSTREAM_BUGS.md`). `scripts/check_rolling_c_lane.py`
+  builds a consumer of all 34 exports and runs the clang line `chelis build`
+  emits; acceptance is exit 0 with `ROLLING C LANE: PASS`, and CI runs it in the
+  native-test job. No other job in this repository runs `chelis build`.
 - **`Nautilus.Rolling`'s pandas contract has its own oracle.**
   `scripts/check_rolling_parity.py` replays the committed goldens in
   `parity/goldens/rolling.json` against `chelis eval`; acceptance is exit 0
@@ -118,6 +127,16 @@ rather than re-derive it.
   deliberate trade for a variance that stays exact on a large mean with a small
   spread. It also does not accept pandas' `min_periods=0`, because no reduction
   is defined on an empty window.
+- `Nautilus.Rolling` treats a non-finite input value as a **value**, which
+  propagates through all six reductions. pandas treats NaN as **missing**: it
+  does not propagate, and only non-NaN observations count toward
+  `min_periods`. So the pandas agreement this module claims is for NaN-free,
+  finite input, and the parity goldens contain no non-finite input. The
+  divergence is documented in the book rather than reconciled, because
+  adopting missing-data semantics would change what `min_periods` counts
+  across the whole surface; a caller that needs it drops or imputes first.
+- The lag family traps at `k = i64::MIN`, where `i - k` overflows the index
+  arithmetic. Every other `k` is defined.
 
 ## Deferrals
 
