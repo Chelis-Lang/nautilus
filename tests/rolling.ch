@@ -241,6 +241,29 @@ def test_lag_past_either_end() -> unit ! { Test } = {
   _ = assert_true(dense_agrees(shift_fill(ns(), cast(6, i64), cast(-1.0, f64)), [cast(-1.0, f64), cast(-1.0, f64), cast(-1.0, f64), cast(-1.0, f64), cast(-1.0, f64), cast(-1.0, f64)], tol()), "shift_fill past the end is all pad")
   assert_true(dense_agrees(shift_clamped(ns(), cast(6, i64)), [cast(5.0, f64), cast(5.0, f64), cast(5.0, f64), cast(5.0, f64), cast(5.0, f64), cast(5.0, f64)], tol()), "shift_clamped past the end clamps to the first observation")
 }
+-- The lag family traps only where `i - k` overflows, which is the `len(xs)`
+-- most negative values of `k` because the largest index overflows first. The
+-- two negative tests pin the trapping side at `i64::MIN` and `i64::MIN + 1`;
+-- this pins the first `k` that does NOT trap, so the boundary is fixed from
+-- both directions and the set cannot silently widen.
+def test_lag_trapping_set_scales_with_length() -> unit ! { Test } = {
+  pair = [cast(1.0, f64), cast(2.0, f64)]
+  almost = cast(-9223372036854775806, i64)
+  _ = assert_true(eq(present_count(shift(pair, almost)), cast(0, i64)), "shift at i64::MIN + 2 on a two-element series is all absent, not a trap")
+  _ = assert_true(eq(len(shift(pair, almost)), cast(2, i64)), "and still returns one entry per observation")
+  _ = assert_true(eq(present_count(diff(pair, almost)), cast(0, i64)), "diff at i64::MIN + 2 is all absent too")
+  assert_true(eq(present_count(pct_change(pair, almost)), cast(0, i64)), "and so is pct_change")
+}
+-- The warm-up is `min_periods - 1` entries CLIPPED at the length of the
+-- series, because the result always has exactly one entry per observation.
+def test_warmup_is_clipped_to_the_series() -> unit ! { Test } = {
+  one = [cast(5.0, f64)]
+  short = rolling_sum(one, cast(3, i64), cast(3, i64))
+  _ = assert_true(eq(len(short), cast(1, i64)), "a min_periods above the length still returns one entry per observation")
+  _ = assert_true(eq(leading_absent(short), cast(1, i64)), "and its warm-up is the whole series, not min_periods - 1")
+  empty_expanding = expanding_mean(empty_series(), cast(5, i64))
+  assert_true(eq(len(empty_expanding), cast(0, i64)), "an empty series clips the warm-up to nothing")
+}
 -- Undefined is not absent. A zero base and a ddof at or above the window
 -- count both produce a value: the observations were there, the quotient was
 -- not. Collapsing either into `None` would make them indistinguishable from

@@ -90,12 +90,12 @@ rather than re-derive it.
   limitations (both in `docs/UPSTREAM_BUGS.md`). `scripts/check_rolling_c_lane.py`
   builds a consumer of all 34 exports and runs the clang line `chelis build`
   emits; acceptance is exit 0 with `ROLLING C LANE: PASS`, and CI runs it in the
-  native-test job. No other job in this repository runs `chelis build`.
+  `chelis-tests` job. No other job in this repository runs `chelis build`.
 - **`Nautilus.Rolling`'s pandas contract has its own oracle.**
   `scripts/check_rolling_parity.py` replays the committed goldens in
   `parity/goldens/rolling.json` against `chelis eval`; acceptance is exit 0
-  with a final `ROLLING PARITY: PASS` line, and CI runs it in the native-test
-  job. `scripts/check_rolling_tensor_parity.py` proves each `tensor_` export is
+  with a final `ROLLING PARITY: PASS` line, and CI runs it in the
+  `chelis-tests` job. `scripts/check_rolling_tensor_parity.py` proves each `tensor_` export is
   a literal delegation by reading the source; acceptance is exit 0 with
   `TENSOR DELEGATION: PASS`, and CI runs it with the hard rules. Regenerating
   the goldens needs pandas and is a reviewed manual gate:
@@ -134,9 +134,14 @@ rather than re-derive it.
   finite input, and the parity goldens contain no non-finite input. The
   divergence is documented in the book rather than reconciled, because
   adopting missing-data semantics would change what `min_periods` counts
-  across the whole surface; a caller that needs it drops or imputes first.
-- The lag family traps at `k = i64::MIN`, where `i - k` overflows the index
-  arithmetic. Every other `k` is defined.
+  across the whole surface; a caller that needs it drops or imputes first. An
+  infinity diverges in the other direction, and `rolling_min`/`rolling_max` do
+  not preserve signed zero -- the comparison folds return the first of two
+  values that compare equal, where pandas returns `-0.0`.
+- The lag family traps for the `len(xs)` most negative values of `k`, where
+  `i - k` overflows the index arithmetic; the largest index overflows first, so
+  on a two-element series both `i64::MIN` and `i64::MIN + 1` trap. Every less
+  negative `k` is defined.
 
 ## Deferrals
 

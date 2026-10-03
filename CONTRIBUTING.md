@@ -67,7 +67,7 @@ chelis reef conform audit
 
 `scripts/check_rolling_parity.py`, `scripts/check_rolling_c_lane.py` and
 `scripts/check_rolling_tensor_parity.py` also run in CI -- the first two in the
-native-test job, the third with the hard rules.
+`chelis-tests` job, the third with the hard rules.
 Regenerating the pandas goldens is a separate, reviewed manual gate that does
 need pandas, and CI never runs it:
 

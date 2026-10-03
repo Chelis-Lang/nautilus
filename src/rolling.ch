@@ -42,7 +42,9 @@ def roll_mean_list(ws: List[f64]) -> f64 = div(roll_sum_list(ws), cast(len(ws), 
 -- six reductions agree: this module treats an input NaN as a value, not as a
 -- missing observation. pandas treats it as missing and counts only non-NaN
 -- observations toward `min_periods`, so the pandas agreement below is stated
--- for NaN-free input. `spec/scope.md` records that divergence.
+-- for finite, NaN-free input: an infinity diverges too, in the other
+-- direction, and signed zero is not preserved by the comparison folds.
+-- `spec/scope.md` records those divergences.
 def roll_min_list(ws: List[f64]) -> f64 = fold(fn (acc: f64, x: f64) -> if eq(x, x) then if lt(x, acc) then x else acc else roll_nan(), index(ws, roll_zero_i()), ws)
 def roll_max_list(ws: List[f64]) -> f64 = fold(fn (acc: f64, x: f64) -> if eq(x, x) then if lt(acc, x) then x else acc else roll_nan(), index(ws, roll_zero_i()), ws)
 -- Two-pass variance: the window mean, then the sum of squared deviations
@@ -122,10 +124,11 @@ def roll_reduce(ws: List[f64], kind: Reducer, ddof: i64) -> f64 =
 -- bodies back into their lambdas at the next pin bump.
 def roll_entry(xs: List[f64], window: i64, min_periods: i64, kind: Reducer, ddof: i64, i: i64) -> Option[f64] = if lt(add(i, roll_one_i()), min_periods) then None else Some(roll_reduce(roll_window(xs, window, i), kind, ddof))
 def roll_core(xs: List[f64], window: i64, min_periods: i64, kind: Reducer, ddof: i64) -> List[Option[f64]] = map(fn (i: i64) -> roll_entry(xs, window, min_periods, kind, ddof, i), range(roll_zero_i(), len(xs)))
--- An expanding window is a rolling window as wide as the series. `len(xs)`
--- is raised to 1 so an empty input does not trip `roll_require_window`:
--- the result is the empty list either way, and an empty series is not a
--- caller bug.
+-- An expanding window is a rolling window as wide as the series. The raise to
+-- 1 is defensive only: `roll_core` never validates `window`, and on an empty
+-- series it maps over an empty range so the width is never read. It keeps the
+-- argument well-formed rather than guarding anything, and no expanding path
+-- reaches `roll_require_window`.
 def roll_expanding_window(xs: List[f64]) -> i64 = roll_max_i(len(xs), roll_one_i())
 -- Positional reads for the lag family. `j` outside the series is absent, so
 -- `shift`, `diff` and `pct_change` are defined at every `k` the index
@@ -133,10 +136,14 @@ def roll_expanding_window(xs: List[f64]) -> i64 = roll_max_i(len(xs), roll_one_i
 -- `k = 0` is the identity, and any `|k| >= len(xs)` is all-`None`. None of
 -- those is a trap, because `Option` can say "no value" without inventing one.
 --
--- The exception, and it is not absence: `i - k` overflows i64 at `k` equal to
--- `i64::MIN`, so the whole family traps there with `numeric trap: overflow in
--- sub at i64` rather than returning a series. That is loud, and it is the one
--- `k` at which "defined everywhere" would be false.
+-- The exception, and it is not absence: `out[i] = xs[i - k]`, and `i - k`
+-- overflows i64 once `k` is sufficiently negative, so the family traps with
+-- `numeric trap: overflow in sub at i64` rather than returning a series. The
+-- trapping set is `k < len(xs) - 1 - i64::MAX`, which is the `len(xs)` most
+-- negative values of `k` -- NOT `i64::MIN` alone, because the largest index
+-- `len(xs) - 1` overflows first. On a two-element series both `i64::MIN` and
+-- `i64::MIN + 1` trap. The failure is loud, and it is the only `k` region
+-- where "defined everywhere" would be false.
 --
 -- A lead is a look-ahead when the series is a trading signal. Nautilus is a
 -- numerical library, not a signal library, and forward differences and
@@ -197,7 +204,7 @@ def shift_fill(xs: List[f64], k: i64, fill: f64) -> List[f64] =
   }, range(roll_zero_i(), len(xs)))
 -- out[i] = xs[clamp(i - k, 0, len - 1)]: the `at_c` edge-clamp shape.
 -- `Option`-free on a nonempty series for the same reason as `shift_fill`, and
--- subject to the same `i64::MIN` overflow as the rest of the family.
+-- subject to the same most-negative-`k` overflow as the rest of the family.
 def shift_clamped(xs: List[f64], k: i64) -> List[f64] = {
   last = sub(len(xs), roll_one_i())
   map(fn (i: i64) -> index(xs, roll_min_i(roll_max_i(sub(i, k), roll_zero_i()), last)), range(roll_zero_i(), len(xs)))

@@ -1,9 +1,15 @@
 overflow in sub at i64
 
-The one `k` at which the lag family is not defined. `out[i] = xs[i - k]`, and
-`i - k` overflows i64 at `k = i64::MIN`, so `shift`, `shift_fill`,
-`shift_clamped`, `diff` and `pct_change` all trap there rather than returning a
-series. Every other `k` is defined: a negative `k` is pandas' lead, `k = 0` is
+The most negative end of `k`, where the lag family is not defined.
+`out[i] = xs[i - k]`, and `i - k` overflows i64 once `k` drops below
+`len(xs) - 1 - i64::MAX`, so `shift`, `shift_fill`, `shift_clamped`, `diff` and
+`pct_change` all trap there rather than returning a series.
+
+That is the `len(xs)` most negative values of `k`, NOT `i64::MIN` alone: the
+largest index overflows first, so on this two-element fixture both `i64::MIN`
+and `i64::MIN + 1` trap, and `i64::MIN + 2` returns `[None, None]`.
+
+Every less negative `k` is defined: a negative `k` is pandas' lead, `k = 0` is
 the identity, and any other out-of-range offset is reported as absence or as
 the caller's fill rather than as a trap. The failure is loud, which is why the
 docs state the limit rather than the module widening the index type.

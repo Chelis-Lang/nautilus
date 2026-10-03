@@ -580,7 +580,7 @@ on a large mean with a small spread at O(window) per position.
 | `expanding_std` | `(xs: List[f64], min_periods: i64, ddof: i64) -> List[Option[f64]]` | `alpha` | Square root of `expanding_var` at the same arguments |
 | `expanding_min` | `(xs: List[f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Running minimum |
 | `expanding_max` | `(xs: List[f64], min_periods: i64) -> List[Option[f64]]` | `alpha` | Running maximum |
-| `shift` | `(xs: List[f64], k: i64) -> List[Option[f64]]` | `alpha` | `out[i] = xs[i - k]`; `None` off either end. Defined at every `k` but `i64::MIN`, which overflows the index |
+| `shift` | `(xs: List[f64], k: i64) -> List[Option[f64]]` | `alpha` | `out[i] = xs[i - k]`; `None` off either end. Defined except for the `len(xs)` most negative `k`, which overflow the index |
 | `shift_fill` | `(xs: List[f64], k: i64, fill: f64) -> List[f64]` | `alpha` | `shift` with a named pad value, so the result carries no `Option` |
 | `shift_clamped` | `(xs: List[f64], k: i64) -> List[f64]` | `alpha` | `shift` clamped to the first and last observation |
 | `diff` | `(xs: List[f64], k: i64) -> List[Option[f64]]` | `alpha` | `out[i] = xs[i] - xs[i - k]`; a negative `k` is a forward difference |

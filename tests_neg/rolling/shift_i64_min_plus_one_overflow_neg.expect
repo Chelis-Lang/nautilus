@@ -1,0 +1,10 @@
+overflow in sub at i64
+
+The second value in the trapping set, pinned separately because the set is NOT
+`i64::MIN` alone. `out[i] = xs[i] - xs[i - k]`, and at `k = i64::MIN + 1` the
+largest index of this two-element fixture, `i = 1`, gives `1 - (i64::MIN + 1)`,
+which overflows.
+
+The set is the `len(xs)` most negative values of `k`, so it widens with the
+series. `tests/rolling.ch`'s `test_lag_trapping_set_scales_with_length` pins
+the other side: at `i64::MIN + 2` this same fixture returns `[None, None]`.

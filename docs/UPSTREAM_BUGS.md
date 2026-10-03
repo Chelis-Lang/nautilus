@@ -138,30 +138,23 @@ release.
       user-function call site has no direct-call authority on verified C host
       ownership emission (codegen:c) ... [04-TOT-2]``. Package-level gates are
       green.
-    - **Affected Nautilus surface:** none as shipped. It constrains how
-      `Nautilus.Rolling`'s kernel may be written, not what it exports.
+    - **Affected Nautilus surface:** none as shipped, and this entry is
+      recorded for the reader who reverts the tag, not because the shipped
+      module depends on the ABI landing.
     - **Workaround — and this one is the design, not a narrowing to retire.**
       `roll_core` selects its reduction with the closed `Reducer` tag and a
       `match`, instead of taking `red: List[f64] -> f64`. A tag is as
       expressive as the function value here, since the reducer set is closed
       and internal, so there is nothing to de-narrow when the ABI lands.
-    - **The condition, measured.** A function-typed parameter survives host
-      lowering only when every call site reaching it is specialised from a
-      **concrete nullary root**. Adding `def driver() -> f64 =
-      probe_use([cast(1.0, f64)])` to the reproducer below makes it BUILD OK,
-      because the compiler then specialises the call and needs no ABI. Reached
-      only through a root whose own parameters are unresolved, the ABI
-      projection is required and there is none. **Library code cannot assume
-      the nullary case**: `roll_core` is a parameterised def reached from a
-      consumer's code, never from a driver inside this package, which is why
-      the function value had to go. Neither "no statically resolvable callee"
-      nor "cannot be called at all" is the condition; the root shape is, and
-      it was the axis two reviewers held constant while varying everything
-      else.
-    - **Reproducer** (fails at this pin, with no nullary root present).
-      Neither a statically known callee, nor a caller in the same module, nor
-      the absence of an export clause changes it, and no `map` or `Option` is
-      needed to show it:
+    - **The exact condition is NOT characterised here, deliberately.** Three
+      successive attempts to state it were each refuted by measurement: "no
+      statically resolvable callee", "cannot be called at all", and
+      "specialised from a concrete nullary root". The last failed because the
+      mere presence of *any* nullary entry in the module -- including a def or
+      binding that never reaches the function value -- is enough to make the
+      reproducer build. Whatever the rule is, it is not reachability, and this
+      entry does not guess a fourth time. What is established is below.
+    - **Reproducer** (fails at this pin, as the only content of a module):
 
       ```text
       def probe_sum(ws: List[f64]) -> f64 =
@@ -170,19 +163,21 @@ release.
       def probe_use(xs: List[f64]) -> f64 = probe(xs, probe_sum)
       ```
 
-      Measured variants that fail the same way, all without a nullary root:
-      the parameter called inside a `map` lambda, the argument supplied as an
-      immediate lambda, and the def left with no caller at all. Each of those
-      BUILDS once a nullary root is added. An `if`-selected or returned
-      function value is a distinct sub-shape that fails with `no target ABI
-      representation` rather than `[04-TOT-2]`.
-    - **What the old kernel actually emitted, so a future reader is not
-      misled:** reverting to `red: List[f64] -> f64` while keeping the
-      `Option` return fails with `[05-UNS-1]` *"unresolved host inference
-      variable"*, not with `[04-TOT-2]` — the `Option` inference gives out
-      before the ABI projection is reached. Both limitations were present; only
-      the first diagnostic was visible. Hoisting the `Option` bodies alone does
-      NOT fix that shape, which is why the function value had to go.
+      Variants that fail the same way in that module: the parameter called
+      inside a `map` lambda, the argument supplied as an immediate lambda, and
+      the def left with no caller. Each BUILDS once any nullary def or binding
+      is added, whether or not it reaches the call. An `if`-selected or
+      returned function value is a distinct sub-shape failing with `no target
+      ABI representation` rather than `[04-TOT-2]`.
+    - **The load-bearing fact, and the actual justification for the tag.**
+      Reverting `roll_core` to `red: List[f64] -> f64` while keeping the
+      hoisted `Option` defs fails with `[05-UNS-1]` *"unresolved host
+      inference variable"* — **not** `[04-TOT-2]`. So the blocker that
+      governs this module is the host-inference class above, and the
+      function-value ABI is a separate limitation that this module simply does
+      not depend on. Hoisting the `Option` bodies alone does not fix the
+      higher-order shape, which is the measured reason the function value had
+      to go, and `scripts/check_rolling_c_lane.py` is what keeps it gone.
     - **Re-probe trigger:** none required. Revisit only if a future reducer
       set has to be open, which would make the function value necessary rather
       than convenient.

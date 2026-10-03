@@ -54,8 +54,10 @@ gives `[Some(5.0), Some(7.0), Some(14.0), Some(12.0), Some(19.0), Some(13.0)]`.
 Position 0 sums one observation and position 1 sums two; only from position 2
 onward is the window full.
 
-The warm-up is therefore exactly `min_periods - 1` entries long and does not
-depend on the window. A `window` wider than the series is allowed: it reduces
+The warm-up is therefore `min_periods - 1` entries long, clipped at the length
+of the series, and does not depend on the window. (`rolling_sum([1.0], 3, 3)`
+is `[None]`, not two absent entries, because the result always has exactly one
+entry per observation.) A `window` wider than the series is allowed: it reduces
 whatever is available.
 
 ## Expanding windows
@@ -76,9 +78,12 @@ reaches forward (pandas' lead), `k = 0` is the identity, and any `|k|` at or
 beyond the series length absents every entry. None of those traps, because
 `Option` can report "no value" without inventing one.
 
-The one exception is `k = i64::MIN`: `out[i] = xs[i - k]`, and `i - k`
-overflows there, so the whole family traps with `numeric trap: overflow in sub
-at i64` rather than returning a series. That is loud, and
+The exception is the most negative end of `k`. `out[i] = xs[i - k]`, and
+`i - k` overflows i64 once `k` drops below `len(xs) - 1 - i64::MAX`, so the
+family traps with `numeric trap: overflow in sub at i64` rather than returning
+a series. That is the `len(xs)` most negative values of `k`, not `i64::MIN`
+alone: the largest index overflows first, so on a two-element series both
+`i64::MIN` and `i64::MIN + 1` trap. The failure is loud, and
 `tests_neg/rolling/shift_i64_min_overflow_neg.ch` pins it.
 
 ```chelis
@@ -155,7 +160,16 @@ not propagate, and only non-NaN observations count toward `min_periods`. So
 `rolling_min` over `[5, NaN, 7, 3]` at `window = 3, min_periods = 1` is
 `[Some(5), Some(NaN), Some(NaN), Some(NaN)]` here and `[5, 5, 5, 3]` in pandas.
 An infinity diverges in the other direction: `rolling_sum([inf, 2, 7], 2, 2)`
-is `Some(inf)` here, where pandas' incremental accumulator gives NaN.
+is `Some(inf)` here, where pandas' incremental accumulator gives NaN, and
+`rolling_sum([inf, -inf], 2, 1)` is `[Some(inf), Some(NaN)]` against pandas'
+`[NaN, NaN]`.
+
+One finite, NaN-free divergence exists and it is benign: `rolling_min` and
+`rolling_max` do not preserve **signed zero**. `rolling_min([0.0, -0.0], 2, 1)`
+is `[Some(0.0), Some(0.0)]` where pandas gives `[0.0, -0.0]`. The comparison
+folds keep the first of two values that compare equal, and `0.0 == -0.0`, so
+no caller can observe the difference by comparison -- only by inspecting the
+sign bit.
 
 Neither behaviour is in the pandas golden set, and
 `tests/rolling.ch`'s `test_input_nan_propagates_through_every_reduction` pins
