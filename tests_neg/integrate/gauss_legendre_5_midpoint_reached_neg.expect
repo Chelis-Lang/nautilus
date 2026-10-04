@@ -1,0 +1,8 @@
+gl5: the integrand was evaluated at the midpoint node
+
+The control for `gauss_legendre_5_midpoint_node_neg`. The midpoint node is
+the interesting one because no data dependency on `half_range` forces the
+guard to precede it, so an expectation about that ordering has to show the
+node runs at all. This integrand is silent everywhere except exactly 0.5, so
+the trap firing here is evidence that `x3 = mid` is evaluated and that the
+rule really does sample its midpoint.

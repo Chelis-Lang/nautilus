@@ -1,0 +1,13 @@
+Nautilus.Integrate.gauss_legendre_5: n_points must be 5
+
+The ordering pin for the guard, in the uniform case. `gl5_require_n_points`
+is a checked pass-through on `half_range`, the block's first binding, so
+strict evaluation reaches the check before `f` is applied at any node. The
+integrand here traps if it is ever called, so this file would report the
+integrand's message instead if the guard ran late or was dropped.
+
+Two companions make this non-vacuous rather than asserting it in prose.
+`gauss_legendre_5_integrand_reachable_neg` is this same integrand at
+`n_points = 5`, and does report the integrand's message, so the integrand is
+reachable. `gauss_legendre_5_midpoint_node_neg` covers the one node that
+`half_range` does not reach.

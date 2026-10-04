@@ -1,0 +1,9 @@
+Nautilus.Integrate.gauss_legendre_5: n_points must be 5
+
+`n_points` used to be read once into a discarded binding, so the rule was
+always 5-point and a caller who passed 20 expecting a 20-point rule received
+5-point accuracy with no diagnostic (nautilus#80). The argument now selects
+the order, 5 is the only order this entry point implements, and an
+unsupported order traps rather than quietly answering with a different rule.
+`Nautilus.Integrate` has no variable-order Gauss-Legendre rule to fall back
+on; that surface is nautilus#104.

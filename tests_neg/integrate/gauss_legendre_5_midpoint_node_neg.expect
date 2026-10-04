@@ -1,0 +1,13 @@
+Nautilus.Integrate.gauss_legendre_5: n_points must be 5
+
+The ordering pin for the one node the guard's data flow does not reach. Of
+the five nodes, `x3 = mid` is a function of `a` and `b` alone, so no value of
+`half_range` moves it and no data dependency forces the check to precede it.
+What does is that `half_range` is the block's first binding under strict
+evaluation. This integrand traps only at exactly 0.5, the midpoint of [0, 1],
+so it is silent at the other four nodes and the file reports the guard's
+message only if the check really does run first.
+
+`gauss_legendre_5_midpoint_reached_neg` is the control: the same integrand at
+`n_points = 5` reports the midpoint message, so the midpoint node is reached
+and this expectation is not satisfied by a node that never runs.

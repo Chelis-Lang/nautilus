@@ -15,7 +15,7 @@ composite rules to adaptive and Gaussian quadrature.
 
 | Function | Signature | Notes |
 |---|---|---|
-| `gauss_legendre_5` | `(f: f32 -> f32, a, b: f32, n_points: i64) -> f32` | 5-point; n_points is ignored |
+| `gauss_legendre_5` | `(f: f32 -> f32, a, b: f32, n_points: i64) -> f32` | 5-point; `n_points` must be 5 |
 | `gauss_legendre_10` | `(f: f32 -> f32, a, b: f32) -> f32` | 10-point; exact for polynomials up to degree 19 |
 
 Pre-tabulated nodes and weights mapped from [-1, 1] to [a, b]. No
@@ -65,7 +65,13 @@ same interval with a closure and returns approximately 0.746824
 
 - `simpsons` returns NaN for odd `n_steps`.
 - `trapezoidal` and `simpsons` return NaN for `n_steps <= 0`.
+- `gauss_legendre_5` traps unless `n_points` is 5. The argument selects
+  the rule order and 5 is the only order this entry point implements, so
+  an unsupported order has no correct answer to return. Quadrature at an
+  arbitrary order is [nautilus#104][gl-arbitrary-order].
 - For smooth integrands, `gauss_legendre_10` or `romberg_5` typically
   gives high accuracy without tuning a step count.
 - For integrands with localized sharp features, prefer
   `adaptive_simpson`.
+
+[gl-arbitrary-order]: https://github.com/Chelis-Lang/nautilus/issues/104

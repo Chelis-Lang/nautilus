@@ -1,0 +1,10 @@
+gl5: the integrand was evaluated before the n_points guard
+
+The discriminating control for `gauss_legendre_5_guard_precedes_f_neg`, which
+asserts that the guard is reached before this integrand. That claim is only
+worth something if the integrand is reachable at all: a `gauss_legendre_5`
+that never applied `f`, or an elided call, would satisfy the ordering
+expectation for the wrong reason. Same integrand, same interval, `n_points`
+changed from 20 to the one supported order, and the trap that fires is the
+integrand's. The message names the ordering because it is the same def; here
+it means the opposite, which is the point.
