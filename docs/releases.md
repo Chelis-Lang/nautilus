@@ -7,11 +7,19 @@ Each Nautilus release is a GitHub Release tagged `vX.Y.Z` with three assets:
 - `nautilus-X.Y.Z.sha256`: a SHA-256 manifest covering both payloads
 
 The version and the exact Chelis compiler a release was built with are both
-recorded in `reef.toml` at the tagged commit.
-The current source checkout prepares Nautilus 0.7.47 with Chelis 0.18.12.
-The last published Nautilus package, v0.7.46, predates that pin. The source
-change does not update the published package; use each release's tagged
-manifest when installing it.
+recorded in `reef.toml` at the tagged commit, so that manifest is the
+authority on what a given release contains. Use it when installing a release
+rather than a version named in this page.
+
+A source checkout can be ahead of the newest tag: `reef.toml`'s `version`
+describes what the next release would carry, not what is installable today.
+Ask the releases themselves which of the two you are looking at --
+
+```sh
+gh release list --repo Chelis-Lang/nautilus --limit 5
+```
+
+-- rather than reading a version out of this page.
 
 ## How a release is built
 
