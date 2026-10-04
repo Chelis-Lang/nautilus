@@ -246,9 +246,19 @@ def gauss_laguerre_10(f: f32 -> f32) -> f32 = {
   sum_c = add(s9, s10)
   add(sum_a, sum_b) |> add(sum_c)
 }
+-- `n_points` selects the rule order, and 5 is the only order this entry
+-- point implements. An unsupported order is a caller bug with no correct
+-- answer, so it traps rather than quietly returning the 5-point estimate --
+-- the same rule `Nautilus.Rolling` applies to an out-of-domain `window` or
+-- `min_periods`. The guard is a checked pass-through on `half_range`, the
+-- block's first binding, so strict evaluation reaches it before `f` is
+-- applied at any node -- including the midpoint node `x3 = mid`, which is a
+-- function of `a` and `b` alone and so does not depend on `half_range`. Four
+-- of the five nodes do depend on it, which is what keeps the binding from
+-- being dead code. Both directions are pinned in `tests_neg/integrate/`.
+def gl5_require_n_points(n_points: i64, half_range: f32) -> f32 = if eq(n_points, cast(5, i64)) then half_range else fail("Nautilus.Integrate.gauss_legendre_5: n_points must be 5")
 def gauss_legendre_5(f: f32 -> f32, a: f32, b: f32, n_points: i64) -> f32 = {
-  ignore_n = n_points
-  half_range = cast(0.5, f32) |> mul(sub(b, a))
+  half_range = gl5_require_n_points(n_points, cast(0.5, f32) |> mul(sub(b, a)))
   mid = cast(0.5, f32) |> mul(add(a, b))
   x1_t = mul(half_range, cast(-0.906179845938664, f32))
   x1 = add(mid, x1_t)

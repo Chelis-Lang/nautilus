@@ -454,7 +454,7 @@ package-version string, is the one export not listed here.
 |---|---|---|---|
 | `trapezoidal` | `(f: f32 -> f32, a: f32, b: f32, n_steps: i64) -> f32` | `stable` | Takes function-typed `f`; composite trapezoidal rule |
 | `simpsons` | `(f: f32 -> f32, a: f32, b: f32, n_steps: i64) -> f32` | `stable` | Takes function-typed `f`; n_steps must be even, NaN otherwise |
-| `gauss_legendre_5` | `(f: f32 -> f32, a: f32, b: f32, n_points: i64) -> f32` | `stable` | Takes function-typed `f`; 5-point Gauss-Legendre (n_points ignored) |
+| `gauss_legendre_5` | `(f: f32 -> f32, a: f32, b: f32, n_points: i64) -> f32` | `stable` | Takes function-typed `f`; 5-point Gauss-Legendre; `n_points` selects the order and must be 5, traps otherwise |
 | `adaptive_simpson` | `(f: f32 -> f32, a: f32, b: f32, tol: f32, max_depth: i64) -> f32` | `stable` | Takes function-typed `f`; recursive adaptive Simpson with Richardson correction |
 | `romberg_5` | `(f: f32 -> f32, a: f32, b: f32) -> f32` | `stable` | Takes function-typed `f`; 5-level Romberg (16-panel trapezoidal base) |
 | `gauss_legendre_10` | `(f: f32 -> f32, a: f32, b: f32) -> f32` | `stable` | Takes function-typed `f`; 10-point Gauss-Legendre |
