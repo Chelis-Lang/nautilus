@@ -93,7 +93,7 @@ detail. The main checks are:
 
 ```sh
 chelis reef build
-chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto
+chelis test tests/ --timeout 600 --jobs auto
 chelis test tests_neg/ --expect neg
 uv run --project parity --frozen python parity/run_parity.py --strict
 ```

@@ -30,7 +30,7 @@ cp hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
 
 | Suite | Command | What it checks |
 |---|---|---|
-| Native tests | `chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto` | Identities, invariants, solver recovery, tensor paths, edge cases, and callability, written in Chelis |
+| Native tests | `chelis test tests/ --timeout 600 --jobs auto` | Identities, invariants, solver recovery, tensor paths, edge cases, and callability, written in Chelis |
 | Negative tests | `chelis test tests_neg/ --expect neg` | Each `tests_neg/<area>/<name>.ch` must fail to compile with the diagnostic on line 1 of its `.expect` file |
 | Blocked probes | `chelis test tests_blocked/ --expect blocked` | Reproducers of open upstream compiler issues. Each must keep failing the way its `.expect` file says. See [`tests_blocked/README.md`](tests_blocked/README.md) |
 | SciPy parity | `uv run --project parity --frozen python parity/run_parity.py --strict` | Selected Special and Distributions functions against reviewed SciPy/NumPy goldens. See [`parity/README.md`](parity/README.md) |
@@ -50,7 +50,7 @@ for f in $(git ls-files 'src/*.ch' 'tests/*.ch' 'tests_neg/*.ch' 'tests_blocked/
 done
 chelis lint --check .
 chelis reef build
-chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto
+chelis test tests/ --timeout 600 --jobs auto
 chelis test tests_neg/ --expect neg
 chelis test tests_blocked/ --expect blocked      # when probes exist
 uv sync --project parity --frozen
