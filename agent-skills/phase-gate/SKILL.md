@@ -39,7 +39,7 @@ head. It includes the pinned compiler's build and native tests:
 
 ```sh
 chelis reef build
-chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto
+chelis test tests/ --timeout 600 --jobs auto
 chelis test tests_neg/ --expect neg
 chelis reef conform audit
 ```

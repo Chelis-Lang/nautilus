@@ -205,12 +205,11 @@ jobs:
         run: python3 scripts/install_chelis_std.py
 
       - name: chelis test (node-local parallel)
-        # --suite-timeout is raised above its 600s default because this tensor
-        # and Monte Carlo suite takes roughly 800-940s on GitHub's Linux
-        # runners. That is the suite's own weight, not a compiler regression.
-        # Sharding tests/ across a CI matrix would let each shard fit the
-        # default (nautilus#78).
-        run: chelis test tests/ --timeout 600 --suite-timeout 2400 --jobs auto
+        # --suite-timeout is deliberately left at its stock default. Raising it
+        # gives a real per-test slowdown that much more room to hide in before
+        # CI notices, so a suite that no longer fits the default is a signal to
+        # investigate rather than a number to raise (nautilus#78).
+        run: chelis test tests/ --timeout 600 --jobs auto
 
       # Shell contract §6: every case must fail with the diagnostic substring
       # pinned on line 1 of its paired .expect sidecar.
