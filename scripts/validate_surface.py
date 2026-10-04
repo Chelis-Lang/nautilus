@@ -87,6 +87,44 @@ def check_apismoke(fail: list[str]) -> None:
 README_TABLE_PATTERN = re.compile(r"^\| `(Nautilus\.[\w.]+)` \| (.+?) \|", re.M)
 INLINE_NAME_PATTERN = re.compile(r"`([a-z_][\w]*)`")
 
+# Method-suffix shorthand: a README cell writes `pdf`/`cdf` to stand for a
+# family (`normal_pdf`, `beta_cdf`), never as a bare export name.
+METHOD_SUFFIX_SHORTHAND = {"pdf", "cdf", "inv_cdf", "sample"}
+
+
+def listed_names(cell: str) -> set[str]:
+    """Export names a README surface-table cell claims the module provides.
+
+    A cell is prose, so not every backticked lowercase token in it is an
+    export name. Two spellings are structurally not claims, and both are
+    verified against the live surface by `scripts/test_validate_surface.py`
+    rather than assumed:
+
+    * **Parenthesised** -- ``(`alpha`)`` annotates the row's stability label.
+      No parenthesised backticked token in the table is an export name, so
+      skipping them hides nothing. Matching by token text instead would be
+      wrong: `beta` is a label word *and* a real `Nautilus.Special` export.
+    * **Leading underscore** -- "names ending in `_stub`" states a naming
+      pattern. None of the package's exports begins with `_`, so a fragment
+      spelled that way is never a name.
+
+    Widening either rule needs its invariant re-measured; the tests fail if
+    the surface stops satisfying one.
+    """
+    names = set()
+    for match in INLINE_NAME_PATTERN.finditer(cell):
+        token = match.group(1)
+        if token in METHOD_SUFFIX_SHORTHAND:
+            continue
+        if token.startswith("_"):
+            continue
+        start, end = match.span()
+        parenthesised = cell[max(0, start - 1):start] == "(" and cell[end:end + 1] == ")"
+        if parenthesised:
+            continue
+        names.add(token)
+    return names
+
 
 def check_readme(fail: list[str]) -> None:
     readme = REPO / "README.md"
@@ -98,13 +136,7 @@ def check_readme(fail: list[str]) -> None:
         cell = mod_match.group(2)
         if mod not in MODULES:
             continue
-        # Pull `name` tokens out of the README cell.
-        listed = set()
-        for inner in INLINE_NAME_PATTERN.finditer(cell):
-            tok = inner.group(1)
-            if tok in {"pdf", "cdf", "inv_cdf", "sample"}:
-                continue  # method-suffix shorthand, not a function name
-            listed.add(tok)
+        listed = listed_names(cell)
         if not listed:
             continue
         exports = parse_exports(MODULES[mod])
