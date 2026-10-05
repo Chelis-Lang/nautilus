@@ -113,3 +113,64 @@ def test_golden_convergence_tighter_tol() -> unit ! { Test } = {
   err_tight = if lt(diff_tight, cast(0.0, f32)) then neg(diff_tight) else diff_tight
   assert_true(lte(err_tight, err_loose), "golden section: tighter tol gives error <= looser tol")
 }
+def opt_is_nan(x: f32) -> bool = neq(x, x)
+def opt_quiet_nan() -> f32 = div(cast(0.0, f32), cast(0.0, f32))
+def opt_nan_everywhere(_x: f32) -> f32 = div(cast(0.0, f32), cast(0.0, f32))
+def test_golden_nan_objective_is_nan() -> unit ! { Test } = {
+  r = golden_section_search(opt_nan_everywhere, cast(-0.5, f32), cast(2.0, f32), cast(1e-7, f32), cast(100, i64))
+  assert_true(opt_is_nan(r), "golden section reports NaN for an objective with no values, not a point near hi")
+}
+def test_golden_nan_objective_large_budget_is_nan() -> unit ! { Test } = {
+  r = golden_section_search(opt_nan_everywhere, cast(-0.5, f32), cast(2.0, f32), cast(1e-7, f32), cast(100000, i64))
+  assert_true(opt_is_nan(r), "and reports it without exhausting a large budget first")
+}
+def test_brent_minimize_nan_objective_is_nan() -> unit ! { Test } = {
+  r = brent_minimize(opt_nan_everywhere, cast(-0.5, f32), cast(2.0, f32), cast(1e-7, f32), cast(100000, i64))
+  assert_true(opt_is_nan(r), "brent_minimize reports NaN for an objective with no values, not an interior point")
+}
+def test_golden_nan_bracket_endpoint_is_nan() -> unit ! { Test } = {
+  r = golden_section_search(opt_parab_3, opt_quiet_nan(), cast(5.0, f32), cast(1e-6, f32), cast(100000, i64))
+  assert_true(opt_is_nan(r), "golden section rejects a NaN bracket endpoint")
+}
+def test_brent_minimize_nan_bracket_endpoint_is_nan() -> unit ! { Test } = {
+  r = brent_minimize(opt_parab_3, opt_quiet_nan(), cast(5.0, f32), cast(1e-6, f32), cast(100000, i64))
+  assert_true(opt_is_nan(r), "brent_minimize rejects a NaN bracket endpoint")
+}
+def test_golden_nan_tolerance_is_nan() -> unit ! { Test } = {
+  r = golden_section_search(opt_parab_3, cast(1.0, f32), cast(5.0, f32), opt_quiet_nan(), cast(100000, i64))
+  assert_true(opt_is_nan(r), "a NaN tolerance is rejected rather than disabling the width stopping condition")
+}
+def test_brent_minimize_nan_tolerance_is_nan() -> unit ! { Test } = {
+  r = brent_minimize(opt_parab_3, cast(1.0, f32), cast(5.0, f32), opt_quiet_nan(), cast(100000, i64))
+  assert_true(opt_is_nan(r), "and brent_minimize rejects it too")
+}
+def test_gradient_descent_nan_gradient_is_nan() -> unit ! { Test } = {
+  r = gradient_descent_1d(opt_parab_3, opt_nan_everywhere, cast(5.0, f32), cast(0.1, f32), cast(100000, i64))
+  assert_true(opt_is_nan(r), "gradient_descent_1d already reported NaN for a NaN gradient; this pins it")
+}
+def test_newton_minimize_nan_derivatives_are_nan() -> unit ! { Test } = {
+  r1 = newton_minimize_1d(opt_parab_3, opt_nan_everywhere, opt_ddparab_3, cast(5.0, f32), cast(1e-6, f32), cast(100000, i64))
+  _ = assert_true(opt_is_nan(r1), "newton_minimize_1d reports NaN for a NaN first derivative")
+  r2 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_nan_everywhere, cast(5.0, f32), cast(1e-6, f32), cast(100000, i64))
+  assert_true(opt_is_nan(r2), "and for a NaN second derivative")
+}
+def test_golden_finite_objective_unchanged_by_the_nan_guard() -> unit ! { Test } = {
+  r = golden_section_search(opt_parab_3, cast(1.0, f32), cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
+  assert_close(r, cast(3.0, f32), cast(0.001, f32), "the NaN guard never fires on a finite objective")
+}
+def test_brent_minimize_finite_objective_unchanged_by_the_nan_guard() -> unit ! { Test } = {
+  r = brent_minimize(opt_parab_3, cast(1.0, f32), cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
+  assert_close(r, cast(3.0, f32), cast(0.001, f32), "and brent_minimize is unchanged too")
+}
+def test_newton_minimize_nan_curvature_at_the_converged_point_is_nan() -> unit ! { Test } = {
+  r = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_nan_everywhere, cast(3.0, f32), cast(1e-6, f32), cast(100, i64))
+  assert_true(opt_is_nan(r), "a NaN second derivative cannot verify positive curvature, so the converged point is not returned as a minimum")
+}
+def test_newton_minimize_nan_start_point_is_nan() -> unit ! { Test } = {
+  r = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_ddparab_3, opt_quiet_nan(), cast(1e-6, f32), cast(100000, i64))
+  assert_true(opt_is_nan(r), "newton_minimize_1d rejects a NaN starting point")
+}
+def test_newton_minimize_nan_tolerance_is_nan() -> unit ! { Test } = {
+  r = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_ddparab_3, cast(5.0, f32), opt_quiet_nan(), cast(100000, i64))
+  assert_true(opt_is_nan(r), "and a NaN tolerance, which otherwise forces every iteration to take the step branch")
+}

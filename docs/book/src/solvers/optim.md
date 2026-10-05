@@ -71,7 +71,19 @@ def find_min_newton() -> f32 =
 - `gradient_descent_1d` stops when `|df(x)| < 1e-10` (hard-coded).
 - `newton_minimize_1d` checks that the second derivative at the
   converged point is positive and above 0.01. If not, it returns NaN
-  to signal that the point may be a saddle or inflection.
+  to signal that the point may be a saddle or inflection. A NaN second
+  derivative also returns NaN: it cannot establish positive curvature,
+  so the point is not reported as a minimum.
+- **NaN is a failure for all four.** A NaN `tol`, a NaN bracket
+  endpoint, a NaN starting point, or a NaN from the function each
+  method actually evaluates gives NaN. `golden_section_search` and
+  `brent_minimize` evaluate the objective; `gradient_descent_1d` and
+  `newton_minimize_1d` evaluate only `df` and `ddf` and never call `f`
+  at all, so a NaN objective does not reach them. NaN compares false
+  against everything, so without this the interval comparison
+  `f(c) < f(d)` would pick the same branch at every step whatever the
+  objective, and the method would narrow deterministically to one end
+  and report that point as a minimiser.
 - All methods are pure Chelis. AD flows through the objective function
   but you must supply `df`/`ddf` explicitly. The optimizer does not
   call `grad` internally.
