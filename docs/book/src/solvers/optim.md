@@ -27,7 +27,7 @@ NaN on failure).
 - **newton_minimize_1d:** Uses both first and second derivatives
   (`df`, `ddf`). Quadratic convergence near a minimum with positive
   curvature. Returns NaN if the Hessian is non-positive or below 0.01
-  at convergence, guarding against saddle points.
+  at the point it stops on, guarding against saddle points.
 
 ## Example: golden section
 
@@ -69,11 +69,70 @@ def find_min_newton() -> f32 =
   [lo, hi]. Multiple local minima may cause convergence to any one of
   them.
 - `gradient_descent_1d` stops when `|df(x)| < 1e-10` (hard-coded).
-- `newton_minimize_1d` checks that the second derivative at the
-  converged point is positive and above 0.01. If not, it returns NaN
-  to signal that the point may be a saddle or inflection. A NaN second
-  derivative also returns NaN: it cannot establish positive curvature,
-  so the point is not reported as a minimum.
+- **`newton_minimize_1d` stops in one of two ways, and certifies the
+  point either way.** It has *converged* when `|df(x)| < tol`, or when
+  `df(x)` is exactly zero -- the second clause matters because
+  `|df(x)| < tol` is false for every gradient when `tol` is zero,
+  negative or NaN, so without it those tolerances would have no
+  convergence test at all. It has *stalled* when `x - df(x)/ddf(x)`
+  rounds back to `x`, which is where the method ends up at the limit of
+  f32 resolution. In both cases the second derivative at that point must
+  be positive and above 0.01, or NaN is returned to signal that the
+  point may be a saddle or inflection. A NaN second derivative returns
+  NaN: it cannot establish positive curvature.
+- **An infinite second derivative is accepted at a converged point and
+  rejected at a stalled one.** `+inf` is strictly positive and above
+  0.01, so at a point whose stationarity the gradient test has already
+  established it certifies a minimum and the minimiser is returned --
+  which matters because an infinite `ddf` is reachable by ordinary
+  overflow in a correct expression. A stall has satisfied no stationarity
+  test, so it carries one extra requirement that convergence does not:
+  the point and its curvature must both be finite. That is the whole
+  difference between the two, and it is what the `+-inf` cases turn on.
+  An infinite `ddf` makes every step zero, so the iterate stalls at `x0`
+  with a gradient that is not small, and `x0` is rejected rather than
+  returned. A non-finite point is rejected by the certification itself,
+  at both exits, so an iterate that has run away to `+-inf` is never
+  returned as a minimiser however it got there -- including when a
+  gradient that is zero everywhere makes `+-inf` satisfy the convergence
+  test outright.
+- **An overflowing `ddf` near a minimiser is the one case this loses.**
+  A stall is rejected when its curvature is infinite but accepted when it
+  is merely huge, and finiteness is the only discriminator the method has
+  at a stall -- not a claim that `1e30` is better evidence than `+inf`.
+  The two cases that must work force it: rejecting every stall whose
+  gradient is not exactly zero breaks a genuine convergence (the quartic
+  `(x^2-2)^2` from `x0 = 1.2` stalls exactly *at* `sqrt(2.0f32)` with a
+  gradient of `-6.74e-7` and a step of `-4.2e-8`), and accepting every
+  stall returns the starting point whenever `ddf` is infinite, which is
+  the defect this exists to fix. What is lost in the middle is a point
+  near a minimiser whose curvature has overflowed to `+inf`: NaN, where
+  the previous behaviour returned the point. **The escape is a `tol`
+  above `|df(x)|` at that point, so the convergence test fires instead
+  -- and it is not always available.** One ulp above the minimiser of
+  `(x-3)^2` the gradient is `4.8e-7`, so `tol = 1e-6` recovers it and
+  `tol = 1e-9` does not. For `2e38*(x-3)^2`, whose `ddf = 4e38`
+  overflows f32 while `df = 9.5e31` there does not, no tolerance
+  recovers it. A `-inf` curvature is never recoverable at any
+  tolerance, because the sign test rejects it at the converged exit too.
+  Scale the objective so its second derivative is representable, or use
+  `brent_minimize`, which needs no derivatives.
+- **A curvature below the 0.01 floor is now rejected at a stall as well
+  as at convergence, and no tolerance recovers that either.** This is
+  the same flat-minimum rejection the floor has always made, applied
+  uniformly: before, a tolerance small enough to reach the stall
+  bypassed it. `3.1e-4*(x^2-2)^2` with its own correct derivatives
+  stalls at `sqrt(2.0f32)` with a curvature of `0.00496` and a gradient
+  of `-2.09e-10`, so `tol = 1e-10` and `tol = 0` now return NaN where
+  they returned the minimiser, and `tol = 1e-6` returned NaN before and
+  after. Use `brent_minimize` or `golden_section_search` for flat
+  targets, as the floor's own note says.
+- **The method does not check that `ddf` is the derivative of `df`.**
+  When they disagree the step comes from a curvature the objective does
+  not have, and a `ddf` large enough underflows the step to nothing at a
+  point that is not stationary. That stall is finite throughout and its
+  curvature certifies, so the point is returned. Supply consistent
+  derivatives, or use `brent_minimize`, which needs none.
 - **A NaN the method evaluates is a failure.** A NaN bracket endpoint,
   a NaN starting point, or a NaN from the function a method actually
   evaluates gives NaN. `golden_section_search` and `brent_minimize`

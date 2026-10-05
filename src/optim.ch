@@ -8,7 +8,13 @@ export (golden_section_search, brent_minimize, gradient_descent_1d, newton_minim
 def opt_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def opt_nan_f32() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
 def opt_is_nan_f32(x: f32) -> bool = neq(x, x)
+def opt_is_finite_f32(x: f32) -> bool = sub(x, x) |> eq(cast(0.0, f32))
 def opt_phi() -> f32 = cast(0.6180339887, f32)
+def opt_certify_min_f32(h: f32, x: f32) -> f32 = {
+  ah = opt_abs_f32(h)
+  curvature_floor = cast(0.01, f32)
+  if opt_is_finite_f32(x) |> not then opt_nan_f32() else if opt_is_nan_f32(h) then opt_nan_f32() else if lt(ah, curvature_floor) then opt_nan_f32() else if lte(h, cast(0.0, f32)) then opt_nan_f32() else x
+}
 def opt_gs_rec(f: f32 -> f32, a: f32, b: f32, tol: f32, iters: i64) -> f32 = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
@@ -169,18 +175,17 @@ def opt_nmin_rec(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x: f32, tol: f3
   if lte(iters, zero_i) then opt_nan_f32() else {
     g = df(x)
     ag = opt_abs_f32(g)
-    if opt_is_nan_f32(g) then opt_nan_f32() else if lt(ag, tol) then {
-      h = ddf(x)
-      ah = opt_abs_f32(h)
-      curvature_floor = cast(0.01, f32)
-      if opt_is_nan_f32(h) then opt_nan_f32() else if lt(ah, curvature_floor) then opt_nan_f32() else if lte(h, cast(0.0, f32)) then opt_nan_f32() else x
-    } else {
+    converged = lt(ag, tol) |> or(eq(ag, cast(0.0, f32)))
+    if opt_is_nan_f32(g) then opt_nan_f32() else if converged then ddf(x) |> opt_certify_min_f32(x) else {
       h = ddf(x)
       ah = opt_abs_f32(h)
       if opt_is_nan_f32(h) |> or(lt(ah, cast(1e-30, f32))) then opt_nan_f32() else {
         step = div(g, h)
         x_next = sub(x, step)
-        if opt_is_nan_f32(x_next) then opt_nan_f32() else if eq(x_next, x) then x_next else opt_nmin_rec(f, df, ddf, x_next, tol, sub(iters, one_i))
+        stalled = eq(x_next, x)
+        settled = opt_is_finite_f32(h)
+        accepted = if settled then opt_certify_min_f32(h, x) else opt_nan_f32()
+        if opt_is_nan_f32(x_next) then opt_nan_f32() else if stalled then accepted else opt_nmin_rec(f, df, ddf, x_next, tol, sub(iters, one_i))
       }
     }
   }

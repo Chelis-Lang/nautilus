@@ -487,7 +487,7 @@ package-version string, is the one export not listed here.
 | `golden_section_search` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32` | `stable` | Takes function-typed `f`; finds minimizer in [lo,hi] |
 | `brent_minimize` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32` | `stable` | Takes function-typed `f`; Brent's minimization with parabolic interpolation |
 | `gradient_descent_1d` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, lr: f32, max_iters: i64) -> f32` | `stable` | Takes function-typed `f` and `df`; fixed learning rate, NaN on divergence |
-| `newton_minimize_1d` | `(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32` | `alpha` | Takes function-typed `f`, `df`, `ddf`; requires positive curvature at minimum |
+| `newton_minimize_1d` | `(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32` | `alpha` | Takes function-typed `f`, `df`, `ddf`; requires certifiable positive curvature at the point it stops on |
 
 ### Nautilus.Interpolation (5 exports)
 
