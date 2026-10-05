@@ -136,14 +136,6 @@ def test_brent_minimize_nan_bracket_endpoint_is_nan() -> unit ! { Test } = {
   r = brent_minimize(opt_parab_3, opt_quiet_nan(), cast(5.0, f32), cast(1e-6, f32), cast(100000, i64))
   assert_true(opt_is_nan(r), "brent_minimize rejects a NaN bracket endpoint")
 }
-def test_golden_nan_tolerance_is_nan() -> unit ! { Test } = {
-  r = golden_section_search(opt_parab_3, cast(1.0, f32), cast(5.0, f32), opt_quiet_nan(), cast(100000, i64))
-  assert_true(opt_is_nan(r), "a NaN tolerance is rejected rather than disabling the width stopping condition")
-}
-def test_brent_minimize_nan_tolerance_is_nan() -> unit ! { Test } = {
-  r = brent_minimize(opt_parab_3, cast(1.0, f32), cast(5.0, f32), opt_quiet_nan(), cast(100000, i64))
-  assert_true(opt_is_nan(r), "and brent_minimize rejects it too")
-}
 def test_gradient_descent_nan_gradient_is_nan() -> unit ! { Test } = {
   r = gradient_descent_1d(opt_parab_3, opt_nan_everywhere, cast(5.0, f32), cast(0.1, f32), cast(100000, i64))
   assert_true(opt_is_nan(r), "gradient_descent_1d already reported NaN for a NaN gradient; this pins it")
@@ -170,7 +162,41 @@ def test_newton_minimize_nan_start_point_is_nan() -> unit ! { Test } = {
   r = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_ddparab_3, opt_quiet_nan(), cast(1e-6, f32), cast(100000, i64))
   assert_true(opt_is_nan(r), "newton_minimize_1d rejects a NaN starting point")
 }
-def test_newton_minimize_nan_tolerance_is_nan() -> unit ! { Test } = {
-  r = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_ddparab_3, cast(5.0, f32), opt_quiet_nan(), cast(100000, i64))
-  assert_true(opt_is_nan(r), "and a NaN tolerance, which otherwise forces every iteration to take the step branch")
+def test_golden_nan_tolerance_behaves_as_a_zero_tolerance() -> unit ! { Test } = {
+  nan_tol = golden_section_search(opt_parab_3, cast(1.0, f32), cast(5.0, f32), opt_quiet_nan(), cast(40, i64))
+  zero_tol = golden_section_search(opt_parab_3, cast(1.0, f32), cast(5.0, f32), cast(0.0, f32), cast(40, i64))
+  _ = assert_true(eq(nan_tol, zero_tol), "a NaN tolerance is not rejected: it disables the width exit, which is what a zero tolerance does")
+  assert_close(nan_tol, cast(3.0, f32), cast(0.001, f32), "and it still converges")
+}
+def test_brent_minimize_nan_tolerance_behaves_as_a_zero_tolerance() -> unit ! { Test } = {
+  nan_tol = brent_minimize(opt_parab_3, cast(1.0, f32), cast(5.0, f32), opt_quiet_nan(), cast(40, i64))
+  zero_tol = brent_minimize(opt_parab_3, cast(1.0, f32), cast(5.0, f32), cast(0.0, f32), cast(40, i64))
+  _ = assert_true(eq(nan_tol, zero_tol), "same for brent_minimize")
+  assert_close(nan_tol, cast(3.0, f32), cast(0.001, f32), "and it still converges")
+}
+def test_newton_minimize_nan_tolerance_still_converges() -> unit ! { Test } = {
+  r = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_ddparab_3, cast(5.0, f32), opt_quiet_nan(), cast(100, i64))
+  assert_close(r, cast(3.0, f32), cast(0.001, f32), "a NaN tolerance forces every step but still reaches the minimiser")
+}
+def opt_nan_band_above(x: f32) -> f32 =
+  if gt(x, cast(3.4, f32)) |> and(lt(x, cast(3.6, f32))) then div(cast(0.0, f32), cast(0.0, f32)) else {
+    y = sub(x, cast(3.0, f32))
+    mul(y, y)
+  }
+def opt_nan_band_at_two(x: f32) -> f32 =
+  if gt(x, cast(1.9, f32)) |> and(lt(x, cast(2.1, f32))) then div(cast(0.0, f32), cast(0.0, f32)) else {
+    y = sub(x, cast(3.0, f32))
+    mul(y, y)
+  }
+def test_golden_partially_defined_objective_reports_the_nan_it_reaches() -> unit ! { Test } = {
+  r = golden_section_search(opt_nan_band_above, cast(1.0, f32), cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
+  assert_true(opt_is_nan(r), "golden section probes 3.472, so a NaN band there is reported instead of parking on its edge")
+}
+def test_golden_unreached_nan_region_does_not_change_the_answer() -> unit ! { Test } = {
+  r = golden_section_search(opt_nan_band_at_two, cast(1.0, f32), cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
+  assert_close(r, cast(3.0, f32), cast(0.001, f32), "and a NaN band golden section never probes leaves the result untouched")
+}
+def test_brent_minimize_partially_defined_objective_reports_the_nan_it_reaches() -> unit ! { Test } = {
+  r = brent_minimize(opt_nan_band_at_two, cast(1.0, f32), cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
+  assert_true(opt_is_nan(r), "brent_minimize seeds at the quarter point 2.0, so the same band is inside its sample set")
 }

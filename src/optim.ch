@@ -28,10 +28,7 @@ def opt_gs_rec(f: f32 -> f32, a: f32, b: f32, tol: f32, iters: i64) -> f32 = {
   }
 }
 def golden_section_search(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32 = {
-  nan_input =
-    opt_is_nan_f32(lo)
-    |> or(opt_is_nan_f32(hi))
-    |> or(opt_is_nan_f32(tol))
+  nan_input = opt_is_nan_f32(lo) |> or(opt_is_nan_f32(hi))
   if nan_input then opt_nan_f32() else opt_gs_rec(f, lo, hi, tol, max_iters)
 }
 def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32, fv: f32, fw: f32, tol: f32, iters: i64, total_iters: i64) -> f32 = {
@@ -134,10 +131,7 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
   }
 }
 def brent_minimize(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32 = {
-  nan_input =
-    opt_is_nan_f32(lo)
-    |> or(opt_is_nan_f32(hi))
-    |> or(opt_is_nan_f32(tol))
+  nan_input = opt_is_nan_f32(lo) |> or(opt_is_nan_f32(hi))
   if nan_input then opt_nan_f32() else {
     mid = cast(0.5, f32) |> mul(add(lo, hi))
     quarter = add(lo, cast(0.25, f32) |> mul(sub(hi, lo)))
@@ -192,6 +186,6 @@ def opt_nmin_rec(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x: f32, tol: f3
   }
 }
 def newton_minimize_1d(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32 = {
-  nan_input = opt_is_nan_f32(x0) |> or(opt_is_nan_f32(tol))
+  nan_input = opt_is_nan_f32(x0)
   if nan_input then opt_nan_f32() else opt_nmin_rec(f, df, ddf, x0, tol, max_iters)
 }
