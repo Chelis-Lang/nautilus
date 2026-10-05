@@ -33,21 +33,20 @@ the current verdicts.
 ## §cannot-be-probed
 
 - **`chelis#909`**: a function-typed parameter has no C host ABI, so a
-  consumer's `chelis build` rejects the call site ([04-TOT-2]). Build-lane
-  again, so not expressible here for the same reason. `Nautilus.Rolling`
+  consumer's `chelis build` rejects the call site ([04-TOT-2]). The test
+  harness does not enter C host lowering. `Nautilus.Rolling`
   selects its reduction with a closed tag instead, which is the permanent
   design rather than a narrowing awaiting a fix, so there is nothing to
   de-narrow. `chelis#867` records that no issue owns that ABI.
 
 - **`chelis#2370`**: exact-AD Levenberg-Marquardt composition loses
   runtime-extent binder provenance (under the tracking issue `chelis#1277`).
-  The old provenance failure appeared only when the shipped
-  finite-difference Jacobian in `src/curvefit.ch` was replaced by exact AD
-  and the six multi-parameter recovery tests in `tests/curvefit.ch` ran.
+  Replacing the finite-difference Jacobian in `src/curvefit.ch` with exact AD
+  must pass the six multi-parameter recovery tests in `tests/curvefit.ch`.
   The isolated Jacobian-row witnesses pass, so they test a smaller
-  boundary. At 0.18.13, a seeded-output exact-AD replacement failed
-  all six recoveries, but at host `to_list` lowering before the old
-  provenance boundary; it does not prove the old diagnostic persists.
+  boundary. With Chelis 0.18.13, a seeded-output exact-AD replacement fails
+  all six recoveries at host `to_list` lowering, before the provenance
+  boundary. The provenance condition remains unverified.
   The narrowing site in `src/curvefit.ch` points here instead of spelling
   the issue number, because the conformance audit treats any issue citation
   in `src/` as requiring an executable probe and does not consult this
@@ -65,8 +64,8 @@ the current verdicts.
   introduces a `match` over an owned value consumed on one arm, whatever its
   dtype.
 
-- **`chelis#2152`**: the previously rejecting minimal downstream cast
-  consumer now builds at both f32 and f64, but a complete Float-generic
+- **`chelis#2152`**: the minimal downstream cast
+  consumer builds at both f32 and f64, but a complete Float-generic
   Nautilus consumer matrix is still needed. `chelis test` does not exercise
   that C lane. Use the manual recipe below.
 
@@ -76,10 +75,9 @@ The reproducer needs two packages: a library installed into a temporary
 `CHELIS_REEF_HOME`, and a consumer package that runs `chelis build`. The exact
 steps and variant table are in chelis#2152.
 
-- **0.18.13 result:** the function-parameter-plus-cast consumer builds,
-  links, and runs at f32 and f64, printing 1.5 at both. An earlier 0.18.12
-  probe also built a generic `Nautilus.Stats.mean_vec` consumer at both widths.
-  The broader Stats and Roots consumer matrix has no complete verdict.
+- **Pinned result:** the function-parameter-plus-cast consumer builds,
+  links, and runs at f32 and f64, printing 1.5 at both. The broader Stats,
+  Roots, and LinAlg consumer matrix has no complete verdict.
 - **On full pass:** only when every affected generic Nautilus consumer in
   the chelis#2152 entry of `docs/UPSTREAM_BUGS.md` builds, compiles, links,
   and runs at f32 and f64 may a module de-narrow under its own gates.

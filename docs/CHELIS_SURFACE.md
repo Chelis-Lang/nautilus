@@ -811,27 +811,18 @@ round-trip witness. `chelis deep`/`surf` are the CLI views; `spec/02`
 
 | Item | Value |
 |---|---|
-| Source package version | Nautilus `0.7.48` candidate; last published Nautilus package is `v0.7.47` |
-| Pinned compiler | Published `chelis 0.18.13` (`reef.toml`: `=0.18.13`) |
-| Latest upstream release | `chelis 0.18.13` (checked 2026-10-05) |
+| Source package version | Nautilus `0.7.48` |
+| Pinned compiler | `chelis 0.18.13` (`reef.toml`: `=0.18.13`) |
 | Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.13` in the regenerated local `reef.lock` (ignored build output) |
-| Upstream release identity | Tag `v0.18.13` at source commit `01ce8dd93cd21345fe05c9375966c96d3e9f5c07`; release workflow run `37333621011` succeeded; Darwin arm64 tarball SHA-256 `2f7bb08780fdf9b10a8a7a2d4dbce98e993e01e621ac9e85202648bf4c812235` |
-| Installed compiler payload | Darwin arm64 binary SHA-256 `6bdc2ca8faeb13a4c47e2cce3bd2ef39a86d1ac1f699e700f85b5c612350bb8c`, byte-identical to the binary extracted from the official v0.18.13 tarball; the tarball passed its release SHA-256 sidecar |
-| Validation status | Official Darwin arm64 binary: 616 native tests, 32 negative contracts, 216 strict SciPy parity samples, 88 formatted Chelis sources, tree lint, `reef build`, 34 Rolling C consumers in package and across a package boundary, and a byte-identical release artifact rebuild pass. The 4 SKILL and 18 book examples, mdBook build, 104 script unit tests, conform audit, and bump-check also pass. Manual upstream re-probes are recorded in `docs/UPSTREAM_BUGS.md`. |
-| Last refreshed | 2026-10-05 |
 
 `@pin` means the row describes behavior available (or a limitation verified)
 on the exact pinned release. `@upstream` means a capability exists in a newer
-published release and will arrive at the next bump. The pin is the latest
-published release, so this snapshot has no `@upstream` rows; unreleased
-compiler work is not listed as upstream.
+published release and will arrive at the next bump. This inventory has no
+`@upstream` rows; unreleased compiler work is not listed as upstream.
 
-This is the Nautilus-scoped view of the canonical Chelis inventory. The gate
-that backs it ran on the published Darwin arm64 asset: the tarball was checked
-against its release sidecar and its extracted compiler payload is byte-identical
-to the installed toolchain, so every result below comes from official release
-bytes. Version-sensitive statements resolve to the executable 0.18.13 re-probes
-cited in [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
+This is the Nautilus-scoped view of the canonical Chelis inventory. The
+version-sensitive limitations and their reproducers are in
+[`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md).
 
 ## Capability inventory
 
@@ -855,9 +846,9 @@ does not buy were measured rather than assumed. They are recorded in
 
 | Fact | Evidence |
 |---|---|
-| Genericity does not change f32 results | A compiled-and-linked C consumer gets bit-identical f32 results from the generic module and from the earlier f32-only one. `reef build` alone does not show this. |
+| Special's supported widths | Its f32 and f64 positive and parity suites pass. `reef build` does not prove that a dependent package's C consumer compiles; that gate is tracked under chelis#2152. |
 | Unsupported Special precisions | All 67 Special binders are bounded by `{f32, f64}`. `gamma(5.5bf16)` and `bessel_j0(5.0f16)` are rejected at the call site by the negative tests, preventing the former misleading finite value and the latter NaN. The f32 and f64 positive and parity suites pass. The 35 explicit `f64` coefficient suffixes are retained for nautilus#83. | `@pin` |
-| Widening buys arithmetic, not accuracy | Rerunning `tests/special_f64.ch` with every `f64` rewritten to `f32` fails 23 of its 30 tests, so most exports do compute differently at f64. How much better varies. Six -- `gamma`, `log_gamma`, `beta`, `lbeta`, `ellipk`, `ellipe` -- are limited by f32 rounding rather than by their own coefficients and so reach f64 grade. Of the remaining fifteen scalar exports, `erf` and `erfc` are covered separately below; the other thirteen are limited by their approximations and improve by less, by amounts that share no common bound: `bessel_y1` is nearly six orders better at its test point than near its large-x seam around 7.4, and `airy_ai`/`airy_bi` above x = 5 gain nothing at all, both dtypes sitting on the leading asymptotic term. No per-function, per-domain f64 figure is established for any of the thirteen, here or anywhere else in the repo; the two figures quoted for `bessel_y1` are single points, chosen to show that no single figure covers it. Measure the argument you care about. The `erf` and `erfc` figures below were measured directly and are exact. `erf` is the clearest case -- A&S 7.1.26's own 1.5e-7 bound dominates at every width, 1.385e-7 at f64 against 1.861e-7 at f32 at x = 0.5 (exhaustive maxima: 1.3884e-7 f64, 4.438e-7 f32). `erfc` is the opposite and the one real win: f32 underflows to exactly 0 from about x = 3.92, where f64 still returns 1.546e-8 at x = 4 (2.8e-3 relative). Narrowing that floor means replacing the coefficients; nautilus#74 tracks it. |
+| Widening buys arithmetic, not accuracy | `tests/special_f64.ch` exercises all supported widths, but each approximation has its own error envelope. Six -- `gamma`, `log_gamma`, `beta`, `lbeta`, `ellipk`, `ellipe` -- reach f64-grade error on the measured domains. The other scalar exports have function- and domain-specific limits; see the [precision appendix](book/src/appendix/precision.md). `erf` remains near its 1.5e-7 approximation bound, while `erfc` avoids the f32 underflow to zero around x = 3.92. nautilus#74 tracks coefficient work. |
 
 ### Primitive and builtin families used by Nautilus
 

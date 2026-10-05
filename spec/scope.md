@@ -23,8 +23,9 @@ rather than re-derive it.
   and no LAPACK or nalgebra backend. Scalar routines, tensor algorithms,
   decompositions, and iterative solvers are built from Chelis primitives,
   collections, recursion, and folds.
-- **Precision.** `Nautilus.Special` is generic over the Chelis `Float` family,
-  so each function can be instantiated at `f32` or `f64`. A wider type does not
+- **Precision.** `Nautilus.Special` uses the `{f32, f64}` dtype set,
+  so each function can be instantiated at `f32` or `f64` and rejects `f16` and
+  `bf16` at checking. A wider type does not
   imply wider accuracy: the per-function error table in the book's precision
   appendix is authoritative. `Nautilus.Rolling` is concrete `f64` over
   `List[f64]`; every other module is currently `f32`. Iteration counts are

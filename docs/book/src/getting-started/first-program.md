@@ -40,7 +40,7 @@ chelis eval --file src/main.ch
 ```
 
 `chelis check` should report a score of `1` and an empty error list. The
-evaluator prints `price = 10.450584` for this example. Formatting
+evaluator prints `price = 10.450577` for this example. Formatting
 comes first because both `check` and `eval --file` enforce Chelis's source
 style gate.
 
