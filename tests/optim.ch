@@ -244,6 +244,38 @@ def test_newton_minimize_stall_near_a_minimiser_needs_a_positive_tolerance() -> 
   r3 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_huge_curvature, opt_one_ulp_above_3(), cast(0.0, f32), cast(100, i64))
   assert_close(r3, cast(3.0, f32), cast(0.001, f32), "while a finite 1e30 curvature at the same point and tolerance still returns it, which is the asymmetry: finiteness is the only discriminator available, not a claim that 1e30 is better evidence than infinity")
 }
+def opt_zero_gradient(_x: f32) -> f32 = cast(0.0, f32)
+def opt_square(x: f32) -> f32 = mul(x, x)
+def opt_dsquare(x: f32) -> f32 = mul(cast(2.0, f32), x)
+def opt_ddsquare(_x: f32) -> f32 = cast(2.0, f32)
+def test_newton_minimize_never_certifies_a_non_finite_point() -> unit ! { Test } = {
+  r1 = newton_minimize_1d(opt_parab_3, opt_zero_gradient, opt_ddparab_3, opt_inf(), cast(0.0, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r1), "a gradient that is zero everywhere makes an infinite starting point satisfy the convergence test, so the finiteness requirement belongs in the certification rather than on the stall path alone")
+  r2 = newton_minimize_1d(opt_parab_3, opt_zero_gradient, opt_ddparab_3, neg(opt_inf()), cast(0.0, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r2), "and at negative infinity")
+  r3 = newton_minimize_1d(opt_parab_3, opt_zero_gradient, opt_ddparab_3, opt_inf(), cast(1e-6, f32), cast(100, i64))
+  assert_true(opt_is_nan(r3), "and at a positive tolerance, where lt(0, tol) reaches the same certification")
+}
+def test_newton_minimize_returns_the_point_it_stopped_on_signed_zero_included() -> unit ! { Test } = {
+  r = newton_minimize_1d(opt_square, opt_dsquare, opt_ddsquare, cast(-0.0, f32), cast(0.0, f32), cast(100, i64))
+  recip = div(cast(1.0, f32), r)
+  _ = assert_true(lt(recip, cast(0.0, f32)), "the certified point is x itself, so a negative zero start is returned as a negative zero; the previous code returned x - x/2 and so normalised it to positive zero. assert_close cannot see this, hence the reciprocal")
+  assert_close(r, cast(0.0, f32), cast(1e-9, f32), "either zero is the minimiser of x^2, so this pins the sign rather than the value")
+}
+def opt_scaled_parab_3(x: f32) -> f32 = {
+  d = sub(x, cast(3.0, f32))
+  mul(cast(2e38, f32), mul(d, d))
+}
+def opt_dscaled_parab_3(x: f32) -> f32 = mul(cast(2.0, f32), mul(cast(2e38, f32), sub(x, cast(3.0, f32))))
+def opt_ddscaled_parab_3(_x: f32) -> f32 = mul(cast(2.0, f32), cast(2e38, f32))
+def test_newton_minimize_overflowing_curvature_has_no_tolerance_remedy() -> unit ! { Test } = {
+  r1 = newton_minimize_1d(opt_scaled_parab_3, opt_dscaled_parab_3, opt_ddscaled_parab_3, opt_one_ulp_above_3(), cast(1e-6, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r1), "2e38*(x-3)^2 has a correct ddf of 4e38, which overflows f32 to +inf while its df stays finite at 9.5e31, so one ulp from the minimiser the step underflows and the stall cannot be certified")
+  r2 = newton_minimize_1d(opt_scaled_parab_3, opt_dscaled_parab_3, opt_ddscaled_parab_3, opt_one_ulp_above_3(), cast(1.0, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r2), "and no usable tolerance recovers it: the escape needs tol above |df(x)| = 9.5e31, so unlike the unscaled case a positive tolerance is not a remedy here")
+  r3 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_inf_curvature, opt_one_ulp_above_3(), cast(1e-9, f32), cast(100, i64))
+  assert_true(opt_is_nan(r3), "and the unscaled case loses it too once tol drops below its 4.8e-7 gradient, which is why the remedy is stated as a bound rather than as any positive tolerance")
+}
 def test_newton_minimize_does_not_detect_inconsistent_derivatives() -> unit ! { Test } = {
   r = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_huge_curvature, cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
   assert_close(r, cast(5.0, f32), cast(0.001, f32), "a ddf of 1e30 is not the derivative of this df: it underflows the step at a point whose gradient is 4, and 1e30 is certifiable curvature, so the stalled point is returned. Consistent derivatives are a precondition the method cannot check from one point, and this pins that it does not pretend to")

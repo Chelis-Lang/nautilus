@@ -91,21 +91,30 @@ def find_min_newton() -> f32 =
   difference between the two, and it is what the `+-inf` cases turn on.
   An infinite `ddf` makes every step zero, so the iterate stalls at `x0`
   with a gradient that is not small, and `x0` is rejected rather than
-  returned. An iterate that has run away to `+-inf` stalls there
-  permanently and is rejected for the same reason.
-- **Pass a positive `tol` when `ddf` can overflow.** A stall is rejected
-  when its curvature is infinite but accepted when it is merely huge, and
-  finiteness is the only discriminator the method has -- not a claim that
-  `1e30` is better evidence than `+inf`. The two must-have cases force
-  it: rejecting every stall whose gradient is not exactly zero breaks a
-  genuine convergence (the quartic `(x^2-2)^2` stalls one ulp from
-  `sqrt(2)` with a gradient of `5.6e-7`), and accepting every stall
-  returns the starting point whenever `ddf` is infinite. So one case is
-  lost in the middle: one ulp from the minimiser with `ddf = +inf` and
-  `tol = 0`, the gradient is `4.8e-7`, not zero, the step underflows, and
-  the answer is NaN where a finite `1e30` curvature at the same point
-  returns it. Any positive `tol` above that gradient accepts it through
-  the convergence test instead, which is the normal case and the fix.
+  returned. A non-finite point is rejected by the certification itself,
+  at both exits, so an iterate that has run away to `+-inf` is never
+  returned as a minimiser however it got there -- including when a
+  gradient that is zero everywhere makes `+-inf` satisfy the convergence
+  test outright.
+- **An overflowing `ddf` near a minimiser is the one case this loses.**
+  A stall is rejected when its curvature is infinite but accepted when it
+  is merely huge, and finiteness is the only discriminator the method has
+  at a stall -- not a claim that `1e30` is better evidence than `+inf`.
+  The two cases that must work force it: rejecting every stall whose
+  gradient is not exactly zero breaks a genuine convergence (the quartic
+  `(x^2-2)^2` stalls one ulp from `sqrt(2)` with a gradient of
+  `5.6e-7`), and accepting every stall returns the starting point
+  whenever `ddf` is infinite, which is the defect this exists to fix.
+  What is lost in the middle is a point near a minimiser whose curvature
+  has overflowed: NaN, where the previous behaviour returned the point.
+  **The escape is a `tol` above `|df(x)|` at that point, so the
+  convergence test fires instead -- and it is not always available.** One
+  ulp above the minimiser of `(x-3)^2` the gradient is `4.8e-7`, so
+  `tol = 1e-6` recovers it and `tol = 1e-9` does not. For
+  `2e38*(x-3)^2`, whose `ddf = 4e38` overflows f32 while
+  `df = 9.5e31` there does not, no sensible tolerance recovers it: the
+  method returns NaN. Scale the objective so its second derivative is
+  representable, or use `brent_minimize`, which needs no derivatives.
 - **The method does not check that `ddf` is the derivative of `df`.**
   When they disagree the step comes from a curvature the objective does
   not have, and a `ddf` large enough underflows the step to nothing at a

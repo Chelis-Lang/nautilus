@@ -143,9 +143,12 @@ The [maintainer guide](../docs/maintainer-guide.md) lists the commands for each 
   convergence (`|df(x)| < tol`, or an exactly zero gradient, which is the only
   convergence test available when `tol` is zero, negative or NaN) or on a stall
   (`x - df(x)/ddf(x)` rounding back to `x`), and certifies the curvature either
-  way; a stall additionally requires the point and its curvature to be finite,
-  because it has satisfied no stationarity test, so a stall one ulp from a
-  minimiser with an infinite curvature needs a positive `tol` to be accepted.
+  way; certification rejects a non-finite point at either exit, and a stall
+  additionally requires a finite curvature because it has satisfied no
+  stationarity test. A point near a minimiser whose `ddf` has overflowed to
+  `+-inf` is therefore NaN unless `tol` exceeds `|df(x)|` there, which an
+  objective scaled so that `ddf` overflows while `df` does not makes
+  unreachable.
   It does not verify that `ddf` is the derivative of `df`, so a `ddf` large
   enough to underflow the step at a non-stationary point still returns that
   point.

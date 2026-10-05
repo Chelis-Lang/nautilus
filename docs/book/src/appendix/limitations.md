@@ -64,18 +64,32 @@ the minimiser, one that becomes `-inf` only at the point reached, a curvature
 below the 0.01 floor (`0.001*(x-3)^2` from `x0 = 5`, `tol = 0`), and Newton on a
 concave objective, which previously returned the maximiser.
 
-**A stalled point with an infinite curvature needs a positive `tol`.** When the
-Newton step underflows at a point whose gradient is not exactly zero, the point is
-accepted if its curvature is finite and rejected if it is infinite. Finiteness is
-the only discriminator available, and the two cases that must work force the
-asymmetry: rejecting every non-stationary stall breaks a real convergence (the
-quartic `(x^2-2)^2` stalls one ulp from `sqrt(2)` with a gradient of `5.6e-7`),
-and accepting every stall returns `x0` whenever `ddf` is infinite, which is the
-defect this behaviour exists to fix. One case is therefore lost against the
-previous behaviour: one ulp above the minimiser of `(x-3)^2` with `ddf = +inf` and
-`tol = 0` returns NaN, where `ddf = 1e30` at the same point returns `3.0000002`.
-Any `tol` above the gradient there accepts it through the convergence test, so a
-positive tolerance is the remedy.
+**An overflowing `ddf` near a minimiser returns NaN, and a positive `tol` does not
+always recover it.** When the Newton step underflows at a point whose gradient is
+not exactly zero, the point is accepted if its curvature is finite and rejected if
+it is infinite. Finiteness is the only discriminator available at a stall, and the
+two cases that must work force the asymmetry: rejecting every non-stationary stall
+breaks a real convergence (the quartic `(x^2-2)^2` stalls one ulp from `sqrt(2)`
+with a gradient of `5.6e-7`), and accepting every stall returns `x0` whenever
+`ddf` is infinite, which is the defect this behaviour exists to fix.
+
+What is lost against the previous behaviour is a point near a minimiser whose
+curvature has overflowed. The escape is a `tol` greater than `|df(x)|` at that
+point, which routes it through the convergence test instead -- **and whether one
+exists depends on the objective's scale.** One ulp above the minimiser of
+`(x-3)^2` the gradient is `4.8e-7`: `tol = 1e-6` returns `3.0000002` and
+`tol = 1e-9` returns NaN. For `2e38*(x-3)^2`, with both derivatives written
+correctly from that same objective, `ddf = 4e38` overflows f32 to `+inf` while
+`df = 9.5e31` there stays finite, so no usable tolerance recovers it and the
+method returns NaN at `tol = 1e-6` and at `tol = 1.0` alike. A finite
+`ddf = 1e30` at the same point returns `3.0000002` at any tolerance. Scale the
+objective so its second derivative is representable in f32, or use
+`brent_minimize`.
+
+A smaller consequence of certifying the point rather than the step: the value
+returned is `x` itself, so a `-0.0` start is returned as `-0.0` where the previous
+code returned `+0.0`. Both are minimisers of `x^2` and `assert_close` cannot tell
+them apart; only the sign of a reciprocal can.
 
 **`newton_minimize_1d` trusts `ddf` to be the derivative of `df`.** It never
 checks the two against each other, so an inconsistent pair is not diagnosed. A
@@ -85,8 +99,8 @@ the curvature check passes on that large positive value, and the point is
 returned as a minimiser. Measured: `(x-3)^2` with the correct `df` and a constant
 `ddf = 1e30` returns the starting point. A `-1e30` is rejected instead, but by
 the sign test rather than by anything detecting the inconsistency, and a
-non-finite `ddf` or a runaway iterate are rejected by the stall's finiteness
-requirement. Nothing in a single-point evaluation distinguishes a huge positive
+non-finite `ddf` is rejected by the stall's finiteness requirement, and a
+non-finite point by the certification at either exit. Nothing in a single-point evaluation distinguishes a huge positive
 curvature from a genuinely sharp minimum.
 
 ## Sampling
