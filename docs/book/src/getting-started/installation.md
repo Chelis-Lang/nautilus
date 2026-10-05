@@ -64,6 +64,6 @@ chelis reef build
 ```
 
 `chelis reef build` writes `dist/nautilus-0.7.47.chb` and a source archive. It
-does not produce an executable. [CONTRIBUTING.md](https://github.com/Chelis-Lang/nautilus/blob/main/CONTRIBUTING.md)
+does not produce an executable. [maintainer guide](https://github.com/Chelis-Lang/nautilus/blob/main/docs/maintainer-guide.md)
 has the native tests and optional SciPy parity commands. Parity needs uv and
 Python 3.12; ordinary use of the Reef package does not.

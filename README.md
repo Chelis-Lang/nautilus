@@ -98,7 +98,7 @@ chelis test tests_neg/ --expect neg
 uv run --project parity --frozen python parity/run_parity.py --strict
 ```
 
-[`CONTRIBUTING.md`](CONTRIBUTING.md) covers the full local gate, the test
+The [maintainer guide](docs/maintainer-guide.md) covers the full local gate, the test
 layout, and how compiler upgrades are handled.
 
 ## Repository layout
