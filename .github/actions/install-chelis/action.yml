@@ -2,12 +2,9 @@ name: Install Chelis toolchain
 description: >-
   Resolve the exact compiler pin from reef.toml, restore (or download) that
   Chelis toolchain tarball from a per-tag actions/cache, put its bin/ on PATH,
-  verify the version, and
-  optionally restore the local reef registry (~/.chelis/reef) from a
-  cache keyed on the installed dependency tags. Replaces the inline
-  `gh release download` + `tar` + reef-install blocks duplicated across
-  CI jobs so each leg stops re-downloading the toolchain and re-fetching
-  reef deps on every run.
+  verify the version. Chelis bundles its standard library in the toolchain.
+  Replaces the inline `gh release download` + `tar` blocks duplicated across
+  CI jobs so each leg stops re-downloading the toolchain on every run.
 
 inputs:
   platform:
@@ -19,16 +16,6 @@ inputs:
   gh-token:
     description: Token with contents:read on Chelis-Lang/chelis (for the cache-miss download).
     required: true
-  reef-cache-key:
-    description: >-
-      Optional cache key fragment identifying the reef dependency set this
-      job installs (e.g. "std"). The action appends the
-      exact compiler tag resolved from reef.toml. When set, ~/.chelis/reef is
-      restored/saved under this key and the
-      `reef-cache-hit` output reports whether a populated registry was
-      restored, so the caller can skip its `reef install` steps.
-    required: false
-    default: ""
 
 outputs:
   chelis-tag:
@@ -37,9 +24,6 @@ outputs:
   chelis-version:
     description: Bare Chelis version resolved from reef.toml.
     value: ${{ steps.reef-pin.outputs.chelis-version }}
-  reef-cache-hit:
-    description: "'true' when the reef registry cache was restored (caller may skip reef install)."
-    value: ${{ steps.reef-cache.outputs.cache-hit }}
 
 runs:
   using: composite
@@ -91,11 +75,3 @@ runs:
     - name: Verify toolchain version
       shell: bash
       run: test "$(chelis --version)" = "chelis ${{ steps.reef-pin.outputs.chelis-version }}"
-
-    - name: Restore cached reef registry
-      id: reef-cache
-      if: inputs.reef-cache-key != ''
-      uses: actions/cache@v4
-      with:
-        path: ~/.chelis/reef
-        key: chelis-reef-${{ inputs.platform }}-${{ inputs.reef-cache-key }}-${{ steps.reef-pin.outputs.chelis-tag }}

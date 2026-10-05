@@ -41,13 +41,6 @@ jobs:
         uses: ./.github/actions/install-chelis
         with:
           gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-          reef-cache-key: std
-
-      - name: Install chelis-std into local registry
-        if: steps.chelis.outputs.reef-cache-hit != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: python3 scripts/install_chelis_std.py
 
       # Per-file chelis check with score=1 enforcement over every module.
       - name: chelis check (all modules, score=1 enforced)

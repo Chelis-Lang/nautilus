@@ -815,9 +815,9 @@ round-trip witness. `chelis deep`/`surf` are the CLI views; `spec/02`
 | Pinned compiler | Published `chelis 0.18.13` (`reef.toml`: `=0.18.13`) |
 | Latest upstream release | `chelis 0.18.13` (checked 2026-10-05) |
 | Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.13` in the regenerated local `reef.lock` (ignored build output) |
-| Upstream release identity | Tag `v0.18.13` at source commit `d753138f5e0059eab35e2babe86b17d6cfcfed37`; release workflow run `37333621011` succeeded; Darwin arm64 tarball SHA-256 `2f7bb08780fdf9b10a8a7a2d4dbce98e993e01e621ac9e85202648bf4c812235` |
+| Upstream release identity | Tag `v0.18.13` at source commit `01ce8dd93cd21345fe05c9375966c96d3e9f5c07`; release workflow run `37333621011` succeeded; Darwin arm64 tarball SHA-256 `2f7bb08780fdf9b10a8a7a2d4dbce98e993e01e621ac9e85202648bf4c812235` |
 | Installed compiler payload | Darwin arm64 binary SHA-256 `6bdc2ca8faeb13a4c47e2cce3bd2ef39a86d1ac1f699e700f85b5c612350bb8c`, byte-identical to the binary extracted from the official v0.18.13 tarball; the tarball passed its release SHA-256 sidecar |
-| Validation status | Official Darwin arm64 binary: 616 native tests, 32 negative contracts, 216 strict SciPy parity samples, 88 formatted Chelis sources, tree lint, `reef build`, 34 Rolling C consumers in package and across a package boundary, and a byte-identical release artifact rebuild pass. The 4 SKILL and 18 book examples, mdBook build, 107 script unit tests, conform audit, and bump-check also pass. Manual upstream re-probes are recorded in `docs/UPSTREAM_BUGS.md`. |
+| Validation status | Official Darwin arm64 binary: 616 native tests, 32 negative contracts, 216 strict SciPy parity samples, 88 formatted Chelis sources, tree lint, `reef build`, 34 Rolling C consumers in package and across a package boundary, and a byte-identical release artifact rebuild pass. The 4 SKILL and 18 book examples, mdBook build, 104 script unit tests, conform audit, and bump-check also pass. Manual upstream re-probes are recorded in `docs/UPSTREAM_BUGS.md`. |
 | Last refreshed | 2026-10-05 |
 
 `@pin` means the row describes behavior available (or a limitation verified)

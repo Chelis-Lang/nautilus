@@ -121,13 +121,6 @@ jobs:
         uses: ./.github/actions/install-chelis
         with:
           gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-          reef-cache-key: std
-
-      - name: Install chelis-std into local registry
-        if: steps.chelis.outputs.reef-cache-hit != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: python3 scripts/install_chelis_std.py
 
       - name: Check all Chelis source formatting
         run: git ls-files -z '*.ch' | xargs -0 -n1 chelis fmt --check
@@ -202,13 +195,6 @@ jobs:
         uses: ./.github/actions/install-chelis
         with:
           gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-          reef-cache-key: std
-
-      - name: Install chelis-std into local registry
-        if: steps.chelis.outputs.reef-cache-hit != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: python3 scripts/install_chelis_std.py
 
       - name: chelis test (node-local parallel)
         # --suite-timeout is deliberately left at its stock default. Raising it
@@ -253,13 +239,6 @@ jobs:
         uses: ./.github/actions/install-chelis
         with:
           gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-          reef-cache-key: std
-
-      - name: Install chelis-std into local registry
-        if: steps.chelis.outputs.reef-cache-hit != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: python3 scripts/install_chelis_std.py
 
       - name: Install uv
         uses: astral-sh/setup-uv@v8.1.0
@@ -292,13 +271,6 @@ jobs:
         with:
           platform: darwin-arm64
           gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-          reef-cache-key: std
-
-      - name: Install chelis-std into local registry
-        if: steps.chelis.outputs.reef-cache-hit != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-        run: python3 scripts/install_chelis_std.py
 
       - name: chelis reef build (proof-of-life)
         run: chelis reef build
