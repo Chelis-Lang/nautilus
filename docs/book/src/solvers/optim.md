@@ -26,8 +26,8 @@ NaN on failure).
   analytic gradients and want to tune learning rate.
 - **newton_minimize_1d:** Uses both first and second derivatives
   (`df`, `ddf`). Quadratic convergence near a minimum with positive
-  curvature. Returns NaN if the Hessian is non-positive or below 0.01
-  at convergence, guarding against saddle points.
+  curvature. Returns NaN if the Hessian is non-positive, below 0.01, or
+  not finite, guarding against saddle points.
 
 ## Example: golden section
 
@@ -71,9 +71,17 @@ def find_min_newton() -> f32 =
 - `gradient_descent_1d` stops when `|df(x)| < 1e-10` (hard-coded).
 - `newton_minimize_1d` checks that the second derivative at the
   converged point is positive and above 0.01. If not, it returns NaN
-  to signal that the point may be a saddle or inflection. A NaN second
-  derivative also returns NaN: it cannot establish positive curvature,
-  so the point is not reported as a minimum.
+  to signal that the point may be a saddle or inflection.
+- **A second derivative that is not finite gives NaN, whatever its
+  sign.** A NaN cannot establish positive curvature, and neither can an
+  infinity: `+inf` is literally positive and above 0.01, but a Newton
+  step of `df(x) / +-inf` is zero, so the iterate cannot move and
+  nothing about the point has been verified. Both the stepping path and
+  the convergence check reject a non-finite `ddf(x)`, so neither the
+  starting point nor a point that passed the gradient test is returned
+  as a minimum. An infinite second derivative is reachable by ordinary
+  overflow inside a `ddf` expression, not only by passing one
+  deliberately.
 - **A NaN the method evaluates is a failure.** A NaN bracket endpoint,
   a NaN starting point, or a NaN from the function a method actually
   evaluates gives NaN. `golden_section_search` and `brent_minimize`

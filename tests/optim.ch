@@ -200,3 +200,41 @@ def test_brent_minimize_partially_defined_objective_reports_the_nan_it_reaches()
   r = brent_minimize(opt_nan_band_at_two, cast(1.0, f32), cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
   assert_true(opt_is_nan(r), "brent_minimize seeds at the quarter point 2.0, so the same band is inside its sample set")
 }
+def opt_inf_curvature(_x: f32) -> f32 = div(cast(1.0, f32), cast(0.0, f32))
+def opt_neg_inf_curvature(_x: f32) -> f32 = neg(div(cast(1.0, f32), cast(0.0, f32)))
+def opt_curvature_below_floor(_x: f32) -> f32 = cast(0.005, f32)
+def opt_curvature_below_step_guard(_x: f32) -> f32 = cast(1e-35, f32)
+def opt_concave_3(x: f32) -> f32 = {
+  d = sub(x, cast(3.0, f32))
+  neg(mul(d, d))
+}
+def opt_dconcave_3(x: f32) -> f32 = mul(cast(-2.0, f32), sub(x, cast(3.0, f32)))
+def opt_ddconcave_3(_x: f32) -> f32 = cast(-2.0, f32)
+def test_newton_minimize_infinite_curvature_does_not_return_the_start_point() -> unit ! { Test } = {
+  r1 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_inf_curvature, cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r1), "an infinite second derivative makes the Newton step zero, so x0 never moves; the start point is not a minimiser and is not returned as one")
+  r2 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_neg_inf_curvature, cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r2), "and the same holds for a negative infinity: the trigger is the infinity, not the sign")
+  r3 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_inf_curvature, cast(5.0, f32), cast(1e-6, f32), cast(10000, i64))
+  assert_true(opt_is_nan(r3), "a larger iteration budget does not change it either")
+}
+def test_newton_minimize_infinite_curvature_does_not_certify_a_converged_point() -> unit ! { Test } = {
+  r1 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_inf_curvature, cast(3.0, f32), cast(1e-6, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r1), "at a genuine stationary point an infinite curvature still cannot certify a minimum, so the converged branch reports NaN rather than the point")
+  r2 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_inf_curvature, cast(5.0, f32), cast(10.0, f32), cast(100, i64))
+  assert_true(opt_is_nan(r2), "and a tolerance loose enough to accept x0 as converged does not certify it either")
+}
+def test_newton_minimize_negative_curvature_at_a_stationary_point_is_nan() -> unit ! { Test } = {
+  r = newton_minimize_1d(opt_concave_3, opt_dconcave_3, opt_ddconcave_3, cast(3.0, f32), cast(1e-6, f32), cast(100, i64))
+  assert_true(opt_is_nan(r), "the maximiser of -(x-3)^2 is a stationary point with finite negative curvature, which the sign test rejects on its own")
+}
+def test_newton_minimize_finite_curvature_unchanged_by_the_non_finite_guard() -> unit ! { Test } = {
+  r1 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_ddparab_3, cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
+  _ = assert_close(r1, cast(3.0, f32), cast(0.001, f32), "the non-finite curvature guard never fires on a finite second derivative")
+  r2 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_ddparab_3, cast(5.0, f32), cast(0.0, f32), cast(100, i64))
+  _ = assert_close(r2, cast(3.0, f32), cast(0.001, f32), "and a zero tolerance, which forces every step, still converges")
+  r3 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_curvature_below_floor, cast(3.0, f32), cast(1e-6, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r3), "a finite curvature below the 0.01 floor is still rejected by the floor")
+  r4 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_curvature_below_step_guard, cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
+  assert_true(opt_is_nan(r4), "and a finite curvature below the 1e-30 step guard is still rejected by that guard")
+}
