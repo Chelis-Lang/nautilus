@@ -2,7 +2,7 @@
 
 Nautilus functions operate in f32 (IEEE 754 single precision), providing
 approximately 6-7 significant decimal digits. `Nautilus.Special` is the
-exception: its functions are generic over the `Float` family and can be called
+exception: its functions are generic over the `{f32, f64}` dtype set and can be called
 at f64.
 
 **The table below is an f32 table, and f64 does not scale it by a constant.**
@@ -86,15 +86,12 @@ suffer catastrophic cancellation. This affects:
 - `gamma_cdf` for extreme shape/scale ratios
 
 When f32 precision is insufficient in `Nautilus.Special`, call it at f64
-directly. Its functions are generic over the `Float` family. Read the
+directly. Its functions are generic over the `{f32, f64}` dtype set. Read the
 caveats above first, because several of them are coefficient-limited rather
 than dtype-limited. The other modules remain f32-only.
 
-`Float` also admits `f16` and `bf16`, and `Nautilus.Special` is not usable at
-either: the f32-tuned coefficients give `gamma(5.5bf16)` = 58.0 against a true
-52.343, and NaN for the four `bessel_j0`/`j1`/`y0`/`y1` entry points at `f16`,
-with no diagnostic. Use `f32` or `f64`. See
-[Known limitations](limitations.md) and nautilus#75.
+The `{f32, f64}` dtype-set bound rejects `f16` and `bf16` at checking;
+the approximation coefficients are tuned for f32 and f64. See nautilus#75.
 
 ## Comparison to scipy
 

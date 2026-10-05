@@ -1,4 +1,4 @@
-body has type `() -> string`, declared type is `() -> i32`
+expected `() -> i32`, got `() -> string`
 
 The exact package version is a string, not a numeric code. Consumers must not
 silently reinterpret the semantic version as an integer.

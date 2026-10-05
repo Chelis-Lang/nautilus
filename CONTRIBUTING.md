@@ -20,4 +20,4 @@ Please report security vulnerabilities privately using GitHub's **Report a vulne
 
 ## Maintainer guidance
 
-Setup, checks, and development procedures are in the [maintainer guide](docs/maintainer-guide.md).
+Setup, checks, and development procedures are in the [maintainer guide](docs/maintainer_guide.md).

@@ -31,7 +31,7 @@ Each function names the parameter to differentiate with `wrt=` and passes
 every argument through.
 
 For an at-the-money call (S = K = 100, r = 5%, sigma = 20%, T = 1 year), the
-evaluator (`chelis eval`) at Chelis 0.18.12 returns these first derivatives,
+evaluator (`chelis eval`) at Chelis 0.18.13 returns these first derivatives,
 which agree with the closed-form Greeks to f32 precision:
 
 | Greek | Value |
@@ -43,7 +43,7 @@ which agree with the closed-form Greeks to f32 precision:
 
 ## Evaluation scope
 
-The four values above are from `chelis eval` with Chelis 0.18.12. Gamma,
+The four values above are from `chelis eval` with Chelis 0.18.13. Gamma,
 the second spot derivative, is not available through nested `grad` at this
 compiler version: evaluating `grad(delta, wrt=s)` rejects a logical operation
 on the gradient path. Use the

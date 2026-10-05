@@ -7,7 +7,7 @@ conformal mapping. Both are computed via the arithmetic-geometric mean
 
 ## ellipk
 
-**Signature:** `[prec: Float](m: prec) -> prec`
+**Signature:** `[prec: {f32, f64}](m: prec) -> prec`
 
 Computes the complete elliptic integral of the first kind,
 K(m) = integral(0, pi/2, dt / sqrt(1 - m*sin^2(t))).
@@ -27,7 +27,7 @@ k_half = ellipk(cast(0.5, f32))   -- approximately 1.8541
 
 ## ellipe
 
-**Signature:** `[prec: Float](m: prec) -> prec`
+**Signature:** `[prec: {f32, f64}](m: prec) -> prec`
 
 Computes the complete elliptic integral of the second kind,
 E(m) = integral(0, pi/2, sqrt(1 - m*sin^2(t)) dt).

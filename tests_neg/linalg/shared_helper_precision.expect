@@ -1,4 +1,4 @@
-precision mismatch
+argument 2: expected f32, got f64
 
 The shared f32 basis helper must reject an f64 scale rather than implicitly
 narrowing it. This locks the declared public helper precision after exporting it.

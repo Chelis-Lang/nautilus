@@ -1,4 +1,4 @@
-precision mismatch: expected f64, got f32
+arguments; precision mismatch: f64 vs f32
 
 Nautilus.Special is generic over one `prec: Float` binder per function, so
 every argument of a single call shares one float dtype. The first argument

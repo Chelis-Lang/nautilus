@@ -26,66 +26,27 @@ Verdicts are fail-closed:
 
 ## Current executable probes
 
-None at the `chelis 0.18.12` pin. `chelis test tests_blocked/ --expect blocked`
+None at the `chelis 0.18.13` pin. `chelis test tests_blocked/ --expect blocked`
 exits nonzero on this empty directory by design; the manual probes below own
 the current verdicts.
 
 ## §cannot-be-probed
 
-- **`chelis#3156`** (the release blocker; the expressiveness itself is
-  `chelis#2443`, fixed upstream): an explicit dtype-set bound,
-  `[prec: {f32, f64}]`, does not parse at this pin, so `Nautilus.Special`'s 67
-  generic binders can only say `Float` and therefore admit `f16` and `bf16`
-  (nautilus#75). A probe for this blocker **cannot live here**, for a
-  different reason than the build-lane entries below: the blocker is at the
-  **syntax** level, so the probe file does not parse, and
-  `chelis lint --check .` lints every `.ch` in the tree with no per-path
-  exclusion. A probe placed here fails `surf-parses` (§12.5) as a blocking
-  lint error, which breaks the local gate for every unrelated change. Measured
-  at this pin: the probe reports OK and `chelis test tests_blocked/ --expect
-  blocked` exits 0, while `chelis lint --check .` gains one blocking error,
-  taking the tree from one to two. The manual recipe and the de-narrowing
-  steps are in [`docs/UPSTREAM_BUGS.md`](../docs/UPSTREAM_BUGS.md).
-
-  **Do not read `conform audit`'s row 12 as endorsing this.** It reports
-  `NA / "no open upstream blocker with an expressible reproducer"` because
-  `check_tests_blocked` takes that branch when `tests_blocked/` holds no `.ch`
-  **and** `src/` holds no `chelis#NNN` citation. That string is canned: the
-  audit never reads `docs/UPSTREAM_BUGS.md`, and it would report NA just the
-  same for a forgotten probe that was perfectly expressible. **Residual
-  seam:** `docs/UPSTREAM_BUGS.md` §"How this file works" asks for the citation
-  at the narrowing site in `src/` so the audit can match the two mechanically.
-  Citing `chelis#3156` there flips row 12 to
-  `FAIL / "an upstream blocker is cited but tests_blocked/ has no probe"` with
-  the fix instruction "add `tests_blocked/<area>/<name>.ch`", which for this
-  blocker cannot be followed. Recorded rather than resolved.
-
-- **`chelis#2599`**: a bare `None` whose type is fixed only by its sibling arm
-  fails `chelis build` with an unresolved host inference variable
-  ([05-UNS-1]). The failure is in the **build** lane, and `chelis test` never
-  invokes `chelis build`, so a probe placed here would evaluate cleanly and be
-  reported FIX-DETECTED while the limitation was still present -- the opposite
-  of fail-closed. Fixed upstream by chelis#2888, which landed after v0.18.12
-  was cut, so it is live at this pin only.
-  `scripts/check_rolling_c_lane.py` is the executable guard, and
-  [`docs/UPSTREAM_BUGS.md`](../docs/UPSTREAM_BUGS.md) carries the reproducer
-  and the de-narrowing steps for the next pin bump.
 - **`chelis#909`**: a function-typed parameter has no C host ABI, so a
-  consumer's `chelis build` rejects the call site ([04-TOT-2]). Build-lane
-  again, so not expressible here for the same reason. `Nautilus.Rolling`
+  consumer's `chelis build` rejects the call site ([04-TOT-2]). The test
+  harness does not enter C host lowering. `Nautilus.Rolling`
   selects its reduction with a closed tag instead, which is the permanent
   design rather than a narrowing awaiting a fix, so there is nothing to
   de-narrow. `chelis#867` records that no issue owns that ABI.
 
 - **`chelis#2370`**: exact-AD Levenberg-Marquardt composition loses
   runtime-extent binder provenance (under the tracking issue `chelis#1277`).
-  The old provenance failure appeared only when the shipped
-  finite-difference Jacobian in `src/curvefit.ch` was replaced by exact AD
-  and the six multi-parameter recovery tests in `tests/curvefit.ch` ran.
+  Replacing the finite-difference Jacobian in `src/curvefit.ch` with exact AD
+  must pass the six multi-parameter recovery tests in `tests/curvefit.ch`.
   The isolated Jacobian-row witnesses pass, so they test a smaller
-  boundary. At 0.18.12, a seeded-output exact-AD replacement still failed
-  all six recoveries, but at host `to_list` lowering before the old
-  provenance boundary; it does not prove the old diagnostic persists.
+  boundary. With Chelis 0.18.13, a seeded-output exact-AD replacement fails
+  all six recoveries at host `to_list` lowering, before the provenance
+  boundary. The provenance condition remains unverified.
   The narrowing site in `src/curvefit.ch` points here instead of spelling
   the issue number, because the conformance audit treats any issue citation
   in `src/` as requiring an executable probe and does not consult this
@@ -94,16 +55,17 @@ the current verdicts.
 
 - **`chelis#2520`**: `match` does not release a branch arm's owner when only a
   sibling arm consumed it. The failure occurs during C host lowering, which
-  `chelis test` never enters, and `src/` contains no `match`, ADT or `Option`
-  to reproduce it. At this pin the `if` half (`chelis#2477`) emits C, while
+  `chelis test` never enters. The shipped `Reducer` match and `Option` paths
+  build, but they do not bind the block-owned value that reproduces this
+  defect. At this pin the `if` half (`chelis#2477`) emits C, while
   both `Option` and ADT `match` forms still fail with inconsistent live
   owners. Reproducers are in the upstream issue.
   **Re-probe trigger:** every pin bump, and before merging any change that
   introduces a `match` over an owned value consumed on one arm, whatever its
   dtype.
 
-- **`chelis#2152`**: the previously rejecting minimal downstream cast
-  consumer now builds at both f32 and f64, but a complete Float-generic
+- **`chelis#2152`**: the minimal downstream cast
+  consumer builds at both f32 and f64, but a complete Float-generic
   Nautilus consumer matrix is still needed. `chelis test` does not exercise
   that C lane. Use the manual recipe below.
 
@@ -113,10 +75,9 @@ The reproducer needs two packages: a library installed into a temporary
 `CHELIS_REEF_HOME`, and a consumer package that runs `chelis build`. The exact
 steps and variant table are in chelis#2152.
 
-- **0.18.12 result:** the function-parameter-plus-cast consumer builds,
-  links, and runs at f32 and f64. A generic `Nautilus.Stats.mean_vec`
-  consumer also does so. The broader Stats and Roots consumer matrix has
-  no complete verdict at this pin.
+- **Pinned result:** the function-parameter-plus-cast consumer builds,
+  links, and runs at f32 and f64, printing 1.5 at both. The broader Stats,
+  Roots, and LinAlg consumer matrix has no complete verdict.
 - **On full pass:** only when every affected generic Nautilus consumer in
   the chelis#2152 entry of `docs/UPSTREAM_BUGS.md` builds, compiles, links,
   and runs at f32 and f64 may a module de-narrow under its own gates.

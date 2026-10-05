@@ -114,16 +114,7 @@ def roll_reduce(ws: List[f64], kind: Reducer, ddof: i64) -> f64 =
     | ReduceMin => roll_min_list(ws)
     | ReduceMax => roll_max_list(ws)
   }
--- Every `Option`-producing body is a named def with an explicit return type.
--- A bare `None` whose type is fixed only by its sibling arm does not lower:
--- `chelis build` fails with "unresolved host inference variable" ([05-UNS-1])
--- where eval is fine, and an annotated named def fixes the type locally. That
--- limitation is fixed upstream in a release later than this pin, so it is the
--- one narrowing here that expires: docs/UPSTREAM_BUGS.md §Actively blocking
--- carries the reproducer and the de-narrowing step, which is to inline these
--- bodies back into their lambdas at the next pin bump.
-def roll_entry(xs: List[f64], window: i64, min_periods: i64, kind: Reducer, ddof: i64, i: i64) -> Option[f64] = if lt(add(i, roll_one_i()), min_periods) then None else Some(roll_reduce(roll_window(xs, window, i), kind, ddof))
-def roll_core(xs: List[f64], window: i64, min_periods: i64, kind: Reducer, ddof: i64) -> List[Option[f64]] = map(fn (i: i64) -> roll_entry(xs, window, min_periods, kind, ddof, i), range(roll_zero_i(), len(xs)))
+def roll_core(xs: List[f64], window: i64, min_periods: i64, kind: Reducer, ddof: i64) -> List[Option[f64]] = map(fn (i: i64) -> if lt(add(i, roll_one_i()), min_periods) then None else Some(roll_reduce(roll_window(xs, window, i), kind, ddof)), range(roll_zero_i(), len(xs)))
 -- An expanding window is a rolling window as wide as the series. The raise to
 -- 1 is defensive only: `roll_core` never validates `window`, and on an empty
 -- series it maps over an empty range so the width is never read. It keeps the
@@ -150,7 +141,6 @@ def roll_expanding_window(xs: List[f64]) -> i64 = roll_max_i(len(xs), roll_one_i
 -- forward returns are ordinary uses, so the direction is the caller's to
 -- choose. `Shoals.Indicators.ind_shift` deliberately traps it instead.
 def roll_in_range(j: i64, m: i64) -> bool = if lt(j, roll_zero_i()) then false else lt(j, m)
-def roll_at(xs: List[f64], j: i64) -> Option[f64] = if roll_in_range(j, len(xs)) then Some(index(xs, j)) else None
 def rolling_sum(xs: List[f64], window: i64, min_periods: i64) -> List[Option[f64]] = {
   w = roll_require_window(window)
   roll_core(xs, w, roll_require_min_periods_window(min_periods, w), ReduceSum, roll_zero_i())
@@ -192,7 +182,11 @@ def expanding_std(xs: List[f64], min_periods: i64, ddof: i64) -> List[Option[f64
 def expanding_min(xs: List[f64], min_periods: i64) -> List[Option[f64]] = roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), ReduceMin, roll_zero_i())
 def expanding_max(xs: List[f64], min_periods: i64) -> List[Option[f64]] = roll_core(xs, roll_expanding_window(xs), roll_require_min_periods(min_periods), ReduceMax, roll_zero_i())
 -- out[i] = xs[i - k], absent where that index is off either end.
-def shift(xs: List[f64], k: i64) -> List[Option[f64]] = map(fn (i: i64) -> roll_at(xs, sub(i, k)), range(roll_zero_i(), len(xs)))
+def shift(xs: List[f64], k: i64) -> List[Option[f64]] =
+  map(fn (i: i64) -> {
+    j = sub(i, k)
+    if roll_in_range(j, len(xs)) then Some(index(xs, j)) else None
+  }, range(roll_zero_i(), len(xs)))
 -- out[i] = xs[i - k], or `fill` off the end. The caller supplying a fill has
 -- said what absence means, so the result carries no `Option`: this is the
 -- `at_z` zero-padding shape the demand table counts, with the pad value
@@ -210,21 +204,25 @@ def shift_clamped(xs: List[f64], k: i64) -> List[f64] = {
   map(fn (i: i64) -> index(xs, roll_min_i(roll_max_i(sub(i, k), roll_zero_i()), last)), range(roll_zero_i(), len(xs)))
 }
 -- out[i] = xs[i] - xs[i - k].
-def roll_diff_at(xs: List[f64], k: i64, i: i64) -> Option[f64] =
-  match roll_at(xs, sub(i, k)) with {
-    | None => None
-    | Some(prev) => Some(sub(index(xs, i), prev))
-  }
-def diff(xs: List[f64], k: i64) -> List[Option[f64]] = map(fn (i: i64) -> roll_diff_at(xs, k, i), range(roll_zero_i(), len(xs)))
+def diff(xs: List[f64], k: i64) -> List[Option[f64]] =
+  map(fn (i: i64) -> {
+    j = sub(i, k)
+    match if roll_in_range(j, len(xs)) then Some(index(xs, j)) else None with {
+      | None => None
+      | Some(prev) => Some(sub(index(xs, i), prev))
+    }
+  }, range(roll_zero_i(), len(xs)))
 -- out[i] = (xs[i] - xs[i - k]) / xs[i - k]. A zero base is `Some` of an
 -- infinity or NaN, not `None`: the observation exists and the ratio does
 -- not, which is a different fact from the series not reaching back that far.
-def roll_pct_at(xs: List[f64], k: i64, i: i64) -> Option[f64] =
-  match roll_at(xs, sub(i, k)) with {
-    | None => None
-    | Some(prev) => Some(div(sub(index(xs, i), prev), prev))
-  }
-def pct_change(xs: List[f64], k: i64) -> List[Option[f64]] = map(fn (i: i64) -> roll_pct_at(xs, k, i), range(roll_zero_i(), len(xs)))
+def pct_change(xs: List[f64], k: i64) -> List[Option[f64]] =
+  map(fn (i: i64) -> {
+    j = sub(i, k)
+    match if roll_in_range(j, len(xs)) then Some(index(xs, j)) else None with {
+      | None => None
+      | Some(prev) => Some(div(sub(index(xs, i), prev), prev))
+    }
+  }, range(roll_zero_i(), len(xs)))
 -- Tensor entry points. Each converts and delegates; none has semantics of
 -- its own, and `scripts/check_rolling_tensor_parity.py` proves that
 -- mechanically rather than by assertion.

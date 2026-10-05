@@ -34,7 +34,7 @@ Do not call the phase complete if any of these remain:
 
 ## Nautilus Default Gate
 
-Run the Nautilus gate in `docs/maintainer-guide.md` §Local gate at the exact candidate
+Run the Nautilus gate in `docs/maintainer_guide.md` §Local gate at the exact candidate
 head. It includes the pinned compiler's build and native tests:
 
 ```sh

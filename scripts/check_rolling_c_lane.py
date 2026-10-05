@@ -11,8 +11,8 @@ repository runs `chelis build` at all.
 This script is that oracle for this module, in two legs.
 
 **In-package leg:** generate one module under `src/` calling all 34 exports,
-run `chelis build`, then run the clang line it printed, so the check covers
-host lowering AND the C compile rather than stopping at code generation.
+run `chelis build` and require its executable, so the check covers host
+lowering, C compilation, and linking rather than stopping at code generation.
 
 **Cross-package leg:** rebuild this package from the CURRENT source, install it
 into a throwaway Reef store, then build a *separate* package that depends on
@@ -62,7 +62,7 @@ SOURCE = REPO / "src" / "rolling.ch"
 PROBE = REPO / "src" / "lanecheck.ch"
 MODULE = "Nautilus.LaneCheck"
 NAME = "nautilus"
-COMPILE_RE = re.compile(r"^Compile:\s*(.+)$", re.M)
+EXECUTABLE_RE = re.compile(r"^Built executable (.+)$", re.M)
 
 # Exports whose result has no absent position, so they return a plain list or
 # a tensor rather than an `Option`. Everything else returns `List[Option[f64]]`.
@@ -248,24 +248,16 @@ def main() -> int:
                 f"(rc={built.returncode}):\n{(built.stderr or built.stdout).strip()[-1200:]}"
             )
 
-        compile_line = COMPILE_RE.search(built.stdout)
-        if compile_line is None:
-            # Without the compile line this script would silently degrade to a
-            # code-generation-only check, which is the weaker claim the module
-            # already made and that this script exists to replace.
+        executable = EXECUTABLE_RE.search(built.stdout)
+        expected = out / "lanecheck"
+        if executable is None or Path(executable.group(1)) != expected or not expected.is_file():
             raise LaneError(
-                "chelis build printed no `Compile:` line, so the C compile was "
-                f"never exercised:\n{built.stdout.strip()[-800:]}"
-            )
-        compiled = run(["/bin/sh", "-c", compile_line.group(1)], REPO)
-        if compiled.returncode != 0:
-            raise LaneError(
-                "the clang line chelis build emitted failed "
-                f"(rc={compiled.returncode}):\n{(compiled.stderr or compiled.stdout).strip()[-1200:]}"
+                "chelis build did not produce its expected executable, so the "
+                f"C compile/link was not verified:\n{built.stdout.strip()[-800:]}"
             )
 
-        print(f"in-package: {len(names)} exports lowered to C and compiled by the "
-              f"emitted clang line")
+        print(f"in-package: {len(names)} exports lowered to C and compiled into "
+              f"the expected executable")
 
         if args.in_package_only:
             print("cross-package: SKIPPED (--in-package-only)")

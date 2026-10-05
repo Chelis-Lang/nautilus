@@ -1,20 +1,19 @@
 # Known Limitations
 
-This page collects the functional limitations of the current release. The
+This page collects Nautilus's functional limitations. The
 package's scope, and what is deliberately out of it, is set out in
 [`spec/scope.md`](https://github.com/Chelis-Lang/nautilus/blob/main/spec/scope.md#deferrals).
 
 ## Precision
 
-**Only `Nautilus.Special` runs at f64.** Its functions are generic over the
-`Float` dtype family; every other module is f32-only, which gives about seven
-significant digits. Calling Special at f64 widens the arithmetic but keeps the
+**`Nautilus.Special` accepts f32 and f64; `Nautilus.Rolling` uses f64.**
+The other numerical modules use f32, which gives about seven significant
+digits. Calling Special at f64 widens the arithmetic but keeps the
 same approximation coefficients, so accuracy gains vary by function; see the
 [Precision appendix](precision.md).
 
-**`f16` and `bf16` are not reliable for `Nautilus.Special`.** Its `Float`
-signatures admit these dtypes, but f32-tuned constants can produce
-incorrect values without a diagnostic. Use f32 or f64.
+Special's dtype-set bound rejects
+`f16` and `bf16` at checking because its coefficients do not support them.
 
 ## Differentiation
 

@@ -1,7 +1,7 @@
 # Your first Nautilus program
 
 Start in the `demo` project from [Installation](installation.md). Its
-`reef.toml` pins Chelis 0.18.12 and lists Nautilus 0.7.47 as a dependency.
+`reef.toml` pins Chelis 0.18.13 and lists Nautilus 0.7.48 as a dependency.
 Replace `src/main.ch` with this program:
 
 ```chelis-fragment
@@ -40,7 +40,7 @@ chelis eval --file src/main.ch
 ```
 
 `chelis check` should report a score of `1` and an empty error list. The
-evaluator prints `price = 10.450584` for this example. Formatting
+evaluator prints `price = 10.450577` for this example. Formatting
 comes first because both `check` and `eval --file` enforce Chelis's source
 style gate.
 
@@ -48,10 +48,10 @@ For machine-readable output, add `--json` to the evaluation command.
 Its `roots` array contains the `price` result; the `f32` value is
 encoded in the `bits` field.
 
-To build the Reef package, run `chelis reef build`. To emit C source, run
-`chelis build src/main.ch --target c --output out/`. The C command writes
-source, a header, and runtime files; it prints a separate compile command
-and does not run the calculation.
+To build the Reef package, run `chelis reef build`. To compile the program for
+the C target, run `chelis build src/main.ch --target c --output out/`. The
+command creates the `out/main` executable and retains the generated C and
+runtime files under `out/`; it does not run the calculation.
 
 ## Reading the program
 

@@ -6,12 +6,12 @@ Nautilus is a numerical computing package for the Chelis language, written
 entirely in Chelis with no foreign-function layer. It covers the ground of
 `numpy.linalg`, the `numpy.random` distributions, and SciPy's `special`,
 `stats`, `optimize`, `integrate`, `interpolate`, and `spatial.distance`.
-`Nautilus.Special` is generic over the `Float` dtype family and accepts f32 or
+`Nautilus.Special` has a `{f32, f64}` dtype-set bound and accepts f32 or
 f64, and `Nautilus.Rolling` is f64 over `List[f64]`; every other module works
 in f32. Section 6 lists every export with its
 signature and a stability label. The one export outside those tables,
 `Nautilus.Core.version`, returns the exact package-version string
-(`"0.7.47"` in this source checkout).
+(`"0.7.48"` in this source checkout).
 
 ## 2. Import Patterns
 
@@ -65,7 +65,7 @@ examples for most of the other modules.
 ### Pattern 1: A special function at two precisions
 
 `erf` uses the Abramowitz & Stegun 7.1.26 rational approximation. Because
-`Nautilus.Special` is generic over `Float`, the same function serves an f32
+`Nautilus.Special` is generic over `{f32, f64}`, so the same function serves an f32
 caller and an f64 caller.
 
 ```chelis
@@ -224,14 +224,11 @@ approximately 2.408.
 ## 5. Precision and Differentiability
 
 **Dtypes.** `Nautilus.Special` functions have signatures like
-`[prec: Float](x: prec) -> prec`: the type parameter `prec` ranges over
-Chelis's floating-point dtypes, and one call uses one dtype throughout, so
-`beta(a: f32, b: f64)` is a precision mismatch. Use f32 or f64 only. `Float` is
-the narrowest dtype-*family* bound Chelis offers, so the signatures also accept
-`f16` and `bf16`, where the f32-tuned coefficients give wrong answers with no
-diagnostic: `bf16` `gamma(5.5)` is 10.8% off and `f16` `bessel_j0` returns NaN
-(nautilus#75). An explicit dtype set, `[prec: {f32, f64}]`, would exclude them
-and exists on chelis `main`, but no release carries it yet. Every other module is f32-only.
+`[prec: {f32, f64}](x: prec) -> prec`: the type parameter `prec` ranges over
+exactly f32 and f64, and one call uses one dtype throughout, so
+`beta(a: f32, b: f64)` is a precision mismatch. The bound rejects f16 and
+bf16 at checking before their f32-tuned approximations can give wrong values
+(nautilus#75). Every other module is f32-only.
 
 **Precision.** f32 carries about seven significant digits; the Notes column in
 Section 6 and `docs/book/src/appendix/precision.md` give per-function figures.
@@ -275,29 +272,29 @@ package-version string, is the one export not listed here.
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
-| `erf` | `[prec: Float](x: prec) -> prec` | `stable` | Horner rational approx, ~1e-7 relative, all reals |
-| `erfc` | `[prec: Float](x: prec) -> prec` | `stable` | `1 - erf(x)`, same precision domain as `erf` |
-| `erfinv` | `[prec: Float](x: prec) -> prec` | `stable` | Acklam inverse normal + rescale, ~1e-8, domain (-1, 1) |
-| `erf_t` | `[n, prec: Float](x: &tensor[n, prec]) -> tensor[n, prec]` | `stable` | tensor-lane erf without the host List round-trip |
-| `erfinv_t` | `[n, prec: Float](x: &tensor[n, prec]) -> tensor[n, prec]` | `stable` | tensor-lane erfinv without the host List round-trip |
-| `gamma` | `[prec: Float](x: prec) -> prec` | `stable` | Lanczos (g=7) with reflection, ~1e-7 relative, +inf at non-positive integers |
-| `log_gamma` | `[prec: Float](x: prec) -> prec` | `stable` | Lanczos (g=7) with reflection, ~1e-9, +inf at non-positive integers |
-| `digamma` | `[prec: Float](x: prec) -> prec` | `stable` | Recurrence + asymptotic (x>=6), ~1e-7, NaN at non-positive integers |
-| `beta` | `[prec: Float](a: prec, b: prec) -> prec` | `stable` | exp(lbeta(a,b)), a,b > 0 |
-| `lbeta` | `[prec: Float](a: prec, b: prec) -> prec` | `stable` | Via log_gamma, a,b > 0, NaN otherwise |
-| `trigamma` | `[prec: Float](x: prec) -> prec` | `stable` | Recurrence + asymptotic (x>=6), ~1e-6, x > 0 only |
-| `bessel_i0` | `[prec: Float](x: prec) -> prec` | `stable` | Polynomial + asymptotic, crossover at 3.75, even function |
-| `bessel_i1` | `[prec: Float](x: prec) -> prec` | `stable` | Polynomial + asymptotic, crossover at 3.75, odd function |
-| `bessel_k0` | `[prec: Float](x: prec) -> prec` | `stable` | Polynomial/log + asymptotic, crossover at 2.0, x > 0, +inf at 0 |
-| `bessel_k1` | `[prec: Float](x: prec) -> prec` | `stable` | Polynomial/log + asymptotic, crossover at 2.0, x > 0, +inf at 0 |
-| `bessel_j0` | `[prec: Float](x: prec) -> prec` | `stable` | Rational polynomial + large-x trig, even function, ~1e-5 near zeros |
-| `bessel_j1` | `[prec: Float](x: prec) -> prec` | `stable` | Rational polynomial + large-x trig, odd function, ~1e-5 near zeros |
-| `bessel_y0` | `[prec: Float](x: prec) -> prec` | `stable` | Rational + log-singularity + large-x trig, x > 0, -inf at 0 |
-| `bessel_y1` | `[prec: Float](x: prec) -> prec` | `stable` | Rational + log + large-x trig, x > 0, -inf at 0, large-x branch from x = 7.5; ~1.2e-4 absolute error just below it |
-| `airy_ai` | `[prec: Float](x: prec) -> prec` | `alpha` | Power series (|x|<=5) + exponential asymptotic (x>5), oscillatory for large negative x |
-| `airy_bi` | `[prec: Float](x: prec) -> prec` | `stable` | Power series (|x|<=5) + exponential asymptotic (x>5) |
-| `ellipk` | `[prec: Float](m: prec) -> prec` | `stable` | AGM recurrence, ~1e-8, m in [0,1), +inf at m=1, NaN outside |
-| `ellipe` | `[prec: Float](m: prec) -> prec` | `stable` | AGM recurrence, ~1e-8, m in [0,1], NaN for m>1 |
+| `erf` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Horner rational approx, ~1e-7 relative, all reals |
+| `erfc` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | `1 - erf(x)`, same precision domain as `erf` |
+| `erfinv` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Acklam inverse normal + rescale, ~1e-8, domain (-1, 1) |
+| `erf_t` | `[n, prec: {f32, f64}](x: &tensor[n, prec]) -> tensor[n, prec]` | `stable` | tensor-lane erf without the host List round-trip |
+| `erfinv_t` | `[n, prec: {f32, f64}](x: &tensor[n, prec]) -> tensor[n, prec]` | `stable` | tensor-lane erfinv without the host List round-trip |
+| `gamma` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Lanczos (g=7) with reflection, ~1e-7 relative, +inf at non-positive integers |
+| `log_gamma` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Lanczos (g=7) with reflection, ~1e-9, +inf at non-positive integers |
+| `digamma` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Recurrence + asymptotic (x>=6), ~1e-7, NaN at non-positive integers |
+| `beta` | `[prec: {f32, f64}](a: prec, b: prec) -> prec` | `stable` | exp(lbeta(a,b)), a,b > 0 |
+| `lbeta` | `[prec: {f32, f64}](a: prec, b: prec) -> prec` | `stable` | Via log_gamma, a,b > 0, NaN otherwise |
+| `trigamma` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Recurrence + asymptotic (x>=6), ~1e-6, x > 0 only |
+| `bessel_i0` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Polynomial + asymptotic, crossover at 3.75, even function |
+| `bessel_i1` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Polynomial + asymptotic, crossover at 3.75, odd function |
+| `bessel_k0` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Polynomial/log + asymptotic, crossover at 2.0, x > 0, +inf at 0 |
+| `bessel_k1` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Polynomial/log + asymptotic, crossover at 2.0, x > 0, +inf at 0 |
+| `bessel_j0` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Rational polynomial + large-x trig, even function, ~1e-5 near zeros |
+| `bessel_j1` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Rational polynomial + large-x trig, odd function, ~1e-5 near zeros |
+| `bessel_y0` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Rational + log-singularity + large-x trig, x > 0, -inf at 0 |
+| `bessel_y1` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Rational + log + large-x trig, x > 0, -inf at 0, large-x branch from x = 7.5; ~1.2e-4 absolute error just below it |
+| `airy_ai` | `[prec: {f32, f64}](x: prec) -> prec` | `alpha` | Power series (|x|<=5) + exponential asymptotic (x>5), oscillatory for large negative x |
+| `airy_bi` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Power series (|x|<=5) + exponential asymptotic (x>5) |
+| `ellipk` | `[prec: {f32, f64}](m: prec) -> prec` | `stable` | AGM recurrence, ~1e-8, m in [0,1), +inf at m=1, NaN outside |
+| `ellipe` | `[prec: {f32, f64}](m: prec) -> prec` | `stable` | AGM recurrence, ~1e-8, m in [0,1], NaN for m>1 |
 
 ### Nautilus.Distributions (41 exports)
 

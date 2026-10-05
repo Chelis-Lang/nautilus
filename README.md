@@ -44,14 +44,20 @@ precision guidance; its [API map](docs/book/src/appendix/api.md) lists modules.
 
 ## Using Nautilus
 
-The Chelis and Nautilus releases require access to their GitHub repositories.
-Install `chelisup`, then install the Chelis version pinned by this release
-and Nautilus itself. [Installation](docs/book/src/getting-started/installation.md)
-gives the `chelisup` bootstrap and GitHub sign-in steps.
+Install `chelisup` and the compiler pinned by this source checkout. Build
+Nautilus and install its package artifacts into your local Reef registry.
+[Installation](docs/book/src/getting-started/installation.md) gives the full
+setup and explains how to use a published release instead.
 
 ```sh
-chelisup install 0.18.12
-chelis reef install --from-github Chelis-Lang/nautilus@v0.7.47
+chelisup install 0.18.13
+mkdir -p nautilus-work/packages
+git clone https://github.com/Chelis-Lang/nautilus.git nautilus-work/packages/nautilus
+cd nautilus-work/packages/nautilus
+chelis reef setup
+chelis reef build
+chelis reef install --from-monorepo ../.. nautilus
+cd ../..
 chelis reef init demo --module-prefix Demo --output demo
 cd demo
 ```
@@ -59,7 +65,7 @@ cd demo
 Add this line under `[dependencies]` in the generated `reef.toml`:
 
 ```toml
-nautilus = { version = "0.7.47" }
+nautilus = { version = "0.7.48" }
 ```
 
 Use the book's [first program](docs/book/src/getting-started/first-program.md)
@@ -67,13 +73,13 @@ as `src/main.ch`, then run `chelis fmt --inplace src/main.ch` and
 `chelis eval --file src/main.ch`. Run `chelis reef build` to build
 the package.
 
-Each release is built against one exact Chelis version, recorded as the
+Each package is built against one exact Chelis version, recorded as the
 `compiler` pin in [`reef.toml`](reef.toml). [`docs/releases.md`](docs/releases.md)
 describes the release artifacts and how to verify them.
 
 ## Developing
 
-From a fresh home, sign in to GitHub, install `chelisup`, and install the
+From a fresh home, sign in to GitHub for the release download, install `chelisup`, and install the
 compiler pinned by Nautilus before running `chelis` in the clone:
 
 ```sh
@@ -82,7 +88,7 @@ gh release download --repo Chelis-Lang/chelis --pattern chelisup.sh --output - |
 export PATH="$HOME/.chelis/bin:$PATH"
 git clone https://github.com/Chelis-Lang/nautilus.git
 cd nautilus
-chelisup install 0.18.12
+chelisup install 0.18.13
 chelis reef setup
 ```
 
@@ -98,7 +104,7 @@ chelis test tests_neg/ --expect neg
 uv run --project parity --frozen python parity/run_parity.py --strict
 ```
 
-The [maintainer guide](docs/maintainer-guide.md) covers the full local gate, the test
+The [maintainer guide](docs/maintainer_guide.md) covers the full local gate, the test
 layout, and how compiler upgrades are handled.
 
 ## Repository layout

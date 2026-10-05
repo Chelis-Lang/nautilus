@@ -7,7 +7,7 @@ dynamics.
 
 ## airy_ai
 
-**Signature:** `[prec: Float](x: prec) -> prec`
+**Signature:** `[prec: {f32, f64}](x: prec) -> prec`
 
 Computes the Airy function of the first kind. For |x| <= 5, a
 convergent power series in x^3 is used (up to 50 terms with early
@@ -31,7 +31,7 @@ ai_neg = airy_ai(cast(-1.0, f32))  -- approximately 0.5356
 
 ## airy_bi
 
-**Signature:** `[prec: Float](x: prec) -> prec`
+**Signature:** `[prec: {f32, f64}](x: prec) -> prec`
 
 Computes the Airy function of the second kind. Uses the same power
 series as Ai(x) for |x| <= 5, combined with a sqrt(3) scaling factor.

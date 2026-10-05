@@ -16,8 +16,8 @@ export (erf, erfc, erfinv, erf_t, erfinv_t, gamma, log_gamma, digamma, beta, lbe
 -- of hand-rolled downstream copies; it bought no digits. Every function's own
 -- bound comment is the authority for what that function delivers, and `erf`'s
 -- is the worked example.
-def sp_abs[prec: Float](x: prec) -> prec = if lt(x, cast(0.0, prec)) then neg(x) else x
-def is_nonpositive_integer[prec: Float](x: prec) -> bool = {
+def sp_abs[prec: {f32, f64}](x: prec) -> prec = if lt(x, cast(0.0, prec)) then neg(x) else x
+def is_nonpositive_integer[prec: {f32, f64}](x: prec) -> bool = {
   zero = cast(0.0, prec)
   if gt(x, zero) then false else {
     xi_i = cast_trunc(x, i64)
@@ -25,14 +25,14 @@ def is_nonpositive_integer[prec: Float](x: prec) -> bool = {
     eq(x, xi)
   }
 }
-def pos_inf[prec: Float]() -> prec = cast(1.0, prec) |> div(cast(0.0, prec))
-def neg_inf[prec: Float]() -> prec = cast(-1.0, prec) |> div(cast(0.0, prec))
-def sp_nan[prec: Float]() -> prec = cast(0.0, prec) |> div(cast(0.0, prec))
+def pos_inf[prec: {f32, f64}]() -> prec = cast(1.0, prec) |> div(cast(0.0, prec))
+def neg_inf[prec: {f32, f64}]() -> prec = cast(-1.0, prec) |> div(cast(0.0, prec))
+def sp_nan[prec: {f32, f64}]() -> prec = cast(0.0, prec) |> div(cast(0.0, prec))
 -- Maclaurin series for erf, truncated after the x^7 term:
 --   erf(x) = (2/sqrt(pi)) * (x - x^3/3 + x^5/10 - x^7/42 + ...)
 -- Horner in x^2. Accurate to <5e-8 absolute for |x| <= 0.25, which is where
 -- `erf` uses it; the next term contributes ~(2/sqrt(pi))*x^9/216.
-def erf_taylor_core[prec: Float](x: prec) -> prec = {
+def erf_taylor_core[prec: {f32, f64}](x: prec) -> prec = {
   x2 = mul(x, x)
   c3 = cast(0.3333333333333333, prec)
   c5 = cast(0.1, prec)
@@ -41,7 +41,7 @@ def erf_taylor_core[prec: Float](x: prec) -> prec = {
   poly = sub(cast(1.0, prec), mul(x2, sub(c3, mul(x2, sub(c5, mul(x2, c7))))))
   mul(mul(x, poly), two_over_sqrt_pi)
 }
-def erf[prec: Float](x: prec) -> prec = {
+def erf[prec: {f32, f64}](x: prec) -> prec = {
   a1 = cast(0.254829592, prec)
   a2 = cast(-0.284496736, prec)
   a3 = cast(1.421413741, prec)
@@ -106,8 +106,8 @@ def erf[prec: Float](x: prec) -> prec = {
     if lt(x, cast(0.0, prec)) then neg(y) else y
   }
 }
-def erfc[prec: Float](x: prec) -> prec = cast(1.0, prec) |> sub(erf(x))
-def lanczos_sum[prec: Float](x: prec) -> prec = {
+def erfc[prec: {f32, f64}](x: prec) -> prec = cast(1.0, prec) |> sub(erf(x))
+def lanczos_sum[prec: {f32, f64}](x: prec) -> prec = {
   c0 = cast(0.9999999999998099, prec)
   c1 = cast(676.5203681218851, prec)
   c2 = cast(-1259.1392167224028, prec)
@@ -128,7 +128,7 @@ def lanczos_sum[prec: Float](x: prec) -> prec = {
   t8 = div(c8, add(x, cast(8.0, prec)))
   add(add(add(add(add(add(add(add(c0, t1), t2), t3), t4), t5), t6), t7), t8)
 }
-def log_gamma_core[prec: Float](x: prec) -> prec = {
+def log_gamma_core[prec: {f32, f64}](x: prec) -> prec = {
   half = cast(0.5, prec)
   log_sqrt_2pi = cast(0.9189385332046727, prec)
   g_plus_half = cast(7.5, prec)
@@ -139,7 +139,7 @@ def log_gamma_core[prec: Float](x: prec) -> prec = {
   log_a = log(a)
   log_sqrt_2pi |> add(mul(add(xm1, half), log_t)) |> add(sub(log_a, t))
 }
-def log_gamma[prec: Float](x: prec) -> prec = {
+def log_gamma[prec: {f32, f64}](x: prec) -> prec = {
   half = cast(0.5, prec)
   pi = cast(3.141592653589793, prec)
   log_pi = cast(1.1447298858494002, prec)
@@ -153,7 +153,7 @@ def log_gamma[prec: Float](x: prec) -> prec = {
     log_pi |> sub(log_aspix) |> sub(lgc)
   } else log_gamma_core(x)
 }
-def gamma[prec: Float](x: prec) -> prec = {
+def gamma[prec: {f32, f64}](x: prec) -> prec = {
   half = cast(0.5, prec)
   pi = cast(3.141592653589793, prec)
   if is_nonpositive_integer(x) then pos_inf() else if lt(x, half) then {
@@ -164,7 +164,7 @@ def gamma[prec: Float](x: prec) -> prec = {
     div(pi, mul(spix, g1))
   } else x |> log_gamma_core |> exp
 }
-def digamma_asymptotic[prec: Float](x: prec) -> prec = {
+def digamma_asymptotic[prec: {f32, f64}](x: prec) -> prec = {
   one = cast(1.0, prec)
   inv_x = div(one, x)
   inv_x2 = mul(inv_x, inv_x)
@@ -177,13 +177,13 @@ def digamma_asymptotic[prec: Float](x: prec) -> prec = {
   log_x = log(x)
   sub(sub(add(sub(log_x, mul(c2, inv_x)), mul(c120, inv_x4)), mul(c12, inv_x2)), mul(c252, inv_x6))
 }
-def digamma_rec[prec: Float](x: prec, acc: prec) -> prec = {
+def digamma_rec[prec: {f32, f64}](x: prec, acc: prec) -> prec = {
   six = cast(6.0, prec)
   one = cast(1.0, prec)
   if gte(x, six) then x |> digamma_asymptotic |> add(acc) else x |> add(one) |> digamma_rec(sub(acc, div(one, x)))
 }
-def digamma[prec: Float](x: prec) -> prec = if is_nonpositive_integer(x) then sp_nan() else digamma_rec(x, cast(0.0, prec))
-def acklam_central[prec: Float](q: prec) -> prec = {
+def digamma[prec: {f32, f64}](x: prec) -> prec = if is_nonpositive_integer(x) then sp_nan() else digamma_rec(x, cast(0.0, prec))
+def acklam_central[prec: {f32, f64}](q: prec) -> prec = {
   a1 = cast(-39.69683028665376, prec)
   a2 = cast(220.9460984245205, prec)
   a3 = cast(-275.9285104469687, prec)
@@ -203,7 +203,7 @@ def acklam_central[prec: Float](q: prec) -> prec = {
   den = add(mul(r, add(mul(r, add(mul(r, add(mul(r, add(mul(r, b1), b2)), b3)), b4)), b5)), one)
   div(num, den)
 }
-def acklam_tail[prec: Float](u: prec) -> prec = {
+def acklam_tail[prec: {f32, f64}](u: prec) -> prec = {
   c1 = cast(-0.007784894002430293, prec)
   c2 = cast(-0.3223964580411365, prec)
   c3 = cast(-2.400758277161838, prec)
@@ -222,7 +222,7 @@ def acklam_tail[prec: Float](u: prec) -> prec = {
     |> add(one)
   div(num, den)
 }
-def norminv[prec: Float](q: prec) -> prec = {
+def norminv[prec: {f32, f64}](q: prec) -> prec = {
   plow = cast(0.02425, prec)
   one = cast(1.0, prec)
   phigh = sub(one, plow)
@@ -240,13 +240,13 @@ def norminv[prec: Float](q: prec) -> prec = {
     u |> acklam_tail |> neg
   }
 }
-def erfinv[prec: Float](x: prec) -> prec = {
+def erfinv[prec: {f32, f64}](x: prec) -> prec = {
   half = cast(0.5, prec)
   sqrt_half = cast(0.7071067811865476, prec)
   q = x |> add(cast(1.0, prec)) |> mul(half)
   q |> norminv |> mul(sqrt_half)
 }
-def lbeta[prec: Float](a: prec, b: prec) -> prec = {
+def lbeta[prec: {f32, f64}](a: prec, b: prec) -> prec = {
   zero = cast(0.0, prec)
   if a |> lte(zero) |> or(lte(b, zero)) then sp_nan() else {
     la = log_gamma(a)
@@ -255,14 +255,14 @@ def lbeta[prec: Float](a: prec, b: prec) -> prec = {
     la |> add(lb) |> sub(lab)
   }
 }
-def beta[prec: Float](a: prec, b: prec) -> prec = {
+def beta[prec: {f32, f64}](a: prec, b: prec) -> prec = {
   zero = cast(0.0, prec)
   if a |> lte(zero) |> or(lte(b, zero)) then sp_nan() else {
     lb = lbeta(a, b)
     exp(lb)
   }
 }
-def trigamma_asymptotic[prec: Float](x: prec) -> prec = {
+def trigamma_asymptotic[prec: {f32, f64}](x: prec) -> prec = {
   one = cast(1.0, prec)
   inv_x = div(one, x)
   inv_x2 = mul(inv_x, inv_x)
@@ -280,7 +280,7 @@ def trigamma_asymptotic[prec: Float](x: prec) -> prec = {
   t5 = mul(c7, inv_x7)
   add(sub(add(add(t1, t2), t3), t4), t5)
 }
-def trigamma_rec[prec: Float](x: prec, acc: prec) -> prec = {
+def trigamma_rec[prec: {f32, f64}](x: prec, acc: prec) -> prec = {
   six = cast(6.0, prec)
   one = cast(1.0, prec)
   if gte(x, six) then x |> trigamma_asymptotic |> add(acc) else {
@@ -289,11 +289,11 @@ def trigamma_rec[prec: Float](x: prec, acc: prec) -> prec = {
     x |> add(one) |> trigamma_rec(add(acc, inv_x2))
   }
 }
-def trigamma[prec: Float](x: prec) -> prec = {
+def trigamma[prec: {f32, f64}](x: prec) -> prec = {
   zero = cast(0.0, prec)
   if lte(x, zero) then sp_nan() else trigamma_rec(x, zero)
 }
-def bessel_i0_small[prec: Float](ax: prec) -> prec = {
+def bessel_i0_small[prec: {f32, f64}](ax: prec) -> prec = {
   t = div(ax, cast(3.75, prec))
   y = mul(t, t)
   a0 = cast(1.0, prec)
@@ -305,7 +305,7 @@ def bessel_i0_small[prec: Float](ax: prec) -> prec = {
   a6 = cast(0.0045813, prec)
   add(a0, mul(y, add(a1, mul(y, add(a2, mul(y, add(a3, mul(y, add(a4, mul(y, add(a5, mul(y, a6))))))))))))
 }
-def bessel_i0_large[prec: Float](ax: prec) -> prec = {
+def bessel_i0_large[prec: {f32, f64}](ax: prec) -> prec = {
   t = cast(3.75, prec) |> div(ax)
   a0 = cast(0.39894228, prec)
   a1 = cast(0.01328592, prec)
@@ -321,11 +321,11 @@ def bessel_i0_large[prec: Float](ax: prec) -> prec = {
   s = sqrt(ax)
   e |> mul(poly) |> div(s)
 }
-def bessel_i0[prec: Float](x: prec) -> prec = {
+def bessel_i0[prec: {f32, f64}](x: prec) -> prec = {
   ax = sp_abs(x)
   if lt(ax, cast(3.75, prec)) then bessel_i0_small(ax) else bessel_i0_large(ax)
 }
-def bessel_i1_small[prec: Float](ax: prec) -> prec = {
+def bessel_i1_small[prec: {f32, f64}](ax: prec) -> prec = {
   t = div(ax, cast(3.75, prec))
   y = mul(t, t)
   a0 = cast(0.5, prec)
@@ -338,7 +338,7 @@ def bessel_i1_small[prec: Float](ax: prec) -> prec = {
   poly = add(a0, mul(y, add(a1, mul(y, add(a2, mul(y, add(a3, mul(y, add(a4, mul(y, add(a5, mul(y, a6))))))))))))
   mul(ax, poly)
 }
-def bessel_i1_large[prec: Float](ax: prec) -> prec = {
+def bessel_i1_large[prec: {f32, f64}](ax: prec) -> prec = {
   t = cast(3.75, prec) |> div(ax)
   a0 = cast(0.39894228, prec)
   a1 = cast(-0.03988024, prec)
@@ -354,12 +354,12 @@ def bessel_i1_large[prec: Float](ax: prec) -> prec = {
   s = sqrt(ax)
   e |> mul(poly) |> div(s)
 }
-def bessel_i1[prec: Float](x: prec) -> prec = {
+def bessel_i1[prec: {f32, f64}](x: prec) -> prec = {
   ax = sp_abs(x)
   ans = if lt(ax, cast(3.75, prec)) then bessel_i1_small(ax) else bessel_i1_large(ax)
   if lt(x, cast(0.0, prec)) then neg(ans) else ans
 }
-def bessel_k0_small[prec: Float](x: prec) -> prec = {
+def bessel_k0_small[prec: {f32, f64}](x: prec) -> prec = {
   half_x = mul(x, cast(0.5, prec))
   y = mul(half_x, half_x)
   a0 = cast(-0.57721566, prec)
@@ -374,7 +374,7 @@ def bessel_k0_small[prec: Float](x: prec) -> prec = {
   i0 = bessel_i0(x)
   sub(poly, mul(lhx, i0))
 }
-def bessel_k0_large[prec: Float](x: prec) -> prec = {
+def bessel_k0_large[prec: {f32, f64}](x: prec) -> prec = {
   t = cast(2.0, prec) |> div(x)
   a0 = cast(1.25331414, prec)
   a1 = cast(-0.07832358, prec)
@@ -389,11 +389,11 @@ def bessel_k0_large[prec: Float](x: prec) -> prec = {
   s = sqrt(x)
   e |> mul(poly) |> div(s)
 }
-def bessel_k0[prec: Float](x: prec) -> prec = {
+def bessel_k0[prec: {f32, f64}](x: prec) -> prec = {
   zero = cast(0.0, prec)
   if lt(x, zero) then sp_nan() else if eq(x, zero) then pos_inf() else if lte(x, cast(2.0, prec)) then bessel_k0_small(x) else bessel_k0_large(x)
 }
-def bessel_k1_small[prec: Float](x: prec) -> prec = {
+def bessel_k1_small[prec: {f32, f64}](x: prec) -> prec = {
   half_x = mul(x, cast(0.5, prec))
   y = mul(half_x, half_x)
   a0 = cast(1.0, prec)
@@ -409,7 +409,7 @@ def bessel_k1_small[prec: Float](x: prec) -> prec = {
   inv_x = cast(1.0, prec) |> div(x)
   lhx |> mul(i1) |> add(mul(inv_x, poly))
 }
-def bessel_k1_large[prec: Float](x: prec) -> prec = {
+def bessel_k1_large[prec: {f32, f64}](x: prec) -> prec = {
   t = cast(2.0, prec) |> div(x)
   a0 = cast(1.25331414, prec)
   a1 = cast(0.23498619, prec)
@@ -424,11 +424,11 @@ def bessel_k1_large[prec: Float](x: prec) -> prec = {
   s = sqrt(x)
   e |> mul(poly) |> div(s)
 }
-def bessel_k1[prec: Float](x: prec) -> prec = {
+def bessel_k1[prec: {f32, f64}](x: prec) -> prec = {
   zero = cast(0.0, prec)
   if lt(x, zero) then sp_nan() else if eq(x, zero) then pos_inf() else if lte(x, cast(2.0, prec)) then bessel_k1_small(x) else bessel_k1_large(x)
 }
-def bessel_j0_small[prec: Float](ax: prec) -> prec = {
+def bessel_j0_small[prec: {f32, f64}](ax: prec) -> prec = {
   y = mul(ax, ax)
   n0 = cast(57568490574.0f64, prec)
   n1 = cast(-13362590354.0f64, prec)
@@ -446,7 +446,7 @@ def bessel_j0_small[prec: Float](ax: prec) -> prec = {
   den = add(d0, mul(y, add(d1, mul(y, add(d2, mul(y, add(d3, mul(y, add(d4, mul(y, d5))))))))))
   div(num, den)
 }
-def bessel_j0_large[prec: Float](ax: prec) -> prec = {
+def bessel_j0_large[prec: {f32, f64}](ax: prec) -> prec = {
   z = cast(8.0, prec) |> div(ax)
   y = mul(z, z)
   p0 = cast(1.0, prec)
@@ -471,11 +471,11 @@ def bessel_j0_large[prec: Float](ax: prec) -> prec = {
   body = cos_xx |> mul(pp) |> sub(mul(mul(z, sin_xx), qq))
   mul(pre, body)
 }
-def bessel_j0[prec: Float](x: prec) -> prec = {
+def bessel_j0[prec: {f32, f64}](x: prec) -> prec = {
   ax = sp_abs(x)
   if lt(ax, cast(8.0, prec)) then bessel_j0_small(ax) else bessel_j0_large(ax)
 }
-def bessel_j1_small[prec: Float](ax: prec) -> prec = {
+def bessel_j1_small[prec: {f32, f64}](ax: prec) -> prec = {
   y = mul(ax, ax)
   n0 = cast(72362614232.0f64, prec)
   n1 = cast(-7895059235.0f64, prec)
@@ -493,7 +493,7 @@ def bessel_j1_small[prec: Float](ax: prec) -> prec = {
   den = add(d0, mul(y, add(d1, mul(y, add(d2, mul(y, add(d3, mul(y, add(d4, mul(y, d5))))))))))
   mul(ax, div(num, den))
 }
-def bessel_j1_large[prec: Float](ax: prec) -> prec = {
+def bessel_j1_large[prec: {f32, f64}](ax: prec) -> prec = {
   z = cast(8.0, prec) |> div(ax)
   y = mul(z, z)
   p0 = cast(1.0, prec)
@@ -518,12 +518,12 @@ def bessel_j1_large[prec: Float](ax: prec) -> prec = {
   body = cos_xx |> mul(pp) |> sub(mul(mul(z, sin_xx), qq))
   mul(pre, body)
 }
-def bessel_j1[prec: Float](x: prec) -> prec = {
+def bessel_j1[prec: {f32, f64}](x: prec) -> prec = {
   ax = sp_abs(x)
   ans = if lt(ax, cast(8.0, prec)) then bessel_j1_small(ax) else bessel_j1_large(ax)
   if lt(x, cast(0.0, prec)) then neg(ans) else ans
 }
-def bessel_y0_small[prec: Float](x: prec) -> prec = {
+def bessel_y0_small[prec: {f32, f64}](x: prec) -> prec = {
   y = mul(x, x)
   n0 = cast(-2957821389.0f64, prec)
   n1 = cast(7062834065.0f64, prec)
@@ -545,7 +545,7 @@ def bessel_y0_small[prec: Float](x: prec) -> prec = {
   lx = log(x)
   add(rat, mul(two_over_pi, mul(j0v, lx)))
 }
-def bessel_y0_large[prec: Float](x: prec) -> prec = {
+def bessel_y0_large[prec: {f32, f64}](x: prec) -> prec = {
   z = cast(8.0, prec) |> div(x)
   y = mul(z, z)
   p0 = cast(1.0, prec)
@@ -570,11 +570,11 @@ def bessel_y0_large[prec: Float](x: prec) -> prec = {
   body = sin_xx |> mul(pp) |> add(mul(mul(z, cos_xx), qq))
   mul(pre, body)
 }
-def bessel_y0[prec: Float](x: prec) -> prec = {
+def bessel_y0[prec: {f32, f64}](x: prec) -> prec = {
   zero = cast(0.0, prec)
   if lt(x, zero) then sp_nan() else if eq(x, zero) then neg_inf() else if lt(x, cast(8.0, prec)) then bessel_y0_small(x) else bessel_y0_large(x)
 }
-def bessel_y1_small[prec: Float](x: prec) -> prec = {
+def bessel_y1_small[prec: {f32, f64}](x: prec) -> prec = {
   y = mul(x, x)
   n0 = cast(-49006049430000.0f64, prec)
   n1 = cast(12752743900000.0f64, prec)
@@ -598,7 +598,7 @@ def bessel_y1_small[prec: Float](x: prec) -> prec = {
   inv_x = cast(1.0, prec) |> div(x)
   add(rat, mul(two_over_pi, j1v |> mul(lx) |> sub(inv_x)))
 }
-def bessel_y1_large[prec: Float](x: prec) -> prec = {
+def bessel_y1_large[prec: {f32, f64}](x: prec) -> prec = {
   z = cast(8.0, prec) |> div(x)
   y = mul(z, z)
   p0 = cast(1.0, prec)
@@ -623,11 +623,11 @@ def bessel_y1_large[prec: Float](x: prec) -> prec = {
   body = sin_xx |> mul(pp) |> add(mul(mul(z, cos_xx), qq))
   mul(pre, body)
 }
-def bessel_y1[prec: Float](x: prec) -> prec = {
+def bessel_y1[prec: {f32, f64}](x: prec) -> prec = {
   zero = cast(0.0, prec)
   if lt(x, zero) then sp_nan() else if eq(x, zero) then neg_inf() else if lt(x, cast(7.5, prec)) then bessel_y1_small(x) else bessel_y1_large(x)
 }
-def airy_f_rec[prec: Float](x3: prec, term: prec, acc: prec, k: prec, iters: i64) -> prec = {
+def airy_f_rec[prec: {f32, f64}](x3: prec, term: prec, acc: prec, k: prec, iters: i64) -> prec = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
   one_f = cast(1.0, prec)
@@ -646,7 +646,7 @@ def airy_f_rec[prec: Float](x3: prec, term: prec, acc: prec, k: prec, iters: i64
     if converged then acc_next else airy_f_rec(x3, term_next, acc_next, add(k, one_f), sub(iters, one_i))
   }
 }
-def airy_g_rec[prec: Float](x3: prec, term: prec, acc: prec, k: prec, iters: i64) -> prec = {
+def airy_g_rec[prec: {f32, f64}](x3: prec, term: prec, acc: prec, k: prec, iters: i64) -> prec = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
   one_f = cast(1.0, prec)
@@ -665,17 +665,17 @@ def airy_g_rec[prec: Float](x3: prec, term: prec, acc: prec, k: prec, iters: i64
     if converged then acc_next else airy_g_rec(x3, term_next, acc_next, add(k, one_f), sub(iters, one_i))
   }
 }
-def airy_fg[prec: Float](x: prec) -> prec = {
+def airy_fg[prec: {f32, f64}](x: prec) -> prec = {
   x2 = mul(x, x)
   x3 = mul(x2, x)
   airy_f_rec(x3, cast(1.0, prec), cast(1.0, prec), cast(0.0, prec), cast(50, i64))
 }
-def airy_gg[prec: Float](x: prec) -> prec = {
+def airy_gg[prec: {f32, f64}](x: prec) -> prec = {
   x2 = mul(x, x)
   x3 = mul(x2, x)
   airy_g_rec(x3, x, x, cast(0.0, prec), cast(50, i64))
 }
-def airy_ai_asymptotic_pos[prec: Float](x: prec) -> prec = {
+def airy_ai_asymptotic_pos[prec: {f32, f64}](x: prec) -> prec = {
   sqrt_x = sqrt(x)
   x_to_1_5 = mul(x, sqrt_x)
   xi = cast(0.6666666666666666, prec) |> mul(x_to_1_5)
@@ -687,7 +687,7 @@ def airy_ai_asymptotic_pos[prec: Float](x: prec) -> prec = {
   pre = div(inv_x_0_25, two_sqrt_pi)
   mul(pre, exp_neg_xi)
 }
-def airy_bi_asymptotic_pos[prec: Float](x: prec) -> prec = {
+def airy_bi_asymptotic_pos[prec: {f32, f64}](x: prec) -> prec = {
   sqrt_x = sqrt(x)
   x_to_1_5 = mul(x, sqrt_x)
   xi = cast(0.6666666666666666, prec) |> mul(x_to_1_5)
@@ -698,7 +698,7 @@ def airy_bi_asymptotic_pos[prec: Float](x: prec) -> prec = {
   pre = div(inv_x_0_25, sqrt_pi)
   mul(pre, exp_xi)
 }
-def airy_ai[prec: Float](x: prec) -> prec = {
+def airy_ai[prec: {f32, f64}](x: prec) -> prec = {
   c1 = cast(0.3550280538878172, prec)
   c2 = cast(0.2588194037928068, prec)
   if gt(x, cast(5.0, prec)) then airy_ai_asymptotic_pos(x) else {
@@ -707,7 +707,7 @@ def airy_ai[prec: Float](x: prec) -> prec = {
     c1 |> mul(f) |> sub(mul(c2, g))
   }
 }
-def airy_bi[prec: Float](x: prec) -> prec = {
+def airy_bi[prec: {f32, f64}](x: prec) -> prec = {
   c1 = cast(0.3550280538878172, prec)
   c2 = cast(0.2588194037928068, prec)
   sqrt3 = cast(1.7320508075688772, prec)
@@ -717,7 +717,7 @@ def airy_bi[prec: Float](x: prec) -> prec = {
     mul(sqrt3, c1 |> mul(f) |> add(mul(c2, g)))
   }
 }
-def ellip_agm_a_rec[prec: Float](a: prec, b: prec, iters: i64) -> prec = {
+def ellip_agm_a_rec[prec: {f32, f64}](a: prec, b: prec, iters: i64) -> prec = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
   two = cast(2.0, prec)
@@ -731,7 +731,7 @@ def ellip_agm_a_rec[prec: Float](a: prec, b: prec, iters: i64) -> prec = {
     if converged then a_next else ellip_agm_a_rec(a_next, b_next, sub(iters, one_i))
   }
 }
-def ellip_agm_csum_rec[prec: Float](a: prec, b: prec, c_sum: prec, weight: prec, iters: i64) -> prec = {
+def ellip_agm_csum_rec[prec: {f32, f64}](a: prec, b: prec, c_sum: prec, weight: prec, iters: i64) -> prec = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
   two = cast(2.0, prec)
@@ -748,7 +748,7 @@ def ellip_agm_csum_rec[prec: Float](a: prec, b: prec, c_sum: prec, weight: prec,
     if converged then c_sum_next else ellip_agm_csum_rec(a_next, b_next, c_sum_next, w_next, sub(iters, one_i))
   }
 }
-def ellipk[prec: Float](m: prec) -> prec = {
+def ellipk[prec: {f32, f64}](m: prec) -> prec = {
   zero = cast(0.0, prec)
   one = cast(1.0, prec)
   if lt(m, zero) then sp_nan() else if gt(m, one) then sp_nan() else if eq(m, one) then pos_inf() else {
@@ -759,7 +759,7 @@ def ellipk[prec: Float](m: prec) -> prec = {
     div(half_pi, a_inf)
   }
 }
-def ellipe[prec: Float](m: prec) -> prec = {
+def ellipe[prec: {f32, f64}](m: prec) -> prec = {
   zero = cast(0.0, prec)
   one = cast(1.0, prec)
   if lt(m, zero) then sp_nan() else if gt(m, one) then sp_nan() else if eq(m, one) then one else {
@@ -782,12 +782,12 @@ def ellipe[prec: Float](m: prec) -> prec = {
 -- has to leave tensor rank to reach them. Chelis has no implicit
 -- tensor-scalar broadcasting, so every constant is lifted to rank `n` with
 -- `sp_lift_t`, and every scalar `if` becomes an elementwise `where`.
-def sp_lift_t[n, prec: Float](template: &tensor[n, prec], c: prec) -> tensor[n, prec] = c |> scalar_to_tensor |> insert(0, shape(template, cast(0, i32)))
-def sp_abs_t[n, prec: Float](x: &tensor[n, prec]) -> tensor[n, prec] = {
+def sp_lift_t[n, prec: {f32, f64}](template: &tensor[n, prec], c: prec) -> tensor[n, prec] = c |> scalar_to_tensor |> insert(0, shape(template, cast(0, i32)))
+def sp_abs_t[n, prec: {f32, f64}](x: &tensor[n, prec]) -> tensor[n, prec] = {
   zeros = sp_lift_t(x, cast(0.0, prec))
   x |> lt(zeros) |> where(neg(x), x)
 }
-def erf_t[n, prec: Float](x: &tensor[n, prec]) -> tensor[n, prec] = {
+def erf_t[n, prec: {f32, f64}](x: &tensor[n, prec]) -> tensor[n, prec] = {
   a1 = sp_lift_t(x, cast(0.254829592, prec))
   a2 = sp_lift_t(x, cast(-0.284496736, prec))
   a3 = sp_lift_t(x, cast(1.421413741, prec))
@@ -818,7 +818,7 @@ def erf_t[n, prec: Float](x: &tensor[n, prec]) -> tensor[n, prec] = {
   taylor = mul(mul(xt, tpoly), two_over_sqrt_pi)
   where(in_small, taylor, signed)
 }
-def acklam_central_t[n, prec: Float](q: &tensor[n, prec]) -> tensor[n, prec] = {
+def acklam_central_t[n, prec: {f32, f64}](q: &tensor[n, prec]) -> tensor[n, prec] = {
   a1 = sp_lift_t(q, cast(-39.69683028665376, prec))
   a2 = sp_lift_t(q, cast(220.9460984245205, prec))
   a3 = sp_lift_t(q, cast(-275.9285104469687, prec))
@@ -838,7 +838,7 @@ def acklam_central_t[n, prec: Float](q: &tensor[n, prec]) -> tensor[n, prec] = {
   den = add(mul(r, add(mul(r, add(mul(r, add(mul(r, add(mul(r, b1), b2)), b3)), b4)), b5)), one)
   div(num, den)
 }
-def acklam_tail_t[n, prec: Float](u: &tensor[n, prec]) -> tensor[n, prec] = {
+def acklam_tail_t[n, prec: {f32, f64}](u: &tensor[n, prec]) -> tensor[n, prec] = {
   c1 = sp_lift_t(u, cast(-0.007784894002430293, prec))
   c2 = sp_lift_t(u, cast(-0.3223964580411365, prec))
   c3 = sp_lift_t(u, cast(-2.400758277161838, prec))
@@ -854,7 +854,7 @@ def acklam_tail_t[n, prec: Float](u: &tensor[n, prec]) -> tensor[n, prec] = {
   den = add(one, mul(u, u |> mul(add(mul(u, add(mul(u, d1), d2)), d3)) |> add(d4)))
   div(num, den)
 }
-def norminv_t[n, prec: Float](q: &tensor[n, prec]) -> tensor[n, prec] = {
+def norminv_t[n, prec: {f32, f64}](q: &tensor[n, prec]) -> tensor[n, prec] = {
   plow = sp_lift_t(q, cast(0.02425, prec))
   one = sp_lift_t(q, cast(1.0, prec))
   two = sp_lift_t(q, cast(2.0, prec))
@@ -871,7 +871,7 @@ def norminv_t[n, prec: Float](q: &tensor[n, prec]) -> tensor[n, prec] = {
   upper = q |> lte(phigh) |> where(central, high)
   q |> lt(plow) |> where(low, upper)
 }
-def erfinv_t[n, prec: Float](x: &tensor[n, prec]) -> tensor[n, prec] = {
+def erfinv_t[n, prec: {f32, f64}](x: &tensor[n, prec]) -> tensor[n, prec] = {
   half = sp_lift_t(x, cast(0.5, prec))
   sqrt_half = sp_lift_t(x, cast(0.7071067811865476, prec))
   one = sp_lift_t(x, cast(1.0, prec))
