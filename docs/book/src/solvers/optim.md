@@ -27,8 +27,7 @@ NaN on failure).
 - **newton_minimize_1d:** Uses both first and second derivatives
   (`df`, `ddf`). Quadratic convergence near a minimum with positive
   curvature. Returns NaN if the Hessian is non-positive or below 0.01
-  at convergence, guarding against saddle points, and if the iteration
-  stalls at a point it cannot certify.
+  at the point it stops on, guarding against saddle points.
 
 ## Example: golden section
 
@@ -70,31 +69,36 @@ def find_min_newton() -> f32 =
   [lo, hi]. Multiple local minima may cause convergence to any one of
   them.
 - `gradient_descent_1d` stops when `|df(x)| < 1e-10` (hard-coded).
-- `newton_minimize_1d` checks that the second derivative at the
-  converged point is positive and above 0.01. If not, it returns NaN
-  to signal that the point may be a saddle or inflection. A NaN second
-  derivative also returns NaN: it cannot establish positive curvature,
-  so the point is not reported as a minimum. An *infinite* second
-  derivative at a point the gradient test has already accepted is
-  strictly positive curvature, and the minimiser is returned.
-- **A Newton step that no longer moves the iterate is a stall, and a
-  stalled point gets the same curvature check as a converged one.**
-  `x - df(x)/ddf(x)` can round back to `x` while `|df(x)|` is still
-  above `tol`. That is ordinary behaviour at the limit of f32
-  resolution -- it is how `tol = 0` converges at all -- so the stalled
-  point is accepted, but only on the same terms as a converged one: its
-  curvature must be finite, positive and above 0.01, and the point
-  itself must be finite. Two consequences follow. An infinite second
-  derivative makes every step zero, so the iterate stalls at the
-  starting point, and that point is rejected rather than returned as a
-  minimum. And an iterate that has run away to `+-inf` stalls there
-  permanently, so infinity is not reported as a minimiser either.
+- **`newton_minimize_1d` stops in one of two ways, and certifies the
+  point either way.** It has *converged* when `|df(x)| < tol`, or when
+  `df(x)` is exactly zero -- the second clause matters because
+  `|df(x)| < tol` is false for every gradient when `tol` is zero,
+  negative or NaN, so without it those tolerances would have no
+  convergence test at all. It has *stalled* when `x - df(x)/ddf(x)`
+  rounds back to `x`, which is where the method ends up at the limit of
+  f32 resolution. In both cases the second derivative at that point must
+  be positive and above 0.01, or NaN is returned to signal that the
+  point may be a saddle or inflection. A NaN second derivative returns
+  NaN: it cannot establish positive curvature.
+- **An infinite second derivative is accepted at a converged point and
+  rejected at a stalled one.** `+inf` is strictly positive and above
+  0.01, so at a point whose stationarity the gradient test has already
+  established it certifies a minimum and the minimiser is returned --
+  which matters because an infinite `ddf` is reachable by ordinary
+  overflow in a correct expression. A stall has satisfied no stationarity
+  test, so it carries one extra requirement that convergence does not:
+  the point and its curvature must both be finite. That is the whole
+  difference between the two, and it is what the `+-inf` cases turn on.
+  An infinite `ddf` makes every step zero, so the iterate stalls at `x0`
+  with a gradient that is not small, and `x0` is rejected rather than
+  returned. An iterate that has run away to `+-inf` stalls there
+  permanently and is rejected for the same reason.
 - **The method does not check that `ddf` is the derivative of `df`.**
   When they disagree the step comes from a curvature the objective does
   not have, and a `ddf` large enough underflows the step to nothing at a
-  point that is not stationary. That stall passes the curvature check
-  and the point is returned. Supply consistent derivatives, or use
-  `brent_minimize`, which needs none.
+  point that is not stationary. That stall is finite throughout and its
+  curvature certifies, so the point is returned. Supply consistent
+  derivatives, or use `brent_minimize`, which needs none.
 - **A NaN the method evaluates is a failure.** A NaN bracket endpoint,
   a NaN starting point, or a NaN from the function a method actually
   evaluates gives NaN. `golden_section_search` and `brent_minimize`

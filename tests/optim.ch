@@ -209,7 +209,10 @@ def opt_curvature_below_floor(_x: f32) -> f32 = cast(0.005, f32)
 def opt_curvature_below_step_guard(_x: f32) -> f32 = cast(1e-35, f32)
 def opt_inf_gradient(_x: f32) -> f32 = div(cast(1.0, f32), cast(0.0, f32))
 def opt_unit_gradient(_x: f32) -> f32 = cast(1.0, f32)
+def opt_dflat_3(x: f32) -> f32 = mul(cast(0.002, f32), sub(x, cast(3.0, f32)))
+def opt_ddflat_3(_x: f32) -> f32 = cast(0.002, f32)
 def opt_feeble_dparab_3(x: f32) -> f32 = mul(cast(1e-30, f32), sub(x, cast(3.0, f32)))
+def opt_dsteep_3(x: f32) -> f32 = mul(cast(2e30, f32), sub(x, cast(3.0, f32)))
 def opt_late_inf_curvature(x: f32) -> f32 = if lt(x, cast(4.5, f32)) then div(cast(1.0, f32), cast(0.0, f32)) else cast(2.0, f32)
 def opt_late_neg_inf_curvature(x: f32) -> f32 = if lt(x, cast(4.5, f32)) then neg(div(cast(1.0, f32), cast(0.0, f32))) else cast(2.0, f32)
 def opt_concave_3(x: f32) -> f32 = {
@@ -261,6 +264,30 @@ def test_newton_minimize_infinite_curvature_at_a_stationary_point_still_converge
   _ = assert_close(r1, cast(3.0, f32), cast(0.001, f32), "an infinite curvature at a point the gradient test already accepted is strictly positive curvature, so the minimiser is returned rather than discarded")
   r2 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_late_inf_curvature, cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
   assert_close(r2, cast(3.0, f32), cast(0.001, f32), "including when the curvature is finite where the steps are taken and infinite only at the point reached")
+}
+def test_newton_minimize_infinite_curvature_at_a_stationary_point_converges_at_every_tolerance() -> unit ! { Test } = {
+  r1 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_inf_curvature, cast(3.0, f32), cast(0.0, f32), cast(100, i64))
+  _ = assert_close(r1, cast(3.0, f32), cast(0.001, f32), "tol = 0 makes lt(|df(x)|, tol) false even at an exactly zero gradient, so a zero gradient must count as converged on its own or the whole tolerance range below zero loses this answer")
+  r2 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_inf_curvature, cast(3.0, f32), opt_quiet_nan(), cast(100, i64))
+  _ = assert_close(r2, cast(3.0, f32), cast(0.001, f32), "a NaN tolerance compares false the same way")
+  r3 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_inf_curvature, cast(3.0, f32), cast(-1.0, f32), cast(100, i64))
+  _ = assert_close(r3, cast(3.0, f32), cast(0.001, f32), "and so does a negative one")
+  r4 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_inf_curvature, cast(3.0, f32), neg(opt_inf()), cast(100, i64))
+  _ = assert_close(r4, cast(3.0, f32), cast(0.001, f32), "including negative infinity")
+  r5 = newton_minimize_1d(opt_parab_3, opt_dsteep_3, opt_inf_curvature, cast(3.0, f32), cast(0.0, f32), cast(100, i64))
+  _ = assert_close(r5, cast(3.0, f32), cast(0.001, f32), "and with a first derivative steep enough to be consistent with a huge curvature, which is the case that makes the infinity look like overflow rather than nonsense")
+  r6 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_late_inf_curvature, cast(5.0, f32), cast(0.0, f32), cast(100, i64))
+  assert_close(r6, cast(3.0, f32), cast(0.001, f32), "and when the steps are taken at a finite curvature and only the point reached has an infinite one")
+}
+def test_newton_minimize_certifies_at_a_non_positive_tolerance_too() -> unit ! { Test } = {
+  r1 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_neg_inf_curvature, cast(3.0, f32), cast(0.0, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r1), "a negatively infinite curvature is rejected at tol = 0 exactly as it is at tol = 1e-6; previously tol = 0 reached no curvature check at all and returned the point")
+  r2 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_late_neg_inf_curvature, cast(5.0, f32), cast(0.0, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r2), "including when only the point reached has it")
+  r3 = newton_minimize_1d(opt_parab_3, opt_dflat_3, opt_ddflat_3, cast(5.0, f32), cast(0.0, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r3), "and a curvature of 0.002 is rejected by the 0.01 floor at tol = 0, which is the same flat-minimum rejection tol = 1e-6 already made")
+  r4 = newton_minimize_1d(opt_parab_3, opt_dflat_3, opt_ddflat_3, cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
+  assert_true(opt_is_nan(r4), "pinning that tol = 1e-6 was already rejecting it, so this is tol = 0 becoming consistent rather than a new rejection")
 }
 def test_newton_minimize_negative_curvature_at_a_stationary_point_is_nan() -> unit ! { Test } = {
   r1 = newton_minimize_1d(opt_concave_3, opt_dconcave_3, opt_ddconcave_3, cast(3.0, f32), cast(1e-6, f32), cast(100, i64))

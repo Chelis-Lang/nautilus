@@ -138,12 +138,15 @@ The [maintainer guide](../docs/maintainer-guide.md) lists the commands for each 
   `lu_solve` does not pivot, so it requires non-zero leading principal minors.
   `svd_n` and `eig_n` run a fixed 30n Jacobi sweeps with no early exit, and
   `eig_n` assumes a symmetric input.
-- `newton_minimize_1d` returns NaN when the curvature at a stationary point is
-  below `0.01`, so it can reject very flat true minima. It also returns NaN when
-  the Newton step stops moving the iterate at a point whose curvature it cannot
-  certify, which covers a non-finite second derivative and a runaway iterate. It
-  does not verify that `ddf` is the derivative of `df`, so a `ddf` large enough
-  to underflow the step at a non-stationary point still returns that point.
+- `newton_minimize_1d` returns NaN when the curvature at the point it stops on is
+  below `0.01`, so it can reject very flat true minima. It stops either on
+  convergence (`|df(x)| < tol`, or an exactly zero gradient, which is the only
+  convergence test available when `tol` is zero, negative or NaN) or on a stall
+  (`x - df(x)/ddf(x)` rounding back to `x`), and certifies the curvature either
+  way; a stall additionally requires the point and its curvature to be finite,
+  because it has satisfied no stationarity test. It does not verify that `ddf` is
+  the derivative of `df`, so a `ddf` large enough to underflow the step at a
+  non-stationary point still returns that point.
 - `airy_ai` has no dedicated asymptotic branch for large negative `x`.
 - `Nautilus.Rolling` re-reduces each window rather than carrying a running
   accumulator, so every reduction is O(`window`) per position rather than

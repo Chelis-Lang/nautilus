@@ -175,7 +175,8 @@ def opt_nmin_rec(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x: f32, tol: f3
   if lte(iters, zero_i) then opt_nan_f32() else {
     g = df(x)
     ag = opt_abs_f32(g)
-    if opt_is_nan_f32(g) then opt_nan_f32() else if lt(ag, tol) then ddf(x) |> opt_certify_min_f32(x) else {
+    converged = lt(ag, tol) |> or(eq(ag, cast(0.0, f32)))
+    if opt_is_nan_f32(g) then opt_nan_f32() else if converged then ddf(x) |> opt_certify_min_f32(x) else {
       h = ddf(x)
       ah = opt_abs_f32(h)
       if opt_is_nan_f32(h) |> or(lt(ah, cast(1e-30, f32))) then opt_nan_f32() else {
