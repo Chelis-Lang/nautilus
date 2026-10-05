@@ -235,6 +235,15 @@ def test_newton_minimize_stall_runs_the_curvature_check() -> unit ! { Test } = {
   r2 = newton_minimize_1d(opt_concave_3, opt_dconcave_3, opt_ddconcave_3, cast(5.0, f32), cast(0.0, f32), cast(1000, i64))
   assert_true(opt_is_nan(r2), "and Newton on a concave objective at tol = 0 stalls at the maximiser, which the same check rejects")
 }
+def opt_one_ulp_above_3() -> f32 = add(cast(3.0, f32), cast(2.4e-7, f32))
+def test_newton_minimize_stall_near_a_minimiser_needs_a_positive_tolerance() -> unit ! { Test } = {
+  r1 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_inf_curvature, opt_one_ulp_above_3(), cast(1e-6, f32), cast(100, i64))
+  _ = assert_close(r1, cast(3.0, f32), cast(0.001, f32), "one ulp from the minimiser with an infinite curvature, a positive tolerance accepts the gradient of 4.8e-7 and the point is returned")
+  r2 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_inf_curvature, opt_one_ulp_above_3(), cast(0.0, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r2), "at tol = 0 the same call is NaN: the gradient is not exactly zero, the step underflows, and an infinite curvature cannot certify the stall. This is a real loss against the old behaviour and the documented limit of what one point can tell the method")
+  r3 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_huge_curvature, opt_one_ulp_above_3(), cast(0.0, f32), cast(100, i64))
+  assert_close(r3, cast(3.0, f32), cast(0.001, f32), "while a finite 1e30 curvature at the same point and tolerance still returns it, which is the asymmetry: finiteness is the only discriminator available, not a claim that 1e30 is better evidence than infinity")
+}
 def test_newton_minimize_does_not_detect_inconsistent_derivatives() -> unit ! { Test } = {
   r = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_huge_curvature, cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
   assert_close(r, cast(5.0, f32), cast(0.001, f32), "a ddf of 1e30 is not the derivative of this df: it underflows the step at a point whose gradient is 4, and 1e30 is certifiable curvature, so the stalled point is returned. Consistent derivatives are a precondition the method cannot check from one point, and this pins that it does not pretend to")

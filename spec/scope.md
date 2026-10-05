@@ -144,9 +144,11 @@ The [maintainer guide](../docs/maintainer-guide.md) lists the commands for each 
   convergence test available when `tol` is zero, negative or NaN) or on a stall
   (`x - df(x)/ddf(x)` rounding back to `x`), and certifies the curvature either
   way; a stall additionally requires the point and its curvature to be finite,
-  because it has satisfied no stationarity test. It does not verify that `ddf` is
-  the derivative of `df`, so a `ddf` large enough to underflow the step at a
-  non-stationary point still returns that point.
+  because it has satisfied no stationarity test, so a stall one ulp from a
+  minimiser with an infinite curvature needs a positive `tol` to be accepted.
+  It does not verify that `ddf` is the derivative of `df`, so a `ddf` large
+  enough to underflow the step at a non-stationary point still returns that
+  point.
 - `airy_ai` has no dedicated asymptotic branch for large negative `x`.
 - `Nautilus.Rolling` re-reduces each window rather than carrying a running
   accumulator, so every reduction is O(`window`) per position rather than

@@ -64,6 +64,19 @@ the minimiser, one that becomes `-inf` only at the point reached, a curvature
 below the 0.01 floor (`0.001*(x-3)^2` from `x0 = 5`, `tol = 0`), and Newton on a
 concave objective, which previously returned the maximiser.
 
+**A stalled point with an infinite curvature needs a positive `tol`.** When the
+Newton step underflows at a point whose gradient is not exactly zero, the point is
+accepted if its curvature is finite and rejected if it is infinite. Finiteness is
+the only discriminator available, and the two cases that must work force the
+asymmetry: rejecting every non-stationary stall breaks a real convergence (the
+quartic `(x^2-2)^2` stalls one ulp from `sqrt(2)` with a gradient of `5.6e-7`),
+and accepting every stall returns `x0` whenever `ddf` is infinite, which is the
+defect this behaviour exists to fix. One case is therefore lost against the
+previous behaviour: one ulp above the minimiser of `(x-3)^2` with `ddf = +inf` and
+`tol = 0` returns NaN, where `ddf = 1e30` at the same point returns `3.0000002`.
+Any `tol` above the gradient there accepts it through the convergence test, so a
+positive tolerance is the remedy.
+
 **`newton_minimize_1d` trusts `ddf` to be the derivative of `df`.** It never
 checks the two against each other, so an inconsistent pair is not diagnosed. A
 `ddf` large enough relative to `df` underflows the Newton step to nothing at a
@@ -75,16 +88,6 @@ the sign test rather than by anything detecting the inconsistency, and a
 non-finite `ddf` or a runaway iterate are rejected by the stall's finiteness
 requirement. Nothing in a single-point evaluation distinguishes a huge positive
 curvature from a genuinely sharp minimum.
-
-**`newton_minimize_1d` trusts `ddf` to be the derivative of `df`.** It never
-checks the two against each other, so an inconsistent pair is not diagnosed. A
-`ddf` large enough relative to `df` underflows the Newton step to nothing at a
-point that is not stationary; the iteration stalls there, the curvature check
-passes on that large positive value, and the point is returned as a minimiser.
-Measured: `(x-3)^2` with the correct `df` and a constant `ddf = 1e30` returns
-the starting point. A non-finite `ddf`, a `-1e30`, or a runaway iterate are all
-rejected; this case is not, because nothing in a single-point evaluation
-distinguishes it from a genuinely sharp minimum.
 
 ## Sampling
 

@@ -93,6 +93,19 @@ def find_min_newton() -> f32 =
   with a gradient that is not small, and `x0` is rejected rather than
   returned. An iterate that has run away to `+-inf` stalls there
   permanently and is rejected for the same reason.
+- **Pass a positive `tol` when `ddf` can overflow.** A stall is rejected
+  when its curvature is infinite but accepted when it is merely huge, and
+  finiteness is the only discriminator the method has -- not a claim that
+  `1e30` is better evidence than `+inf`. The two must-have cases force
+  it: rejecting every stall whose gradient is not exactly zero breaks a
+  genuine convergence (the quartic `(x^2-2)^2` stalls one ulp from
+  `sqrt(2)` with a gradient of `5.6e-7`), and accepting every stall
+  returns the starting point whenever `ddf` is infinite. So one case is
+  lost in the middle: one ulp from the minimiser with `ddf = +inf` and
+  `tol = 0`, the gradient is `4.8e-7`, not zero, the step underflows, and
+  the answer is NaN where a finite `1e30` curvature at the same point
+  returns it. Any positive `tol` above that gradient accepts it through
+  the convergence test instead, which is the normal case and the fix.
 - **The method does not check that `ddf` is the derivative of `df`.**
   When they disagree the step comes from a curvature the objective does
   not have, and a `ddf` large enough underflows the step to nothing at a
