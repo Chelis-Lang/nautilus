@@ -53,6 +53,16 @@ when the second derivative at the converged point is not above 0.01, which
 also rejects genuine but very flat minima (for example f(x) = x^4 near 0). Use
 `brent_minimize` or `golden_section_search` for flat targets.
 
+**`newton_minimize_1d` trusts `ddf` to be the derivative of `df`.** It never
+checks the two against each other, so an inconsistent pair is not diagnosed. A
+`ddf` large enough relative to `df` underflows the Newton step to nothing at a
+point that is not stationary; the iteration stalls there, the curvature check
+passes on that large positive value, and the point is returned as a minimiser.
+Measured: `(x-3)^2` with the correct `df` and a constant `ddf = 1e30` returns
+the starting point. A non-finite `ddf`, a `-1e30`, or a runaway iterate are all
+rejected; this case is not, because nothing in a single-point evaluation
+distinguishes it from a genuinely sharp minimum.
+
 ## Sampling
 
 **`gamma_sample` does not produce gamma draws.** For finite shape >= 1

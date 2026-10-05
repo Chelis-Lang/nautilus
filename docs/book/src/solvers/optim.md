@@ -26,8 +26,9 @@ NaN on failure).
   analytic gradients and want to tune learning rate.
 - **newton_minimize_1d:** Uses both first and second derivatives
   (`df`, `ddf`). Quadratic convergence near a minimum with positive
-  curvature. Returns NaN if the Hessian is non-positive, below 0.01, or
-  not finite, guarding against saddle points.
+  curvature. Returns NaN if the Hessian is non-positive or below 0.01
+  at convergence, guarding against saddle points, and if the iteration
+  stalls at a point it cannot certify.
 
 ## Example: golden section
 
@@ -71,17 +72,29 @@ def find_min_newton() -> f32 =
 - `gradient_descent_1d` stops when `|df(x)| < 1e-10` (hard-coded).
 - `newton_minimize_1d` checks that the second derivative at the
   converged point is positive and above 0.01. If not, it returns NaN
-  to signal that the point may be a saddle or inflection.
-- **A second derivative that is not finite gives NaN, whatever its
-  sign.** A NaN cannot establish positive curvature, and neither can an
-  infinity: `+inf` is literally positive and above 0.01, but a Newton
-  step of `df(x) / +-inf` is zero, so the iterate cannot move and
-  nothing about the point has been verified. Both the stepping path and
-  the convergence check reject a non-finite `ddf(x)`, so neither the
-  starting point nor a point that passed the gradient test is returned
-  as a minimum. An infinite second derivative is reachable by ordinary
-  overflow inside a `ddf` expression, not only by passing one
-  deliberately.
+  to signal that the point may be a saddle or inflection. A NaN second
+  derivative also returns NaN: it cannot establish positive curvature,
+  so the point is not reported as a minimum. An *infinite* second
+  derivative at a point the gradient test has already accepted is
+  strictly positive curvature, and the minimiser is returned.
+- **A Newton step that no longer moves the iterate is a stall, and a
+  stalled point gets the same curvature check as a converged one.**
+  `x - df(x)/ddf(x)` can round back to `x` while `|df(x)|` is still
+  above `tol`. That is ordinary behaviour at the limit of f32
+  resolution -- it is how `tol = 0` converges at all -- so the stalled
+  point is accepted, but only on the same terms as a converged one: its
+  curvature must be finite, positive and above 0.01, and the point
+  itself must be finite. Two consequences follow. An infinite second
+  derivative makes every step zero, so the iterate stalls at the
+  starting point, and that point is rejected rather than returned as a
+  minimum. And an iterate that has run away to `+-inf` stalls there
+  permanently, so infinity is not reported as a minimiser either.
+- **The method does not check that `ddf` is the derivative of `df`.**
+  When they disagree the step comes from a curvature the objective does
+  not have, and a `ddf` large enough underflows the step to nothing at a
+  point that is not stationary. That stall passes the curvature check
+  and the point is returned. Supply consistent derivatives, or use
+  `brent_minimize`, which needs none.
 - **A NaN the method evaluates is a failure.** A NaN bracket endpoint,
   a NaN starting point, or a NaN from the function a method actually
   evaluates gives NaN. `golden_section_search` and `brent_minimize`

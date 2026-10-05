@@ -139,7 +139,11 @@ The [maintainer guide](../docs/maintainer-guide.md) lists the commands for each 
   `svd_n` and `eig_n` run a fixed 30n Jacobi sweeps with no early exit, and
   `eig_n` assumes a symmetric input.
 - `newton_minimize_1d` returns NaN when the curvature at a stationary point is
-  below `0.01`, so it can reject very flat true minima.
+  below `0.01`, so it can reject very flat true minima. It also returns NaN when
+  the Newton step stops moving the iterate at a point whose curvature it cannot
+  certify, which covers a non-finite second derivative and a runaway iterate. It
+  does not verify that `ddf` is the derivative of `df`, so a `ddf` large enough
+  to underflow the step at a non-stationary point still returns that point.
 - `airy_ai` has no dedicated asymptotic branch for large negative `x`.
 - `Nautilus.Rolling` re-reduces each window rather than carrying a running
   accumulator, so every reduction is O(`window`) per position rather than
