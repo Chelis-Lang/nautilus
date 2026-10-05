@@ -146,9 +146,10 @@ The [maintainer guide](../docs/maintainer-guide.md) lists the commands for each 
   way; certification rejects a non-finite point at either exit, and a stall
   additionally requires a finite curvature because it has satisfied no
   stationarity test. A point near a minimiser whose `ddf` has overflowed to
-  `+-inf` is therefore NaN unless `tol` exceeds `|df(x)|` there, which an
-  objective scaled so that `ddf` overflows while `df` does not makes
-  unreachable.
+  `+inf` is therefore NaN unless `tol` exceeds `|df(x)|` there, which an objective
+  scaled so that `ddf` overflows while `df` does not makes unreachable; a `-inf`
+  curvature and a curvature below the `0.01` floor are rejected at both exits and
+  so are unrecoverable at any tolerance.
   It does not verify that `ddf` is the derivative of `df`, so a `ddf` large
   enough to underflow the step at a non-stationary point still returns that
   point.

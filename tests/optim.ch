@@ -276,6 +276,20 @@ def test_newton_minimize_overflowing_curvature_has_no_tolerance_remedy() -> unit
   r3 = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_inf_curvature, opt_one_ulp_above_3(), cast(1e-9, f32), cast(100, i64))
   assert_true(opt_is_nan(r3), "and the unscaled case loses it too once tol drops below its 4.8e-7 gradient, which is why the remedy is stated as a bound rather than as any positive tolerance")
 }
+def opt_shallow_quartic(x: f32) -> f32 = {
+  d = sub(mul(x, x), cast(2.0, f32))
+  mul(cast(0.00031, f32), mul(d, d))
+}
+def opt_dshallow_quartic(x: f32) -> f32 = mul(cast(0.00031, f32), mul(mul(cast(4.0, f32), x), sub(mul(x, x), cast(2.0, f32))))
+def opt_ddshallow_quartic(x: f32) -> f32 = mul(cast(0.00031, f32), sub(mul(cast(12.0, f32), mul(x, x)), cast(8.0, f32)))
+def test_newton_minimize_sub_floor_curvature_is_rejected_at_a_stall_too() -> unit ! { Test } = {
+  r1 = newton_minimize_1d(opt_shallow_quartic, opt_dshallow_quartic, opt_ddshallow_quartic, cast(1.2, f32), cast(1e-10, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r1), "3.1e-4*(x^2-2)^2 with its own correct derivatives stalls at sqrt(2) with a curvature of 0.00496, below the 0.01 floor, and the floor now applies at a stall as it already did at convergence; before, only the converged exit checked it")
+  r2 = newton_minimize_1d(opt_shallow_quartic, opt_dshallow_quartic, opt_ddshallow_quartic, cast(1.2, f32), cast(1e-6, f32), cast(100, i64))
+  _ = assert_true(opt_is_nan(r2), "a tolerance above the 2.1e-10 gradient routes it to the converged exit, which applied the same floor before this change, so no tolerance recovers this family")
+  r3 = newton_minimize_1d(opt_shallow_quartic, opt_dshallow_quartic, opt_ddshallow_quartic, cast(1.2, f32), cast(0.0, f32), cast(100, i64))
+  assert_true(opt_is_nan(r3), "and tol = 0 is the same stall. This is the documented flat-minimum rejection applied uniformly, and it costs a correct minimiser at the tolerances that previously reached the stall")
+}
 def test_newton_minimize_does_not_detect_inconsistent_derivatives() -> unit ! { Test } = {
   r = newton_minimize_1d(opt_parab_3, opt_dparab_3, opt_huge_curvature, cast(5.0, f32), cast(1e-6, f32), cast(100, i64))
   assert_close(r, cast(5.0, f32), cast(0.001, f32), "a ddf of 1e30 is not the derivative of this df: it underflows the step at a point whose gradient is 4, and 1e30 is certifiable curvature, so the stalled point is returned. Consistent derivatives are a precondition the method cannot check from one point, and this pins that it does not pretend to")
