@@ -11,11 +11,12 @@
 
   The hazard itself is unchanged and still disclosed. Measured at the
   `=0.18.12` pin through the built package: `gamma(5.5bf16)` = 58.0 against a
-  true 52.342777784553576, `bessel_y1(2.2bf16)` = 0.0059814453125 against
+  true 52.34277778455352, `bessel_y1(2.2bf16)` = 0.0059814453125 against
   0.0014877892897632759, and `bessel_j0(5.0f16)`, `bessel_j1(1.5f16)`,
   `bessel_y0(1.5f16)` all NaN, while `gamma(5.5f32)` = 52.342891693115234 and
-  `gamma(5.5f64)` = 52.342777784553576 are correct. The module still
-  typechecks only because its 47 coefficients outside f16's range carry an
+  `gamma(5.5f64)` = 52.342777784553576 are correct (the latter 8 ulp above
+  the correctly rounded 52.34277778455352). The module still
+  typechecks only because its 35 coefficients outside f16's range carry an
   explicit `f64` suffix, which satisfies `[04-LIT-2]` and moves the overflow
   from compile time to run time.
 

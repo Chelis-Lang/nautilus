@@ -43,9 +43,22 @@ the current verdicts.
   exclusion. A probe placed here fails `surf-parses` (§12.5) as a blocking
   lint error, which breaks the local gate for every unrelated change. Measured
   at this pin: the probe reports OK and `chelis test tests_blocked/ --expect
-  blocked` exits 0, while `chelis lint --check .` gains two blocking errors.
-  The manual recipe and the de-narrowing steps are in
-  [`docs/UPSTREAM_BUGS.md`](../docs/UPSTREAM_BUGS.md).
+  blocked` exits 0, while `chelis lint --check .` gains one blocking error,
+  taking the tree from one to two. The manual recipe and the de-narrowing
+  steps are in [`docs/UPSTREAM_BUGS.md`](../docs/UPSTREAM_BUGS.md).
+
+  **Do not read `conform audit`'s row 12 as endorsing this.** It reports
+  `NA / "no open upstream blocker with an expressible reproducer"` because
+  `check_tests_blocked` takes that branch when `tests_blocked/` holds no `.ch`
+  **and** `src/` holds no `chelis#NNN` citation. That string is canned: the
+  audit never reads `docs/UPSTREAM_BUGS.md`, and it would report NA just the
+  same for a forgotten probe that was perfectly expressible. **Residual
+  seam:** `docs/UPSTREAM_BUGS.md` §"How this file works" asks for the citation
+  at the narrowing site in `src/` so the audit can match the two mechanically.
+  Citing `chelis#3156` there flips row 12 to
+  `FAIL / "an upstream blocker is cited but tests_blocked/ has no probe"` with
+  the fix instruction "add `tests_blocked/<area>/<name>.ch`", which for this
+  blocker cannot be followed. Recorded rather than resolved.
 
 - **`chelis#2599`**: a bare `None` whose type is fixed only by its sibling arm
   fails `chelis build` with an unresolved host inference variable

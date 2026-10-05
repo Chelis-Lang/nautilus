@@ -43,10 +43,10 @@ blocked` reports each probe as OK (still fails as pinned), FIX-DETECTED (now
 passes, so the upstream fix has landed and the workaround should be removed),
 or DRIFTED (fails with a different diagnostic, so the failure mode moved and
 needs investigation before the citation is reused). There are no executable
-blocked probes at the 0.18.12 pin. The four live entries below require manual
-probes: three sit in lanes `chelis test` does not enter (C host lowering, or a
-full algorithm replacement), and one is a syntax-level blocker whose probe file
-would not parse;
+blocked probes at the 0.18.12 pin. All six live entries below require manual
+probes: five sit in lanes `chelis test` does not enter (C host lowering, C host
+ABI, linearity, or a full algorithm replacement), and one is a syntax-level
+blocker whose probe file would not parse;
 [`tests_blocked/README.md`](../tests_blocked/README.md) lists them and gives the
 recipes.
 
@@ -287,17 +287,19 @@ release.
     - **Affected Nautilus surface:** all 23 `Nautilus.Special` exports, via 67
       `[prec: Float]` binders in `src/special.ch`. Measured at this pin
       through the built package: `gamma(5.5bf16)` = 58.0 against a true
-      52.342777784553576 (10.8% off, far outside bf16's own resolution),
+      52.34277778455352 (10.8% off, far outside bf16's own resolution),
       `bessel_y1(2.2bf16)` = 0.0059814453125 against 0.0014877892897632759
       (4.0x), and `bessel_j0(5.0f16)`, `bessel_j1(1.5f16)`,
       `bessel_y0(1.5f16)` all NaN. The same calls at `f32` and `f64` are
       correct: `gamma(5.5f32)` = 52.342891693115234, `gamma(5.5f64)` =
-      52.342777784553576.
+      52.342777784553576 (8 ulp above the correctly rounded
+      52.34277778455352, which is this module's own f64 accuracy and not a
+      finding of this entry).
     - **Workaround:** none in the type system; the hazard is disclosed in
-      `docs/CHELIS_SURFACE.md`, `CHANGELOG.md`, `SKILL.md` §4 and the book's
+      `docs/CHELIS_SURFACE.md`, `CHANGELOG.md`, `SKILL.md` §5 and the book's
       `appendix/limitations.md`, `appendix/precision.md` and
       `special/overview.md`. Note that the module checks at all only because
-      the 47 coefficients outside f16's range carry an explicit `f64` suffix
+      the 35 coefficients outside f16's range carry an explicit `f64` suffix
       (`cast(57568490574.0f64, prec)`), which satisfies `[04-LIT-2]`
       (chelis#2123) and moves the f16 overflow from compile time to run time.
       Removing those suffixes is nautilus#83, not this entry.
@@ -319,7 +321,7 @@ release.
       of chelis `main` @ `b5b59d958`, and it also adds two blocking lint
       errors. See `tests_blocked/README.md` §cannot-be-probed.
     - **Re-probe trigger:** the next pin bump past v0.18.12. On pass, narrow
-      the 67 binders in `src/special.ch` to `[prec: {f32, f64}]`, hand the 47
+      the 67 binders in `src/special.ch` to `[prec: {f32, f64}]`, hand the 35
       `f64` suffixes to nautilus#83, drop the hazard rows from
       `docs/CHELIS_SURFACE.md` and the three book pages, and archive this
       entry. Closing nautilus#75 needs the narrowing on merged `main`, not the
