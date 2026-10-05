@@ -7,6 +7,7 @@ export (bisection, newton, brent)
 -- statement = Nautilus.Roots MUST provide the root-finding surface listed in the module support table.
 def r_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def r_nan_f32() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
+def r_is_nan_f32(x: f32) -> bool = neq(x, x)
 def bisection_rec(f: f32 -> f32, lo: f32, hi: f32, flo: f32, tol: f32, iters: i64) -> f32 = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
@@ -14,26 +15,35 @@ def bisection_rec(f: f32 -> f32, lo: f32, hi: f32, flo: f32, tol: f32, iters: i6
     width = sub(hi, lo)
     if lt(width, tol) then cast(0.5, f32) |> mul(add(lo, hi)) else {
       mid = cast(0.5, f32) |> mul(add(lo, hi))
-      if or(eq(mid, lo), eq(mid, hi)) then mid else {
+      if r_is_nan_f32(mid) then r_nan_f32() else if or(eq(mid, lo), eq(mid, hi)) then mid else {
         fmid = f(mid)
-        afmid = r_abs_f32(fmid)
-        if lt(afmid, tol) then mid else {
-          same_sign = flo |> mul(fmid) |> gt(cast(0.0, f32))
-          if same_sign then bisection_rec(f, mid, hi, fmid, tol, sub(iters, one_i)) else bisection_rec(f, lo, mid, flo, tol, sub(iters, one_i))
+        if r_is_nan_f32(fmid) then r_nan_f32() else {
+          afmid = r_abs_f32(fmid)
+          if lt(afmid, tol) then mid else {
+            same_sign = flo |> mul(fmid) |> gt(cast(0.0, f32))
+            if same_sign then bisection_rec(f, mid, hi, fmid, tol, sub(iters, one_i)) else bisection_rec(f, lo, mid, flo, tol, sub(iters, one_i))
+          }
         }
       }
     }
   }
 }
 def bisection(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32 = {
-  flo = f(lo)
-  aflo = r_abs_f32(flo)
-  if lt(aflo, tol) then lo else {
-    fhi = f(hi)
-    afhi = r_abs_f32(fhi)
-    if lt(afhi, tol) then hi else {
-      prod = mul(flo, fhi)
-      if gt(prod, cast(0.0, f32)) then r_nan_f32() else bisection_rec(f, lo, hi, flo, tol, max_iters)
+  nan_input = r_is_nan_f32(lo) |> or(r_is_nan_f32(hi)) |> or(r_is_nan_f32(tol))
+  if nan_input then r_nan_f32() else {
+    flo = f(lo)
+    if r_is_nan_f32(flo) then r_nan_f32() else {
+      aflo = r_abs_f32(flo)
+      if lt(aflo, tol) then lo else {
+        fhi = f(hi)
+        if r_is_nan_f32(fhi) then r_nan_f32() else {
+          afhi = r_abs_f32(fhi)
+          if lt(afhi, tol) then hi else {
+            prod = mul(flo, fhi)
+            if gt(prod, cast(0.0, f32)) then r_nan_f32() else bisection_rec(f, lo, hi, flo, tol, max_iters)
+          }
+        }
+      }
     }
   }
 }
@@ -42,22 +52,29 @@ def newton_rec(f: f32 -> f32, df: f32 -> f32, x: f32, tol: f32, iters: i64) -> f
   one_i = cast(1, i64)
   if lte(iters, zero_i) then r_nan_f32() else {
     fx = f(x)
-    afx = r_abs_f32(fx)
-    if lt(afx, tol) then x else {
-      dfx = df(x)
-      adfx = r_abs_f32(dfx)
-      if lt(adfx, cast(1e-30, f32)) then r_nan_f32() else {
-        step = div(fx, dfx)
-        x_next = sub(x, step)
-        if eq(x_next, x) then x_next else newton_rec(f, df, x_next, tol, sub(iters, one_i))
+    if r_is_nan_f32(fx) then r_nan_f32() else {
+      afx = r_abs_f32(fx)
+      if lt(afx, tol) then x else {
+        dfx = df(x)
+        adfx = r_abs_f32(dfx)
+        if r_is_nan_f32(dfx) |> or(lt(adfx, cast(1e-30, f32))) then r_nan_f32() else {
+          step = div(fx, dfx)
+          x_next = sub(x, step)
+          if r_is_nan_f32(x_next) then r_nan_f32() else if eq(x_next, x) then x_next else newton_rec(f, df, x_next, tol, sub(iters, one_i))
+        }
       }
     }
   }
 }
 def newton(f: f32 -> f32, df: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32 = {
-  fx0 = f(x0)
-  afx0 = r_abs_f32(fx0)
-  if lt(afx0, tol) then x0 else newton_rec(f, df, x0, tol, max_iters)
+  nan_input = r_is_nan_f32(x0) |> or(r_is_nan_f32(tol))
+  if nan_input then r_nan_f32() else {
+    fx0 = f(x0)
+    if r_is_nan_f32(fx0) then r_nan_f32() else {
+      afx0 = r_abs_f32(fx0)
+      if lt(afx0, tol) then x0 else newton_rec(f, df, x0, tol, max_iters)
+    }
+  }
 }
 def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, fc: f32, was_bisect: bool, tol: f32, iters: i64) -> f32 = {
   zero_i = cast(0, i64)
@@ -110,30 +127,39 @@ def brent_rec(f: f32 -> f32, a: f32, b: f32, c: f32, d: f32, fa: f32, fb: f32, f
       force_bisect = or(or(or(or(cond_range, cond_step_bisect), cond_step_interp), cond_small_bc), cond_small_cd)
       s = if force_bisect then mul(half, add(a1, b1)) else s_try
       this_was_bisect = force_bisect
-      if eq(s, b1) then b1 else {
+      if eq(s, b1) then b1 else if r_is_nan_f32(s) then r_nan_f32() else {
         fs = f(s)
-        d_new = c1
-        c_new = b1
-        fc_new = fb1
-        same_sign = fa1 |> mul(fs) |> gt(zero_f)
-        a_new = if same_sign then s else a1
-        fa_new = if same_sign then fs else fa1
-        b_new = if same_sign then b1 else s
-        fb_new = if same_sign then fb1 else fs
-        brent_rec(f, a_new, b_new, c_new, d_new, fa_new, fb_new, fc_new, this_was_bisect, tol, sub(iters, one_i))
+        if r_is_nan_f32(fs) then r_nan_f32() else {
+          d_new = c1
+          c_new = b1
+          fc_new = fb1
+          same_sign = fa1 |> mul(fs) |> gt(zero_f)
+          a_new = if same_sign then s else a1
+          fa_new = if same_sign then fs else fa1
+          b_new = if same_sign then b1 else s
+          fb_new = if same_sign then fb1 else fs
+          brent_rec(f, a_new, b_new, c_new, d_new, fa_new, fb_new, fc_new, this_was_bisect, tol, sub(iters, one_i))
+        }
       }
     }
   }
 }
 def brent(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32 = {
-  flo = f(lo)
-  aflo = r_abs_f32(flo)
-  if lt(aflo, tol) then lo else {
-    fhi = f(hi)
-    afhi = r_abs_f32(fhi)
-    if lt(afhi, tol) then hi else {
-      prod = mul(flo, fhi)
-      if gt(prod, cast(0.0, f32)) then r_nan_f32() else brent_rec(f, lo, hi, hi, lo, flo, fhi, fhi, true, tol, max_iters)
+  nan_input = r_is_nan_f32(lo) |> or(r_is_nan_f32(hi)) |> or(r_is_nan_f32(tol))
+  if nan_input then r_nan_f32() else {
+    flo = f(lo)
+    if r_is_nan_f32(flo) then r_nan_f32() else {
+      aflo = r_abs_f32(flo)
+      if lt(aflo, tol) then lo else {
+        fhi = f(hi)
+        if r_is_nan_f32(fhi) then r_nan_f32() else {
+          afhi = r_abs_f32(fhi)
+          if lt(afhi, tol) then hi else {
+            prod = mul(flo, fhi)
+            if gt(prod, cast(0.0, f32)) then r_nan_f32() else brent_rec(f, lo, hi, hi, lo, flo, fhi, fhi, true, tol, max_iters)
+          }
+        }
+      }
     }
   }
 }
