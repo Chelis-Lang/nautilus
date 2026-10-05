@@ -43,9 +43,10 @@ blocked` reports each probe as OK (still fails as pinned), FIX-DETECTED (now
 passes, so the upstream fix has landed and the workaround should be removed),
 or DRIFTED (fails with a different diagnostic, so the failure mode moved and
 needs investigation before the citation is reused). There are no executable
-blocked probes at the 0.18.12 pin. The three live entries below require manual
-probes in lanes `chelis test` does not enter (C host lowering, or a full
-algorithm replacement);
+blocked probes at the 0.18.12 pin. All six live entries below require manual
+probes: five sit in lanes `chelis test` does not enter (C host lowering, C host
+ABI, linearity, or a full algorithm replacement), and one is a syntax-level
+blocker whose probe file would not parse;
 [`tests_blocked/README.md`](../tests_blocked/README.md) lists them and gives the
 recipes.
 
@@ -265,13 +266,74 @@ release.
       The minimal reproducer and one `mean_vec` consumer passing do not
       establish that full result.
 
+- **A dtype binder cannot be bounded narrower than a family, so `Float`
+  admits f16/bf16 to `Nautilus.Special`** — `chelis#3156`
+  ([Chelis-Lang/chelis#3156](https://github.com/Chelis-Lang/chelis/issues/3156)),
+  **the expressiveness itself was fixed upstream by chelis#2443 and is NOT in
+  this pin.**
+    - **Symptom:** `[prec: {f32, f64}]` is a parse error at this pin
+      (`expected identifier or type identifier, found LBrace`), so a generic
+      declaration can be bounded only by `Float`, `Int` or `Numeric`
+      (spec/04-type-system.md §5.9). `Float` has four members and
+      `Nautilus.Special` supports two of them.
+    - **Why it is live here:** chelis#2443 was resolved by chelis#2827,
+      squashed as `a762596b8`, on chelis `main` 2026-10-02. v0.18.12 was
+      published 2026-09-30, so no release carries the form. The release that
+      would carry it also moves `SHELL_FORMAT_VERSION` 5 → 6 and
+      `PACKAGE_SCHEMA_FORMAT_VERSION` 3 → 4 in the same commit, so it cannot
+      read any currently published shell and forces a re-publish wave in
+      dependency order (nautilus, then coral, then shoals). That release
+      blocker is chelis#3156 and is the citation here; chelis#2443 is closed.
+    - **Affected Nautilus surface:** all 23 `Nautilus.Special` exports, via 67
+      `[prec: Float]` binders in `src/special.ch`. Measured at this pin
+      through the built package: `gamma(5.5bf16)` = 58.0 against a true
+      52.34277778455352 (10.8% off, far outside bf16's own resolution),
+      `bessel_y1(2.2bf16)` = 0.0059814453125 against 0.0014877892897632759
+      (4.0x), and `bessel_j0(5.0f16)`, `bessel_j1(1.5f16)`,
+      `bessel_y0(1.5f16)` all NaN. The same calls at `f32` and `f64` are
+      correct: `gamma(5.5f32)` = 52.342891693115234, `gamma(5.5f64)` =
+      52.342777784553576 (8 ulp above the correctly rounded
+      52.34277778455352, which is this module's own f64 accuracy and not a
+      finding of this entry).
+    - **Workaround:** none in the type system; the hazard is disclosed in
+      `docs/CHELIS_SURFACE.md`, `CHANGELOG.md`, `SKILL.md` §5 and the book's
+      `appendix/limitations.md`, `appendix/precision.md` and
+      `special/overview.md`. Note that the module checks at all only because
+      the 35 coefficients outside f16's range carry an explicit `f64` suffix
+      (`cast(57568490574.0f64, prec)`), which satisfies `[04-LIT-2]`
+      (chelis#2123) and moves the f16 overflow from compile time to run time.
+      Removing those suffixes is nautilus#83, not this entry.
+    - **Reproducer** (fails at this pin, in a scratch module):
+
+      ```text
+      def admits_two_precisions[prec: {f32, f64}](x: prec) -> prec = x
+      ```
+
+      `chelis check <file>` gives ``surf-parses (§12.5): cannot be parsed as
+      Surf: expected identifier or type identifier, found LBrace``. The
+      f16/bf16 values above reproduce by calling any `Nautilus.Special` export
+      at `f16` or `bf16` from a module in this package and evaluating it.
+      Not expressible as a `tests_blocked/` probe: the blocker is at the
+      syntax level, so the probe file does not parse, and
+      `chelis lint --check .` has no per-path exclusion and rejects it as a
+      blocking `surf-parses` error. Both halves of that were measured — as a
+      probe it reports OK at this pin and FIX-DETECTED against a source build
+      of chelis `main` @ `b5b59d958`, and it also adds two blocking lint
+      errors. See `tests_blocked/README.md` §cannot-be-probed.
+    - **Re-probe trigger:** the next pin bump past v0.18.12. On pass, narrow
+      the 67 binders in `src/special.ch` to `[prec: {f32, f64}]`, hand the 35
+      `f64` suffixes to nautilus#83, drop the hazard rows from
+      `docs/CHELIS_SURFACE.md` and the three book pages, and archive this
+      entry. Closing nautilus#75 needs the narrowing on merged `main`, not the
+      pin bump alone.
+
 ## Tracking
 
 **Re-probe cadence:** at every compiler pin bump.
 
 - **None at this pin.** Every filed issue that affects Nautilus
-  (`chelis#2370`, `chelis#2520`, `chelis#2152`) is listed under Actively
-  blocking.
+  (`chelis#2370`, `chelis#2520`, `chelis#2152`, `chelis#3156`) is listed under
+  Actively blocking.
 
 ## Parked
 

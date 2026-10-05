@@ -90,6 +90,12 @@ directly. Its functions are generic over the `Float` family. Read the
 caveats above first, because several of them are coefficient-limited rather
 than dtype-limited. The other modules remain f32-only.
 
+`Float` also admits `f16` and `bf16`, and `Nautilus.Special` is not usable at
+either: the f32-tuned coefficients give `gamma(5.5bf16)` = 58.0 against a true
+52.343, and NaN for the four `bessel_j0`/`j1`/`y0`/`y1` entry points at `f16`,
+with no diagnostic. Use `f32` or `f64`. See
+[Known limitations](limitations.md) and nautilus#75.
+
 ## Comparison to scipy
 
 SciPy operates in f64 (approximately 15 significant digits); f32 is roughly

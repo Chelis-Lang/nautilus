@@ -227,10 +227,11 @@ approximately 2.408.
 `[prec: Float](x: prec) -> prec`: the type parameter `prec` ranges over
 Chelis's floating-point dtypes, and one call uses one dtype throughout, so
 `beta(a: f32, b: f64)` is a precision mismatch. Use f32 or f64 only. `Float` is
-the narrowest bound Chelis offers, so the signatures also accept `f16` and
-`bf16`, where the f32-tuned coefficients give wrong answers with no
+the narrowest dtype-*family* bound Chelis offers, so the signatures also accept
+`f16` and `bf16`, where the f32-tuned coefficients give wrong answers with no
 diagnostic: `bf16` `gamma(5.5)` is 10.8% off and `f16` `bessel_j0` returns NaN
-(nautilus#75). Every other module is f32-only.
+(nautilus#75). An explicit dtype set, `[prec: {f32, f64}]`, would exclude them
+and exists on chelis `main`, but no release carries it yet. Every other module is f32-only.
 
 **Precision.** f32 carries about seven significant digits; the Notes column in
 Section 6 and `docs/book/src/appendix/precision.md` give per-function figures.
