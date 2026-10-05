@@ -2,7 +2,8 @@
 
 The `Nautilus.Roots` module provides three scalar root-finders. Each takes
 a function `f: f32 -> f32` and returns an approximate root. Invalid brackets,
-near-zero derivatives, and exhausted iteration limits can produce NaN.
+near-zero derivatives, NaN values from `f` or `df`, and exhausted iteration
+limits can produce NaN.
 
 ## Functions
 
@@ -50,6 +51,17 @@ cos(x) = x with the analytic derivative -sin(x) - 1 and returns approximately
 
 - **No sign change**: `bisection` and `brent` return NaN if
   `f(lo) * f(hi) > 0`.
+- **NaN input or NaN residual**: all three return NaN when `tol` is NaN, when a
+  bracket endpoint or starting point is NaN, or when `f` (or `df` for `newton`)
+  returns NaN at any point they evaluate. The first two are rejected before `f`
+  is called at all. The third is reported when it is reached, which may be
+  several iterations in; a residual that is NaN only on an interval the
+  iteration never probes is never seen, and such a run converges normally. NaN compares false against everything, so a NaN residual carries
+  neither the sign a bracket update needs nor a magnitude the tolerance test
+  can read: there is nothing for an iteration to make progress on. An
+  **infinite** residual is a different case and is not rejected. `-inf` and
+  `+inf` still carry a sign, so a bracket with an infinite endpoint residual
+  is still a bracket and `bisection` and `brent` still converge on it.
 - **Zero derivative**: `newton` returns NaN if `|df(x)| < 1e-30` at
   any step.
 - **Iteration limit**: all three return NaN when `max_iters` is exhausted

@@ -62,3 +62,79 @@ def test_bisection_root_below_hi() -> unit ! { Test } = {
   r = bisection(root_xsq_minus_2, cast(1.0, f32), cast(2.0, f32), cast(1e-6, f32), cast(100, i64))
   assert_true(lt(r, cast(2.0, f32)), "bisection root < 2")
 }
+def is_nan(x: f32) -> bool = neq(x, x)
+def root_nan_everywhere(_x: f32) -> f32 = div(cast(0.0, f32), cast(0.0, f32))
+def root_unit_slope(_x: f32) -> f32 = cast(1.0, f32)
+def root_bracketed_nan_inside(x: f32) -> f32 = if lte(x, cast(-0.5, f32)) then neg(cast(1.0, f32)) else if gte(x, cast(2.0, f32)) then cast(1.0, f32) else div(cast(0.0, f32), cast(0.0, f32))
+def root_minus_inf_at_lo(x: f32) -> f32 = if lte(x, cast(-0.5, f32)) then neg(div(cast(1.0, f32), cast(0.0, f32))) else sub(x, cast(1.0, f32))
+def test_bisection_nan_residual_is_nan() -> unit ! { Test } = {
+  r = bisection(root_nan_everywhere, cast(-0.5, f32), cast(2.0, f32), cast(1e-7, f32), cast(100000, i64))
+  assert_true(is_nan(r), "bisection on a nowhere-finite residual is NaN, not a point in the collapsed bracket")
+}
+def test_brent_nan_residual_is_nan() -> unit ! { Test } = {
+  r = brent(root_nan_everywhere, cast(-0.5, f32), cast(2.0, f32), cast(1e-7, f32), cast(100000, i64))
+  assert_true(is_nan(r), "brent on a nowhere-finite residual is NaN without consuming the budget")
+}
+def test_newton_nan_residual_is_nan() -> unit ! { Test } = {
+  r = newton(root_nan_everywhere, root_unit_slope, cast(1.0, f32), cast(1e-7, f32), cast(100000, i64))
+  assert_true(is_nan(r), "newton on a nowhere-finite residual is NaN without consuming the budget")
+}
+def test_bisection_nan_inside_a_valid_bracket_is_nan() -> unit ! { Test } = {
+  r = bisection(root_bracketed_nan_inside, cast(-0.5, f32), cast(2.0, f32), cast(1e-7, f32), cast(100000, i64))
+  assert_true(is_nan(r), "bisection reports NaN when the endpoints bracket but an interior residual is NaN")
+}
+def test_brent_nan_inside_a_valid_bracket_is_nan() -> unit ! { Test } = {
+  r = brent(root_bracketed_nan_inside, cast(-0.5, f32), cast(2.0, f32), cast(1e-7, f32), cast(100000, i64))
+  assert_true(is_nan(r), "brent reports NaN when the endpoints bracket but an interior residual is NaN")
+}
+def test_newton_nan_derivative_is_nan() -> unit ! { Test } = {
+  r = newton(root_xsq_minus_2, root_nan_everywhere, cast(1.5, f32), cast(1e-6, f32), cast(100000, i64))
+  assert_true(is_nan(r), "newton reports NaN for a NaN derivative, as it does for a near-zero one")
+}
+def test_brent_nan_tolerance_is_nan() -> unit ! { Test } = {
+  r = brent(root_xsq_minus_2, cast(1.0, f32), cast(2.0, f32), div(cast(0.0, f32), cast(0.0, f32)), cast(100000, i64))
+  assert_true(is_nan(r), "a NaN tolerance is rejected rather than disabling every stopping condition")
+}
+def test_brent_nan_bracket_endpoint_is_nan() -> unit ! { Test } = {
+  r = brent(root_xsq_minus_2, div(cast(0.0, f32), cast(0.0, f32)), cast(2.0, f32), cast(1e-6, f32), cast(100000, i64))
+  assert_true(is_nan(r), "a NaN bracket endpoint is rejected")
+}
+def test_brent_same_sign_bracket_is_nan() -> unit ! { Test } = {
+  r = brent(root_xsq_minus_1, cast(2.0, f32), cast(3.0, f32), cast(1e-6, f32), cast(100, i64))
+  assert_true(is_nan(r), "brent still returns NaN when f(lo) and f(hi) share a sign")
+}
+def test_bisection_infinite_endpoint_residual_finds_the_root() -> unit ! { Test } = {
+  r = bisection(root_minus_inf_at_lo, cast(-0.5, f32), cast(2.0, f32), cast(1e-6, f32), cast(100, i64))
+  assert_close(r, cast(1.0, f32), cast(0.0001, f32), "an infinite endpoint residual still carries a sign, so bisection converges")
+}
+def test_brent_infinite_endpoint_residual_finds_the_root() -> unit ! { Test } = {
+  r = brent(root_minus_inf_at_lo, cast(-0.5, f32), cast(2.0, f32), cast(1e-6, f32), cast(100, i64))
+  assert_close(r, cast(1.0, f32), cast(0.0001, f32), "an infinite endpoint residual still carries a sign, so brent converges")
+}
+def root_sign_only(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(cast(1.0, f32)) else cast(1.0, f32)
+def test_bisection_unbounded_bracket_is_nan() -> unit ! { Test } = {
+  inf = div(cast(1.0, f32), cast(0.0, f32))
+  r = bisection(root_sign_only, neg(inf), inf, cast(1e-6, f32), cast(100000, i64))
+  assert_true(is_nan(r), "an unbounded bracket has a NaN midpoint, which bisection reports rather than iterating on")
+}
+def test_brent_unbounded_bracket_is_nan() -> unit ! { Test } = {
+  inf = div(cast(1.0, f32), cast(0.0, f32))
+  r = brent(root_sign_only, neg(inf), inf, cast(1e-6, f32), cast(100000, i64))
+  assert_true(is_nan(r), "and so does brent, whose trial point is NaN for the same reason")
+}
+def test_bisection_nan_tolerance_is_nan() -> unit ! { Test } = {
+  r = bisection(root_xsq_minus_2, cast(1.0, f32), cast(2.0, f32), div(cast(0.0, f32), cast(0.0, f32)), cast(100000, i64))
+  assert_true(is_nan(r), "bisection rejects a NaN tolerance, which otherwise disables every stopping condition")
+}
+def test_bisection_nan_bracket_endpoint_is_nan() -> unit ! { Test } = {
+  r = bisection(root_xsq_minus_2, div(cast(0.0, f32), cast(0.0, f32)), cast(2.0, f32), cast(1e-6, f32), cast(100000, i64))
+  assert_true(is_nan(r), "bisection rejects a NaN bracket endpoint")
+}
+def test_newton_nan_tolerance_is_nan() -> unit ! { Test } = {
+  r = newton(root_xsq_minus_2, root_xsq_minus_2_deriv, cast(1.5, f32), div(cast(0.0, f32), cast(0.0, f32)), cast(100000, i64))
+  assert_true(is_nan(r), "newton rejects a NaN tolerance")
+}
+def test_newton_nan_start_point_is_nan() -> unit ! { Test } = {
+  r = newton(root_xsq_minus_2, root_xsq_minus_2_deriv, div(cast(0.0, f32), cast(0.0, f32)), cast(1e-6, f32), cast(100000, i64))
+  assert_true(is_nan(r), "newton rejects a NaN starting point")
+}
