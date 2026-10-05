@@ -122,3 +122,19 @@ def test_brent_unbounded_bracket_is_nan() -> unit ! { Test } = {
   r = brent(root_sign_only, neg(inf), inf, cast(1e-6, f32), cast(100000, i64))
   assert_true(is_nan(r), "and so does brent, whose trial point is NaN for the same reason")
 }
+def test_bisection_nan_tolerance_is_nan() -> unit ! { Test } = {
+  r = bisection(root_xsq_minus_2, cast(1.0, f32), cast(2.0, f32), div(cast(0.0, f32), cast(0.0, f32)), cast(100000, i64))
+  assert_true(is_nan(r), "bisection rejects a NaN tolerance, which otherwise disables every stopping condition")
+}
+def test_bisection_nan_bracket_endpoint_is_nan() -> unit ! { Test } = {
+  r = bisection(root_xsq_minus_2, div(cast(0.0, f32), cast(0.0, f32)), cast(2.0, f32), cast(1e-6, f32), cast(100000, i64))
+  assert_true(is_nan(r), "bisection rejects a NaN bracket endpoint")
+}
+def test_newton_nan_tolerance_is_nan() -> unit ! { Test } = {
+  r = newton(root_xsq_minus_2, root_xsq_minus_2_deriv, cast(1.5, f32), div(cast(0.0, f32), cast(0.0, f32)), cast(100000, i64))
+  assert_true(is_nan(r), "newton rejects a NaN tolerance")
+}
+def test_newton_nan_start_point_is_nan() -> unit ! { Test } = {
+  r = newton(root_xsq_minus_2, root_xsq_minus_2_deriv, div(cast(0.0, f32), cast(0.0, f32)), cast(1e-6, f32), cast(100000, i64))
+  assert_true(is_nan(r), "newton rejects a NaN starting point")
+}
