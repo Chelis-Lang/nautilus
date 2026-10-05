@@ -151,7 +151,7 @@ AST contract. `spec/02-surf-syntax.md` §0.1 is the authority.
 
 The selectors below omit Chelis compiler-only review commands, PR, spec,
 release, issue, worktree cleanup, and build machinery. Nautilus's review and
-worktree rules below, Pin Bump Checklist, `CONTRIBUTING.md`, and
+worktree rules below, Pin Bump Checklist, `docs/maintainer-guide.md`, and
 `spec/scope.md` own those local procedures. The pointer selector removes
 links and edit routes for compiler files absent from Nautilus.
 
@@ -257,7 +257,7 @@ requests, and git.
 [`spec/scope.md`](spec/scope.md) owns Nautilus's intent, architecture,
 acceptance rules, known limitations, and dated deferrals. `SKILL.md` §6 is the
 function-level API inventory with per-export stability labels.
-[`CONTRIBUTING.md`](CONTRIBUTING.md) lists the local gate commands. Deferral
+The [maintainer guide](docs/maintainer-guide.md) lists the local gate commands. Deferral
 citations in source (for example `Nautilus.Signal`) point at
 `spec/scope.md` § Deferrals.
 
