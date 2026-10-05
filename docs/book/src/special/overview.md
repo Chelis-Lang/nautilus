@@ -24,20 +24,17 @@ the eight `bessel_*`. The other ten (`gamma`, `log_gamma`, `digamma`,
 at lowering, because their bodies recurse or reach a primitive with no
 reverse-mode adjoint.
 
-Unlike the rest of Nautilus, all twenty-three exports are **dtype-generic over
-the `Float` family**, so the same `erf` serves an f32 caller and an f64 one:
+Unlike the rest of Nautilus, all twenty-three exports have an explicit
+**`{f32, f64}` dtype-set bound**, so the same `erf` serves both callers:
 
 ```chelis-fragment
 def narrow(x: f32) -> f32 = erf(x)
 def wide(x: f64) -> f64 = erf(x)
 ```
 
-The `Float` family has four members, and only two of them work here. `f16`
-and `bf16` typecheck and return wrong answers with no diagnostic, because the
-coefficient sets are f32-tuned: `gamma(5.5bf16)` returns 58.0 against a true
-52.343, and `bessel_j0`/`j1`/`y0`/`y1` return NaN at `f16`. Call these
-functions at `f32` or `f64` only. nautilus#75 tracks it, and the bound cannot
-be narrowed at the pinned compiler.
+The bound rejects `f16` and `bf16` at checking. Their f32-tuned coefficients
+could otherwise yield misleading values, so the accepted precisions are
+exactly f32 and f64 (nautilus#75).
 
 A single call still uses one dtype throughout: `beta(a: f32, b: f64)` is a
 precision mismatch, not an implicit promotion. Generic signatures also do

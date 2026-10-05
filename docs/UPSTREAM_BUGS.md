@@ -3,10 +3,10 @@
 This file records the upstream Chelis compiler issues that currently shape
 Nautilus: what each one blocks, how Nautilus works around it, and when to check
 it again. It describes the state at the current **pin**, the exact compiler
-release that `reef.toml` requires. This Nautilus 0.7.47 source candidate pins
-published `chelis 0.18.12` (`compiler = "=0.18.12"`); its release identity and
+release that `reef.toml` requires. This Nautilus 0.7.48 source candidate pins
+published `chelis 0.18.13` (`compiler = "=0.18.13"`); its release identity and
 asset hashes are recorded in [`docs/CHELIS_SURFACE.md`](CHELIS_SURFACE.md).
-The last published Nautilus package, v0.7.46, predates this source pin. Earlier
+The last published Nautilus package, v0.7.47, predates this source pin. Earlier
 re-probe records are in git history and [`CHANGELOG.md`](../CHANGELOG.md).
 
 ## How this file works
@@ -27,7 +27,6 @@ and record whether the limitation is still present.
 |---|---|---|
 | Actively blocking | Limitations that narrow, or would narrow, a Nautilus surface | Every compiler pin bump and before every Nautilus release |
 | Tracking | Filed limitations that Nautilus follows without being narrowed by them | Every compiler pin bump |
-| Parked | Unfiled or inactive limitations awaiting a stated condition | Every pin bump and whenever a stated filing condition is met |
 | Archived | Fixed limitations kept for regression context | None; revisit only on a reported regression |
 
 Each live entry states its minimal reproducer (or where to find it), the
@@ -43,10 +42,8 @@ blocked` reports each probe as OK (still fails as pinned), FIX-DETECTED (now
 passes, so the upstream fix has landed and the workaround should be removed),
 or DRIFTED (fails with a different diagnostic, so the failure mode moved and
 needs investigation before the citation is reused). There are no executable
-blocked probes at the 0.18.12 pin. All six live entries below require manual
-probes: five sit in lanes `chelis test` does not enter (C host lowering, C host
-ABI, linearity, or a full algorithm replacement), and one is a syntax-level
-blocker whose probe file would not parse;
+blocked probes at the 0.18.13 pin. The remaining live entries require manual
+probes in C host lowering or a full algorithm replacement;
 [`tests_blocked/README.md`](../tests_blocked/README.md) lists them and gives the
 recipes.
 
@@ -82,53 +79,17 @@ release.
       `tests/curvefit_lm_jacobian_generic_dims.ch` and
       `tests/curvefit_lm_jacobian_model_wrapper.ch`, so no bounded blocked
       probe exists yet.
-    - **0.18.12 re-probe:** both isolated row witnesses and the shipped
+    - **0.18.13 re-probe:** both isolated row witnesses and the shipped
       finite-difference recovery suite pass. A task-local exact-AD replacement
-      that differentiated one seeded output at a time failed all six
-      multi-parameter recoveries before reaching the earlier provenance
-      boundary: `grad` rejected the models' host `to_list` with
-      `[05-HOST-1]`. This distinct failure does not establish whether the
-      original provenance error persists. No valid full-LM exact-AD
-      replacement has passed.
+      differentiated one seeded output at a time and failed all six
+      multi-parameter recoveries with `[05-HOST-1]`: the reached model's
+      `to_list` has no numeric IR lowering. The other five CurveFit tests
+      passed. The earlier provenance boundary was not reached, so this result
+      does not establish whether that error persists. The finite-difference
+      source was restored after the probe.
     - **Re-probe trigger:** every pin bump and the release resolving
       chelis#2370. On pass, compare the full LM recovery trajectories before
       removing the finite-difference implementation.
-
-- **A bare `None` fixed only by its sibling arm does not lower to C** —
-  `chelis#2599`
-  ([Chelis-Lang/chelis#2599](https://github.com/Chelis-Lang/chelis/issues/2599)),
-  **fixed upstream by chelis#2888 and NOT in this pin.**
-    - **Symptom:** `chelis build` fails with ``host type did not resolve
-      before the code-generation boundary: unresolved host inference variable
-      `N` ([05-UNS-1]; chelis#730)``. `chelis check`, `chelis eval`,
-      `chelis test` and `chelis reef build` are all green, and `chelis reef
-      build` cannot see it because it does not enter host lowering.
-    - **Why it is live here:** chelis#2888 merged 2026-10-02; v0.18.12 was
-      published 2026-09-30. Both of chelis#2599's own verbatim reproducers
-      still fail at this pin, measured, and so does the same shape at `f64`.
-    - **Affected Nautilus surface:** every `Nautilus.Rolling` export that can
-      report absence, which is 15 of its 17 list exports and their `tensor_`
-      twins.
-    - **Workaround:** each `Option`-producing body is a named def with an
-      explicit `-> Option[f64]`, rather than a bare `None` in a lambda arm:
-      `roll_entry`, `roll_diff_at`, `roll_pct_at` and `roll_at` in
-      `src/rolling.ch`. An annotated named def fixes the type locally, which
-      is what lowering needs.
-    - **Reproducer** (fails at this pin, in a scratch module under `src/`):
-
-      ```text
-      def probe(n: i64) -> List[Option[f64]] =
-        map(fn (i: i64) -> if lt(i, n) then None else Some(cast(1.0, f64)),
-            range(cast(0, i64), cast(4, i64)))
-      ```
-
-      `chelis build -o <dir> src/<probe>.ch`. Not expressible as a
-      `tests_blocked/` probe: the failure is in the build lane, and
-      `chelis test` never invokes `chelis build`. See
-      `tests_blocked/README.md` §cannot-be-probed.
-    - **Re-probe trigger:** the next pin bump past v0.18.12. On pass, inline
-      those four helpers back into their lambdas, delete this entry, and keep
-      `scripts/check_rolling_c_lane.py` green.
 
 - **A function-typed parameter cannot cross the C host boundary** —
   `chelis#909`
@@ -170,15 +131,15 @@ release.
       is added, whether or not it reaches the call. An `if`-selected or
       returned function value is a distinct sub-shape failing with `no target
       ABI representation` rather than `[04-TOT-2]`.
+    - **0.18.13 re-probe:** the isolated `probe_sum` / `probe` / `probe_use`
+      module above still fails `chelis build` with `[04-TOT-2]`. The shipped
+      closed-tag Rolling implementation builds in and across packages.
     - **The load-bearing fact, and the actual justification for the tag.**
-      Reverting `roll_core` to `red: List[f64] -> f64` while keeping the
-      hoisted `Option` defs fails with `[05-UNS-1]` *"unresolved host
-      inference variable"* — **not** `[04-TOT-2]`. So the blocker that
-      governs this module is the host-inference class above, and the
-      function-value ABI is a separate limitation that this module simply does
-      not depend on. Hoisting the `Option` bodies alone does not fix the
-      higher-order shape, which is the measured reason the function value had
-      to go, and `scripts/check_rolling_c_lane.py` is what keeps it gone.
+      At the earlier pin, reverting `roll_core` to
+      `red: List[f64] -> f64` while keeping the hoisted `Option` defs failed
+      with `[05-UNS-1]`, the now-fixed chelis#2599 class rather than
+      `[04-TOT-2]`. The closed reducer tag remains a deliberate API design.
+      `scripts/check_rolling_c_lane.py` guards the shipped C consumers.
     - **Re-probe trigger:** none required. Revisit only if a future reducer
       set has to be open, which would make the function value necessary rather
       than convenient.
@@ -194,10 +155,10 @@ release.
       with `Option` and ADT `match` still rejects in `chelis build` with
       `inconsistent live owners`, so `lower_match_option` and
       `lower_match_adt` remain blocked.
-    - **Affected Nautilus surface:** none today. `src/` contains no `match`,
-      no ADT and no `Option`. The entry becomes live for any change that
-      introduces a `match` over an owned value consumed on one arm, and such a
-      change must probe its own C build.
+    - **Affected Nautilus surface:** the existing `Reducer` match and
+      `Option` paths build successfully. The specific block-bound owner shape
+      in the upstream reproducers is absent; adding that shape requires its
+      own C build.
     - **Trigger shape:** the owner must be bound from a block expression, so
       that `consume` moves it rather than copies it inside the arm (a plain
       binding copies and owes no release), and the consuming arm must be the
@@ -206,9 +167,11 @@ release.
       `i64` with no dtype binder, so the risk is not limited to
       `[prec: Float]` conversions, and no particular mechanism should be
       inferred from them.
-    - **Workaround:** none needed while no `src/` code uses `match`.
-    - **Reproducer:** manual only, because `chelis test` never enters C host
-      lowering. The reproducers are in chelis#2520.
+    - **Workaround:** none needed for the shipped match shapes.
+    - **0.18.13 re-probe:** the upstream Option and ADT `match` reproducers
+      each fail `chelis build` with `inconsistent live owners`; the same
+      block-bound owner in an `if` emits and compiles. Manual only because
+      `chelis test` never enters C host lowering. The source is in chelis#2520.
     - **Re-probe trigger:** every pin bump, and before merging any change that
       adds a `match` over an owned value consumed on one arm.
 
@@ -233,6 +196,12 @@ release.
       narrow the blocker; they do not certify every generic Stats or Roots
       consumer. The upstream issue remains open for its separate IR-lane
       residue.
+    - **0.18.13 re-probe:** a library exporting
+      `apply_cast[prec: Float](g: prec -> prec, x: prec)` was built and
+      installed into an isolated Reef store. Separate f32 and f64 consumers
+      each built and linked with `chelis build`; both executables printed
+      `probe = 1.5`. The full generic Stats, Roots, and LinAlg consumer matrix
+      remains unmeasured, so their existing f32-only bounds remain.
     - **Related issues:** `chelis#1418` reported the same diagnostic and is
       closed; its fixes first shipped in 0.18.7. The checker-side mirror,
       `chelis#2151`, is fixed at this pin (see Archived).
@@ -266,88 +235,32 @@ release.
       The minimal reproducer and one `mean_vec` consumer passing do not
       establish that full result.
 
-- **A dtype binder cannot be bounded narrower than a family, so `Float`
-  admits f16/bf16 to `Nautilus.Special`** — `chelis#3156`
-  ([Chelis-Lang/chelis#3156](https://github.com/Chelis-Lang/chelis/issues/3156)),
-  **the expressiveness itself was fixed upstream by chelis#2443 and is NOT in
-  this pin.**
-    - **Symptom:** `[prec: {f32, f64}]` is a parse error at this pin
-      (`expected identifier or type identifier, found LBrace`), so a generic
-      declaration can be bounded only by `Float`, `Int` or `Numeric`
-      (spec/04-type-system.md §5.9). `Float` has four members and
-      `Nautilus.Special` supports two of them.
-    - **Why it is live here:** chelis#2443 was resolved by chelis#2827,
-      squashed as `a762596b8`, on chelis `main` 2026-10-02. v0.18.12 was
-      published 2026-09-30, so no release carries the form. The release that
-      would carry it also moves `SHELL_FORMAT_VERSION` 5 → 6 and
-      `PACKAGE_SCHEMA_FORMAT_VERSION` 3 → 4 in the same commit, so it cannot
-      read any currently published shell and forces a re-publish wave in
-      dependency order (nautilus, then coral, then shoals). That release
-      blocker is chelis#3156 and is the citation here; chelis#2443 is closed.
-    - **Affected Nautilus surface:** all 23 `Nautilus.Special` exports, via 67
-      `[prec: Float]` binders in `src/special.ch`. Measured at this pin
-      through the built package: `gamma(5.5bf16)` = 58.0 against a true
-      52.34277778455352 (10.8% off, far outside bf16's own resolution),
-      `bessel_y1(2.2bf16)` = 0.0059814453125 against 0.0014877892897632759
-      (4.0x), and `bessel_j0(5.0f16)`, `bessel_j1(1.5f16)`,
-      `bessel_y0(1.5f16)` all NaN. The same calls at `f32` and `f64` are
-      correct: `gamma(5.5f32)` = 52.342891693115234, `gamma(5.5f64)` =
-      52.342777784553576 (8 ulp above the correctly rounded
-      52.34277778455352, which is this module's own f64 accuracy and not a
-      finding of this entry).
-    - **Workaround:** none in the type system; the hazard is disclosed in
-      `docs/CHELIS_SURFACE.md`, `CHANGELOG.md`, `SKILL.md` §5 and the book's
-      `appendix/limitations.md`, `appendix/precision.md` and
-      `special/overview.md`. Note that the module checks at all only because
-      the 35 coefficients outside f16's range carry an explicit `f64` suffix
-      (`cast(57568490574.0f64, prec)`), which satisfies `[04-LIT-2]`
-      (chelis#2123) and moves the f16 overflow from compile time to run time.
-      Removing those suffixes is nautilus#83, not this entry.
-    - **Reproducer** (fails at this pin, in a scratch module):
-
-      ```text
-      def admits_two_precisions[prec: {f32, f64}](x: prec) -> prec = x
-      ```
-
-      `chelis check <file>` gives ``surf-parses (§12.5): cannot be parsed as
-      Surf: expected identifier or type identifier, found LBrace``. The
-      f16/bf16 values above reproduce by calling any `Nautilus.Special` export
-      at `f16` or `bf16` from a module in this package and evaluating it.
-      Not expressible as a `tests_blocked/` probe: the blocker is at the
-      syntax level, so the probe file does not parse, and
-      `chelis lint --check .` has no per-path exclusion and rejects it as a
-      blocking `surf-parses` error. Both halves of that were measured — as a
-      probe it reports OK at this pin and FIX-DETECTED against a source build
-      of chelis `main` @ `b5b59d958`, and it also adds two blocking lint
-      errors. See `tests_blocked/README.md` §cannot-be-probed.
-    - **Re-probe trigger:** the next pin bump past v0.18.12. On pass, narrow
-      the 67 binders in `src/special.ch` to `[prec: {f32, f64}]`, hand the 35
-      `f64` suffixes to nautilus#83, drop the hazard rows from
-      `docs/CHELIS_SURFACE.md` and the three book pages, and archive this
-      entry. Closing nautilus#75 needs the narrowing on merged `main`, not the
-      pin bump alone.
-
 ## Tracking
 
 **Re-probe cadence:** at every compiler pin bump.
 
 - **None at this pin.** Every filed issue that affects Nautilus
-  (`chelis#2370`, `chelis#2520`, `chelis#2152`, `chelis#3156`) is listed under
+  (`chelis#2370`, `chelis#2520`, `chelis#2152`) is listed under
   Actively blocking.
-
-## Parked
-
-**Re-probe cadence:** at every pin bump and whenever a stated filing condition
-is met.
-
-- **None at this pin.** No limitation is parked and no draft is pending; the
-  drafting convention is in
-  [`docs/issue_drafts/README.md`](issue_drafts/README.md).
 
 ## Archived
 
 **Re-probe cadence:** none. Revisit an entry only when a regression is
 reported or a live narrowing cites the old behavior.
+
+- **`chelis#2599`**, bare `None` in a lambda arm could leave an unresolved host
+  inference variable in C lowering. At 0.18.13 the exact `map` reproducer
+  from this entry checks and emits C. The four named `Option` helper bodies in
+  `src/rolling.ch` are inlined into their callers; `scripts/check_rolling_c_lane.py`
+  builds all 34 Rolling exports in package and in a separate package, including
+  C compilation and linking.
+- **`chelis#3156` / `chelis#2443`**, the 0.18.12 syntax block on dtype-set
+  binders. At 0.18.13 `src/special.ch` checks and builds with all 67 binders
+  narrowed to `{f32, f64}`. Negative tests reject `gamma(5.5bf16)` and
+  `bessel_j0(5.0f16)` at the call site; the full positive suite keeps f32/f64
+  behavior green. The remaining ecosystem republish sequence tracked by
+  chelis#3156 does not narrow Nautilus after this bump. nautilus#75 is fixed
+  by the Special change; the 35 large literal suffixes remain nautilus#83.
 
 - **`chelis#676`**, backward-DAG verification failure for `grad` through a
   model-capturing Jacobian wrapper. The generic and concrete witnesses pass at

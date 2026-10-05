@@ -1,4 +1,4 @@
-dimension mismatch
+argument 2, axis 0: expected 3, got 2
 
 Assumption: Nautilus.Distance.euclidean requires both input tensors to share
 the same static length parameter `n`. Literal tensors of lengths 3 and 2 must

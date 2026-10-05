@@ -15,8 +15,8 @@ env:
   # Audit-only mirror required by the shell contract. The installer resolves
   # its runtime tag and version directly from the exact pin in reef.toml; the
   # fail-fast guard and `conform audit` reject drift in this pair.
-  CHELIS_TAG: v0.18.12
-  CHELIS_VERSION: 0.18.12
+  CHELIS_TAG: v0.18.13
+  CHELIS_VERSION: 0.18.13
 
 jobs:
   pin-consistency-guard:
@@ -107,7 +107,7 @@ jobs:
           fi
           echo "OK: tests/ contains $n .ch files"
 
-  # Single-runner static gates: chelis check + reef build. These don't
+  # Single-runner static gates: format, lint, chelis check, and reef build. These don't
   # parallelize meaningfully (chelis check is ~10s for the whole src tree)
   # so they share a runner with the apismoke mutation test.
   chelis-check:
@@ -128,6 +128,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
         run: python3 scripts/install_chelis_std.py
+
+      - name: Check all Chelis source formatting
+        run: git ls-files -z '*.ch' | xargs -0 -n1 chelis fmt --check
+
+      - name: Lint the repository tree
+        run: chelis lint --check .
 
       # chelis reef build type-checks the whole package: any src file that
       # fails type-checking or has unresolved imports fails the build. The

@@ -124,7 +124,7 @@ rather than re-derive it.
   because pandas accumulates a window incrementally where this module
   re-reduces it; `tests/rolling.ch` owns those cases.
 
-The [maintainer guide](../docs/maintainer-guide.md) lists the commands for each gate.
+The [maintainer guide](../docs/maintainer_guide.md) lists the commands for each gate.
 
 ## Known limitations
 

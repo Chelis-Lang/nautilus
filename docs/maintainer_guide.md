@@ -96,7 +96,8 @@ mdbook build docs/book
    change that skipped the upgrade checklist.
 2. **Hard rules.** No AI-authorship commit trailers, no Python under `tests/`,
    oracle imports confined to `parity/`, and a non-empty native suite.
-3. **Build, tests, and parity**, run in parallel: the package build with a
+3. **Build, tests, and parity**, run in parallel: a sweep of all Chelis source
+   formatting, tree-wide lint, the package build with a
    reproducibility check on the release artifacts, the native, negative, and
    blocked suites, and the strict SciPy parity check. On pushes to `main`, a
    macOS job also builds and validates the package.

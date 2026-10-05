@@ -8,6 +8,16 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Prepare Nautilus 0.7.48 on Chelis 0.18.13. `Nautilus.Special` now restricts
+  its generic precision to `{f32, f64}`, rejecting f16 and bf16 at checking.
+  `Nautilus.Rolling` inlines four `Option` helper bodies after Chelis fixed
+  their C lowering limitation. The shell pin, schema, conformance material,
+  and negative diagnostic contracts are updated together.
+
+## [0.7.47] - 2026-10-01
+
+### Changed
+
 - Add a pinned, redacted secret scan for pull requests and branch pushes, with a manual full-history scan.
 
 - **`Nautilus.Special` is dtype-generic over the `Float` family**

@@ -1,4 +1,4 @@
-declared type is `(&tensor[4, f64]) -> tensor[4, f64]`
+expected `(&tensor[4, f64]) -> tensor[4, f64]`, got `(&tensor[4, f64]) -> List Option f64`
 
 Pins the rule src/rolling.ch states: a tensor element is a precision type and
 has no inhabitant for "absent", so the fifteen Option-returning tensor forms

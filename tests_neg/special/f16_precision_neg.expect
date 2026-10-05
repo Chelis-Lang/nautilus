@@ -1,0 +1,4 @@
+cannot be instantiated at `f16`
+
+The f32/f64 dtype-set bound rejects f16 at the call site, before the
+approximation can return NaN.

@@ -1,0 +1,4 @@
+cannot be instantiated at `bf16`
+
+The f32/f64 dtype-set bound rejects bf16 at the call site, before the
+approximation can return a misleading finite value.
