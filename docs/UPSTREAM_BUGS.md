@@ -239,9 +239,16 @@ release.
 
 **Re-probe cadence:** at every compiler pin bump.
 
-- **None at this pin.** Every filed issue that affects Nautilus
-  (`chelis#2370`, `chelis#2520`, `chelis#2152`) is listed under
-  Actively blocking.
+- **`chelis#3156`**, the shell-format-6 republish wave remains open. Chelis
+  0.18.13 rejects the published Nautilus 0.7.47 shell because it carries
+  format 5; the exact asset inspection and dependency order are recorded in
+  [chelis#3156](https://github.com/Chelis-Lang/chelis/issues/3156). Nautilus
+  source at this pin builds a format-6 0.7.48 candidate, but no 0.7.48 release
+  artifact exists yet. Nautilus has no source narrowing to retire for this
+  issue; Coral and Shoals must consume newly published shells in dependency
+  order. Recheck the published artifacts before each dependent bump and at
+  the next compiler pin bump. The upstream issue remains open for the release
+  process and diagnostic work it requests.
 
 ## Archived
 
@@ -254,13 +261,13 @@ reported or a live narrowing cites the old behavior.
   `src/rolling.ch` are inlined into their callers; `scripts/check_rolling_c_lane.py`
   builds all 34 Rolling exports in package and in a separate package, including
   C compilation and linking.
-- **`chelis#3156` / `chelis#2443`**, the 0.18.12 syntax block on dtype-set
-  binders. At 0.18.13 `src/special.ch` checks and builds with all 67 binders
+- **`chelis#2443`**, the 0.18.12 syntax block on dtype-set binders. At 0.18.13
+  `src/special.ch` checks and builds with all 67 binders
   narrowed to `{f32, f64}`. Negative tests reject `gamma(5.5bf16)` and
   `bessel_j0(5.0f16)` at the call site; the full positive suite keeps f32/f64
-  behavior green. The remaining ecosystem republish sequence tracked by
-  chelis#3156 does not narrow Nautilus after this bump. nautilus#75 is fixed
-  by the Special change; the 35 large literal suffixes remain nautilus#83.
+  behavior green. nautilus#75 is fixed by the Special change; the 35 large
+  literal suffixes remain nautilus#83. The ecosystem republish sequence is
+  tracked above under chelis#3156.
 
 - **`chelis#676`**, backward-DAG verification failure for `grad` through a
   model-capturing Jacobian wrapper. The generic and concrete witnesses pass at
