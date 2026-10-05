@@ -7,6 +7,7 @@ export (golden_section_search, brent_minimize, gradient_descent_1d, newton_minim
 -- statement = Nautilus.Optim MUST provide the scalar-optimization surface listed in the module support table.
 def opt_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def opt_nan_f32() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
+def opt_is_nan_f32(x: f32) -> bool = neq(x, x)
 def opt_phi() -> f32 = cast(0.6180339887, f32)
 def opt_gs_rec(f: f32 -> f32, a: f32, b: f32, tol: f32, iters: i64) -> f32 = {
   zero_i = cast(0, i64)
@@ -21,11 +22,15 @@ def opt_gs_rec(f: f32 -> f32, a: f32, b: f32, tol: f32, iters: i64) -> f32 = {
       d = add(a, gap)
       fc = f(c)
       fd = f(d)
-      if eq(fc, fd) then cast(0.5, f32) |> mul(add(c, d)) else if lt(fc, fd) then opt_gs_rec(f, a, d, tol, sub(iters, one_i)) else opt_gs_rec(f, c, b, tol, sub(iters, one_i))
+      nan_probe = opt_is_nan_f32(fc) |> or(opt_is_nan_f32(fd))
+      if nan_probe then opt_nan_f32() else if eq(fc, fd) then cast(0.5, f32) |> mul(add(c, d)) else if lt(fc, fd) then opt_gs_rec(f, a, d, tol, sub(iters, one_i)) else opt_gs_rec(f, c, b, tol, sub(iters, one_i))
     }
   }
 }
-def golden_section_search(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32 = opt_gs_rec(f, lo, hi, tol, max_iters)
+def golden_section_search(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32 = {
+  nan_input = opt_is_nan_f32(lo) |> or(opt_is_nan_f32(hi))
+  if nan_input then opt_nan_f32() else opt_gs_rec(f, lo, hi, tol, max_iters)
+}
 def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32, fv: f32, fw: f32, tol: f32, iters: i64, total_iters: i64) -> f32 = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
@@ -46,7 +51,8 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
         d = add(a, gap)
         fc = f(c)
         fd = f(d)
-        if eq(fc, fd) then cast(0.5, f32) |> mul(add(c, d)) else if lt(fc, fd) then {
+        nan_probe = opt_is_nan_f32(fc) |> or(opt_is_nan_f32(fd))
+        if nan_probe then opt_nan_f32() else if eq(fc, fd) then cast(0.5, f32) |> mul(add(c, d)) else if lt(fc, fd) then {
           new_fu = if lt(fc, fu) then fc else fu
           new_u = if lt(fc, fu) then c else u
           opt_brent_rec(f, a, d, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -75,7 +81,8 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
           d = add(a, gap)
           fc = f(c)
           fd = f(d)
-          if eq(fc, fd) then cast(0.5, f32) |> mul(add(c, d)) else if lt(fc, fd) then {
+          nan_probe = opt_is_nan_f32(fc) |> or(opt_is_nan_f32(fd))
+          if nan_probe then opt_nan_f32() else if eq(fc, fd) then cast(0.5, f32) |> mul(add(c, d)) else if lt(fc, fd) then {
             new_fu = if lt(fc, fu) then fc else fu
             new_u = if lt(fc, fu) then c else u
             opt_brent_rec(f, a, d, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -91,7 +98,7 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
           inside = cand |> gt(a) |> and(lt(cand, b))
           if eq(cand, u) then u else if inside then {
             fcand = f(cand)
-            if lt(fcand, fu) then {
+            if opt_is_nan_f32(cand) |> or(opt_is_nan_f32(fcand)) then opt_nan_f32() else if lt(fcand, fu) then {
               new_a = if lt(cand, u) then a else u
               new_b = if lt(cand, u) then u else b
               opt_brent_rec(f, new_a, new_b, cand, u, v, fcand, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -107,7 +114,8 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
             d = add(a, gap)
             fc = f(c)
             fd = f(d)
-            if eq(fc, fd) then cast(0.5, f32) |> mul(add(c, d)) else if lt(fc, fd) then {
+            nan_probe = opt_is_nan_f32(fc) |> or(opt_is_nan_f32(fd))
+            if nan_probe then opt_nan_f32() else if eq(fc, fd) then cast(0.5, f32) |> mul(add(c, d)) else if lt(fc, fd) then {
               new_fu = if lt(fc, fu) then fc else fu
               new_u = if lt(fc, fu) then c else u
               opt_brent_rec(f, a, d, new_u, u, v, new_fu, fu, fv, tol, sub(iters, one_i), total_iters)
@@ -123,13 +131,20 @@ def opt_brent_rec(f: f32 -> f32, a: f32, b: f32, u: f32, v: f32, w: f32, fu: f32
   }
 }
 def brent_minimize(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32 = {
-  mid = cast(0.5, f32) |> mul(add(lo, hi))
-  quarter = add(lo, cast(0.25, f32) |> mul(sub(hi, lo)))
-  three_q = add(lo, cast(0.75, f32) |> mul(sub(hi, lo)))
-  fm = f(mid)
-  fq = f(quarter)
-  ft = f(three_q)
-  opt_brent_rec(f, lo, hi, mid, quarter, three_q, fm, fq, ft, tol, max_iters, max_iters)
+  nan_input = opt_is_nan_f32(lo) |> or(opt_is_nan_f32(hi))
+  if nan_input then opt_nan_f32() else {
+    mid = cast(0.5, f32) |> mul(add(lo, hi))
+    quarter = add(lo, cast(0.25, f32) |> mul(sub(hi, lo)))
+    three_q = add(lo, cast(0.75, f32) |> mul(sub(hi, lo)))
+    fm = f(mid)
+    fq = f(quarter)
+    ft = f(three_q)
+    nan_seed =
+      opt_is_nan_f32(fm)
+      |> or(opt_is_nan_f32(fq))
+      |> or(opt_is_nan_f32(ft))
+    if nan_seed then opt_nan_f32() else opt_brent_rec(f, lo, hi, mid, quarter, three_q, fm, fq, ft, tol, max_iters, max_iters)
+  }
 }
 def opt_gd_rec(f: f32 -> f32, df: f32 -> f32, x: f32, lr: f32, iters: i64) -> f32 = {
   zero_i = cast(0, i64)
@@ -154,20 +169,23 @@ def opt_nmin_rec(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x: f32, tol: f3
   if lte(iters, zero_i) then opt_nan_f32() else {
     g = df(x)
     ag = opt_abs_f32(g)
-    if lt(ag, tol) then {
+    if opt_is_nan_f32(g) then opt_nan_f32() else if lt(ag, tol) then {
       h = ddf(x)
       ah = opt_abs_f32(h)
       curvature_floor = cast(0.01, f32)
-      if lt(ah, curvature_floor) then opt_nan_f32() else if lte(h, cast(0.0, f32)) then opt_nan_f32() else x
+      if opt_is_nan_f32(h) then opt_nan_f32() else if lt(ah, curvature_floor) then opt_nan_f32() else if lte(h, cast(0.0, f32)) then opt_nan_f32() else x
     } else {
       h = ddf(x)
       ah = opt_abs_f32(h)
-      if lt(ah, cast(1e-30, f32)) then opt_nan_f32() else {
+      if opt_is_nan_f32(h) |> or(lt(ah, cast(1e-30, f32))) then opt_nan_f32() else {
         step = div(g, h)
         x_next = sub(x, step)
-        if eq(x_next, x) then x_next else opt_nmin_rec(f, df, ddf, x_next, tol, sub(iters, one_i))
+        if opt_is_nan_f32(x_next) then opt_nan_f32() else if eq(x_next, x) then x_next else opt_nmin_rec(f, df, ddf, x_next, tol, sub(iters, one_i))
       }
     }
   }
 }
-def newton_minimize_1d(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32 = opt_nmin_rec(f, df, ddf, x0, tol, max_iters)
+def newton_minimize_1d(f: f32 -> f32, df: f32 -> f32, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32 = {
+  nan_input = opt_is_nan_f32(x0)
+  if nan_input then opt_nan_f32() else opt_nmin_rec(f, df, ddf, x0, tol, max_iters)
+}
