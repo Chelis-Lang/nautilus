@@ -165,6 +165,13 @@ worktree rules below, Pin Bump Checklist, `docs/maintainer_guide.md`, and
 `spec/scope.md` own those local procedures. The pointer selector removes
 links and edit routes for compiler files absent from Nautilus.
 
+Code-form `spec/` and `docs/book/` paths in the retained Chelis text name
+files in the pinned compiler source, not this repository. Read the pinned
+[project context](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/00-context.md),
+[canonical reference](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/chelis_canonical_reference.md),
+[Surf syntax spec](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/02-surf-syntax.md),
+and [backend guide](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/docs/book/src/backends.md).
+
 <!-- shell-local:exclude:begin -->
 <!-- ### Red Team Rounds -->
 <!-- ### Pull Request Lifecycle -->
@@ -245,7 +252,8 @@ by editing the pin directly on `main`.
    **per verb and per surface**. A changelog claim is not verification. Re-probe
    manually when the blocked-probe suite cannot express the reproducer.
 5. Refresh `docs/CHELIS_SURFACE.md`: pinned and upstream versions plus every
-   `@pin` / `@upstream` marker.
+   `@pin` / `@upstream` marker. Update the pinned Chelis source links in
+   `## Inherited Contract Scope` above.
 6. Reclassify `UPSTREAM_BUGS` entries from the re-probe results: archive fixed
    behavior, retain live limitations under Tracking or Actively blocking, and
    record any remaining residue and its next trigger.
