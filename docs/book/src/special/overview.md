@@ -32,6 +32,13 @@ def narrow(x: f32) -> f32 = erf(x)
 def wide(x: f64) -> f64 = erf(x)
 ```
 
+The `Float` family has four members, and only two of them work here. `f16`
+and `bf16` typecheck and return wrong answers with no diagnostic, because the
+coefficient sets are f32-tuned: `gamma(5.5bf16)` returns 58.0 against a true
+52.343, and `bessel_j0`/`j1`/`y0`/`y1` return NaN at `f16`. Call these
+functions at `f32` or `f64` only. nautilus#75 tracks it, and the bound cannot
+be narrowed at the pinned compiler.
+
 A single call still uses one dtype throughout: `beta(a: f32, b: f64)` is a
 precision mismatch, not an implicit promotion. Generic signatures also do
 not promise f64 accuracy for every function. For example, f64 improves

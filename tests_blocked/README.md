@@ -32,6 +32,21 @@ the current verdicts.
 
 ## §cannot-be-probed
 
+- **`chelis#3156`** (the release blocker; the expressiveness itself is
+  `chelis#2443`, fixed upstream): an explicit dtype-set bound,
+  `[prec: {f32, f64}]`, does not parse at this pin, so `Nautilus.Special`'s 67
+  generic binders can only say `Float` and therefore admit `f16` and `bf16`
+  (nautilus#75). A probe for this blocker **cannot live here**, for a
+  different reason than the build-lane entries below: the blocker is at the
+  **syntax** level, so the probe file does not parse, and
+  `chelis lint --check .` lints every `.ch` in the tree with no per-path
+  exclusion. A probe placed here fails `surf-parses` (§12.5) as a blocking
+  lint error, which breaks the local gate for every unrelated change. Measured
+  at this pin: the probe reports OK and `chelis test tests_blocked/ --expect
+  blocked` exits 0, while `chelis lint --check .` gains two blocking errors.
+  The manual recipe and the de-narrowing steps are in
+  [`docs/UPSTREAM_BUGS.md`](../docs/UPSTREAM_BUGS.md).
+
 - **`chelis#2599`**: a bare `None` whose type is fixed only by its sibling arm
   fails `chelis build` with an unresolved host inference variable
   ([05-UNS-1]). The failure is in the **build** lane, and `chelis test` never
