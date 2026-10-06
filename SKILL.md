@@ -312,7 +312,7 @@ package-version string, is the one export not listed here.
 | `lognormal_inv_cdf` | `(q: f32, mu: f32, sigma: f32) -> f32` | `stable` | Via normal_inv_cdf + exp |
 | `lognormal_sample` | `[n](k: key, template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32]` | `alpha` | Explicit key |
 | `gamma_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | (shape, scale) -- not (shape, rate) |
-| `gamma_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Series (gammap) + continued fraction (gammaq); NaN for shape <= 0, scale <= 0 or NaN x; 1.0 at x = +inf; past shape ~2338 the 200-iteration budget stops converging and the value is an unconverged partial sum (16% wrong at shape 20000) |
+| `gamma_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Series (gammap) + continued fraction (gammaq); NaN for shape <= 0, scale <= 0 or NaN x; 1.0 at x = +inf; past shape 2339 at x = shape (2311 at the branch's worst x) the 200-iteration budget stops converging and the value is an unconverged partial sum (16% wrong at shape 20000) |
 | `gamma_sf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Survival function `1 - gamma_cdf`, computed without the cancelling subtraction; same parameter guards as `gamma_cdf`, 0.0 at x = +inf |
 | `gamma_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Wilson-Hilferty init + Newton refinement |
 | `gamma_sample` | `[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]` | `alpha` | Explicit per-element and per-attempt keys; shape >= 1; NaN if 64 trials reject |

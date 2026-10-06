@@ -25,11 +25,16 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   chunks of sixteen through an outer driver, so 200 iterations cost about 30
   frames rather than 200. The arithmetic is unchanged -- the converging path is
   bit-identical to the flat form, and a non-converged budget still returns the
-  partial sum. **The only values that change are at degenerate parameters.**
-  `gamma_cdf(1.0, 0.0, 1.0)` was `1.0` and `gamma_cdf(1.0, 2.0, -1.0)` was
-  `0.0`; both are now `NaN`, as is `chi_squared_p_value(5.0, 0.0)`, which was
-  `0.0`. Nothing else moves: every input that previously returned a value in a
-  lane with enough stack returns the same bits. The eval-lane limitation is
+  partial sum. **Four inputs change value, and only those four.** At a
+  degenerate parameter: `gamma_cdf(1.0, 0.0, 1.0)` was `1.0`,
+  `gamma_cdf(1.0, 2.0, -1.0)` was `0.0` and `chi_squared_p_value(5.0, 0.0)` was
+  `0.0`, and all three are now `NaN`. At an infinite standardised argument,
+  where both parameters are ordinary: `gamma_cdf(+inf, 2.0, 1.0)` was `NaN` and
+  is now `1.0` (its survival function `0.0`), and so is the finite case whose
+  `x / scale` overflows, `gamma_cdf(1e30, 2.0, 1e-30)`. That second group is the
+  other half of what nautilus#140 asks for, not a side effect. Everything else
+  that previously returned a value in a lane with enough stack returns the same
+  bits, verified bit-for-bit over 700 points in review. The eval-lane limitation is
   upstream `chelis#2471`, recorded in `docs/UPSTREAM_BUGS.md`; the series'
   long-standing accuracy limit at large `shape` is documented in the book rather
   than changed. Addresses nautilus#140.

@@ -115,11 +115,13 @@ cdf = student_t_cdf(cast(2.0, f32), cast(10.0, f32)) -- approximately 0.963
 | `gamma_sf(x, ...)` / `chi_squared_sf(x, df)` with x <= 0 | 1.0 |
 | `gamma_cdf` / `chi_squared_cdf` at x = +inf | 1.0; their survival functions 0.0 |
 | `gamma_cdf` / `gamma_sf` with x or x / scale NaN | NaN |
+| `gamma_cdf` / `gamma_sf` with shape NaN | **not guarded**: traps in `cast_trunc` inside `log_gamma` |
 | `chi_squared_sf(x, df)` with a true tail below about 7.0e-46 | 0.0, the f32 floor |
 | `student_t_cdf(t, df)` with df <= 0 | NaN |
 | Any `_pdf` at x = 0 with shape < 1 | +inf |
 
-The parameter guards match SciPy's `gamma` and `chi2` on every row, and the
+The parameter guards match SciPy's `gamma` and `chi2` on every row listed, and
+the
 `+inf` rows are the limits rather than guards: a finite `x` whose `x / scale`
 overflows to `+inf` returns the same `1.0`, because the guard reads the
 standardised argument rather than `x`. nautilus#140 is the instance that
@@ -129,27 +131,37 @@ reached the continued fraction and killed the `chelis eval` process.
 ### Large shape and large degrees of freedom
 
 Both branches of the incomplete gamma function are given 200 iterations, and
-neither converges at large `shape`. Past that point the result is the
-**unconverged partial sum**, and its relative error grows without any signal to
-the caller. Measured at `x = shape` against the regularised incomplete gamma at
-60 decimal digits:
+neither converges at large `shape`. Where the budget runs out depends on `x` as
+well as `shape`: at `x = shape` the series still converges at `shape = 2338` and
+first falls short at 2339, while at the series' worst `x` -- just below the
+branch boundary `shape + 1` -- it first falls short at `shape = 2311`. Past that
+point the result is the **unconverged partial sum**, and its relative error
+grows with no signal to the caller.
 
-| `shape` | returned | relative error |
-|---|---|---|
-| 100 | 0.5132978 | 1.9e-6 |
-| 1000 | 0.5043488 | 2.8e-4 |
-| 2000 | 0.50264823 | 6.5e-4 |
-| 2338 | 0.5019535 | 1.6e-3 |
-| 20000 | 0.4219802 | **16%** |
-| 30000 | 0.37090707 | **26%** |
+Measured at `x = shape` against the regularised incomplete gamma at 60 decimal
+digits. The first four rows are converged values and show the f32 series' own
+accumulation error; only the last two are partial sums:
+
+| `shape` | returned | relative error | converged? |
+|---|---|---|---|
+| 100 | 0.5132978 | 1.9e-6 | yes |
+| 1000 | 0.5043488 | 2.8e-4 | yes |
+| 2000 | 0.50264823 | 6.5e-4 | yes |
+| 2338 | 0.5019535 | 1.6e-3 | yes, on the last allowed step |
+| 2339 | 0.50282675 | 1.5e-4 | no, the first partial sum |
+| 20000 | 0.4219802 | **16%** | no |
+| 30000 | 0.37090707 | **26%** | no |
 
 `chi_squared_cdf(x, df)` inherits this at `df / 2`, and `poisson_cdf` through
 `shape = k + 1`. Treat `shape` beyond a few hundred as approximate and beyond a
-few thousand as unusable. This is a long-standing accuracy limit of the f32
-series, not a consequence of the degenerate-argument guards above; it is
-documented here rather than corrected, and it is the reason those guards do not
-try to convert a non-converged result into `NaN` — the partial sum is the better
-answer near the budget (1.6e-3 at `shape = 2338`) and only becomes worthless far
-past it.
+few thousand as unusable.
+
+Note the 2338/2339 pair: the first partial sum is **ten times more accurate**
+than the last converged value, because convergence to `1e-7` is not what limits
+accuracy here -- f32 accumulation is. That is why these functions do not convert
+a non-converged result into `NaN`: near the budget the partial sum is the better
+answer, and it only becomes worthless far past it. This is a long-standing
+accuracy limit of the f32 series, not a consequence of the degenerate-argument
+guards above, and it is documented here rather than corrected.
 
 See [Precision](../appendix/precision.md).

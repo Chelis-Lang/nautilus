@@ -112,14 +112,14 @@ suffer catastrophic cancellation. This affects:
 - `gamma_cdf` for extreme shape/scale ratios
 
 `gamma_cdf` has a second, unrelated limit at large `shape`. Its power series
-accumulates in f32 across a number of terms that grows with `shape`, and the
-200-term budget stops converging past about `shape = 2338` at that branch's
-worst `x`, after which the returned value is the unconverged partial sum.
-Relative error against the regularised incomplete gamma at 60 decimal digits,
-measured at `x = shape`: 1.9e-6 at `shape = 100`, 2.8e-4 at 1000, 6.5e-4 at
-2000, 1.6e-3 at 2338, 16% at 20000 and 26% at 30000. Nothing signals the
-transition. `chi_squared_cdf(x, df)` inherits it at `df / 2` and `poisson_cdf`
-at `shape = k + 1`.
+accumulates in f32 across a number of terms that grows with `shape`. Relative
+error against the regularised incomplete gamma at 60 decimal digits, measured at
+`x = shape`: 1.9e-6 at `shape = 100`, 2.8e-4 at 1000, 6.5e-4 at 2000, 1.6e-3 at
+2338, 16% at 20000 and 26% at 30000. Nothing signals the transition from a
+converged value to an abandoned one, which at `x = shape` happens at
+`shape = 2339` and at the branch's worst `x` -- just below `shape + 1` -- at
+`shape = 2311`. `chi_squared_cdf(x, df)` inherits it at `df / 2` and
+`poisson_cdf` at `shape = k + 1`.
 
 The sharpest form of this is `1 - cdf` for an upper tail. The subtraction
 carries absolute error of about `0.5 * ulp(1.0)` -- 6e-8 in f32 -- however

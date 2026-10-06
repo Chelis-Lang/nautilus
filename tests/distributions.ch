@@ -779,10 +779,12 @@ def test_chi_squared_inherits_the_guards() -> unit ! { Test } = {
 -- chunking. Every value is bit-identical to what the flat recursion returned
 -- in a lane with enough stack to run it.
 --
--- Read these three as value pins, not as detectors. `chelis test` runs each
--- file on a `chelis-test-worker` thread whose stack holds about 500 frames of
--- this shape, so a 200-frame recursion fits and all three pass against the
--- unpatched module too. The abort is only observable in the `chelis eval`
+-- Read these as value pins, not as detectors. `chelis test` runs each file on a
+-- `chelis-test-worker` thread whose stack holds about 500 frames of this shape,
+-- so a 200-frame recursion fits and these pass against the unpatched module
+-- too. Six of the twelve tests added for nautilus#140 pass unpatched: these
+-- three, the partial-sum pin below, and the -inf and NaN-argument tests, whose
+-- answers the unpatched module already happened to get right. The abort is only observable in the `chelis eval`
 -- lane, which runs on `main` and holds about 135; the detector for it is
 -- `example_gamma_cdf_degenerate_arguments`, evaluated by the CI step that runs
 -- `chelis eval --file` over `src/example*.ch`, and pinned in the test lane by

@@ -198,16 +198,17 @@ release.
     - **Symptom:** `chelis eval --file` evaluates on the `main` thread, does no
       tail-call elimination, and overflows its stack at a depth set by how many
       bindings the recursive body holds: 136 frames for a sixteen-binding body,
-      past 1020 for a one-binding body. The process dies with `fatal runtime
+      past 1020 for a bare single-expression body with no bindings at all. The process dies with `fatal runtime
       error: stack overflow` and exit 134, with no diagnostic a caller can
       catch. Values do not matter: the same body at depth 135 returns whether
       its arguments are finite or not. `chelis test` runs the same
       sixteen-binding body to depth 500 on its `chelis-test-worker` thread and
       reports an overflow there as a test failure rather than killing the
       harness, so the two lanes disagree about whether a program runs. The
-      upstream issue's own round-1 comment reports the absent tail-call
-      elimination, the inverse scaling with body size, and the lane difference
-      independently.
+      upstream issue's own round-1 comment also reports the absent tail-call
+      elimination, the inverse scaling with body size, and the lane difference,
+      though that comment states it is relaying one peer measurement rather
+      than offering independent corroboration.
     - **Affected Nautilus surface, as narrowed here:** the two incomplete-gamma
       recursions `gammainc_series` and `gammaq_cf_rec`, and so
       `Nautilus.Distributions.gamma_cdf`, `gamma_sf`, `chi_squared_cdf`,
