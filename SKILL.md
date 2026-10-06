@@ -23,7 +23,7 @@ wildcard imports.
 ### Surf
 
 ```chelis-fragment
-import Nautilus.Special (erf, erfc, erfinv, gamma, log_gamma, digamma, trigamma)
+import Nautilus.Special (erfinv, gamma, log_gamma, digamma, trigamma)
 import Nautilus.Distributions (normal_cdf, normal_inv_cdf, normal_pdf, gamma_cdf)
 import Nautilus.LinAlg (solve_2x2, inv_2x2, det_2x2, cg_solve, matvec)
 import Nautilus.Stats (mean_vec, variance_vec, median_vec, covariance_scalar)
@@ -41,13 +41,13 @@ import Nautilus.CurveFit (lm_scalar_1param)
 ### Deep
 
 ```deep-fragment
-(import {} nautilus.special (erf erfinv log_gamma digamma))
+(import {} nautilus.special (erfinv log_gamma digamma))
 (import {} nautilus.distributions (normal_cdf normal_inv_cdf gamma_cdf))
 (import {} nautilus.linalg (solve_2x2 inv_2x2 cg_solve matvec))
 (import {} nautilus.roots (brent bisection newton))
 ```
 
-After import, functions are called by their bare names:
+Imported functions and Chelis builtins are called by their bare names:
 
 ```deep-fragment
 (app {} (var {} erf) (var {} x))
@@ -64,21 +64,18 @@ examples for most of the other modules.
 
 ### Pattern 1: A special function at two precisions
 
-`erf` uses the Abramowitz & Stegun 7.1.26 rational approximation. Because
-`Nautilus.Special` is generic over `{f32, f64}`, so the same function serves an f32
-caller and an f64 caller.
+Chelis provides correctly rounded `erf` and `erfc` builtins. They need no
+import and accept f32 and f64 callers.
 
 ```chelis
 module Nautilus.SkillSpecial
-import Nautilus.Special (erf)
 export (main, main_f64)
 def main() -> f32 = erf(cast(0.5, f32))
 def main_f64() -> f64 = erf(cast(0.5, f64))
 ```
 
-Expected result: both return approximately 0.5205. The f64 call computes in
-wider arithmetic with the same fixed coefficients, so it is no more accurate
-than the approximation's own 1.5e-7 bound (Section 5).
+Expected result: both return approximately 0.5205, rounded at their
+respective dtypes.
 
 The Deep form of this module, as printed by `chelis deep` with source-span
 metadata removed:
@@ -86,7 +83,6 @@ metadata removed:
 ```deep
 (module {}
   nautilus.skillspecial
-  (import {} nautilus.special (erf))
   (export {} main main_f64)
   (defsig {} main (t-fn {} (t-prim {} f32)))
   (def {}
@@ -234,9 +230,8 @@ bf16 at checking before their f32-tuned approximations can give wrong values
 Section 6 and `docs/book/src/appendix/precision.md` give per-function figures.
 Calling Special at f64 widens the arithmetic, not the approximations. `gamma`,
 `log_gamma`, `beta`, `lbeta`, `ellipk`, and `ellipe` are limited by f32
-rounding and reach f64 grade. `erf` stays capped near its 1.5e-7 bound.
-`erfc` underflows to exactly 0 from about x = 3.92 at f32 and keeps returning
-values to about x = 5.5 at f64. `airy_ai` and `airy_bi` above x = 5 gain
+rounding and reach f64 grade. Chelis's `erf` and `erfc` are correctly rounded
+builtins; they are not Nautilus exports. `airy_ai` and `airy_bi` above x = 5 gain
 nothing.
 
 **Differentiability.** `grad` is claimed only where a test exercises it:
@@ -268,14 +263,11 @@ the same map in machine-readable form, generated from these tables by
 borrow (see Section 4). `Nautilus.Core.version`, which returns the exact
 package-version string, is the one export not listed here.
 
-### Nautilus.Special (23 exports)
+### Nautilus.Special (20 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
-| `erf` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Horner rational approx, ~1e-7 relative, all reals |
-| `erfc` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | `1 - erf(x)`, same precision domain as `erf` |
 | `erfinv` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Acklam inverse normal + rescale, ~1e-8, domain (-1, 1) |
-| `erf_t` | `[n, prec: {f32, f64}](x: &tensor[n, prec]) -> tensor[n, prec]` | `stable` | tensor-lane erf without the host List round-trip |
 | `erfinv_t` | `[n, prec: {f32, f64}](x: &tensor[n, prec]) -> tensor[n, prec]` | `stable` | tensor-lane erfinv without the host List round-trip |
 | `gamma` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Lanczos (g=7) with reflection, ~1e-7 relative, +inf at non-positive integers |
 | `log_gamma` | `[prec: {f32, f64}](x: prec) -> prec` | `stable` | Lanczos (g=7) with reflection, ~1e-9, +inf at non-positive integers |
@@ -311,7 +303,7 @@ package-version string, is the one export not listed here.
 | `normal_pdf` | `(x: f32, mean: f32, std: f32) -> f32` | `stable` | (mean, std) parameterization |
 | `normal_cdf` | `(x: f32, mean: f32, std: f32) -> f32` | `stable` | Via erf |
 | `normal_inv_cdf` | `(q: f32, mean: f32, std: f32) -> f32` | `stable` | Acklam rational approx via erfinv |
-| `normal_cdf_t` | `[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane normal CDF via erf_t |
+| `normal_cdf_t` | `[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane normal CDF via Chelis `erf` |
 | `normal_pdf_t` | `[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane normal PDF |
 | `normal_inv_cdf_t` | `[n](q: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `stable` | tensor-lane inverse CDF via erfinv_t |
 | `normal_sample` | `[n](k: key, template: tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32]` | `alpha` | Explicit key; Box-Muller, splits its key |

@@ -42,7 +42,7 @@ The checker:
 - rejects native-code members and unsafe or duplicate paths in the source
   archive;
 - installs the exact pair through Reef and compiles a dependent package that
-  imports `Nautilus.Special.erf`;
+  imports `Nautilus.Special.erfinv`;
 - requires that a mutated archive byte and a trailing `.chb` byte are both
   rejected, as evidence that the validation actually detects tampering.
 

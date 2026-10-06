@@ -1,5 +1,5 @@
 module Nautilus.Distributions
-import Nautilus.Special (erf, erfinv, erf_t, erfinv_t, log_gamma)
+import Nautilus.Special (erfinv, erfinv_t, log_gamma)
 export (uniform_pdf, uniform_cdf, uniform_inv_cdf, uniform_sample, exponential_pdf, exponential_cdf, exponential_inv_cdf, exponential_sample, normal_pdf, normal_cdf, normal_inv_cdf, normal_sample, lognormal_pdf, lognormal_cdf, lognormal_inv_cdf, lognormal_sample, gamma_pdf, chi_squared_pdf, student_t_pdf, gamma_cdf, chi_squared_cdf, gamma_inv_cdf, chi_squared_inv_cdf, chi_squared_sample, student_t_sample, gamma_sample, student_t_cdf, poisson_pmf, poisson_cdf, binomial_pmf, binomial_cdf, beta_pdf, beta_cdf, f_pdf, f_cdf, weibull_pdf, weibull_cdf, weibull_inv_cdf, normal_cdf_t, normal_inv_cdf_t, normal_pdf_t)
 -- chelis:provenance/v1 authority
 -- id = NAUT-MOD-DISTRIBUTIONS
@@ -514,7 +514,7 @@ def normal_cdf_t[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] =
   halves = dist_lift_t(x, half_f())
   ones = dist_lift_t(x, one_f())
   z = div(sub(x, means), denom)
-  mul(halves, add(ones, erf_t(z)))
+  mul(halves, add(ones, erf(z)))
 }
 def normal_pdf_t[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] = {
   means = dist_lift_t(x, mean)

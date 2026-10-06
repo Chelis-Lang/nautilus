@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 class ParityContractTests(unittest.TestCase):
     def test_checked_in_goldens_match_current_case_recipes(self) -> None:
-        self.assertEqual(len(run_parity.load_golden("special")), 91)
+        self.assertEqual(len(run_parity.load_golden("special")), 81)
         self.assertEqual(len(run_parity.load_golden("distributions")), 125)
 
     def test_recipe_drift_fails_closed(self) -> None:
@@ -68,7 +68,7 @@ class ParityContractTests(unittest.TestCase):
             ):
                 self.assertEqual(
                     run_parity.chelis_eval_batch(
-                        "import Nautilus.Special exposing (erf)\n",
+                        "import Nautilus.Special (erfinv)\n",
                         ["result_0 = erf(cast(0.0, f32))"],
                     ),
                     {0: 1.0},

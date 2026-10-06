@@ -1,5 +1,5 @@
 module Nautilus.Testing
-import Nautilus.Special (erf, erfinv)
+import Nautilus.Special (erfinv)
 import Nautilus.Distributions (normal_cdf, normal_inv_cdf, chi_squared_cdf, student_t_cdf)
 export (z_statistic, z_p_value_two_sided, z_p_value_upper, z_p_value_lower, normal_ci_half_width, chi_squared_p_value, t_statistic_one_sample, t_statistic_two_sample_pooled, t_p_value_two_sided, t_p_value_upper, t_p_value_lower, welch_t_statistic, welch_t_df)
 -- chelis:provenance/v1 authority

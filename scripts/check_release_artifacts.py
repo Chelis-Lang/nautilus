@@ -383,9 +383,9 @@ def validate_pair_with_chelis(
         )
         (consumer_src / "main.ch").write_text(
             "module ArtifactConsumer.Main\n"
-            "import Nautilus.Special (erf)\n"
+            "import Nautilus.Special (erfinv)\n"
             "export (artifact_smoke)\n"
-            "def artifact_smoke(x: f32) -> f32 = erf(x)\n"
+            "def artifact_smoke(x: f32) -> f32 = erfinv(x)\n"
         )
         result = subprocess.run(
             [chelis, "reef", "build"],

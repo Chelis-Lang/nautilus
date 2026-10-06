@@ -14,7 +14,7 @@ the path you use.
 
 ## What Nautilus provides
 
-- **Special functions**: erf, erfc, erfinv, gamma, log_gamma, digamma, trigamma, beta, lbeta, Bessel, Airy, elliptic integrals
+- **Special functions**: erfinv, gamma, log_gamma, digamma, trigamma, beta, lbeta, Bessel, Airy, elliptic integrals; Chelis provides erf and erfc as builtins
 - **Probability distributions**: 12 families (Normal, Gamma, Student-t, Poisson, Binomial, etc.) with PDF or PMF and CDF; inverse CDF and sampling for selected families
 - **Linear algebra**: fixed-size formulas plus general square CG, LU, QR, Cholesky, SVD, and symmetric eigendecomposition
 - **Statistics and information**: descriptive/inferential statistics, adjustments, entropy, cross-entropy, and KL divergence
@@ -33,7 +33,7 @@ the path you use.
 
 Two complementary gates check the numbers. `chelis test tests/` runs the
 native suite of identity, invariant, solver, tensor-path, and edge-case tests.
-`parity/run_parity.py --strict` compares 216 reviewed samples against SciPy
+`parity/run_parity.py --strict` compares 206 reviewed samples against SciPy
 and NumPy reference values. The external comparison deliberately does not
 duplicate every native test.
 

@@ -8,28 +8,27 @@ the [precision guide](../appendix/precision.md) describes their accuracy.
 All functions are pure (no effects). Differentiability via `grad` is **not**
 uniform across the module, and two separate limits apply.
 
-First, `grad` needs a function whose dtype is already fixed, so because these
-signatures are generic the point-free `grad(erf)` does not type-check. Wrap it
-in a concrete-dtype definition, which works at either dtype:
+First, `grad` needs a function whose dtype is already fixed. When needed, wrap
+the Chelis `erf` builtin in a concrete-dtype definition:
 
 ```chelis-fragment
 def erf_at(x: f64) -> f64 = erf(x)
 def d_erf(x: f64) -> f64 = grad(erf_at)(x)
 ```
 
-Second, and independently of genericity, only eleven of the twenty-one scalar
-exports actually differentiate even when wrapped: `erf`, `erfc`, `erfinv` and
-the eight `bessel_*`. The other ten (`gamma`, `log_gamma`, `digamma`,
+Second, only nine of the nineteen scalar Nautilus exports differentiate even
+when wrapped: `erfinv` and the eight `bessel_*`. The other ten (`gamma`, `log_gamma`, `digamma`,
 `trigamma`, `beta`, `lbeta`, `ellipk`, `ellipe`, `airy_ai`, `airy_bi`) fail
 at lowering, because their bodies recurse or reach a primitive with no
 reverse-mode adjoint.
 
-Unlike the rest of Nautilus, all twenty-three exports have an explicit
-**`{f32, f64}` dtype-set bound**, so the same `erf` serves both callers:
+Unlike the rest of Nautilus, its twenty special-function exports have an
+explicit **`{f32, f64}` dtype-set bound**:
 
 ```chelis-fragment
-def narrow(x: f32) -> f32 = erf(x)
-def wide(x: f64) -> f64 = erf(x)
+import Nautilus.Special (erfinv)
+def narrow(x: f32) -> f32 = erfinv(x)
+def wide(x: f64) -> f64 = erfinv(x)
 ```
 
 The bound rejects `f16` and `bf16` at checking. Their f32-tuned coefficients
@@ -38,15 +37,13 @@ exactly f32 and f64 (nautilus#75).
 
 A single call still uses one dtype throughout: `beta(a: f32, b: f64)` is a
 precision mismatch, not an implicit promotion. Generic signatures also do
-not promise f64 accuracy for every function. For example, f64 improves
-`erf`'s measured accuracy by a smaller amount than it improves `gamma`;
-`erfc` at f64 returns nonzero values farther into the positive tail.
+not promise f64 accuracy for every Nautilus approximation.
 See the [precision guide](../appendix/precision.md).
 
 ## Imports
 
 ```chelis-fragment
-import Nautilus.Special (erf, erfc, erfinv, gamma, log_gamma, digamma, trigamma, beta, lbeta)
+import Nautilus.Special (erfinv, gamma, log_gamma, digamma, trigamma, beta, lbeta)
 import Nautilus.Special (bessel_j0, bessel_j1, bessel_y0, bessel_y1)
 import Nautilus.Special (bessel_i0, bessel_i1, bessel_k0, bessel_k1)
 import Nautilus.Special (airy_ai, airy_bi, ellipk, ellipe)
@@ -55,8 +52,7 @@ import Nautilus.Special (airy_ai, airy_bi, ellipk, ellipe)
 ## Function families
 
 ### Error functions
-- `erf(x)`: the error function, ~1e-7 relative precision
-- `erfc(x)`: complementary error function `1 - erf(x)`, same precision domain as `erf`
+- `erf(x)`, `erfc(x)`: correctly rounded Chelis builtins; no import required
 - `erfinv(x)`: inverse error function for x in (-1, 1), ~1e-8
 
 ### Gamma-related

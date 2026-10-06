@@ -43,7 +43,7 @@ Each `chelis eval --file` invocation pays the full module-graph compile cost —
 roughly 30–40 seconds with `Nautilus.Special` or `Nautilus.Distributions`
 imported. All samples for a domain are therefore emitted in one probe with
 `result_0 = ...`, `result_1 = ...`, and so on. One evaluation per domain keeps
-the full 216-sample run near 70 seconds.
+the full 206-sample run near 70 seconds.
 
 ## Adding a parity case
 

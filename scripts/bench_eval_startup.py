@@ -24,7 +24,7 @@ BASELINE_FILE = "bench = add(cast(1, f32), cast(2, f32))\n"
 # Chelis releases before 0.17.5 rejected this unused-import shape (chelis#848);
 # the recommendation below still recognizes that failure if it regresses.
 IMPORT_SNIPPETS: dict[str, str] = {
-    "Nautilus.Special": "import Nautilus.Special (erf)\nbench = cast(0, f32)\n",
+    "Nautilus.Special": "import Nautilus.Special (erfinv)\nbench = cast(0, f32)\n",
     "Nautilus.Distributions": "import Nautilus.Distributions (normal_cdf)\nbench = cast(0, f32)\n",
     "Nautilus.LinAlg": "import Nautilus.LinAlg (l2_norm_vec)\nbench = cast(0, f32)\n",
     "Nautilus.Stats": "import Nautilus.Stats (mean_vec)\nbench = cast(0, f32)\n",

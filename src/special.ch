@@ -1,21 +1,11 @@
 module Nautilus.Special
-export (erf, erfc, erfinv, erf_t, erfinv_t, gamma, log_gamma, digamma, beta, lbeta, trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1, bessel_j0, bessel_j1, bessel_y0, bessel_y1, airy_ai, airy_bi, ellipk, ellipe)
+export (erfinv, erfinv_t, gamma, log_gamma, digamma, beta, lbeta, trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1, bessel_j0, bessel_j1, bessel_y0, bessel_y1, airy_ai, airy_bi, ellipk, ellipe)
 -- chelis:provenance/v1 authority
 -- id = NAUT-MOD-SPECIAL
 -- kind = behavioral
 -- scopes = nautilus
 -- statement = Nautilus.Special MUST provide the special-function surface listed in the module support table.
--- DTYPE GENERICITY. Every entry point is generic over the Float
--- family, so `erf(x: f32)` and `erf(x: f64)` are one def at two
--- instantiations rather than two modules.
---
--- Genericity here is a SIGNATURE property, not an ACCURACY property. Each
--- approximation carries one fixed coefficient set for every dtype, so the
--- realized error of an f64 call is set by the formula, not by the width.
--- Widening bought reachability from an f64 caller and removed a whole class
--- of hand-rolled downstream copies; it bought no digits. Every function's own
--- bound comment is the authority for what that function delivers, and `erf`'s
--- is the worked example.
+-- Nautilus uses the Chelis erf and erfc primitives directly.
 def sp_abs[prec: {f32, f64}](x: prec) -> prec = if lt(x, cast(0.0, prec)) then neg(x) else x
 def is_nonpositive_integer[prec: {f32, f64}](x: prec) -> bool = {
   zero = cast(0.0, prec)
@@ -28,85 +18,6 @@ def is_nonpositive_integer[prec: {f32, f64}](x: prec) -> bool = {
 def pos_inf[prec: {f32, f64}]() -> prec = cast(1.0, prec) |> div(cast(0.0, prec))
 def neg_inf[prec: {f32, f64}]() -> prec = cast(-1.0, prec) |> div(cast(0.0, prec))
 def sp_nan[prec: {f32, f64}]() -> prec = cast(0.0, prec) |> div(cast(0.0, prec))
--- Maclaurin series for erf, truncated after the x^7 term:
---   erf(x) = (2/sqrt(pi)) * (x - x^3/3 + x^5/10 - x^7/42 + ...)
--- Horner in x^2. Accurate to <5e-8 absolute for |x| <= 0.25, which is where
--- `erf` uses it; the next term contributes ~(2/sqrt(pi))*x^9/216.
-def erf_taylor_core[prec: {f32, f64}](x: prec) -> prec = {
-  x2 = mul(x, x)
-  c3 = cast(0.3333333333333333, prec)
-  c5 = cast(0.1, prec)
-  c7 = cast(0.023809523809523808, prec)
-  two_over_sqrt_pi = cast(1.1283791670955126, prec)
-  poly = sub(cast(1.0, prec), mul(x2, sub(c3, mul(x2, sub(c5, mul(x2, c7))))))
-  mul(mul(x, poly), two_over_sqrt_pi)
-}
-def erf[prec: {f32, f64}](x: prec) -> prec = {
-  a1 = cast(0.254829592, prec)
-  a2 = cast(-0.284496736, prec)
-  a3 = cast(1.421413741, prec)
-  a4 = cast(-1.453152027, prec)
-  a5 = cast(1.061405429, prec)
-  p = cast(0.3275911, prec)
-  one = cast(1.0, prec)
-  ax = sp_abs(x)
-  -- ERROR BOUND, and why it is written down here.
-  --
-  -- This function is generic over the Float family. ITS ACCURACY IS NOT.
-  -- One fixed coefficient set serves every instantiation, so an f64 caller
-  -- gets f64 ARITHMETIC over an f32-grade APPROXIMATION. Widening the
-  -- signature was deliberate and did not touch the constants; the bound is a
-  -- separate question with a separate repair. Do not read `-> f64` as an
-  -- accuracy claim.
-  --
-  -- The rational arm below is Abramowitz & Stegun 7.1.26, whose published
-  -- bound is |eps| <= 1.5e-7 ABSOLUTE in exact arithmetic. The FORMULA's own
-  -- error is the floor at every dtype -- no width goes below it -- and that
-  -- realized error is 1.3884e-7, measured below, not the 1.5e-7 headline.
-  --
-  -- Measured against a 50-dps reference, algorithm evaluated at f64:
-  --   max |error| 1.3884e-7 over |x| >= 0.25   (worst at x = 0.507611367)
-  --   max |error| 1.9726e-8 over |x| <  0.25   (the Maclaurin arm)
-  -- Evaluated at f32 with f32 coefficients it realizes WORSE. Measured by
-  -- exhaustive scan of every f32 in range, not by sampling:
-  --   max |error| 4.44e-7 over |x| >= 0.25, the range it still owns
-  --                       (worst at x = 0.25292396545410156)
-  --   max |error| 6.62e-7 over |x| >= 1e-5, the range it owned before the
-  --                       cutover moved (worst at x = 0.03796697407960892)
-  -- Quote those, not the 1.5e-7 formula bound, when you need what this
-  -- function actually delivers at a given dtype.
-  --
-  -- That bound is ABSOLUTE and roughly constant, so the RELATIVE error
-  -- diverges as x -> 0. At the old 1e-5 cutover it reached 2.404e-2. The
-  -- same absolute bound wrecks `erfc`'s relative error in the tail, where
-  -- `1 - erf(x)` cancels: at f64, erfc(4.0) is 2.8e-3 RELATIVE. It is still
-  -- the one place the wider dtype changes what is computable at all rather
-  -- than how precisely: at f32 erfc underflows to exactly 0 from about 3.92,
-  -- and f64 stays usable to about x = 5.5. An f64 caller reaching for a tail
-  -- probability gets a tail, but not three good digits of one.
-  --
-  -- Getting f64 accuracy needs DIFFERENT coefficients, not a wider dtype;
-  -- Cody's approximation, which the sibling shoals repo's `erf64` carries
-  -- at ~1.5 ulp, is the shape of that replacement. shoals moved its SCALAR
-  -- kernel `erf64` onto Cody for exactly this reason, so that one no longer
-  -- agrees with this function and a caller must not assume it does. Its other
-  -- paths still carry byte-identical copies of the coefficients below -- its
-  -- wire erf and its proof-infrastructure model both say so at the site -- so
-  -- an approximation change here still has to be carried across. The
-  -- approximation is also duplicated at `erf_t` below; those two change
-  -- together or not at all.
-  small = cast(0.25, prec)
-  if lt(ax, small) then erf_taylor_core(x) else {
-    t = div(one, add(one, mul(p, ax)))
-    poly = mul(t, add(a1, mul(t, add(a2, mul(t, add(a3, mul(t, add(a4, mul(t, a5)))))))))
-    x2 = mul(ax, ax)
-    nx2 = neg(x2)
-    e = exp(nx2)
-    y = sub(one, mul(poly, e))
-    if lt(x, cast(0.0, prec)) then neg(y) else y
-  }
-}
-def erfc[prec: {f32, f64}](x: prec) -> prec = cast(1.0, prec) |> sub(erf(x))
 def lanczos_sum[prec: {f32, f64}](x: prec) -> prec = {
   c0 = cast(0.9999999999998099, prec)
   c1 = cast(676.5203681218851, prec)
@@ -777,47 +688,11 @@ def ellipe[prec: {f32, f64}](m: prec) -> prec = {
 }
 -- Tensor-domain special functions (nautilus PR 45).
 --
--- The scalar `erf` / `erfinv` above are the reference; these compute the same
--- approximations at tensor rank so a caller holding a tensor of values never
--- has to leave tensor rank to reach them. Chelis has no implicit
+-- Scalar `erfinv` above is the reference; the tensor implementation computes
+-- the same approximation without leaving tensor rank. Chelis has no implicit
 -- tensor-scalar broadcasting, so every constant is lifted to rank `n` with
 -- `sp_lift_t`, and every scalar `if` becomes an elementwise `where`.
 def sp_lift_t[n, prec: {f32, f64}](template: &tensor[n, prec], c: prec) -> tensor[n, prec] = c |> scalar_to_tensor |> insert(0, shape(template, cast(0, i32)))
-def sp_abs_t[n, prec: {f32, f64}](x: &tensor[n, prec]) -> tensor[n, prec] = {
-  zeros = sp_lift_t(x, cast(0.0, prec))
-  x |> lt(zeros) |> where(neg(x), x)
-}
-def erf_t[n, prec: {f32, f64}](x: &tensor[n, prec]) -> tensor[n, prec] = {
-  a1 = sp_lift_t(x, cast(0.254829592, prec))
-  a2 = sp_lift_t(x, cast(-0.284496736, prec))
-  a3 = sp_lift_t(x, cast(1.421413741, prec))
-  a4 = sp_lift_t(x, cast(-1.453152027, prec))
-  a5 = sp_lift_t(x, cast(1.061405429, prec))
-  p = sp_lift_t(x, cast(0.3275911, prec))
-  one = sp_lift_t(x, cast(1.0, prec))
-  zero = sp_lift_t(x, cast(0.0, prec))
-  ax = sp_abs_t(x)
-  t = div(one, add(one, mul(p, ax)))
-  poly = mul(t, add(a1, mul(t, add(a2, mul(t, add(a3, mul(t, add(a4, mul(t, a5)))))))))
-  x2 = mul(ax, ax)
-  e = x2 |> neg |> exp
-  y = sub(one, mul(poly, e))
-  signed = x |> lt(zero) |> where(neg(y), y)
-  -- Mirror the scalar `erf` exactly: the same 0.25 cutover onto the same
-  -- 4-term series. Nautilus PR 45 requires these two lanes to agree
-  -- elementwise, so they change together or not at all.
-  small = sp_lift_t(x, cast(0.25, prec))
-  two_over_sqrt_pi = sp_lift_t(x, cast(1.1283791670955126, prec))
-  c3 = sp_lift_t(x, cast(0.3333333333333333, prec))
-  c5 = sp_lift_t(x, cast(0.1, prec))
-  c7 = sp_lift_t(x, cast(0.023809523809523808, prec))
-  in_small = lt(ax, small)
-  xt = x
-  xt2 = mul(xt, xt)
-  tpoly = sub(one, mul(xt2, sub(c3, mul(xt2, sub(c5, mul(xt2, c7))))))
-  taylor = mul(mul(xt, tpoly), two_over_sqrt_pi)
-  where(in_small, taylor, signed)
-}
 def acklam_central_t[n, prec: {f32, f64}](q: &tensor[n, prec]) -> tensor[n, prec] = {
   a1 = sp_lift_t(q, cast(-39.69683028665376, prec))
   a2 = sp_lift_t(q, cast(220.9460984245205, prec))
