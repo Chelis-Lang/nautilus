@@ -150,7 +150,8 @@ def student_t_pdf(x: f32, df: f32) -> f32 = {
 -- an outer driver so the budget costs about 30 stack frames instead of 200.
 -- `chelis eval --file` evaluates on `main` and aborts the process at 136
 -- frames of a body this size, so the flat recursion could not spend its budget:
--- `docs/issue_drafts/chelis_eval_fat_frame_stack_abort.md`.
+-- see the eval-lane entry in `docs/UPSTREAM_BUGS.md`, which cites the
+-- upstream issue by number.
 -- The chunking changes no arithmetic: the iteration sequence, the convergence
 -- test and the result are the flat form's, bit for bit, on every converging
 -- input.
@@ -174,7 +175,7 @@ def gammainc_series_chunk(x: f32, term: f32, acc: f32, ap: f32, iters: i64, step
 }
 def gammainc_series(x: f32, term: f32, acc: f32, ap: f32, iters: i64) -> f32 = {
   zero_i = cast(0, i64)
-  if lte(iters, zero_i) then nan_d() else {
+  if lte(iters, zero_i) then acc else {
     st = gammainc_series_chunk(x, term, acc, ap, iters, gammainc_chunk_i())
     if st.4 then st.1 else gammainc_series(x, st.0, st.1, st.2, st.3)
   }
@@ -214,7 +215,7 @@ def gammaq_cf_chunk(a: f32, b: f32, c: f32, d: f32, h: f32, i: i64, steps: i64) 
 }
 def gammaq_cf_rec(a: f32, b: f32, c: f32, d: f32, h: f32, i: i64) -> f32 = {
   zero_i = cast(0, i64)
-  if lte(i, zero_i) then nan_d() else {
+  if lte(i, zero_i) then h else {
     st = gammaq_cf_chunk(a, b, c, d, h, i, gammainc_chunk_i())
     if st.5 then st.3 else gammaq_cf_rec(a, st.0, st.1, st.2, st.3, st.4)
   }

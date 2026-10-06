@@ -704,7 +704,7 @@ def test_normal_upper_tail_reflects_the_mean_not_only_the_point() -> unit ! { Te
 -- argument `xs = x / scale`, took the `gammaq` branch, and never satisfied the
 -- continued fraction's convergence test. The recursion then spent its whole
 -- 200-iteration budget, which the `chelis eval` lane cannot afford: see
--- `docs/issue_drafts/chelis_eval_fat_frame_stack_abort.md`. The guards below
+-- the eval-lane entry in `docs/UPSTREAM_BUGS.md` (chelis#2471). The guards below
 -- are the ones `weibull_cdf`, `gamma_pdf` and `gamma_inv_cdf` already use in
 -- this module, and they agree with SciPy on every row.
 def test_gamma_cdf_rejects_a_nonpositive_scale() -> unit ! { Test } = {
@@ -775,8 +775,9 @@ def test_chi_squared_inherits_the_guards() -> unit ! { Test } = {
 -- about 30 frames by running it in chunks of 16. References are the
 -- regularised incomplete gamma at 60 decimal digits, rounded once to f32; the
 -- f32 errors quoted in the messages are the series' own accumulation error,
--- unchanged by this fix and tracked separately, not a loss introduced by
--- chunking.
+-- unchanged by this fix and documented in the book, not a loss introduced by
+-- chunking. Every value is bit-identical to what the flat recursion returned
+-- in a lane with enough stack to run it.
 --
 -- Read these three as value pins, not as detectors. `chelis test` runs each
 -- file on a `chelis-test-worker` thread whose stack holds about 500 frames of
@@ -801,16 +802,19 @@ def test_chi_squared_cdf_large_df_returns_a_value() -> unit ! { Test } = {
   _ = assert_true(not(neq(v, v)), "chi_squared_cdf(4000,4000) is a number")
   assert_true(lt(dist_rel_err(v, cast(0.50297356, f32)), cast(0.001, f32)), "chi_squared_cdf(4000,4000) = 0.50297356 to 6.5e-4")
 }
-def test_gamma_cdf_reports_an_unspent_budget_as_nan() -> unit ! { Test } = {
-  -- Past shape 2338 at x = shape the series needs more than its 200 terms, so the
-  -- budget runs out. Every input that can exhaust it aborted the process
-  -- before this change, so nothing here had a working answer to lose; NaN is
-  -- the guardable form of "did not converge", and the unconverged partial sum
-  -- would be a silent wrong answer instead.
-  v = gamma_cdf(cast(30000.0, f32), cast(30000.0, f32), cast(1.0, f32))
-  w = gamma_cdf(cast(100001.0, f32), cast(100000.0, f32), cast(1.0, f32))
-  _ = assert_true(neq(v, v), "gamma_cdf(30000;30000,1) exhausts the series budget and is NaN")
-  assert_true(neq(w, w), "gamma_cdf(100001;100000,1) exhausts the continued-fraction budget and is NaN")
+def test_gamma_cdf_past_the_budget_returns_the_partial_sum() -> unit ! { Test } = {
+  -- Past shape 2338 at x = shape the series needs more than its 200 terms, so
+  -- the budget runs out and the result is the unconverged partial sum. It is
+  -- deliberately not NaN. Both values below are exactly what the flat
+  -- recursion returned in any lane with enough stack to run 200 frames, so
+  -- this fix changes no value here, and converting them to NaN would have
+  -- discarded a 1.5e-4-accurate answer at shape 2339 while keeping the 1.6e-3
+  -- one at 2338. The accuracy limit itself is long-standing and documented in
+  -- `docs/book/src/distributions/gamma-family.md`.
+  a = gamma_cdf(cast(2339.0, f32), cast(2339.0, f32), cast(1.0, f32))
+  b = gamma_cdf(cast(30000.0, f32), cast(30000.0, f32), cast(1.0, f32))
+  _ = assert_close(a, cast(0.50282675, f32), cast(1e-7, f32), "gamma_cdf(2339;2339,1) = 0.50282675, the flat form's value")
+  assert_close(b, cast(0.37090707, f32), cast(1e-7, f32), "gamma_cdf(30000;30000,1) = 0.37090707, the flat form's value, 26% from the true 0.5007678")
 }
 -- The companion to the three pins above. `example_gamma_cdf_degenerate_arguments`
 -- encodes five of nautilus#140's cases as decimal digits so one f32 says which

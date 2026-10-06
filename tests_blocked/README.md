@@ -69,8 +69,7 @@ the current verdicts.
   Nautilus consumer matrix is still needed. `chelis test` does not exercise
   that C lane. Use the manual recipe below.
 
-- **`docs/issue_drafts/chelis_eval_fat_frame_stack_abort.md`** (narrowing
-  `nautilus#140`): **cannot be probed here.** The limitation is that
+- **`chelis#2471`** (narrowing `nautilus#140`): **cannot be probed here.** The limitation is that
   `chelis eval --file` aborts the process at about 135 frames of a let-heavy
   recursion. `chelis test` runs each file on a `chelis-test-worker` thread that
   holds about 500 frames of the same shape, so the 200-frame recursion this

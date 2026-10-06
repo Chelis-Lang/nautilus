@@ -312,12 +312,12 @@ package-version string, is the one export not listed here.
 | `lognormal_inv_cdf` | `(q: f32, mu: f32, sigma: f32) -> f32` | `stable` | Via normal_inv_cdf + exp |
 | `lognormal_sample` | `[n](k: key, template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32]` | `alpha` | Explicit key |
 | `gamma_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | (shape, scale) -- not (shape, rate) |
-| `gamma_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Series (gammap) + continued fraction (gammaq); NaN for shape <= 0, scale <= 0, NaN x, or a shape past each branch's 200-iteration budget; 1.0 at x = +inf |
+| `gamma_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Series (gammap) + continued fraction (gammaq); NaN for shape <= 0, scale <= 0 or NaN x; 1.0 at x = +inf; past shape ~2338 the 200-iteration budget stops converging and the value is an unconverged partial sum (16% wrong at shape 20000) |
 | `gamma_sf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Survival function `1 - gamma_cdf`, computed without the cancelling subtraction; same parameter guards as `gamma_cdf`, 0.0 at x = +inf |
 | `gamma_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Wilson-Hilferty init + Newton refinement |
 | `gamma_sample` | `[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]` | `alpha` | Explicit per-element and per-attempt keys; shape >= 1; NaN if 64 trials reject |
 | `chi_squared_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_pdf(x, df/2, 2) |
-| `chi_squared_cdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_cdf; NaN for df <= 0 and for df past about 4676 |
+| `chi_squared_cdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_cdf; NaN for df <= 0; inherits gamma_cdf's large-shape accuracy limit at df/2 |
 | `chi_squared_sf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_sf; keeps the right tail that `1 - chi_squared_cdf` loses; NaN for df <= 0 |
 | `chi_squared_inv_cdf` | `(q: f32, df: f32) -> f32` | `stable` | Via gamma_inv_cdf |
 | `chi_squared_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; gamma sample with shape df/2 and scale 2; df >= 2 |
@@ -325,7 +325,7 @@ package-version string, is the one export not listed here.
 | `student_t_cdf` | `(t: f32, df: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
 | `student_t_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; independent normal and chi-squared tensors; df >= 2 |
 | `poisson_pmf` | `(k: f32, lambda: f32) -> f32` | `stable` | k as f32 (integer-valued), discrete PMF |
-| `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | `stable` | Via gamma_cdf complement, which calls the series with shape k+1 at x = lambda; NaN when k and lambda are both past about 2338 and close, where that budget runs out (k=2300, lambda=2300 returns 0.5042069; 2400 and 2400 is NaN) |
+| `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | `stable` | Via gamma_cdf complement, which calls the series with shape k+1 at x = lambda; inherits its large-shape accuracy limit there |
 | `binomial_pmf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | k, n as f32 (integer-valued), discrete PMF |
 | `binomial_cdf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
 | `beta_pdf` | `(x: f32, a: f32, b: f32) -> f32` | `stable` | a, b > 0 |

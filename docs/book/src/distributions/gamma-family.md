@@ -129,18 +129,27 @@ reached the continued fraction and killed the `chelis eval` process.
 ### Large shape and large degrees of freedom
 
 Both branches of the incomplete gamma function are given 200 iterations, and
-neither converges at large `shape`. At each branch's worst `x` the budget runs
-out past `shape = 2338` on the series and past `shape = 47318` on the continued
-fraction, and the result is `NaN`: `gamma_cdf(30000.0, 30000.0, 1.0)` is `NaN`,
-and so is `chi_squared_cdf(x, df)` for `df` past about 4676. Those two shapes
-are the worst case for their branch -- `x = shape` for the series, `x` just
-above `shape + 1` for the continued fraction -- so a different `x` at the same
-shape may still converge. `NaN` is deliberate.
-Returning the unconverged partial sum would be a wrong answer a caller cannot
-detect, and every input that can exhaust the budget used to abort the process
-outright, so none of them had a working answer to lose.
+neither converges at large `shape`. Past that point the result is the
+**unconverged partial sum**, and its relative error grows without any signal to
+the caller. Measured at `x = shape` against the regularised incomplete gamma at
+60 decimal digits:
 
-Accuracy degrades well before that. The series loses relative accuracy as
-`shape` grows -- about 1e-6 at `shape = 100`, 1.4e-4 at 1000 and 6.5e-4 at 2000
--- so a result in that range is a number but not a precise one. See
-[Precision](../appendix/precision.md).
+| `shape` | returned | relative error |
+|---|---|---|
+| 100 | 0.5132978 | 1.9e-6 |
+| 1000 | 0.5043488 | 2.8e-4 |
+| 2000 | 0.50264823 | 6.5e-4 |
+| 2338 | 0.5019535 | 1.6e-3 |
+| 20000 | 0.4219802 | **16%** |
+| 30000 | 0.37090707 | **26%** |
+
+`chi_squared_cdf(x, df)` inherits this at `df / 2`, and `poisson_cdf` through
+`shape = k + 1`. Treat `shape` beyond a few hundred as approximate and beyond a
+few thousand as unusable. This is a long-standing accuracy limit of the f32
+series, not a consequence of the degenerate-argument guards above; it is
+documented here rather than corrected, and it is the reason those guards do not
+try to convert a non-converged result into `NaN` — the partial sum is the better
+answer near the budget (1.6e-3 at `shape = 2338`) and only becomes worthless far
+past it.
+
+See [Precision](../appendix/precision.md).
