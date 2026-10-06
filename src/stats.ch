@@ -1,5 +1,5 @@
 module Nautilus.Stats
-import Nautilus.Distributions (chi_squared_cdf)
+import Nautilus.Distributions (chi_squared_sf)
 export (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec, rank_vec, zscore_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, likelihood_ratio_p_value, covariance_2x2, correlation_2x2, covariance_matrix_2, correlation_matrix_2, covariance_matrix, correlation_matrix)
 def zero_f() -> f32 = cast(0.0, f32)
 def one_f() -> f32 = cast(1.0, f32)
@@ -245,7 +245,7 @@ def fdr_adjust[n](p_values: &tensor[n, f32]) -> tensor[n, f32] = benjamini_hochb
 def likelihood_ratio_stat(log_likelihood_null: f32, log_likelihood_alt: f32) -> f32 = mul(two_f(), sub(log_likelihood_alt, log_likelihood_null))
 def likelihood_ratio_p_value(log_likelihood_null: f32, log_likelihood_alt: f32, df: f32) -> f32 = {
   stat = likelihood_ratio_stat(log_likelihood_null, log_likelihood_alt)
-  sub(one_f(), chi_squared_cdf(stat, df))
+  chi_squared_sf(stat, df)
 }
 def covariance_2x2[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: i64) -> tensor[2, 2, f32] = {
   va = covariance_scalar(a, a, ddof)

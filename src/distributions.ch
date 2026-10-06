@@ -1,6 +1,6 @@
 module Nautilus.Distributions
 import Nautilus.Special (erfinv, erfinv_t, log_gamma)
-export (uniform_pdf, uniform_cdf, uniform_inv_cdf, uniform_sample, exponential_pdf, exponential_cdf, exponential_inv_cdf, exponential_sample, normal_pdf, normal_cdf, normal_inv_cdf, normal_sample, lognormal_pdf, lognormal_cdf, lognormal_inv_cdf, lognormal_sample, gamma_pdf, chi_squared_pdf, student_t_pdf, gamma_cdf, chi_squared_cdf, gamma_inv_cdf, chi_squared_inv_cdf, chi_squared_sample, student_t_sample, gamma_sample, student_t_cdf, poisson_pmf, poisson_cdf, binomial_pmf, binomial_cdf, beta_pdf, beta_cdf, f_pdf, f_cdf, weibull_pdf, weibull_cdf, weibull_inv_cdf, normal_cdf_t, normal_inv_cdf_t, normal_pdf_t)
+export (uniform_pdf, uniform_cdf, uniform_inv_cdf, uniform_sample, exponential_pdf, exponential_cdf, exponential_inv_cdf, exponential_sample, normal_pdf, normal_cdf, normal_inv_cdf, normal_sample, lognormal_pdf, lognormal_cdf, lognormal_inv_cdf, lognormal_sample, gamma_pdf, chi_squared_pdf, student_t_pdf, gamma_cdf, gamma_sf, chi_squared_cdf, chi_squared_sf, gamma_inv_cdf, chi_squared_inv_cdf, chi_squared_sample, student_t_sample, gamma_sample, student_t_cdf, poisson_pmf, poisson_cdf, binomial_pmf, binomial_cdf, beta_pdf, beta_cdf, f_pdf, f_cdf, weibull_pdf, weibull_cdf, weibull_inv_cdf, normal_cdf_t, normal_inv_cdf_t, normal_pdf_t)
 def zero_f() -> f32 = cast(0.0, f32)
 def one_f() -> f32 = cast(1.0, f32)
 def two_f() -> f32 = cast(2.0, f32)
@@ -405,9 +405,17 @@ def gamma_cdf(x: f32, shape: f32, scale: f32) -> f32 = {
   xs = div(x, scale)
   if lt(xs, add(shape, one_f())) then gammap(shape, xs) else sub(one_f(), gammaq(shape, xs))
 }
+def gamma_sf(x: f32, shape: f32, scale: f32) -> f32 = {
+  xs = div(x, scale)
+  if lt(xs, add(shape, one_f())) then sub(one_f(), gammap(shape, xs)) else gammaq(shape, xs)
+}
 def chi_squared_cdf(x: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_cdf(x, half_df, two_f())
+}
+def chi_squared_sf(x: f32, df: f32) -> f32 = {
+  half_df = mul(half_f(), df)
+  gamma_sf(x, half_df, two_f())
 }
 def gamma_inv_cdf_newton(target: f32, shape: f32, scale: f32, x: f32, iters: i64) -> f32 = {
   zero_i = cast(0, i64)

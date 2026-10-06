@@ -18,6 +18,17 @@ Uses the regularized lower incomplete gamma function (series expansion
 `gammap` for x < shape+1, continued-fraction `gammaq` complement
 otherwise).
 
+**`gamma_sf(x: f32, shape: f32, scale: f32) -> f32`**
+
+The survival function `1 - gamma_cdf(x, shape, scale)`, computed without that
+subtraction. It mirrors `gamma_cdf`'s branch: the series `1 - gammap` for
+x/scale < shape+1, and the continued fraction `gammaq` directly otherwise.
+That second branch is the whole point. `gamma_cdf` spells its upper branch as
+`1 - gammaq(..)`, so a caller who subtracts the CDF from `1.0` makes a round
+trip through `1.0` and loses the tail to `0.5 * ulp(1.0)` -- about 6e-8,
+however accurate the incomplete gamma is. Use `gamma_sf` whenever you want an
+upper tail, and never `sub(cast(1.0, f32), gamma_cdf(..))` (nautilus#137).
+
 **`gamma_inv_cdf(q: f32, shape: f32, scale: f32) -> f32`**
 
 Wilson-Hilferty initial guess refined by up to 80 Newton iterations.
@@ -47,12 +58,18 @@ chi-squared with one degree of freedom.
 
 ## Chi-squared distribution
 
-All three functions delegate to the gamma distribution with
+All four functions delegate to the gamma distribution with
 shape = df/2 and scale = 2.
 
 **`chi_squared_pdf(x: f32, df: f32) -> f32`** -- via `gamma_pdf(x, df/2, 2)`
 
 **`chi_squared_cdf(x: f32, df: f32) -> f32`** -- via `gamma_cdf(x, df/2, 2)`
+
+**`chi_squared_sf(x: f32, df: f32) -> f32`** -- via `gamma_sf(x, df/2, 2)`.
+This is the upper tail, and the function a goodness-of-fit test wants:
+`chi_squared_sf(40, 3)` is `1.07e-8`, where
+`1 - chi_squared_cdf(40, 3)` is exactly `0.0`.
+`Nautilus.Testing.chi_squared_p_value` is this function.
 
 **`chi_squared_inv_cdf(q: f32, df: f32) -> f32`** -- via `gamma_inv_cdf(q, df/2, 2)`
 
@@ -93,5 +110,7 @@ cdf = student_t_cdf(cast(2.0, f32), cast(10.0, f32)) -- approximately 0.963
 | `gamma_pdf(x, shape, scale)` with x < 0 | 0.0 |
 | `gamma_inv_cdf(q, ...)` with q outside [0,1] | NaN |
 | `chi_squared_cdf(x, df)` with x <= 0 | 0.0 |
+| `gamma_sf(x, ...)` / `chi_squared_sf(x, df)` with x <= 0 | 1.0 |
+| `chi_squared_sf(x, df)` with a true tail below 1.4e-45 | 0.0, the f32 floor |
 | `student_t_cdf(t, df)` with df <= 0 | NaN |
 | Any `_pdf` at x = 0 with shape < 1 | +inf |

@@ -14,10 +14,11 @@ error for `w^2` to amplify.
 
 `lognormal_cdf` and `Nautilus.Testing.z_p_value_lower` inherit the improvement
 through `normal_cdf`. `z_p_value_upper` and `z_p_value_two_sided` consume
-`normal_cdf` too, so their values shift, but they are **not repaired**: they
-compute `1 - normal_cdf(z)`, which cancels on the right tail in the mirror image
-of the defect fixed here, and still returns exactly `0.0` beyond about `z = 5.3`.
-That is pre-existing and tracked as nautilus#137. A downstream oracle holding golden
-values for deep-tail probabilities will need to be refreshed.
+`normal_cdf` too, so their values shift, but this change did not repair them:
+they computed `1 - normal_cdf(z)`, which cancels on the right tail in the mirror
+image of the defect fixed here. That right-tail half is nautilus#137, and it is
+fixed separately in this same release -- see the right-tail p-value entry. A
+downstream oracle holding golden values for deep-tail probabilities will need to
+be refreshed.
 
 Addresses nautilus#113.

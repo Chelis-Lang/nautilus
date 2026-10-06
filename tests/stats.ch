@@ -1,5 +1,5 @@
 module Nautilus.Tests.Stats
-import Nautilus.Stats (mean_vec, variance_vec, std_vec, median_vec, min_vec, max_vec, range_vec, skewness_vec, kurtosis_vec, covariance_scalar, correlation_scalar, quantile_vec, percentile_vec, trimmed_mean_vec, rank_vec, zscore_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, covariance_2x2, correlation_2x2, covariance_matrix, correlation_matrix)
+import Nautilus.Stats (mean_vec, variance_vec, std_vec, median_vec, min_vec, max_vec, range_vec, skewness_vec, kurtosis_vec, covariance_scalar, correlation_scalar, quantile_vec, percentile_vec, trimmed_mean_vec, rank_vec, zscore_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, likelihood_ratio_p_value, covariance_2x2, correlation_2x2, covariance_matrix, correlation_matrix)
 import Nautilus.LinAlg (matvec, inner_product)
 import Std.Test (assert_close, assert_close_tensor, assert_true)
 def test_mean_constant() -> unit ! { Test } = {
@@ -278,4 +278,34 @@ def test_covariance_matrix_three_variables() -> unit ! { Test } = {
 def test_correlation_matrix_three_variables() -> unit ! { Test } = {
   expected = to_tensor([[cast(1.0, f32), cast(0.9844952, f32), cast(-0.9827076, f32)], [cast(0.9844952, f32), cast(1.0, f32), cast(-0.9745586, f32)], [cast(-0.9827076, f32), cast(-0.9745586, f32), cast(1.0, f32)]])
   assert_close_tensor(correlation_matrix(stats_three_by_four()), expected, cast(0.00001, f32), "correlation_matrix over 3 variables by 4 observations matches the NumPy correlation reference, entrywise")
+}
+-- nautilus#137: `likelihood_ratio_p_value` is a chi-squared right-tail
+-- p-value and had the same `1 - chi_squared_cdf(..)` spelling as
+-- `Nautilus.Testing.chi_squared_p_value`, so it returned exactly 0.0 for any
+-- statistic past about 40 on 3 df. It now calls `chi_squared_sf`. References
+-- are `Q(df/2, stat/2)` at 60 decimal digits rounded once to f32.
+def stat_pv_rel_err(v: f32, ref: f32) -> f32 = div(abs(sub(v, ref)), ref)
+def test_likelihood_ratio_p_value_moderate_statistic() -> unit ! { Test } = {
+  -- stat = 2 * (-10 - -12.5) = 5, on 3 df
+  v = likelihood_ratio_p_value(cast(-12.5, f32), cast(-10.0, f32), cast(3.0, f32))
+  assert_true(lt(stat_pv_rel_err(v, cast(0.17179714, f32)), cast(0.00001, f32)), "LR p-value at stat=5, df=3 is 0.17179714")
+}
+def test_likelihood_ratio_p_value_deep_tail_keeps_significant_digits() -> unit ! { Test } = {
+  -- stat = 2 * (-40 - -60) = 40, on 3 df: a routine nested-model comparison,
+  -- and exactly where the cancelling form returned 0.0.
+  v = likelihood_ratio_p_value(cast(-60.0, f32), cast(-40.0, f32), cast(3.0, f32))
+  _ = assert_true(gt(v, cast(0.0, f32)), "LR p-value at stat=40, df=3 is strictly positive")
+  assert_true(lt(stat_pv_rel_err(v, cast(1.065509e-8, f32)), cast(0.00001, f32)), "LR p-value at stat=40, df=3 is 1.065509e-8")
+}
+def test_likelihood_ratio_p_value_decreases_with_the_statistic() -> unit ! { Test } = {
+  -- The cancelling form tied these two at 0.0, so strict `lt` is the test it
+  -- fails.
+  df = cast(3.0, f32)
+  p40 = likelihood_ratio_p_value(cast(-60.0, f32), cast(-40.0, f32), df)
+  p100 = likelihood_ratio_p_value(cast(-90.0, f32), cast(-40.0, f32), df)
+  assert_true(lt(p100, p40), "LR p-value decreases as the statistic grows")
+}
+def test_likelihood_ratio_p_value_is_one_when_the_models_tie() -> unit ! { Test } = {
+  v = likelihood_ratio_p_value(cast(-10.0, f32), cast(-10.0, f32), cast(3.0, f32))
+  assert_close(v, cast(1.0, f32), cast(1e-6, f32), "LR p-value is 1 when the log-likelihoods are equal")
 }
