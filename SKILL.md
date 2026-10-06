@@ -180,8 +180,8 @@ approximately 2.408.
   (`&tensor` in Section 6), so one tensor can be passed to several functions
   without `copy`. A parameter written without `&` (the sampling templates,
   `cg_solve`'s inputs, `la_tridiag_solve`, the SDE noise tensor, the ODE
-  grid's `y0`, `lm_scalar_nparam`'s `theta0`) takes ownership; pass `copy(t)`
-  if you still need `t` afterwards.
+  grid's `y0`, `lm_scalar_nparam`'s `theta0`) takes ownership. If your
+  argument is a borrowed `&tensor`, write `copy(t)` to pass a fresh owner.
 - **Sampling.** The `*_sample` functions take a `key` as their first
   argument; Chelis has no randomness effect. `key_from_seed(42i64)` makes a
   reproducible root key. Each bound key has one consuming use; using it twice
