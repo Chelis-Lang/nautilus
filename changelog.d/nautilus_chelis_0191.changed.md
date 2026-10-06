@@ -1,0 +1,1 @@
+Build Nautilus 0.7.50 with Chelis 0.19.1. The compiler patch release has no intended language or standard-library change. The pinned upstream limitations stay the same, and the Greeks guide now shows Gamma from nested `grad`.

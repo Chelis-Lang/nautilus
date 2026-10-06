@@ -50,7 +50,7 @@ Nautilus and install its package artifacts into your local Reef registry.
 setup and explains how to use a published release instead.
 
 ```sh
-chelisup install 0.19.0
+chelisup install 0.19.1
 mkdir -p nautilus-work/packages
 git clone https://github.com/Chelis-Lang/nautilus.git nautilus-work/packages/nautilus
 cd nautilus-work/packages/nautilus
@@ -65,7 +65,7 @@ cd demo
 Add this line under `[dependencies]` in the generated `reef.toml`:
 
 ```toml
-nautilus = { version = "0.7.49" }
+nautilus = { version = "0.7.50" }
 ```
 
 Use the book's [first program](docs/book/src/getting-started/first-program.md)
@@ -87,7 +87,7 @@ gh release download --repo Chelis-Lang/chelis --pattern chelisup.sh --output - |
 export PATH="$HOME/.chelis/bin:$PATH"
 git clone https://github.com/Chelis-Lang/nautilus.git
 cd nautilus
-chelisup install 0.19.0
+chelisup install 0.19.1
 chelis reef setup
 ```
 

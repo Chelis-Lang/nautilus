@@ -1,6 +1,6 @@
 # Installation
 
-Nautilus 0.7.49 is a Reef package for Chelis 0.19.0. Reef installs the package
+Nautilus 0.7.50 is a Reef package for Chelis 0.19.1. Reef installs the package
 for use from your own Chelis project. The commands below build and install the
 package from this repository's source.
 
@@ -12,11 +12,11 @@ Nautilus pins:
 ```sh
 gh release download --repo Chelis-Lang/chelis --pattern chelisup.sh --output - | sh
 export PATH="$HOME/.chelis/bin:$PATH"
-chelisup install 0.19.0
+chelisup install 0.19.1
 chelis --version
 ```
 
-The version command should print `chelis 0.19.0`. If you already have
+The version command should print `chelis 0.19.1`. If you already have
 `chelisup`, start with `chelisup install`. `chelisup` keeps versions side by
 side, and its `chelis` command selects the exact compiler named in a nearby
 `reef.toml`.
@@ -51,16 +51,16 @@ In the generated `reef.toml`, add this line under the existing
 `[dependencies]` table:
 
 ```toml
-nautilus = { version = "0.7.49" }
+nautilus = { version = "0.7.50" }
 ```
 
-Keep the generated `compiler = "=0.19.0"` pin. Continue with
+Keep the generated `compiler = "=0.19.1"` pin. Continue with
 [Your first Nautilus program](first-program.md) to evaluate a calculation.
 
 ## Work from a source checkout
 
 The clone above is also the development checkout. `chelis reef build` writes
-`dist/nautilus-0.7.49.chb` and a source archive; it does not produce an
+`dist/nautilus-0.7.50.chb` and a source archive; it does not produce an
 executable. The [maintainer guide](https://github.com/Chelis-Lang/nautilus/blob/main/docs/maintainer_guide.md)
 has the native tests and optional SciPy parity commands. Parity needs uv and
 Python 3.12; ordinary use of the Reef package does not.

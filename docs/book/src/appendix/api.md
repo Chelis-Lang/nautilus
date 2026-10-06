@@ -1,6 +1,6 @@
 # API Map
 
-Nautilus 0.7.49 exports functions from the modules below. Each source module
+Nautilus 0.7.50 exports functions from the modules below. Each source module
 contains the exact signatures for this package; the book chapters explain
 common calls and limits. Use the [package source tree](https://github.com/Chelis-Lang/nautilus/tree/main/src)
 when you need an export beyond a chapter's examples.

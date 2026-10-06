@@ -26,7 +26,7 @@ Verdicts are fail-closed:
 
 ## Current executable probes
 
-None at the `chelis 0.19.0` pin. `chelis test tests_blocked/ --expect blocked`
+None at the `chelis 0.19.1` pin. `chelis test tests_blocked/ --expect blocked`
 exits nonzero on this empty directory by design; the manual probes below own
 the current verdicts.
 
@@ -44,7 +44,7 @@ the current verdicts.
   Replacing the finite-difference Jacobian in `src/curvefit.ch` with exact AD
   must pass the six multi-parameter recovery tests in `tests/curvefit.ch`.
   The isolated Jacobian-row witnesses pass, so they test a smaller
-  boundary. With Chelis 0.19.0, a seeded-output exact-AD replacement fails
+  boundary. With Chelis 0.19.1, a seeded-output exact-AD replacement fails
   all six recoveries at host `to_list` lowering, before the provenance
   boundary. The provenance condition remains unverified.
   The narrowing site in `src/curvefit.ch` points here instead of spelling

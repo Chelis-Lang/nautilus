@@ -19,9 +19,7 @@ Special's dtype-set bound rejects
 
 **No blanket `grad` support.** Nautilus claims differentiability only where a
 test exercises it. Solvers built on recursion or `fold`, such as `rk4_solve`,
-do not lower under `grad` at the pinned compiler. The second spot
-derivative of the [Black-Scholes example](../finance/greeks.md) also rejects
-during nested `grad` evaluation.
+do not lower under `grad` at the pinned compiler.
 
 **`lm_scalar_nparam` uses a finite-difference Jacobian.** See the
 [Curve Fitting chapter](../other/curvefit.md).
