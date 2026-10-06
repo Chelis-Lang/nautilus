@@ -107,11 +107,16 @@ rather than re-derive it.
   line `chelis build` emits, and a **separate package** that depends on this one,
   rebuilt from current source and installed into a throwaway Reef store so the
   shared `~/.chelis/reef/` is never written. Acceptance is exit 0 with
-  `ROLLING C LANE: PASS`, and CI runs it in the `chelis-tests` job. No other job
-  in this repository runs `chelis build`. The cross-package leg rebuilds before
+  `ROLLING C LANE: PASS`, and CI runs it in the `chelis-tests` job. The
+  cross-package leg rebuilds before
   installing on purpose: `dist/` is a build output, and a review round that read
   it without rebuilding produced a confident cross-package finding that the
   committed source does not reproduce.
+- **Gamma-family sampling has an evaluator/C parity oracle.**
+  `scripts/check_gamma_sampling_c_lane.py` evaluates and compiles the fixed-key
+  gamma, chi-squared, and Student-t consumer in
+  `tests/gamma_sampling_c_parity.ch`. Acceptance is exact output agreement and
+  exit 0 with `GAMMA SAMPLING C LANE: PASS`; CI runs it in `chelis-tests`.
 - **`Nautilus.Rolling`'s pandas contract has its own oracle.**
   `scripts/check_rolling_parity.py` replays the committed goldens in
   `parity/goldens/rolling.json` against `chelis eval`; acceptance is exit 0

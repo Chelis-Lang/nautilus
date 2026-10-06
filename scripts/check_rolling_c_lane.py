@@ -5,8 +5,8 @@
 so it cannot see chelis#730: an `Option` return reached through a lambda used
 to fail a consumer's `chelis build` with an unresolved host inference variable
 while every package-level gate stayed green. nautilus#70 records that class and
-says package-level green is not evidence for a consumer. No other job in this
-repository runs `chelis build` at all.
+says package-level green is not evidence for a consumer. Gamma-family sampling
+has a separate focused C parity check.
 
 This script is that oracle for this module, in two legs.
 

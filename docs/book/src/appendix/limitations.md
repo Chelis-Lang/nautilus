@@ -115,12 +115,12 @@ curvature from a genuinely sharp minimum.
 
 ## Sampling
 
-**`gamma_sample` does not produce gamma draws.** For finite shape >= 1
-and positive finite scale, its current output is a constant tensor,
-`(shape - 1/3) * scale`, independent of the key. It does not cover
-shape < 1. `chi_squared_sample` and
-`student_t_sample` use this output and do not sample their stated
-distributions. See [Sampling](../distributions/sampling.md#sampling-limits).
+**Gamma-family samplers have a bounded rejection search.** `gamma_sample`
+supports finite shape >= 1 and positive finite scale. Each element tries
+at most 64 keyed candidates; it returns NaN if all reject. It does not
+cover shape < 1. `chi_squared_sample` and `student_t_sample` use this
+sampler and require df >= 2. See
+[Sampling](../distributions/sampling.md#sampling-limits).
 
 ## Signal processing
 
