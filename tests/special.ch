@@ -1,5 +1,5 @@
 module Nautilus.Tests.Special
-import Nautilus.Special (erf, erfinv, erf_t, erfinv_t, log_gamma, digamma, beta, lbeta, trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1, bessel_j0, bessel_j1, bessel_y0, bessel_y1, airy_ai, airy_bi, ellipk, ellipe)
+import Nautilus.Special (erfinv, erfinv_t, log_gamma, digamma, beta, lbeta, trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1, bessel_j0, bessel_j1, bessel_y0, bessel_y1, airy_ai, airy_bi, ellipk, ellipe)
 import Std.Test (assert_close, assert_true, assert_eq)
 def test_erf_zero() -> unit ! { Test } = assert_eq(erf(cast(0.0, f32)), cast(0.0, f32), "erf(0) = 0")
 def test_erf_odd_symmetry() -> unit ! { Test } = {
@@ -181,27 +181,15 @@ def test_lbeta_matches_log_beta() -> unit ! { Test } = {
 -- elementwise. That is the whole contract -- they exist so a caller need not
 -- leave tensor rank, not to compute something different.
 def sp_probe_points() -> tensor[5, f32] = to_tensor([cast(-1.3, f32), cast(-0.4, f32), cast(1e-6, f32), cast(0.4, f32), cast(2.1, f32)])
-def test_erf_t_matches_scalar_elementwise() -> unit ! { Test } = {
+def test_builtin_erf_tensor_matches_scalar_elementwise() -> unit ! { Test } = {
   xs = sp_probe_points()
-  ys = to_list(erf_t(xs))
+  ys = to_list(erf(xs))
   tol = cast(1e-9, f32)
-  _ = assert_close(index(ys, cast(0, i64)), erf(cast(-1.3, f32)), tol, "erf_t[0] matches erf(-1.3)")
-  _ = assert_close(index(ys, cast(1, i64)), erf(cast(-0.4, f32)), tol, "erf_t[1] matches erf(-0.4)")
-  _ = assert_close(index(ys, cast(2, i64)), erf(cast(1e-6, f32)), tol, "erf_t[2] matches erf near zero")
-  _ = assert_close(index(ys, cast(3, i64)), erf(cast(0.4, f32)), tol, "erf_t[3] matches erf(0.4)")
-  assert_close(index(ys, cast(4, i64)), erf(cast(2.1, f32)), tol, "erf_t[4] matches erf(2.1)")
-}
-def test_erf_t_takes_the_small_x_branch() -> unit ! { Test } = {
-  -- Below 0.25 the scalar `erf` switches to a 4-term Maclaurin series. At
-  -- x = 1e-6 every term past the first is ~3e-19 and vanishes in f32, so
-  -- the leading term is still the exact expected value here. If the tensor
-  -- port dropped that `where`, this point would still be close in absolute
-  -- terms, so assert the branch by relative agreement instead.
-  xs = to_tensor([cast(1e-6, f32), cast(-1e-6, f32)])
-  ys = to_list(erf_t(xs))
-  two_over_sqrt_pi = cast(1.1283791670955126, f32)
-  _ = assert_close(index(ys, cast(0, i64)), mul(cast(1e-6, f32), two_over_sqrt_pi), cast(1e-12, f32), "erf_t small-x branch is the Taylor term")
-  assert_close(index(ys, cast(1, i64)), neg(mul(cast(1e-6, f32), two_over_sqrt_pi)), cast(1e-12, f32), "erf_t small-x branch is odd")
+  _ = assert_close(index(ys, cast(0, i64)), erf(cast(-1.3, f32)), tol, "tensor erf[0] matches erf(-1.3)")
+  _ = assert_close(index(ys, cast(1, i64)), erf(cast(-0.4, f32)), tol, "tensor erf[1] matches erf(-0.4)")
+  _ = assert_close(index(ys, cast(2, i64)), erf(cast(1e-6, f32)), tol, "tensor erf[2] matches erf near zero")
+  _ = assert_close(index(ys, cast(3, i64)), erf(cast(0.4, f32)), tol, "tensor erf[3] matches erf(0.4)")
+  assert_close(index(ys, cast(4, i64)), erf(cast(2.1, f32)), tol, "tensor erf[4] matches erf(2.1)")
 }
 def test_erfinv_t_matches_scalar_elementwise() -> unit ! { Test } = {
   qs = to_tensor([cast(-0.9, f32), cast(-0.2, f32), cast(0.0, f32), cast(0.2, f32), cast(0.9, f32)])
@@ -223,82 +211,18 @@ def test_erfinv_t_covers_both_acklam_tails() -> unit ! { Test } = {
   _ = assert_close(index(ys, cast(0, i64)), erfinv(cast(-0.98, f32)), tol, "erfinv_t low tail matches scalar")
   assert_close(index(ys, cast(1, i64)), erfinv(cast(0.98, f32)), tol, "erfinv_t high tail matches scalar")
 }
--- nautilus#56: A&S 7.1.26 carries a roughly constant ABSOLUTE error, so its
--- RELATIVE error diverges as x -> 0. The old implementation switched to the
--- leading Taylor term only below 1e-5, which left a band where the rational
--- form was still in charge but badly wrong in relative terms: measured 2.37%
--- at x = 1.001e-5, with the two sides of the branch disagreeing by 1.78% of
--- the value. `src/special.ch` carries the absolute bound; do not restate a
--- figure for it here, where it will drift out of step. These pin the
--- repaired behaviour.
-def test_erf_relative_accuracy_just_above_old_cutover() -> unit ! { Test } = {
-  x = cast(0.00001001, f32)
-  ref = cast(0.000011295075462249579, f32)
-  rel = div(abs(sub(erf(x), ref)), ref)
-  assert_true(lt(rel, cast(0.00001, f32)), "erf is relatively accurate just above the old 1e-5 cutover")
+def test_builtin_erf_is_monotone_near_former_cutover() -> unit ! { Test } = {
+  below = erf(0.2499999851f32)
+  above = erf(0.25f32)
+  assert_true(lte(below, above), "correctly rounded erf stays monotone near 0.25")
 }
-def test_erf_relative_accuracy_in_the_old_dead_band() -> unit ! { Test } = {
-  -- x = 1e-4 sits deep in the band the old 1e-5 cutover left to the rational
-  -- form: measured 4.722e-4 relative there before this change, 6.45e-8 after, as this test computes it in f32.
-  x = cast(0.0001, f32)
-  ref = cast(0.00011283791633342485, f32)
-  rel = div(abs(sub(erf(x), ref)), ref)
-  assert_true(lt(rel, cast(1e-6, f32)), "erf is relatively accurate at 1e-4")
-}
-def test_erf_has_no_cliff_at_the_branch_cutover() -> unit ! { Test } = {
-  -- A regression guard on the NEW 0.25 cutover, not a pin on the old defect:
-  -- the old implementation had no branch at 0.25, so this passes there too.
-  -- The old 1e-5 cliff is pinned by the two relative-accuracy tests above,
-  -- which do fail against it. Comparing two points ACROSS a cutover cannot
-  -- pin a cliff on its own -- points far enough apart to straddle a branch
-  -- also differ by real curvature.
-  below = erf(cast(0.2499999, f32))
-  above = erf(cast(0.2500001, f32))
-  jump = abs(sub(above, below))
-  _ = assert_true(lt(jump, cast(1e-6, f32)), "the two sides of the 0.25 cutover agree")
-  -- Magnitude alone is not the whole story, and the honest statement is not
-  -- monotonicity. erf(0.2499999851) = 0.27632636 is GREATER than
-  -- erf(0.25) = 0.27632612: an ~8-ulp backwards step at the exact cutover.
-  -- That is inherent to switching approximations -- the step equals the
-  -- difference of the two arms' errors -- and removing it needs a blend.
-  -- It is not a regression: the old 1e-5 cutover stepped backwards by 1.78%
-  -- of the value (8.63e-7 of the value here vs 1.78e-2 there, ~4 orders worse).
-  --
-  -- So pin what is true and load-bearing: BOTH sides sit within the
-  -- documented bound of the real erf. A drift on either arm breaks this.
-  ref_at_cutover = cast(0.2763263901682369, f32)
-  exact_below = erf(cast(0.2499999851, f32))
-  exact_at = erf(cast(0.25, f32))
-  _ = assert_close(exact_below, ref_at_cutover, cast(5e-7, f32), "series side of the cutover is within bound")
-  assert_close(exact_at, ref_at_cutover, cast(5e-7, f32), "rational side of the cutover is within bound")
-}
-def test_erf_t_matches_scalar_across_the_cutover() -> unit ! { Test } = {
-  xs = to_tensor([cast(0.2499999, f32), cast(0.2500001, f32), cast(0.01, f32), cast(0.00001001, f32)])
-  ys = to_list(erf_t(xs))
-  tol = cast(1e-9, f32)
-  _ = assert_close(index(ys, cast(0, i64)), erf(cast(0.2499999, f32)), tol, "erf_t below the cutover")
-  _ = assert_close(index(ys, cast(1, i64)), erf(cast(0.2500001, f32)), tol, "erf_t above the cutover")
-  _ = assert_close(index(ys, cast(2, i64)), erf(cast(0.01, f32)), tol, "erf_t at 0.01")
-  assert_close(index(ys, cast(3, i64)), erf(cast(0.00001001, f32)), tol, "erf_t just above the old cutover")
-}
--- nautilus#56 / chelis#1464: `erf`'s series arm holds an x^7 term that
--- overflows f32 for |x| > ~5.5e5. A scalar `if` inside a vmapped region is
--- lowered to a masked select that evaluates BOTH arms, so before the upstream
--- fix the overflowing untaken arm poisoned the result and `erf` had to clamp
--- the series input. The fix removed the need for the clamp; this test keeps
--- the reachable shape covered so a regression shows up as NaN here.
---
--- `vmap(erf)` itself is NOT the shape that breaks
--- -- spec/06 §3.1 types vmap over tensor-valued functions, and §3.6 broadcasts
--- non-tensor arguments -- so the witness has to call `erf` on a scalar derived
--- from the batched tensor.
 def erf_row_scale(t: tensor[3, f32]) -> tensor[3, f32] = {
   s = tensor_to_scalar(sum(t, cast(0, i32)))
   ev = insert(scalar_to_tensor(erf(s)), cast(0, i32), cast(3, i64))
   mul(t, ev)
 }
 def erf_batched(b: tensor[2, 3, f32]) -> tensor[2, 3, f32] = vmap(erf_row_scale)(b)
-def test_erf_series_arm_survives_a_vmapped_huge_input() -> unit ! { Test } = {
+def test_builtin_erf_survives_a_vmapped_huge_input() -> unit ! { Test } = {
   batch = to_tensor([[cast(1000000.0, f32), cast(0.0, f32), cast(0.0, f32)], [cast(0.1, f32), cast(0.0, f32), cast(0.0, f32)]])
   rows = to_list(sum(erf_batched(batch), cast(1, i32)))
   big = index(rows, cast(0, i64))

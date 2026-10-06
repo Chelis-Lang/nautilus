@@ -17,28 +17,20 @@ Treat the table as an f32 guide. It has no figure for `beta` or `lbeta`, and
 `bessel_y1` errs by about 1.2e-4 at either dtype just below its large-x seam
 at x = 7.5, well away from any zero.
 
-Three cases are stated exactly, because they are measured and they are the ones
-a caller is most likely to get wrong:
+Two cases merit separate guidance:
 
-- `erf` is capped by Abramowitz & Stegun 7.1.26's own 1.5e-7 error. At x = 0.5
-  an f64 `erf` measures 1.385e-7 against an f32 `erf`'s 1.861e-7; over the
-  whole range the maxima are 1.3884e-7 and 4.438e-7.
+- Chelis's `erf` and `erfc` builtins are correctly rounded at f32 and f64.
+  `erfc` computes the positive tail directly, avoiding cancellation in
+  `1 - erf(x)`.
 - `airy_ai` and `airy_bi` above x = 5 use only the leading asymptotic term and
   gain nothing from f64 there; the two dtypes agree to three digits. Below
   x = 5 f64 is far better.
-- `erfc` is the one place f64 changes what is computable rather than how
-  precisely. f32 `erfc` underflows to exactly 0 from about x = 3.92 on; f64
-  returns 1.546e-8 at x = 4 and stays usable to about x = 5.5. Its *relative* error is
-  still poor (2.8e-3 at x = 4) because `1 - erf(x)` cancels against an
-  absolutely-bounded `erf`. Use it for a tail that exists at all, not for
-  a tail you need three good digits from.
 
 ## Precision by function family
 
 | Family | Typical relative error | Notes |
 |---|---|---|
-| `erf` | ~1e-7 | Horner rational approximation |
-| `erfc` | same absolute error as `erf` | `1 - erf(x)`, so relative error grows in the upper tail |
+| Chelis `erf`, `erfc` | correctly rounded | Builtins, not Nautilus exports |
 | `erfinv` | ~1e-8 | Acklam rational approximation via `norminv` |
 | `gamma` | ~1e-7 | Lanczos (g=7) with reflection |
 | `log_gamma` | ~1e-9 | Lanczos (g=7) with reflection |
@@ -52,7 +44,7 @@ a caller is most likely to get wrong:
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
-| `normal_cdf` | ~1e-7 | Delegates to `erf` |
+| `normal_cdf` | f32 arithmetic | Uses Chelis `erf` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
 
 ## Known precision issues
@@ -96,7 +88,7 @@ the approximation coefficients are tuned for f32 and f64. See nautilus#75.
 ## Comparison to scipy
 
 SciPy operates in f64 (approximately 15 significant digits); f32 is roughly
-nine orders of magnitude coarser. The 216 reviewed SciPy parity samples in
+nine orders of magnitude coarser. The 206 reviewed SciPy parity samples in
 `parity/goldens/` therefore use absolute tolerances calibrated to f32,
 between 5e-6 and 5e-2 and most often 5e-4 or 5e-3, depending on the
 function and argument.
