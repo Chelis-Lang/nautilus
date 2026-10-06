@@ -109,8 +109,38 @@ cdf = student_t_cdf(cast(2.0, f32), cast(10.0, f32)) -- approximately 0.963
 |---|---|
 | `gamma_pdf(x, shape, scale)` with x < 0 | 0.0 |
 | `gamma_inv_cdf(q, ...)` with q outside [0,1] | NaN |
+| `gamma_cdf` / `gamma_sf` with shape <= 0 or scale <= 0 | NaN |
+| `chi_squared_cdf` / `chi_squared_sf` with df <= 0 | NaN |
 | `chi_squared_cdf(x, df)` with x <= 0 | 0.0 |
 | `gamma_sf(x, ...)` / `chi_squared_sf(x, df)` with x <= 0 | 1.0 |
+| `gamma_cdf` / `chi_squared_cdf` at x = +inf | 1.0; their survival functions 0.0 |
+| `gamma_cdf` / `gamma_sf` with x or x / scale NaN | NaN |
 | `chi_squared_sf(x, df)` with a true tail below about 7.0e-46 | 0.0, the f32 floor |
 | `student_t_cdf(t, df)` with df <= 0 | NaN |
 | Any `_pdf` at x = 0 with shape < 1 | +inf |
+
+The parameter guards match SciPy's `gamma` and `chi2` on every row, and the
+`+inf` rows are the limits rather than guards: a finite `x` whose `x / scale`
+overflows to `+inf` returns the same `1.0`, because the guard reads the
+standardised argument rather than `x`. nautilus#140 is the instance that
+produced the parameter rows; before it, a zero `scale` or an infinite `x`
+reached the continued fraction and killed the `chelis eval` process.
+
+### Large shape and large degrees of freedom
+
+Both branches of the incomplete gamma function are given 200 iterations, and
+neither converges at large `shape`. At each branch's worst `x` the budget runs
+out past `shape = 2338` on the series and past `shape = 47318` on the continued
+fraction, and the result is `NaN`: `gamma_cdf(30000.0, 30000.0, 1.0)` is `NaN`,
+and so is `chi_squared_cdf(x, df)` for `df` past about 4676. Those two shapes
+are the worst case for their branch -- `x = shape` for the series, `x` just
+above `shape + 1` for the continued fraction -- so a different `x` at the same
+shape may still converge. `NaN` is deliberate.
+Returning the unconverged partial sum would be a wrong answer a caller cannot
+detect, and every input that can exhaust the budget used to abort the process
+outright, so none of them had a working answer to lose.
+
+Accuracy degrades well before that. The series loses relative accuracy as
+`shape` grows -- about 1e-6 at `shape = 100`, 1.4e-4 at 1000 and 6.5e-4 at 2000
+-- so a result in that range is a number but not a precise one. See
+[Precision](../appendix/precision.md).

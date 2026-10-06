@@ -111,6 +111,15 @@ suffer catastrophic cancellation. This affects:
 - `variance_vec` for data with very small variance relative to the mean
 - `gamma_cdf` for extreme shape/scale ratios
 
+`gamma_cdf` has a second, unrelated limit at large `shape`. Its power series
+accumulates in f32 across a number of terms that grows with `shape`, so
+relative error grows with it: about 1e-6 at `shape = 100`, 1.4e-4 at 1000 and
+6.5e-4 at 2000, against the regularised incomplete gamma at 60 decimal digits.
+Past `shape = 2338` at that branch's worst `x` the 200-term budget runs out and
+the result is `NaN` rather than an unconverged sum; the continued-fraction
+branch reaches the same wall past `shape = 47318`.
+`chi_squared_cdf(x, df)` inherits both at `df / 2`.
+
 The sharpest form of this is `1 - cdf` for an upper tail. The subtraction
 carries absolute error of about `0.5 * ulp(1.0)` -- 6e-8 in f32 -- however
 accurate the CDF is, so it returns exactly `0.0` once the true tail falls

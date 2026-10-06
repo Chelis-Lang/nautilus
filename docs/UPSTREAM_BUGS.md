@@ -192,6 +192,58 @@ release.
       Nautilus consumer builds, compiles, links, and runs at f32 and f64.
       The minimal reproducer passing does not establish that full result.
 
+- **`chelis eval --file` aborts the process after about 135 frames of a
+  let-heavy recursion** —
+  [`docs/issue_drafts/chelis_eval_fat_frame_stack_abort.md`](issue_drafts/chelis_eval_fat_frame_stack_abort.md),
+  not yet filed upstream; the Nautilus instance it narrows is `nautilus#140`.
+    - **Symptom:** `chelis eval --file` evaluates on the `main` thread and
+      overflows its stack at a depth set by how many bindings the recursive
+      body holds: 136 frames for a sixteen-binding body, past 1000 for a
+      one-binding body. The process dies with `fatal runtime error: stack
+      overflow` and exit 134, with no Chelis diagnostic a caller can catch.
+      Values do not matter; the same body at depth 135 returns whether its
+      arguments are finite or not.
+    - **Affected Nautilus surface:** everything reaching the regularised
+      incomplete gamma function — `Nautilus.Distributions.gamma_cdf`,
+      `gamma_sf`, `chi_squared_cdf`, `chi_squared_sf`, `gamma_inv_cdf` and
+      `poisson_cdf`, and through them `Nautilus.Testing.chi_squared_p_value`
+      and `Nautilus.Stats.likelihood_ratio_p_value`. Its power series and
+      continued fraction each carry a 200-iteration budget, which as a flat
+      recursion costs 200 frames and so could not be spent in that lane.
+    - **Workaround:** `gammainc_series` and `gammaq_cf_rec` in
+      `src/distributions.ch` spend their budget in chunks of sixteen through an
+      outer driver, so 200 iterations cost about 30 frames. The chunking exists
+      only for the frame cost: the iteration sequence, the convergence test and
+      the returned value are the flat form's, bit for bit, on every converging
+      input.
+    - **Reproducer:** the twelve-binding and one-binding recursions in the
+      draft, which need no Nautilus import. The Nautilus-level form is
+      `chelis eval --file` over a module binding
+      `gamma_cdf(2000.0f32, 2000.0f32, 1.0f32)`, which wants 187 series terms.
+    - **Why `chelis test` cannot probe it:** the test lane runs each file on a
+      `chelis-test-worker` thread that holds about 500 frames of the same
+      shape, so a 200-frame recursion fits and reports a value. An overflow
+      there is reported as a test failure rather than killing the harness. See
+      [`tests_blocked/README.md`](../tests_blocked/README.md).
+    - **Pinned result:** at Chelis 0.19.0 and 0.19.1 the boundaries are
+      identical and deterministic over three repeats. With the chunked form,
+      `chelis eval --file src/exampledistributions.ch` prints
+      `example_gamma_cdf_degenerate_arguments = 11111.0`; against the flat form
+      the same command exits 134 with the overflow above. That example is
+      evaluated by the CI step that runs `chelis eval --file` over
+      `src/example*.ch`, which is the only gate that observes the abort.
+    - **Re-probe trigger:** every pin bump, and any release touching eval-lane
+      stack sizing or tail calls. On a fix, restore the flat recursions and
+      confirm the example still prints `11111.0`.
+    - **Filing condition:** stated in the draft. File it, then replace this
+      entry's heading citation and the reference in
+      `tests/distributions.ch` with the new `chelis#NNN` and delete the draft.
+      Leave the narrowing comment in `src/distributions.ch` citing a path
+      rather than a number: `src/*.ch` carries no `#NNN` citation anywhere in
+      this repository, and `chelis reef conform audit` row 11 (tests-blocked)
+      turns any such citation into a MUST failure demanding an executable
+      blocked probe, which this limitation provably cannot have.
+
 ## Tracking
 
 ## Archived

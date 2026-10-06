@@ -8,6 +8,30 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- `gamma_cdf` and `gamma_sf` no longer kill the process on a degenerate
+  parameter or a non-finite argument, and no longer kill it on an ordinary
+  large `shape` either. They validated neither parameter, so a zero `scale`
+  made the standardised argument `x / scale` non-finite, the continued fraction
+  never satisfied its convergence test, and the recursion spent its whole
+  200-iteration budget -- which `chelis eval --file` cannot afford, aborting at
+  about 135 frames of a body that size with no catchable diagnostic.
+  `chi_squared_cdf`, `chi_squared_sf`, `Nautilus.Testing.chi_squared_p_value`
+  and `poisson_cdf` inherited it. Two changes: the parameter and argument
+  guards `gamma_pdf`, `gamma_inv_cdf` and `weibull_cdf` already used in this
+  module, which agree with SciPy on every row; and both incomplete-gamma
+  recursions now spend their budget in chunks of sixteen through an outer
+  driver, so 200 iterations cost about 30 frames rather than 200. The
+  arithmetic is unchanged -- the converging path is bit-identical to the flat
+  form. **Values change at degenerate parameters and at large shape.**
+  `gamma_cdf(1.0, 0.0, 1.0)` was `1.0` and `gamma_cdf(1.0, 2.0, -1.0)` was
+  `0.0`; both are now `NaN`, as is `chi_squared_p_value(5.0, 0.0)`, which was
+  `0.0`. Inputs that exhaust the budget return `NaN` rather than the
+  unconverged partial sum: every one of them aborted the process before, so
+  none had a working answer to lose. The underlying eval-lane limitation is
+  drafted but not yet filed upstream, at
+  `docs/issue_drafts/chelis_eval_fat_frame_stack_abort.md`. Addresses
+  nautilus#140.
+
 - Right-tail p-values no longer cancel to exactly zero. Every upper-tail and
   two-sided p-value in `Nautilus.Testing`, and
   `Nautilus.Stats.likelihood_ratio_p_value`, computed `1 - cdf`, which carries
