@@ -684,11 +684,17 @@ def test_chi_squared_sf_is_what_one_minus_the_cdf_cannot_be() -> unit ! { Test }
 -- it is 6.6e-31 where the upper tail is 0.0668. Reference is
 -- `erfc((13 - 10) / (2 * sqrt(2))) / 2` at 60 decimal digits, rounded to f32.
 def test_normal_upper_tail_reflects_the_mean_not_only_the_point() -> unit ! { Test } = {
-  x = cast(13.0, f32)
-  mean = cast(10.0, f32)
-  std = cast(2.0, f32)
-  documented = normal_cdf(neg(x), neg(mean), std)
-  point_only = normal_cdf(neg(x), mean, std)
-  _ = assert_true(lt(dist_rel_err(documented, cast(0.066807203, f32)), cast(0.00001, f32)), "normal_cdf(-x, -mean, std) is the upper tail of N(10,2) at 13")
-  assert_true(gt(documented, mul(cast(1e20, f32), point_only)), "negating only the point is wrong by orders of magnitude, not by rounding")
+  -- Three rows, not one. A single positive-mean point with x > mean is also
+  -- satisfied by `Phi((|mean| - x) / std)`, a near-miss that is wrong for
+  -- every negative mean: at N(-7, 1.5) it gives 1.0 against a true 0.00383.
+  -- The negative-mean row is what separates the documented rule from it; the
+  -- x < mean row covers the other ordering.
+  a = normal_cdf(neg(cast(13.0, f32)), neg(cast(10.0, f32)), cast(2.0, f32))
+  b = normal_cdf(neg(cast(-3.0, f32)), neg(cast(-7.0, f32)), cast(1.5, f32))
+  c = normal_cdf(neg(cast(5.0, f32)), neg(cast(10.0, f32)), cast(3.0, f32))
+  point_only = normal_cdf(neg(cast(13.0, f32)), cast(10.0, f32), cast(2.0, f32))
+  _ = assert_true(lt(dist_rel_err(a, cast(0.0668072, f32)), cast(0.00001, f32)), "upper tail of N(10,2) at 13 is 0.0668072")
+  _ = assert_true(lt(dist_rel_err(b, cast(0.0038303805, f32)), cast(0.00001, f32)), "upper tail of N(-7,1.5) at -3 is 0.0038303805, so the mean must be negated too")
+  _ = assert_true(lt(dist_rel_err(c, cast(0.9522096, f32)), cast(0.00001, f32)), "upper tail of N(10,3) at 5 is 0.9522096, so the rule holds for x < mean")
+  assert_true(gt(a, mul(cast(1e20, f32), point_only)), "negating only the point is wrong by orders of magnitude, not by rounding")
 }

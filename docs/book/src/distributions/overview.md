@@ -26,7 +26,9 @@ upper tail from the symmetry of the distribution where it has one, and never as
 
 - Standard normal: `normal_cdf(neg(z), 0, 1)` is the exact upper tail at `z`.
 - Student-t: `student_t_cdf(neg(t), df)` is the exact upper tail at `t`, for
-  every `df`, because the distribution is centred at zero.
+  every `df`, because the distribution is symmetric about zero. (Symmetric, not
+  merely centred -- at `df <= 1` the mean does not exist and the identity still
+  holds.)
 - A **non-standard** normal needs the mean reflected too, not just the point:
   the upper tail of `N(mu, sigma)` at `x` is `Phi((mu - x) / sigma)`, so write
   `normal_cdf(neg(x), neg(mean), std)`. Negating only the point gives

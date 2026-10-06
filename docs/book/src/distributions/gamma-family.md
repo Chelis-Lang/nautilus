@@ -111,6 +111,6 @@ cdf = student_t_cdf(cast(2.0, f32), cast(10.0, f32)) -- approximately 0.963
 | `gamma_inv_cdf(q, ...)` with q outside [0,1] | NaN |
 | `chi_squared_cdf(x, df)` with x <= 0 | 0.0 |
 | `gamma_sf(x, ...)` / `chi_squared_sf(x, df)` with x <= 0 | 1.0 |
-| `chi_squared_sf(x, df)` with a true tail below 1.4e-45 | 0.0, the f32 floor |
+| `chi_squared_sf(x, df)` with a true tail below about 7.0e-46 | 0.0, the f32 floor |
 | `student_t_cdf(t, df)` with df <= 0 | NaN |
 | Any `_pdf` at x = 0 with shape < 1 | +inf |

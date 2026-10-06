@@ -81,7 +81,7 @@ arguments whose answer is a normal f32 (the subnormal rows are below):
 | Family | Worst relative error | Route |
 |---|---|---|
 | `z_p_value_upper`, `z_p_value_two_sided` | 8.9e-8 | `Phi(-z)`, exact by standard-normal symmetry |
-| `t_p_value_upper`, `t_p_value_two_sided` | 4.4e-5 | `student_t_cdf(-t, df)`, exact by Student-t symmetry. The bound is `betai`'s, and it is worst at **mid-range** arguments (4.4e-5) rather than in the tail (2.0e-5): a large `t` drives `betai`'s argument into its clean first branch, while a mid-range `t` takes the branch that itself ends in a subtraction from one. |
+| `t_p_value_upper`, `t_p_value_two_sided` | 4.4e-5 | `student_t_cdf(-t, df)`, exact by Student-t symmetry. The bound is `betai`'s, and it grows with `df` rather than with `t`: measured worst error is 4.3e-7 at `df = 1`, 4.4e-6 at `df = 30`, and 4.4e-5 at `df = 100`. Every row above 1.8e-5 in the sweep is `df = 100`. |
 | `chi_squared_p_value` | 4.2e-6 | `chi_squared_sf`, which returns the upper regularized incomplete gamma `Q` directly |
 
 No p-value in the sweep crosses 0.05, 0.01 or 0.001 differently from the old
@@ -90,13 +90,17 @@ read off a tail.
 
 Two limits remain, and both are f32's rather than the algorithm's:
 
-- Below about `1e-38` the answer is subnormal and carries only a few bits.
+- Below about `1.2e-38` the answer is subnormal and carries only a few bits.
   `z_p_value_upper(14.0)` returns `8.4e-45` against a true `7.8e-45`.
-- Below about `7.0e-46` -- half the smallest subnormal, so the point where
-  f32 rounds to zero -- there is nothing left and the answer is `0.0`. That is
-  correct, not a recurrence of the defect above: `z_p_value_upper(15.0)` is
-  `0.0` because `Phi(-15)` is `3.7e-51`. If you need those magnitudes, you
-  need a log-scale tail function, which this module does not yet have.
+- Around `1e-45` there is nothing left and the answer is `0.0`. f32's own
+  round-to-zero point is `7.0e-46`, half the smallest subnormal, but
+  `z_p_value_upper` reaches zero a little above it, at a true tail of about
+  `8e-46`: at `z = 14.160367` the standardized tail is the smallest subnormal
+  once, and halving a value already at the smallest subnormal gives zero.
+  Either way the zero is correct, not a recurrence of the defect above:
+  `z_p_value_upper(15.0)` is `0.0` because `Phi(-15)` is `3.7e-51`. If you need
+  those magnitudes, you need a log-scale tail function, which this module does
+  not yet have.
 
 `Nautilus.Stats.likelihood_ratio_p_value` is a chi-squared upper tail and
 shares all of this.
