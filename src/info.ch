@@ -1,14 +1,9 @@
 module Nautilus.Info
 export (entropy, distribution_cross_entropy, kl_divergence)
--- chelis:provenance/v1 authority
--- id = NAUT-MOD-INFO
--- kind = behavioral
--- scopes = nautilus
--- statement = Nautilus.Info MUST provide the information-theory surface listed in the module support table.
 def info_zero() -> f32 = cast(0.0, f32)
 def entropy[n](p: &tensor[n, f32]) -> f32 = {
   total = fold(fn (acc: f32, x: f32) -> {
-    term = if lte(x, info_zero()) then info_zero() else x |> mul(log(x)) |> neg
+    term = if lte(x, info_zero()) then info_zero() else (x |> mul(log(x)) |> neg)
     add(acc, term)
   }, info_zero(), to_list(p))
   total
@@ -18,7 +13,7 @@ def distribution_cross_entropy[n](p: &tensor[n, f32], q: &tensor[n, f32]) -> f32
   fold(fn (acc: f32, pair: (f32, f32)) -> {
     px = pair.0
     qx = pair.1
-    term = if lte(px, info_zero()) then info_zero() else px |> mul(log(qx)) |> neg
+    term = if lte(px, info_zero()) then info_zero() else (px |> mul(log(qx)) |> neg)
     add(acc, term)
   }, info_zero(), pairs)
 }

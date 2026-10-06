@@ -1,13 +1,13 @@
 # Chelis Capability Surface (this shell)
 
-<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface chelis@0.18.13 (sha256:13fd8ecdc638efcb) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: chelis-surface chelis@0.19.0 (sha256:1c5cb79cd021938f) -->
 # Chelis capability surface
 
 This guide maps language operations, compiler support, and bundled `chelis-std`.
 The numbered specs decide language behavior; code and executable tests establish
 which parts the compiler implements. `chelis reef conform sync` copies this
 guide into every shell's `docs/CHELIS_SURFACE.md`
-([`spec/design/shell_repo_contract.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/shell_repo_contract.md) §3),
+([`spec/design/shell_repo_contract.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/shell_repo_contract.md) §3),
 so a shell reads the guide of the release it pins.
 
 This page describes the source tree it ships with: `main` in the compiler
@@ -20,13 +20,13 @@ If this guide disagrees with an owning source, correct the guide:
 
 | Surface | Source of truth |
 |---|---|
-| Language operations and adjoints | [`spec/05-risc-primitives.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/05-risc-primitives.md), [`spec/06-transformations.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/06-transformations.md) |
-| Syntax, types, dtypes and effects | [`spec/02-surf-syntax.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/02-surf-syntax.md), [`spec/04-type-system.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/04-type-system.md) |
+| Language operations and adjoints | [`spec/05-risc-primitives.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/05-risc-primitives.md), [`spec/06-transformations.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/06-transformations.md) |
+| Syntax, types, dtypes and effects | [`spec/02-surf-syntax.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/02-surf-syntax.md), [`spec/04-type-system.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/04-type-system.md) |
 | Builtin registration | `BUILTIN_NAMES` and `builtin_env`, `crates/chelis-types/src/builtins.rs` |
 | IR and target implementation | `RiscOp`, `crates/chelis-ir/src/dag.rs`; `crates/chelis-compiler-api/src/compiler.rs`; `crates/chelis-backend-{c,hip,metal}` |
-| Target contract | [`spec/08-backends.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/08-backends.md) and the dtype matrix in `spec/04` §1.1.3 |
+| Target contract | [`spec/08-backends.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/08-backends.md) and the dtype matrix in `spec/04` §1.1.3 |
 | Command surface | `crates/chelis-cli/src/main.rs` and its CLI integration tests |
-| Scope taxonomy (core vs std vs shell) | [`spec/design/chelis_canonical_reference.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/chelis_canonical_reference.md) §8.5 |
+| Scope taxonomy (core vs std vs shell) | [`spec/design/chelis_canonical_reference.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/chelis_canonical_reference.md) §8.5 |
 
 ---
 
@@ -250,7 +250,7 @@ Composite recipes such as `linear`,
 (`spec/05` §3.5, §4.3–4.7) are library compositions. Use an imported definition or
 compose the underlying operations explicitly.
 
-The [`explicit_normalization.ch`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/examples/explicit_normalization.ch)
+The [`explicit_normalization.ch`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/examples/explicit_normalization.ch)
 example defines `normalize` as an ordinary function.
 
 ---
@@ -307,7 +307,7 @@ contribute to the named extent `n` check; `List[tensor[2, p]]` checks the
 literal extent of each element. This includes nested Lists, internal calls,
 and retained callable invocations. An empty List contributes no named witness.
 Eval and C enforce these checks before the function body; see
-[`list_shared_extent.ch`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/examples/list_shared_extent.ch).
+[`list_shared_extent.ch`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/examples/list_shared_extent.ch).
 The spec defines positional List cotangents for several forms. Eval/C tests
 cover selected list gradients, including
 `to_list`/`map`/`to_tensor` paths; other transforms and callback shapes
@@ -348,7 +348,7 @@ diagnostic identifies the directory and first invalid entry in host-name order
 using reversible byte escapes. A byte-preserving path API is not provided by
 this contract.
 
-The executable [directory listing example](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/examples/io/list_directory.ch)
+The executable [directory listing example](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/examples/io/list_directory.ch)
 prints names in that order. The fixture-based eval/C integration test is
 `crates/chelis-cli/tests/issue_1479_list_dir_lane_parity.rs`.
 
@@ -505,7 +505,7 @@ mode. A non-scalar result needs an explicit seed under `spec/06` §8.3.
 `grad(f, wrt=x)` returns one selected gradient directly; multiple selected
 parameters return a tuple in authored selector order. A discrete field of
 a recursive parameter has `unit` cotangent.
-[`spec/design/differentiable_language.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/differentiable_language.md)
+[`spec/design/differentiable_language.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/differentiable_language.md)
 tracks implementation sequencing, while `spec/06` owns the language rule.
 
 ---
@@ -587,7 +587,7 @@ closure, an exact-safe int/bool/dyadic-float corpus (including signed zero),
 the sanitized runtime environment, and a queried-compiler-target check.
 It is not available as a Darwin check, and its passing verdict does not
 generalize to another hardware tuple. See
-[`manual_gates.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/docs/manual_gates.md#compiler-feature-acceptance-gates).
+[`manual_gates.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/docs/manual_gates.md#compiler-feature-acceptance-gates).
 
 An existing or substituted Nix output is a receipt from its recorded builder,
 not evidence that the current host ran the gate. To repeat on the current
@@ -624,12 +624,15 @@ Nix compares the fresh report against the existing output.
   use explicit `expand` or movement. A runtime `shape(t, axis)` query
   can return an `i64` extent, while an axis that selects a reduction
   or `expand` dimension resolves statically.
-- **Ownership:** owned tensor and key values have linear-use rules.
-  Read-only primitive tensor arguments auto-borrow; `len`/`index`
-  auto-borrow their List/Dict query argument. `copy()` makes an
-  explicit owned copy; `realize` and `drop` consume. Key operations
-  consume their key. The ownership pass carries borrow, move, clone,
-  and drop obligations into verified lowering.
+- **Ownership:** tensor values are owned by default. An owned tensor passed
+  to an `&tensor` parameter auto-borrows and leaves the owner live. A borrowed
+  `&tensor` passed to an owned tensor parameter is rejected unless the program
+  writes `copy(x)` to create a separate owner. Ordinary consuming fan-out of
+  an owned tensor may receive compiler-inserted copies; `drop` is terminal and
+  `realize` consumes. `len`/`index` auto-borrow their List/Dict query argument.
+  Key-carrying values are affine and cannot be copied or borrowed. The
+  ownership pass carries borrow, move, clone, and drop obligations into
+  verified lowering.
 - **Generic bounds:** a binder may declare `Float`, `Int`, or
   `Numeric` ([04-DTYPE-2]); `Numeric` excludes `bool`. Bounds survive
   aliases, imports, and higher-order uses. The exported stdlib signatures declare
@@ -696,7 +699,7 @@ not replace the selected backend's admission check.
 | `cost` | Report lowered-IR copy cost (`--json`) | no |
 | `deep` | Desugar Surf → Deep s-expr (`--annotate`) | no |
 | `surf` | Resugar well-formed public Deep → canonical Surf; invalid or unpreservable metadata is an error | no |
-| `migrate` | Explicit `surf`/`deep` source migrations from a named older grammar; normal parsing does not silently migrate | command-specific |
+| `migrate` | Explicit `surf`/`deep` source migrations, plus `pipes --baseline-compiler OLD` with whole-file Deep proof; pipe migration defaults to an atomic batch, with explicit `--keep-going` for independent files and a nonzero exit on any failure | command-specific |
 | `prove` | `@property` verifier (`--tier`, `--samples`, `--seed`, `--smt-timeout`, `--capabilities`); see §12 | no |
 | `test` | Run Chelis-native tests (`--filter`, `--json`, `--jobs`, `--expect`, `--batch-mode`) | no |
 | `tide` | REPL / HTTP API / MCP / LSP entry points (`serve`, `lsp`, and MCP mode) | no |
@@ -750,7 +753,7 @@ statically resolved axis instead.
 `@property` declarations desugar to a `bool`-returning `def` tagged
 `chelis_role: "property"`, with typed binders and optional `where` preconditions and
 `with tolerance|seed|samples|contract` metadata. The property spec lives in
-[`spec/design/chelis_property_spec.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/chelis_property_spec.md);
+[`spec/design/chelis_property_spec.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/chelis_property_spec.md);
 the executable dispatch is in `crates/chelis-prove/src/property_runner.rs`.
 
 | Tier / option | Route |
@@ -777,16 +780,16 @@ not a proof.
 
 | Doc | Why |
 |---|---|
-| [`spec/02-surf-syntax.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/02-surf-syntax.md), [`spec/03-deep-syntax.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/03-deep-syntax.md) | source syntax, canonical Surf/Deep conversion, and metadata |
-| [`spec/04-type-system.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/04-type-system.md) | dtypes, shapes, accumulators, effects, and linearity |
-| [`spec/05-risc-primitives.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/05-risc-primitives.md) | operation signatures, traps, and adjoints |
-| [`spec/06-transformations.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/06-transformations.md) | `grad`, `vmap`, and `jit` semantics |
-| [`spec/08-backends.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/08-backends.md) | backend strategy and target constraints |
-| [`spec/design/differentiable_language.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/differentiable_language.md) | implementation sequence for broader AD |
-| [`spec/design/rank_polymorphism.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/rank_polymorphism.md) | rank-polymorphic implementation |
-| [`spec/design/implicit_linearity.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/implicit_linearity.md) | ownership implementation |
-| [`spec/design/chelis_canonical_reference.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/chelis_canonical_reference.md) | core, stdlib, and shell boundary |
-| [`spec/design/shell_repo_contract.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/shell_repo_contract.md) | a downstream shell's required surface view |
+| [`spec/02-surf-syntax.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/02-surf-syntax.md), [`spec/03-deep-syntax.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/03-deep-syntax.md) | source syntax, canonical Surf/Deep conversion, and metadata |
+| [`spec/04-type-system.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/04-type-system.md) | dtypes, shapes, accumulators, effects, and linearity |
+| [`spec/05-risc-primitives.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/05-risc-primitives.md) | operation signatures, traps, and adjoints |
+| [`spec/06-transformations.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/06-transformations.md) | `grad`, `vmap`, and `jit` semantics |
+| [`spec/08-backends.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/08-backends.md) | backend strategy and target constraints |
+| [`spec/design/differentiable_language.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/differentiable_language.md) | implementation sequence for broader AD |
+| [`spec/design/rank_polymorphism.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/rank_polymorphism.md) | rank-polymorphic implementation |
+| [`spec/design/implicit_linearity.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/implicit_linearity.md) | ownership implementation |
+| [`spec/design/chelis_canonical_reference.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/chelis_canonical_reference.md) | core, stdlib, and shell boundary |
+| [`spec/design/shell_repo_contract.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/shell_repo_contract.md) | a downstream shell's required surface view |
 
 ### Deep metadata and source conversion
 
@@ -811,9 +814,9 @@ round-trip witness. `chelis deep`/`surf` are the CLI views; `spec/02`
 
 | Item | Value |
 |---|---|
-| Source package version | Nautilus `0.7.48` |
-| Pinned compiler | `chelis 0.18.13` (`reef.toml`: `=0.18.13`) |
-| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.18.13` in the regenerated local `reef.lock` (ignored build output) |
+| Source package version | Nautilus `0.7.49` |
+| Pinned compiler | `chelis 0.19.0` (`reef.toml`: `=0.19.0`) |
+| Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.19.0` in the regenerated local `reef.lock` (ignored build output) |
 
 `@pin` means the row describes behavior available (or a limitation verified)
 on the exact pinned release. `@upstream` means a capability exists in a newer
@@ -830,11 +833,11 @@ version-sensitive limitations and their reproducers are in
 
 | Capability | Nautilus consequence | Status |
 |---|---|---|
-| Active scalar precisions | Chelis admits `f32`, `f64`, `bf16`, `f16`, signed `i8`/`i16`/`i32`/`i64`, `bool`, and `string`. Most Nautilus modules remain f32; `Nautilus.Rolling` is f64. All 23 `Nautilus.Special` exports have the explicit `{f32, f64}` dtype-set bound, which accepts f32 and f64 and rejects f16/bf16 at checking. The same function serves both supported widths, though genericity does not guarantee f64 accuracy. Widening remaining modules is tracked in nautilus#70. | `@pin` |
-| Literals, casts, and promotion | Unsuffixed floats default to `f32` and integers to `i32`. There is no implicit precision promotion; `cast` is explicit. This is why the unsupported `i64` matrix contract in `tests_neg/linalg/` is rejected instead of silently converting to `f32`. | `@pin` |
+| Active scalar precisions | Chelis admits `f32`, `f64`, `bf16`, `f16`, signed `i8`/`i16`/`i32`/`i64`, `bool`, and `string`. Most Nautilus modules remain f32; `Nautilus.Rolling` is f64. All 20 `Nautilus.Special` exports have the explicit `{f32, f64}` dtype-set bound, which accepts f32 and f64 and rejects f16/bf16 at checking. The same function serves both supported widths, though genericity does not guarantee f64 accuracy. Widening remaining modules is tracked in nautilus#70. | `@pin` |
+| Literals, casts, and promotion | Unsuffixed floats and integers default to `f32` and `i32` unless a direct dtype-stating declaration or literal cast binds them. There is no implicit precision promotion; `cast` is explicit. This is why the unsupported `i64` matrix contract in `tests_neg/linalg/` is rejected instead of silently converting to `f32`. | `@pin` |
 | Literal and symbolic dimensions | Fixed extents such as `tensor[2,2,f32]` and symbolic parameters such as `tensor[n,f32]` are both available. Distinct declared dimensions are rigid in a generic definition; call sites instantiate them by unification. Nautilus uses `[n]` and `[m,k,n]` extensively. | `@pin` |
 | Shape safety | Dimension lists must match and Chelis never broadcasts implicitly. Shape changes must be explicit. Nautilus relies on this for fixed-size LinAlg rejection and generic vector/matrix signatures. | `@pin` |
-| Name-preserving rank polymorphism | `tensor[..r,p]` and named-axis reductions/expands exist with a restricted, name-trackable body discipline. Nautilus does not currently use a rank spread: its APIs intentionally state rank-1/rank-2 or fixed rank, so `n` is a dimension variable, not a shape-vector variable. Mixed-rank tensor lists remain invalid. | `@pin` |
+| Name-preserving rank polymorphism | `tensor[..r,p]` and named-axis reductions/expands exist with a restricted, name-trackable body discipline. Nautilus uses no rank spread: its APIs intentionally state rank-1/rank-2 or fixed rank, so `n` is a dimension variable, not a shape-vector variable. Mixed-rank tensor lists remain invalid. | `@pin` |
 | Borrowing and implicit linearity | Read-only `&tensor` parameters auto-borrow owned arguments. The compiler inserts ordinary fan-out copies and end-of-scope drops; explicit `copy(x)` is still required to turn a borrow into a fresh owner and at other real ownership boundaries. Obsolete defensive copies are not a language requirement. | `@pin` |
 
 The f32 default across the remaining modules is a package scope decision, not
@@ -846,7 +849,7 @@ does not buy were measured rather than assumed. They are recorded in
 
 | Fact | Evidence |
 |---|---|
-| Special's supported widths | Its f32 and f64 positive and parity suites pass. `reef build` does not prove that a dependent package's C consumer compiles; that gate is tracked under chelis#2152. |
+| Special's supported widths | Its f32 and f64 positive and parity suites pass. Separate-package C consumers of `erfinv` and `gamma` build and run at both widths; other Special exports have no complete C consumer matrix (chelis#2152). |
 | Unsupported Special precisions | All 67 Special binders are bounded by `{f32, f64}`. `gamma(5.5bf16)` and `bessel_j0(5.0f16)` are rejected at the call site by the negative tests, preventing the former misleading finite value and the latter NaN. The f32 and f64 positive and parity suites pass. The 35 explicit `f64` coefficient suffixes are retained for nautilus#83. | `@pin` |
 | Widening buys arithmetic, not accuracy | `tests/special_f64.ch` exercises both supported widths of Nautilus.Special. Six -- `gamma`, `log_gamma`, `beta`, `lbeta`, `ellipk`, `ellipe` -- reach f64-grade error on the measured domains. Other Nautilus approximations have function- and domain-specific limits; see the [precision appendix](book/src/appendix/precision.md). Chelis provides correctly rounded `erf` and `erfc` builtins directly. |
 
@@ -902,7 +905,7 @@ The current CurveFit residue is described in
 |---|---|---|
 | Explicit keys | `uniform_like` consumes a key. The seven sampling exports each take a first `key` parameter; there is no randomness handler. | `@pin` |
 | `Io`, `Test`, and resources | Library `src/` introduces no I/O or device-resource effect. `Std.Test` assertions in `tests/` introduce the test effect. | `@pin` |
-| Package-aware `eval --file` | Real imported Nautilus calls work, strict parity batches its reviewed samples through this route, and every import-only startup shape executes (`scripts/bench_eval_startup.py`; see `docs/eval_startup_findings.md`). An unused Reef import does not leak a symbolic input into eval (chelis#848). | `@pin` |
+| Package-aware `eval --file` | Real imported Nautilus calls work, strict parity batches its reviewed samples through this route, and every import-only startup shape executes (`scripts/bench_eval_startup.py`; see `docs/archive/eval_startup_findings.md`). An unused Reef import does not leak a symbolic input into eval (chelis#848). | `@pin` |
 | C/package build | `chelis reef build` packages the full pure-Chelis surface successfully. Host-lane list/tensor operations are supported by the C host emitter. | `@pin` |
 | Canonical artifact verification | `chelis reef verify-artifact` fully consumes the CHB, enforces canonical metadata, and checks its paired archive digest. Nautilus's release gate also proves archive-mutation and CHB-trailing-byte rejection plus unchanged-build byte identity. | `@pin` |
 | HIP/Metal | Upstream DAG subsets exist, but Nautilus's host-lane algorithms and lack of a package-level GPU oracle mean no Nautilus GPU support claim is made. | `@pin` |
@@ -923,14 +926,14 @@ shipped library modules themselves do not import a runtime `Std.*` module.
 
 | Authoritative source | Relevance to this view |
 |---|---|
-| [Canonical capability surface](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/docs/CHELIS_SURFACE.md) | Complete builtin vocabulary, DAG/host lanes, backends, effects, and chelis-std inventory. |
-| [spec/04 — type system](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/04-type-system.md) | Precisions, literals, dimensions, no broadcasting, runtime shapes, effects, and linearity. |
-| [spec/05 — RISC primitives](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/05-risc-primitives.md) | Primitive semantics, movement, reductions, and per-op adjoints. |
-| [spec/06 — transformations](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/06-transformations.md) | `grad` result shape, `wrt`, symbolic adjoints, and tensor/host transform boundaries. |
-| [spec/08 — backends](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/08-backends.md) | C, HIP, and Metal backend scope and rejection rules. |
-| [Rank polymorphism design](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/rank_polymorphism.md) | Name-preserving `..r` support and body discipline. |
-| [Implicit linearity design](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/implicit_linearity.md) | Inserted copy/drop behavior and preserved hard errors. |
-| [Differentiable-language design](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/differentiable_language.md) | Shipped AD slices versus later control/ADT/effect/implicit-diff scope. |
-| [Shell repo contract](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/shell_repo_contract.md#3-capability-surface-doc--docschelis_surfacemd-must) | Required downstream `@pin`/`@upstream` inventory contract. |
+| [Canonical capability surface](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/docs/CHELIS_SURFACE.md) | Complete builtin vocabulary, DAG/host lanes, backends, effects, and chelis-std inventory. |
+| [spec/04 — type system](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/04-type-system.md) | Precisions, literals, dimensions, no broadcasting, runtime shapes, effects, and linearity. |
+| [spec/05 — RISC primitives](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/05-risc-primitives.md) | Primitive semantics, movement, reductions, and per-op adjoints. |
+| [spec/06 — transformations](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/06-transformations.md) | `grad` result shape, `wrt`, symbolic adjoints, and tensor/host transform boundaries. |
+| [spec/08 — backends](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/08-backends.md) | C, HIP, and Metal backend scope and rejection rules. |
+| [Rank polymorphism design](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/rank_polymorphism.md) | Name-preserving `..r` support and body discipline. |
+| [Implicit linearity design](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/implicit_linearity.md) | Inserted copy/drop behavior and preserved hard errors. |
+| [Differentiable-language design](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/differentiable_language.md) | Shipped AD slices versus later control/ADT/effect/implicit-diff scope. |
+| [Shell repo contract](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/shell_repo_contract.md#3-capability-surface-doc--docschelis_surfacemd-must) | Required downstream `@pin`/`@upstream` inventory contract. |
 | [`spec/scope.md`](../spec/scope.md) | Nautilus architecture, acceptance rules, and deferrals. |
 | [`docs/UPSTREAM_BUGS.md`](UPSTREAM_BUGS.md) | Re-probes at the pin, current residues, workarounds, and triggers. |

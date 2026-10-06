@@ -179,12 +179,12 @@ def test_newton_minimize_nan_tolerance_still_converges() -> unit ! { Test } = {
   assert_close(r, cast(3.0, f32), cast(0.001, f32), "a NaN tolerance forces every step but still reaches the minimiser")
 }
 def opt_nan_band_above(x: f32) -> f32 =
-  if gt(x, cast(3.4, f32)) |> and(lt(x, cast(3.6, f32))) then div(cast(0.0, f32), cast(0.0, f32)) else {
+  if (gt(x, cast(3.4, f32)) |> and(lt(x, cast(3.6, f32)))) then div(cast(0.0, f32), cast(0.0, f32)) else {
     y = sub(x, cast(3.0, f32))
     mul(y, y)
   }
 def opt_nan_band_at_two(x: f32) -> f32 =
-  if gt(x, cast(1.9, f32)) |> and(lt(x, cast(2.1, f32))) then div(cast(0.0, f32), cast(0.0, f32)) else {
+  if (gt(x, cast(1.9, f32)) |> and(lt(x, cast(2.1, f32)))) then div(cast(0.0, f32), cast(0.0, f32)) else {
     y = sub(x, cast(3.0, f32))
     mul(y, y)
   }

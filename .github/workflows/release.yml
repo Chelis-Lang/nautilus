@@ -13,8 +13,8 @@ env:
   PACKAGE_NAME: nautilus
   # Audit-only mirror required by the shell contract. The detection step below
   # overwrites these values from reef.toml before runtime installation.
-  CHELIS_TAG: v0.18.13
-  CHELIS_VERSION: 0.18.13
+  CHELIS_TAG: v0.19.0
+  CHELIS_VERSION: 0.19.0
 
 jobs:
   build-reef-assets:
@@ -40,7 +40,7 @@ jobs:
 
       - name: Download chelis toolchain
         env:
-          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           asset="chelis-${CHELIS_TAG}-linux-x86_64-glibc2.31.tar.gz"
@@ -64,8 +64,8 @@ jobs:
 
       - name: Build reef assets
         env:
-          GH_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: chelis reef build
 
       - name: Seal and validate Reef release payloads

@@ -2,16 +2,6 @@ module Nautilus.Tests.Stats
 import Nautilus.Stats (mean_vec, variance_vec, std_vec, median_vec, min_vec, max_vec, range_vec, skewness_vec, kurtosis_vec, covariance_scalar, correlation_scalar, quantile_vec, percentile_vec, trimmed_mean_vec, rank_vec, zscore_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, covariance_2x2, correlation_2x2, covariance_matrix, correlation_matrix)
 import Nautilus.LinAlg (matvec, inner_product)
 import Std.Test (assert_close, assert_close_tensor, assert_true)
--- chelis:provenance/v1 carrier
--- id = NAUT-CARRIER-STATS-TESTS
--- role = positive
--- atoms = NAUT-MOD-STATS@blake3-256:ff765fb0cb921dc27791152e76665a90325d8efaa50260fb1bb6daf1da75aa64
--- item-digest = blake3-256:ff28b1efa03d8dbe04b0930834151ccade5d23875075fa14793056e68da08740
--- oracle-id = NAUT-GATE-CHELIS-TEST
--- oracle-digest = blake3-256:953753dd95e43c8c4e9ced041b437e1d18a38fca8d01cdcbb5a272da24d83081
--- configuration-digest = xxh3-128:ae3dfc4c0cfdd00cc99d50805da0931e
--- scope-schema = nautilus-carrier-scope/v1
--- scope = the exact descriptive-statistics assertions in tests/stats.ch
 def test_mean_constant() -> unit ! { Test } = {
   v = to_tensor([cast(7.0, f32), cast(7.0, f32), cast(7.0, f32), cast(7.0, f32), cast(7.0, f32)])
   assert_close(mean_vec(v), cast(7.0, f32), cast(1e-6, f32), "mean of constant vector = constant")

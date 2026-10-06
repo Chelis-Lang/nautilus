@@ -1,10 +1,5 @@
 module Nautilus.Integrate
 export (trapezoidal, simpsons, gauss_legendre_5, adaptive_simpson, romberg_5, gauss_legendre_10, gauss_hermite_10, gauss_laguerre_10)
--- chelis:provenance/v1 authority
--- id = NAUT-MOD-INTEGRATE
--- kind = behavioral
--- scopes = nautilus
--- statement = Nautilus.Integrate MUST provide the quadrature surface listed in the module support table.
 def trap_rec(f: f32 -> f32, x: f32, h: f32, k: i64, acc: f32) -> f32 = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
@@ -16,7 +11,7 @@ def trap_rec(f: f32 -> f32, x: f32, h: f32, k: i64, acc: f32) -> f32 = {
   }
 }
 def trapezoidal(f: f32 -> f32, a: f32, b: f32, n_steps: i64) -> f32 =
-  if lte(n_steps, cast(0, i64)) then cast(0.0, f32) |> div(cast(0.0, f32)) else {
+  if lte(n_steps, cast(0, i64)) then (cast(0.0, f32) |> div(cast(0.0, f32))) else {
     n_f = cast(n_steps, f32)
     h = sub(b, a) |> div(n_f)
     fa = f(a)
@@ -43,9 +38,9 @@ def simpson_rec(f: f32 -> f32, x: f32, h: f32, k: i64, is_odd_step: bool, acc: f
 def simpsons(f: f32 -> f32, a: f32, b: f32, n_steps: i64) -> f32 = {
   zero_i = cast(0, i64)
   two_i = cast(2, i64)
-  if lte(n_steps, zero_i) then cast(0.0, f32) |> div(cast(0.0, f32)) else {
+  if lte(n_steps, zero_i) then (cast(0.0, f32) |> div(cast(0.0, f32))) else {
     parity = mod(n_steps, two_i)
-    if neq(parity, zero_i) then cast(0.0, f32) |> div(cast(0.0, f32)) else {
+    if neq(parity, zero_i) then (cast(0.0, f32) |> div(cast(0.0, f32))) else {
       n_f = cast(n_steps, f32)
       h = sub(b, a) |> div(n_f)
       fa = f(a)

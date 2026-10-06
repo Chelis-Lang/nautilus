@@ -39,7 +39,7 @@ duplicate every native test.
 
 ## Precision
 
-`Nautilus.Special` is generic over the `Float` dtype family, so its functions
-run at f32 or f64. Every other module works in f32 (IEEE 754 single
-precision), which carries about seven significant digits. See the
+`Nautilus.Special` accepts f32 and f64 through an explicit dtype set.
+`Nautilus.Rolling` uses f64; the other numerical modules use f32 (IEEE 754
+single precision), which carries about seven significant digits. See the
 [precision guide](appendix/precision.md) for what f64 does and does not buy.

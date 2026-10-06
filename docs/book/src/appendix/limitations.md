@@ -52,16 +52,10 @@ when the second derivative at the point it stops on is not above 0.01, which
 also rejects genuine but very flat minima (for example f(x) = x^4 near 0). Use
 `brent_minimize` or `golden_section_search` for flat targets.
 
-**A non-positive or NaN `tol` now reaches that check, where it used to bypass
-it.** `|df(x)| < tol` is false for every gradient at `tol <= 0` or a NaN `tol`,
-so those tolerances used to leave the iteration no exit but the stall, which
-returned its point uncertified. A zero gradient now counts as converged at any
-tolerance, so the curvature check runs. Four families of call therefore return
-NaN where they previously returned a number, and in each the number came from
-skipping a check that `tol > 0` already applied: a `-inf` second derivative at
-the minimiser, one that becomes `-inf` only at the point reached, a curvature
-below the 0.01 floor (`0.001*(x-3)^2` from `x0 = 5`, `tol = 0`), and Newton on a
-concave objective, which previously returned the maximiser.
+**A non-positive or NaN `tol` does not certify a minimum.** A zero gradient
+reaches the curvature check at any tolerance. The function returns NaN when
+the second derivative is infinite, non-positive, or below the 0.01 curvature
+floor, including at a stalled iteration.
 
 **An overflowing `ddf` near a minimiser returns NaN, and a positive `tol` does not
 always recover it.** When the Newton step underflows at a point whose gradient is
@@ -73,10 +67,9 @@ breaks a real convergence (the quartic `(x^2-2)^2` from `x0 = 1.2` stalls exactl
 returns `x0` whenever `ddf` is infinite, which is the defect this behaviour exists
 to fix.
 
-What is lost against the previous behaviour is a point near a minimiser whose
-curvature has overflowed. The escape is a `tol` greater than `|df(x)|` at that
-point, which routes it through the convergence test instead -- **and whether one
-exists depends on the objective's scale.** One ulp above the minimiser of
+An overflowing curvature near a minimiser can be accepted through the convergence
+test when `tol` exceeds `|df(x)|` at that point. Whether such a tolerance is useful
+depends on the objective's scale. One ulp above the minimiser of
 `(x-3)^2` the gradient is `4.8e-7`: `tol = 1e-6` returns `3.0000002` and
 `tol = 1e-9` returns NaN. For `2e38*(x-3)^2`, with both derivatives written
 correctly from that same objective, `ddf = 4e38` overflows f32 to `+inf` while
@@ -87,18 +80,15 @@ curvature is never recoverable at all, because the sign test rejects it at the
 converged exit too. Scale the objective so its second derivative is representable
 in f32, or use `brent_minimize`.
 
-**A second, disjoint family is lost the same way: a curvature below the 0.01
-floor at a stall.** The floor has always rejected flat minima at convergence; it
-now does so at a stall as well, where a small enough `tol` previously bypassed it.
+**A curvature below the 0.01 floor is rejected at a stall.**
 `3.1e-4*(x^2-2)^2`, with both derivatives written correctly from it, stalls at
 `sqrt(2.0f32)` with a curvature of `0.00496` and a gradient of `-2.09e-10`, so
-`tol = 1e-10` and `tol = 0` return NaN where they returned `1.4142135`. No
-tolerance recovers this one either: raising `tol` past the gradient routes it to
-the converged exit, which was already applying the same floor.
+`tol = 1e-10` and `tol = 0` return NaN. No tolerance recovers this point:
+raising `tol` past the gradient routes it to the converged exit, which applies
+the same floor.
 
-A smaller consequence of certifying the point rather than the step: the value
-returned is `x` itself, so a `-0.0` start is returned as `-0.0` where the previous
-code returned `+0.0`. Both are minimisers of `x^2` and `assert_close` cannot tell
+A `-0.0` start is returned as `-0.0` for `x^2`. Both signs of zero are minimisers,
+and `assert_close` cannot tell
 them apart; only the sign of a reciprocal can.
 
 **`newton_minimize_1d` trusts `ddf` to be the derivative of `df`.** It never

@@ -1,16 +1,8 @@
 module Nautilus.Signal
 export (fft_magnitude_stub, ifft_magnitude_stub, stft_magnitude_stub, lowpass_stub, highpass_stub, bandpass_stub, fftfreq)
--- Dated deferral accepted 2026-07-14: spec/scope.md § Deferrals.
--- Applies to all six exported *_stub definitions below; each remains a NaN
--- sentinel until Chelis supports complex numbers. fftfreq is functional.
--- chelis:provenance/v1 authority
--- id = NAUT-MOD-SIGNAL
--- kind = behavioral
--- scopes = nautilus
--- statement = Nautilus.Signal MUST keep its six transform and filter entry points as typed stubs under the Phase 5f deferral until that deferral is lifted.
+-- The six exported *_stub definitions return NaN sentinels because Chelis
+-- has no complex-number support. See spec/scope.md § Deferrals. fftfreq works.
 def signal_stub_nan() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
--- chelis:provenance/v1 binding
--- record = blake3-256:32eb1c81d8751deb66e20a1cc8f7ab6878afb73cae1d5fd32d879eb150e96ccb
 def fft_magnitude_stub[n](x: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
 def ifft_magnitude_stub[n](x: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (v: f32) -> signal_stub_nan(), to_list(x)))
 def stft_magnitude_stub[n](x: &tensor[n, f32], window_size: i64, hop_size: i64) -> tensor[n, f32] = {

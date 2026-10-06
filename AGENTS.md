@@ -5,7 +5,7 @@ to this file so Claude-style and Codex-style entry points do not drift.
 
 ## Repo Identity
 
-<!-- BEGIN CHELIS MANAGED BLOCK: agents-inheritance chelis@0.18.13 (sha256:20908ee18f40f7f3) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: agents-inheritance chelis@0.19.0 (sha256:03e98b84cf93851d) -->
 # Chelis Agent Contract
 
 Keep this file concise and relevant to every agent working in this repository.
@@ -86,7 +86,7 @@ function of those inputs, and feedback that varies between identical runs is a d
 
 ## Subagents
 
-[`docs/investigations/agent_contract_rationale.md`](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/docs/investigations/agent_contract_rationale.md)
+[`docs/investigations/agent_contract_rationale.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/docs/investigations/agent_contract_rationale.md)
 holds the measurements behind these rules.
 
 - Every subagent prompt names the delivery mechanism and the complete expected report.
@@ -167,10 +167,10 @@ links and edit routes for compiler files absent from Nautilus.
 
 Code-form `spec/` and `docs/book/` paths in the retained Chelis text name
 files in the pinned compiler source, not this repository. Read the pinned
-[project context](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/00-context.md),
-[canonical reference](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/design/chelis_canonical_reference.md),
-[Surf syntax spec](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/spec/02-surf-syntax.md),
-and [backend guide](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/docs/book/src/backends.md).
+[project context](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/00-context.md),
+[canonical reference](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/design/chelis_canonical_reference.md),
+[Surf syntax spec](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/spec/02-surf-syntax.md),
+and [backend guide](https://github.com/Chelis-Lang/chelis/blob/v0.19.0/docs/book/src/backends.md).
 
 <!-- shell-local:exclude:begin -->
 <!-- ### Red Team Rounds -->
@@ -219,17 +219,14 @@ and [backend guide](https://github.com/Chelis-Lang/chelis/blob/v0.18.13/docs/boo
 - Nautilus should track the latest **published and validation-clean**
   Chelis release by default. Treat stale pins as drift, not as a reason
   to stay on an older compiler.
-- `reef.toml` should pin the currently validated published release exactly.
+- `reef.toml` pins the validated published release exactly.
   Validate the binary selected by that pin before advancing it.
 - If the latest published Chelis release fails Nautilus validation,
   document the blocker clearly and pin the newest known-good release
   until the blocker is resolved.
 - Do not vendor or build the Chelis compiler from source inside this
-  repo. Consume the released tarball from the private
-  `Chelis-Lang/chelis` releases. CI authenticates via the repo secret
-  `CHELIS_RELEASE_TOKEN`, which must hold a PAT with `contents: read`
-  on `Chelis-Lang/chelis`. Rotate with
-  `gh secret set CHELIS_RELEASE_TOKEN --repo Chelis-Lang/nautilus`.
+  repo. Consume published `Chelis-Lang/chelis` release assets. CI uses
+  its `GITHUB_TOKEN` to download public Chelis release assets.
 
 ## Pin Bump Checklist
 
@@ -273,7 +270,7 @@ requests, and git.
 ## Scope and Acceptance
 
 [`spec/scope.md`](spec/scope.md) owns Nautilus's intent, architecture,
-acceptance rules, known limitations, and dated deferrals. `SKILL.md` §6 is the
+acceptance rules, known limitations, and deferrals. `SKILL.md` §6 is the
 function-level API inventory with per-export stability labels.
 The [maintainer guide](docs/maintainer_guide.md) lists the local gate commands. Deferral
 citations in source (for example `Nautilus.Signal`) point at
@@ -327,9 +324,16 @@ with a recorded reason.
 ### Recorded shell-local divergence: CI pin-guard ordering
 
 As accepted on 2026-07-14, Nautilus's numerical CI chain transitively depends
-on `pin-consistency-guard`; sibling School currently runs its conformance and
+on `pin-consistency-guard`; sibling School runs its conformance and
 numerical jobs as siblings. This stricter ordering is intentional here because
 a red pin audit or bump-check must prevent Nautilus's numerical jobs from
 independently reporting green. It adds no workflow, layout, manifest shape, or
 GitHub ruleset, and should be revisited when pin-guard ordering is standardized
 across all shells.
+
+### Recorded shell-local divergence: provenance tooling
+
+Nautilus uses its executable tests, numerical parity gates, and release
+artifact checks as its validation surface. It does not carry the optional
+Buoy provenance adapter used by some shell repositories; that adapter
+requires a private dependency and is not available to public checkouts.

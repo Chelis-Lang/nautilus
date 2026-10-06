@@ -21,8 +21,8 @@ concurrency:
 env:
   # Audit-only mirror required by the shell contract. Runtime installation
   # resolves the exact compiler pin directly from reef.toml.
-  CHELIS_TAG: v0.18.13
-  CHELIS_VERSION: 0.18.13
+  CHELIS_TAG: v0.19.0
+  CHELIS_VERSION: 0.19.0
 
 jobs:
   documentation-gates:
@@ -40,7 +40,7 @@ jobs:
         id: chelis
         uses: ./.github/actions/install-chelis
         with:
-          gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+          gh-token: ${{ github.token }}
 
       # Per-file chelis check with score=1 enforcement over every module.
       - name: chelis check (all modules, score=1 enforced)

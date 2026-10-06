@@ -28,7 +28,7 @@ rather than re-derive it.
   `bf16` at checking. A wider type does not
   imply wider accuracy: the per-function error table in the book's precision
   appendix is authoritative. `Nautilus.Rolling` is concrete `f64` over
-  `List[f64]`; every other module is currently `f32`. Iteration counts are
+  `List[f64]`; every other module uses `f32`. Iteration counts are
   `i64` and predicates are `bool`.
 - **Linear algebra is composition.** Fixed-size 2×2 and 3×3 formulas and the
   general square LU, QR, Cholesky, Jacobi SVD, symmetric eigendecomposition,
@@ -84,19 +84,14 @@ rather than re-derive it.
   package artifacts. The API-smoke imports, stability metadata, `SKILL.md`
   examples, and mdBook examples must all validate against the pinned compiler.
 - **In `Nautilus.Rolling`, a documented domain limit needs an executable pin.**
-  Two red-team rounds on this module ended on prose that no artifact checked: a
-  trapping set stated as one value when it scales with the series length, and
-  three successive wrong statements of an upstream blocker's condition. The
-  rule adopted in response, which applies to anyone editing this module: a
-  sentence asserting a limit, a divergence, or a condition is either pinned by
-  a test in `tests/rolling.ch` or by a `.expect` sidecar, or it is deleted
-  rather than reworded. `test_lag_trapping_set_scales_with_length`,
+  A sentence asserting a limit, a divergence, or a condition is pinned by a
+  test in `tests/rolling.ch` or by a `.expect` sidecar. The relevant tests are
+  `test_lag_trapping_set_scales_with_length`,
   `test_warmup_is_clipped_to_the_series`,
   `test_ddof_at_or_above_the_count_is_nan`,
   `test_input_nan_propagates_through_every_reduction` and
-  `test_documented_divergences_from_pandas` exist for exactly that reason, and
-  `docs/UPSTREAM_BUGS.md` now says the function-value condition is
-  uncharacterised instead of guessing a fourth time.
+  `test_documented_divergences_from_pandas`. `docs/UPSTREAM_BUGS.md` records
+  the uncharacterised function-value condition.
 - **`Nautilus.Rolling`'s C lane has its own oracle, because the package gates
   cannot see it.** `chelis reef build` type-checks without entering host
   lowering, so a module can pass every package-level gate while no consumer can

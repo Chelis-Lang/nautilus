@@ -1,22 +1,5 @@
 module Nautilus.Rolling
 export (rolling_sum, rolling_mean, rolling_var, rolling_std, rolling_min, rolling_max, expanding_sum, expanding_mean, expanding_var, expanding_std, expanding_min, expanding_max, shift, shift_fill, shift_clamped, diff, pct_change, tensor_rolling_sum, tensor_rolling_mean, tensor_rolling_var, tensor_rolling_std, tensor_rolling_min, tensor_rolling_max, tensor_expanding_sum, tensor_expanding_mean, tensor_expanding_var, tensor_expanding_std, tensor_expanding_min, tensor_expanding_max, tensor_shift, tensor_shift_fill, tensor_shift_clamped, tensor_diff, tensor_pct_change)
--- chelis:provenance/v1 authority
--- id = NAUT-MOD-ROLLING
--- kind = behavioral
--- scopes = nautilus
--- statement = Nautilus.Rolling MUST provide the rolling-window, expanding-window and lag surface listed in the module support table.
--- Nautilus.Rolling is f64 and list-level. It is the only module in the
--- package that is neither f32 nor `[prec: Float]`, and the only one that
--- answers "no value here" with `Option` rather than a NaN sentinel. Both
--- departures are deliberate and are argued in `spec/scope.md`.
--- Absence lives inside the element. A warm-up position is `None`, never a
--- filler value, so a caller cannot read one by accident and cannot drop the
--- distinction: any sibling channel for validity -- a count, a parallel bool
--- series, a record field, a tuple component -- can be projected away by a
--- caller who only wanted the numbers, and a NaN sentinel is indistinguishable
--- from a NaN this module computed. `None` is neither.
--- Filler occupies warm-up positions inside the private window helpers only.
--- No export can observe it: every public path maps it to `None`.
 def roll_min_i(a: i64, b: i64) -> i64 = if lt(a, b) then a else b
 def roll_max_i(a: i64, b: i64) -> i64 = if lt(a, b) then b else a
 def roll_zero() -> f64 = cast(0.0, f64)

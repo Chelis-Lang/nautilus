@@ -1,14 +1,7 @@
 module Nautilus.Tests_Blocked.Masked_Select.Untaken_Arm_Overflow
 import Std.Test (assert_true)
--- BLOCKED on chelis#1464. `spec/06` §2.10.1 says an untaken branch is not
--- evaluated; under `vmap` a scalar `if` is lowered to a masked select that
--- evaluates BOTH arms, so an untaken arm that overflows poisons the result.
---
--- Deliberately self-contained: it reproduces the UNCLAMPED shape that
--- `Nautilus.Special.erf` had to work around, without depending on `erf`, so
--- the probe keeps reporting on the compiler rather than on our workaround.
--- While this fails, `erf`'s series-input clamp must stay. When it passes,
--- that clamp is removable -- that is the signal this probe exists to give.
+-- The untaken overflowing arm must not poison the selected value under vmap.
+-- The probe keeps this masked-select behavior independent of a library helper.
 def uao_abs(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def uao_series(x: f32) -> f32 = {
   x2 = mul(x, x)

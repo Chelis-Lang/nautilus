@@ -1,11 +1,5 @@
 module Nautilus.Special
 export (erfinv, erfinv_t, gamma, log_gamma, digamma, beta, lbeta, trigamma, bessel_i0, bessel_i1, bessel_k0, bessel_k1, bessel_j0, bessel_j1, bessel_y0, bessel_y1, airy_ai, airy_bi, ellipk, ellipe)
--- chelis:provenance/v1 authority
--- id = NAUT-MOD-SPECIAL
--- kind = behavioral
--- scopes = nautilus
--- statement = Nautilus.Special MUST provide the special-function surface listed in the module support table.
--- Nautilus uses the Chelis erf and erfc primitives directly.
 def sp_abs[prec: {f32, f64}](x: prec) -> prec = if lt(x, cast(0.0, prec)) then neg(x) else x
 def is_nonpositive_integer[prec: {f32, f64}](x: prec) -> bool = {
   zero = cast(0.0, prec)
@@ -73,7 +67,7 @@ def gamma[prec: {f32, f64}](x: prec) -> prec = {
     one_minus_x = cast(1.0, prec) |> sub(x)
     g1 = one_minus_x |> log_gamma_core |> exp
     div(pi, mul(spix, g1))
-  } else x |> log_gamma_core |> exp
+  } else (x |> log_gamma_core |> exp)
 }
 def digamma_asymptotic[prec: {f32, f64}](x: prec) -> prec = {
   one = cast(1.0, prec)
@@ -91,7 +85,7 @@ def digamma_asymptotic[prec: {f32, f64}](x: prec) -> prec = {
 def digamma_rec[prec: {f32, f64}](x: prec, acc: prec) -> prec = {
   six = cast(6.0, prec)
   one = cast(1.0, prec)
-  if gte(x, six) then x |> digamma_asymptotic |> add(acc) else x |> add(one) |> digamma_rec(sub(acc, div(one, x)))
+  if gte(x, six) then (x |> digamma_asymptotic |> add(acc)) else (x |> add(one) |> digamma_rec(sub(acc, div(one, x))))
 }
 def digamma[prec: {f32, f64}](x: prec) -> prec = if is_nonpositive_integer(x) then sp_nan() else digamma_rec(x, cast(0.0, prec))
 def acklam_central[prec: {f32, f64}](q: prec) -> prec = {
@@ -159,7 +153,7 @@ def erfinv[prec: {f32, f64}](x: prec) -> prec = {
 }
 def lbeta[prec: {f32, f64}](a: prec, b: prec) -> prec = {
   zero = cast(0.0, prec)
-  if a |> lte(zero) |> or(lte(b, zero)) then sp_nan() else {
+  if (a |> lte(zero) |> or(lte(b, zero))) then sp_nan() else {
     la = log_gamma(a)
     lb = log_gamma(b)
     lab = a |> add(b) |> log_gamma
@@ -168,7 +162,7 @@ def lbeta[prec: {f32, f64}](a: prec, b: prec) -> prec = {
 }
 def beta[prec: {f32, f64}](a: prec, b: prec) -> prec = {
   zero = cast(0.0, prec)
-  if a |> lte(zero) |> or(lte(b, zero)) then sp_nan() else {
+  if (a |> lte(zero) |> or(lte(b, zero))) then sp_nan() else {
     lb = lbeta(a, b)
     exp(lb)
   }
@@ -194,7 +188,7 @@ def trigamma_asymptotic[prec: {f32, f64}](x: prec) -> prec = {
 def trigamma_rec[prec: {f32, f64}](x: prec, acc: prec) -> prec = {
   six = cast(6.0, prec)
   one = cast(1.0, prec)
-  if gte(x, six) then x |> trigamma_asymptotic |> add(acc) else {
+  if gte(x, six) then (x |> trigamma_asymptotic |> add(acc)) else {
     inv_x = div(one, x)
     inv_x2 = mul(inv_x, inv_x)
     x |> add(one) |> trigamma_rec(add(acc, inv_x2))

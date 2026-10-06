@@ -1,10 +1,5 @@
 module Nautilus.Roots
 export (bisection, newton, brent)
--- chelis:provenance/v1 authority
--- id = NAUT-MOD-ROOTS
--- kind = behavioral
--- scopes = nautilus
--- statement = Nautilus.Roots MUST provide the root-finding surface listed in the module support table.
 def r_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def r_nan_f32() -> f32 = cast(0.0, f32) |> div(cast(0.0, f32))
 def r_is_nan_f32(x: f32) -> bool = neq(x, x)
@@ -13,7 +8,7 @@ def bisection_rec(f: f32 -> f32, lo: f32, hi: f32, flo: f32, tol: f32, iters: i6
   one_i = cast(1, i64)
   if lte(iters, zero_i) then r_nan_f32() else {
     width = sub(hi, lo)
-    if lt(width, tol) then cast(0.5, f32) |> mul(add(lo, hi)) else {
+    if lt(width, tol) then (cast(0.5, f32) |> mul(add(lo, hi))) else {
       mid = cast(0.5, f32) |> mul(add(lo, hi))
       if r_is_nan_f32(mid) then r_nan_f32() else if or(eq(mid, lo), eq(mid, hi)) then mid else {
         fmid = f(mid)
@@ -57,7 +52,7 @@ def newton_rec(f: f32 -> f32, df: f32 -> f32, x: f32, tol: f32, iters: i64) -> f
       if lt(afx, tol) then x else {
         dfx = df(x)
         adfx = r_abs_f32(dfx)
-        if r_is_nan_f32(dfx) |> or(lt(adfx, cast(1e-30, f32))) then r_nan_f32() else {
+        if (r_is_nan_f32(dfx) |> or(lt(adfx, cast(1e-30, f32)))) then r_nan_f32() else {
           step = div(fx, dfx)
           x_next = sub(x, step)
           if r_is_nan_f32(x_next) then r_nan_f32() else if eq(x_next, x) then x_next else newton_rec(f, df, x_next, tol, sub(iters, one_i))

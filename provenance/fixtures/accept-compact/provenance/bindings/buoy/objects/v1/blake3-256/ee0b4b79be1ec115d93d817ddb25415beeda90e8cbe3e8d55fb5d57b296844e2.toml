@@ -1,9 +1,0 @@
-schema = "buoy/implementation-binding/v1"
-id = "NAUT-FIX-LINK-COMPACT"
-relation = "implements"
-subject = "blake3-256:7fa8b579d48b277e8b5ed25b8830b0a6501dcda48fc901b48321b20873a89ba1"
-requirement = "blake3-256:a91159d9f82c83221d7b115a74f575c05cb4393fb3004cc510fb019b0b9d5577"
-
-[atom]
-id = "NAUT-FIX-COMPACT"
-revision = "blake3-256:f3c1bbaeed3234c117008d47211263a48b0aedc275b980f443230823131bb5d1"
