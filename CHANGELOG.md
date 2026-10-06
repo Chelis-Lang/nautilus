@@ -25,16 +25,21 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   chunks of sixteen through an outer driver, so 200 iterations cost about 30
   frames rather than 200. The arithmetic is unchanged -- the converging path is
   bit-identical to the flat form, and a non-converged budget still returns the
-  partial sum. **Four inputs change value, and only those four.** At a
-  degenerate parameter: `gamma_cdf(1.0, 0.0, 1.0)` was `1.0`,
-  `gamma_cdf(1.0, 2.0, -1.0)` was `0.0` and `chi_squared_p_value(5.0, 0.0)` was
-  `0.0`, and all three are now `NaN`. At an infinite standardised argument,
-  where both parameters are ordinary: `gamma_cdf(+inf, 2.0, 1.0)` was `NaN` and
-  is now `1.0` (its survival function `0.0`), and so is the finite case whose
-  `x / scale` overflows, `gamma_cdf(1e30, 2.0, 1e-30)`. That second group is the
-  other half of what nautilus#140 asks for, not a side effect. Everything else
-  that previously returned a value in a lane with enough stack returns the same
-  bits, verified bit-for-bit over 700 points in review. The eval-lane limitation is
+  partial sum. **Values change exactly where the new guards fire, which is
+  three input classes rather than a list of cases.** Every call with
+  `shape <= 0` or `scale <= 0` now returns `NaN` whatever `x` is, so
+  `gamma_cdf(1.0, 0.0, 1.0)` was `1.0`, `gamma_cdf(1.0, 2.0, -1.0)` was `0.0`,
+  `chi_squared_p_value(5.0, 0.0)` was `0.0` and `chi_squared_cdf(5.0, -1.0)` was
+  a plausible-looking `0.99605733` — all `NaN` now, and all `nan` in SciPy.
+  Every call whose standardised argument `x / scale` is `+inf` now returns the
+  limit instead of `NaN`: `gamma_cdf(+inf, 2.0, 1.0)` and the overflowing finite
+  case `gamma_cdf(1e30, 2.0, 1e-30)` were `NaN` and are `1.0`, their survival
+  functions `0.0`. And a NaN standardised argument now returns `NaN` where some
+  shapes previously trapped in `cast_trunc`. Outside those three classes nothing
+  moves: the chunking itself is bit-identical to the flat recursion, verified
+  over 700 points in review. Note what that sweep does and does not bound — it
+  compares the two recursions, which both sit *inside* the guards, so it is
+  evidence about the chunking and not about the guards' reach. The eval-lane limitation is
   upstream `chelis#2471`, recorded in `docs/UPSTREAM_BUGS.md`; the series'
   long-standing accuracy limit at large `shape` is documented in the book rather
   than changed. Addresses nautilus#140.
