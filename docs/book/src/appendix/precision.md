@@ -44,7 +44,7 @@ Two cases merit separate guidance:
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
-| `normal_cdf` | ~1.5 ulp standardized; see the tail note below | Chelis `standard_normal_cdf` on `(x-mean)/std` |
+| `normal_cdf` | 1.9 ulp standardized; grows with the shift, see the tail note below | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
 
 ## Known precision issues
@@ -58,21 +58,28 @@ the Chelis `correctly_rounded_math` design note shows a relative error `d` in
 that argument is amplified to about `w^2 d` in `Phi`. So the error of these
 three-argument entry points depends on whether the quotient is exact:
 
-| parameterisation | worst measured, `w` in [-12.6, -3] |
+| parameterisation | worst over `w` in [-12.6, -3] |
 |---|---|
-| `mean = 0`, `std = 1` | 1.7 ulp |
-| exactly representable shift, power-of-two scale | 1.7 ulp |
-| `mean = 0.2`, `std = 1.4` | 79 ulp |
+| `mean = 0`, `std = 1` | 1.9 ulp |
+| exactly representable shift, power-of-two scale | 1.9 ulp |
+| `mean = 0.2`, `std = 1.4` | order 10^2 ulp, and **not a bound** |
 
 Measured at f32 against mpmath at 60 decimal digits, with the reference taken on
-the exact real quotient of the f32 inputs. The residual is inherent to the
-`(x, mean, std)` signature, not to the builtin: standardize first if you need
-the full figure.
+the exact real quotient of the f32 inputs.
+
+The first two rows are sampling-stable: refining the grid from 20 to 481 points
+moves them from 1.88 to 1.94 ulp. The third is not, and no single number is
+honest for it. The same refinement takes it from 41 to 195 to 239 ulp, still
+climbing, because the error grows with `w^2` and a denser grid simply finds a
+worse point. Treat it as an order of magnitude that rises with `|w|`, and size
+a tolerance from the mechanism rather than from a measured maximum.
+
+The residual is inherent to the `(x, mean, std)` signature, not to the builtin:
+standardize first if you need the stable figure.
 
 For scale, the previous `0.5 * (1 + erf(z))` spelling returned **exactly zero**
 for every `w <= -6` at all three parameterisations, because its absolute error
 was about `0.5 * ulp(1.0)` however accurate `erf` was.
-
 
 ### Bessel function zeros
 

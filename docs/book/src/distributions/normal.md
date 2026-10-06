@@ -23,7 +23,6 @@ p = normal_pdf(cast(0.0, f32), cast(0.0, f32), cast(1.0, f32))  -- approximately
 
 Standardizes to z = (x - mean) / std and calls the Chelis
 `standard_normal_cdf` builtin, the erfc-based `Phi` graph.
-where z = (x - mean) / std.
 
 ```chelis-fragment
 import Nautilus.Distributions (normal_cdf)
