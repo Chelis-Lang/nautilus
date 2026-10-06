@@ -41,13 +41,17 @@ def test_normal_cdf_far_left_is_tiny_and_not_zero() -> unit ! { Test } = {
   assert_true(lt(dist_rel_err(v, cast(7.6198528e-24, f32)), cast(0.00001, f32)), "N_cdf(-10;0,1) = 7.6198528e-24")
 }
 def test_normal_cdf_deep_tail_keeps_significant_digits() -> unit ! { Test } = {
-  -- Each of these returned exactly zero under the cancelling form.
+  -- Each of these returned exactly zero under the cancelling form. Every
+  -- reference is Phi at the *f32* argument the function receives, not at the
+  -- decimal literal: f32(-12.6) is -12.600000381469727, and Phi there differs
+  -- from Phi(-12.6) by 57 ulp, which is 5e-6 relative and would eat half this
+  -- test's margin.
   a = normal_cdf(cast(-6.0, f32), cast(0.0, f32), cast(1.0, f32))
   b = normal_cdf(cast(-8.0, f32), cast(0.0, f32), cast(1.0, f32))
   c = normal_cdf(cast(-12.6, f32), cast(0.0, f32), cast(1.0, f32))
   _ = assert_true(lt(dist_rel_err(a, cast(9.865877e-10, f32)), cast(0.00001, f32)), "N_cdf(-6;0,1) = 9.865877e-10")
   _ = assert_true(lt(dist_rel_err(b, cast(6.2209604e-16, f32)), cast(0.00001, f32)), "N_cdf(-8;0,1) = 6.2209604e-16")
-  assert_true(lt(dist_rel_err(c, cast(1.0557226e-36, f32)), cast(0.00001, f32)), "N_cdf(-12.6;0,1) = 1.0557226e-36")
+  assert_true(lt(dist_rel_err(c, cast(1.0557175e-36, f32)), cast(0.00001, f32)), "N_cdf(-12.6;0,1) = 1.0557175e-36")
 }
 def test_normal_cdf_shifted_tail_is_accurate_within_the_quotient_bound() -> unit ! { Test } = {
   -- A shifted and scaled call rounds `(x-mean)/std` before `Phi` sees it, and

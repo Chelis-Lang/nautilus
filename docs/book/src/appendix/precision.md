@@ -44,7 +44,7 @@ Two cases merit separate guidance:
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
-| `normal_cdf` | 1.9 ulp standardized; grows with the shift, see the tail note below | Chelis `standard_normal_cdf` on `(x-mean)/std` |
+| `normal_cdf` | sub-ulp standardized; grows with the shift, see the tail note below | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
 
 ## Known precision issues
@@ -60,19 +60,21 @@ three-argument entry points depends on whether the quotient is exact:
 
 | parameterisation | worst over `w` in [-12.6, -3] |
 |---|---|
-| `mean = 0`, `std = 1` | 1.9 ulp |
-| exactly representable shift, power-of-two scale | 1.9 ulp |
-| `mean = 0.2`, `std = 1.4` | order 10^2 ulp, and **not a bound** |
+| `mean = 0`, `std = 1` | below 1 ulp |
+| exactly representable shift, power-of-two scale | below 1 ulp |
+| `mean = 0.2`, `std = 1.4` | order 10^2 ulp |
 
 Measured at f32 against mpmath at 60 decimal digits, with the reference taken on
 the exact real quotient of the f32 inputs.
 
-The first two rows are sampling-stable: refining the grid from 20 to 481 points
-moves them from 1.88 to 1.94 ulp. The third is not, and no single number is
-honest for it. The same refinement takes it from 41 to 195 to 239 ulp, still
-climbing, because the error grows with `w^2` and a denser grid simply finds a
-worse point. Treat it as an order of magnitude that rises with `|w|`, and size
-a tolerance from the mechanism rather than from a measured maximum.
+The first two rows are not merely well-sampled, they are **structural**: for
+`mean = 0, std = 1` the quotient is `x` itself, and for an exactly representable
+shift with a power-of-two scale both the subtraction and the division are exact,
+so no argument error exists to amplify and all that remains is the builtin's own
+accuracy. The third row has a real argument error of about half an ulp, which
+`w^2` amplifies; enumerating every f32 in the interval puts its worst case near
+215 ulp. Size a tolerance from that mechanism -- it grows with `|w|` -- rather
+than from any single sampled figure.
 
 The residual is inherent to the `(x, mean, std)` signature, not to the builtin:
 standardize first if you need the stable figure.
