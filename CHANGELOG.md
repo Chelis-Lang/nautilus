@@ -6,6 +6,19 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Right-tail p-values no longer cancel to exactly zero. Every upper-tail and
+  two-sided p-value in `Nautilus.Testing`, and
+  `Nautilus.Stats.likelihood_ratio_p_value`, computed `1 - cdf`, which carries
+  absolute error of about `0.5 * ulp(1.0)` however accurate the CDF is. They now
+  take the tail directly: by symmetry for the normal and Student-t families, and
+  through the new `Nautilus.Distributions.gamma_sf` and `chi_squared_sf` exports
+  for the gamma family. **Values change in the right tail**, where the previous
+  spelling returned `0.0` for 77 of 274 measured arguments with a representable
+  answer. No measured p-value crosses 0.05, 0.01 or 0.001 differently, so no
+  test verdict changes.
+
 ### Changed
 
 - Build the next Nautilus package with Chelis 0.19.0. Group pipes where they

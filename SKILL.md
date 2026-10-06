@@ -288,7 +288,7 @@ package-version string, is the one export not listed here.
 | `ellipk` | `[prec: {f32, f64}](m: prec) -> prec` | `stable` | AGM recurrence, ~1e-8, m in [0,1), +inf at m=1, NaN outside |
 | `ellipe` | `[prec: {f32, f64}](m: prec) -> prec` | `stable` | AGM recurrence, ~1e-8, m in [0,1], NaN for m>1 |
 
-### Nautilus.Distributions (41 exports)
+### Nautilus.Distributions (43 exports)
 
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
@@ -313,10 +313,12 @@ package-version string, is the one export not listed here.
 | `lognormal_sample` | `[n](k: key, template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32]` | `alpha` | Explicit key |
 | `gamma_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | (shape, scale) -- not (shape, rate) |
 | `gamma_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Series (gammap) + continued fraction (gammaq) |
+| `gamma_sf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Survival function `1 - gamma_cdf`, computed without the cancelling subtraction |
 | `gamma_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Wilson-Hilferty init + Newton refinement |
 | `gamma_sample` | `[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]` | `alpha` | Explicit per-element and per-attempt keys; shape >= 1; NaN if 64 trials reject |
 | `chi_squared_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_pdf(x, df/2, 2) |
 | `chi_squared_cdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_cdf |
+| `chi_squared_sf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_sf; keeps the right tail that `1 - chi_squared_cdf` loses |
 | `chi_squared_inv_cdf` | `(q: f32, df: f32) -> f32` | `stable` | Via gamma_inv_cdf |
 | `chi_squared_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; gamma sample with shape df/2 and scale 2; df >= 2 |
 | `student_t_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via log_gamma |
@@ -456,15 +458,15 @@ package-version string, is the one export not listed here.
 | Function | Signature | Stability | Notes |
 |---|---|---|---|
 | `z_statistic` | `(sample_mean: f32, pop_mean: f32, pop_std: f32, sample_n: f32) -> f32` | `stable` |  |
-| `z_p_value_two_sided` | `(z: f32) -> f32` | `stable` | Via normal_cdf |
-| `z_p_value_upper` | `(z: f32) -> f32` | `stable` | Upper-tail p-value |
+| `z_p_value_two_sided` | `(z: f32) -> f32` | `stable` | `2 * Phi(-|z|)`, not `2 * (1 - Phi(|z|))` |
+| `z_p_value_upper` | `(z: f32) -> f32` | `stable` | Upper-tail p-value, as `Phi(-z)` |
 | `z_p_value_lower` | `(z: f32) -> f32` | `stable` | Lower-tail p-value |
 | `normal_ci_half_width` | `(confidence: f32, pop_std: f32, sample_n: f32) -> f32` | `stable` | Returns margin of error |
-| `chi_squared_p_value` | `(statistic: f32, df: f32) -> f32` | `stable` | Upper-tail via chi_squared_cdf |
+| `chi_squared_p_value` | `(statistic: f32, df: f32) -> f32` | `stable` | Upper-tail via chi_squared_sf |
 | `t_statistic_one_sample` | `(sample_mean: f32, sample_std: f32, sample_n: f32, pop_mean: f32) -> f32` | `stable` |  |
 | `t_statistic_two_sample_pooled` | `(mean1: f32, std1: f32, n1: f32, mean2: f32, std2: f32, n2: f32) -> f32` | `stable` | Equal-variance pooled t |
-| `t_p_value_two_sided` | `(t: f32, df: f32) -> f32` | `stable` | Via student_t_cdf |
-| `t_p_value_upper` | `(t: f32, df: f32) -> f32` | `stable` | Upper-tail |
+| `t_p_value_two_sided` | `(t: f32, df: f32) -> f32` | `stable` | `2 * F(-|t|)` via student_t_cdf |
+| `t_p_value_upper` | `(t: f32, df: f32) -> f32` | `stable` | Upper-tail, as `F(-t)` via student_t_cdf |
 | `t_p_value_lower` | `(t: f32, df: f32) -> f32` | `stable` | Lower-tail |
 | `welch_t_statistic` | `(mean1: f32, std1: f32, n1: f32, mean2: f32, std2: f32, n2: f32) -> f32` | `stable` | Unequal-variance Welch's t |
 | `welch_t_df` | `(std1: f32, n1: f32, std2: f32, n2: f32) -> f32` | `stable` | Welch-Satterthwaite degrees of freedom |

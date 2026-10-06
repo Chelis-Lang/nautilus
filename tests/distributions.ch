@@ -1,5 +1,5 @@
 module Nautilus.Tests.Distributions
-import Nautilus.Distributions (normal_cdf_t, normal_inv_cdf_t, normal_pdf_t, uniform_pdf, uniform_cdf, uniform_inv_cdf, exponential_pdf, exponential_cdf, exponential_inv_cdf, normal_pdf, normal_cdf, normal_inv_cdf, lognormal_pdf, lognormal_cdf, lognormal_inv_cdf, gamma_pdf, gamma_cdf, gamma_inv_cdf, chi_squared_pdf, chi_squared_cdf, chi_squared_inv_cdf, student_t_pdf, student_t_cdf, poisson_pmf, poisson_cdf, binomial_pmf, binomial_cdf, beta_pdf, beta_cdf, f_pdf, f_cdf, weibull_pdf, weibull_cdf, weibull_inv_cdf)
+import Nautilus.Distributions (normal_cdf_t, normal_inv_cdf_t, normal_pdf_t, uniform_pdf, uniform_cdf, uniform_inv_cdf, exponential_pdf, exponential_cdf, exponential_inv_cdf, normal_pdf, normal_cdf, normal_inv_cdf, lognormal_pdf, lognormal_cdf, lognormal_inv_cdf, gamma_pdf, gamma_cdf, gamma_sf, gamma_inv_cdf, chi_squared_pdf, chi_squared_cdf, chi_squared_sf, chi_squared_inv_cdf, student_t_pdf, student_t_cdf, poisson_pmf, poisson_cdf, binomial_pmf, binomial_cdf, beta_pdf, beta_cdf, f_pdf, f_cdf, weibull_pdf, weibull_cdf, weibull_inv_cdf)
 import Std.Test (assert_close, assert_true)
 def test_normal_pdf_at_mean_is_one_over_sqrt_2pi() -> unit ! { Test } = {
   v = normal_pdf(cast(0.0, f32), cast(0.0, f32), cast(1.0, f32))
@@ -612,4 +612,89 @@ def test_normal_inv_cdf_t_guards_match_scalar() -> unit ! { Test } = {
   hi = index(ys, cast(3, i64))
   _ = assert_true(neq(lo, lo), "q < 0 gives NaN like the scalar")
   assert_true(neq(hi, hi), "q > 1 gives NaN like the scalar")
+}
+-- nautilus#137: `gamma_sf` and `chi_squared_sf` are the survival functions
+-- that `1 - gamma_cdf(..)` and `1 - chi_squared_cdf(..)` cannot compute. The
+-- CDF spells the upper branch `1 - gammaq(a, x)`, so a caller that subtracts
+-- the CDF from 1 makes a round trip through 1.0 and loses the tail to
+-- `0.5 * ulp(1.0)`. These functions return `gammaq` directly on that branch
+-- and keep full f32 relative precision. References are `Q(a, x)` at 60
+-- decimal digits rounded once to f32; the worst relative error measured over
+-- 144 (x, df) pairs with a representable answer is 4.3e-6.
+def test_gamma_sf_complements_the_cdf_where_both_are_ordinary() -> unit ! { Test } = {
+  -- On the `gammap` branch neither form loses anything, so the pair must
+  -- still sum to 1 exactly to f32 tolerance.
+  a = gamma_sf(cast(1.0, f32), cast(3.0, f32), cast(2.0, f32))
+  b = gamma_sf(cast(0.5, f32), cast(2.0, f32), cast(1.0, f32))
+  c = gamma_sf(cast(2.0, f32), cast(5.0, f32), cast(1.0, f32))
+  _ = assert_true(lt(dist_rel_err(a, cast(0.98561233, f32)), cast(0.00001, f32)), "gamma_sf(1;3,2) = 0.98561233")
+  _ = assert_true(lt(dist_rel_err(b, cast(0.909796, f32)), cast(0.00001, f32)), "gamma_sf(0.5;2,1) = 0.909796")
+  _ = assert_true(lt(dist_rel_err(c, cast(0.947347, f32)), cast(0.00001, f32)), "gamma_sf(2;5,1) = 0.947347")
+  s = add(gamma_sf(cast(1.0, f32), cast(3.0, f32), cast(2.0, f32)), gamma_cdf(cast(1.0, f32), cast(3.0, f32), cast(2.0, f32)))
+  assert_close(s, cast(1.0, f32), cast(1e-6, f32), "gamma_sf + gamma_cdf = 1 on the lower branch")
+}
+def test_gamma_sf_at_zero_is_one() -> unit ! { Test } = {
+  v = gamma_sf(cast(0.0, f32), cast(3.0, f32), cast(2.0, f32))
+  assert_close(v, cast(1.0, f32), cast(1e-7, f32), "gamma_sf(0;3,2) = 1")
+}
+def test_gamma_sf_deep_tail_keeps_significant_digits() -> unit ! { Test } = {
+  -- Both of these are on the `gammaq` branch, and `1 - gamma_cdf` returns
+  -- exactly 0.0 at both.
+  a = gamma_sf(cast(60.0, f32), cast(1.5, f32), cast(2.0, f32))
+  b = gamma_sf(cast(100.0, f32), cast(5.0, f32), cast(2.0, f32))
+  _ = assert_true(gt(a, cast(0.0, f32)), "gamma_sf(60;1.5,2) is strictly positive")
+  _ = assert_true(lt(dist_rel_err(a, cast(5.878231e-13, f32)), cast(0.00001, f32)), "gamma_sf(60;1.5,2) = 5.878231e-13")
+  _ = assert_true(gt(b, cast(0.0, f32)), "gamma_sf(100;5,2) is strictly positive")
+  assert_true(lt(dist_rel_err(b, cast(5.449702e-17, f32)), cast(0.00001, f32)), "gamma_sf(100;5,2) = 5.449702e-17")
+}
+def test_chi_squared_sf_deep_tail_keeps_significant_digits() -> unit ! { Test } = {
+  df3 = cast(3.0, f32)
+  a = chi_squared_sf(cast(40.0, f32), df3)
+  b = chi_squared_sf(cast(100.0, f32), df3)
+  c = chi_squared_sf(cast(80.0, f32), cast(10.0, f32))
+  _ = assert_true(lt(dist_rel_err(a, cast(1.065509e-8, f32)), cast(0.00001, f32)), "chi_squared_sf(40, 3) = 1.065509e-8")
+  _ = assert_true(lt(dist_rel_err(b, cast(1.5541595e-21, f32)), cast(0.00001, f32)), "chi_squared_sf(100, 3) = 1.5541595e-21")
+  assert_true(lt(dist_rel_err(c, cast(5.0204643e-13, f32)), cast(0.00001, f32)), "chi_squared_sf(80, 10) = 5.0204643e-13")
+}
+def test_chi_squared_sf_complements_the_cdf() -> unit ! { Test } = {
+  -- The identity has to hold on both sides of the `shape + 1` branch.
+  lo = add(chi_squared_sf(cast(1.0, f32), cast(3.0, f32)), chi_squared_cdf(cast(1.0, f32), cast(3.0, f32)))
+  hi = add(chi_squared_sf(cast(30.0, f32), cast(3.0, f32)), chi_squared_cdf(cast(30.0, f32), cast(3.0, f32)))
+  _ = assert_close(lo, cast(1.0, f32), cast(1e-6, f32), "chi_squared_sf + cdf = 1 below the branch")
+  assert_close(hi, cast(1.0, f32), cast(1e-6, f32), "chi_squared_sf + cdf = 1 above the branch")
+}
+def test_chi_squared_sf_at_zero_is_one() -> unit ! { Test } = {
+  v = chi_squared_sf(cast(0.0, f32), cast(3.0, f32))
+  assert_close(v, cast(1.0, f32), cast(1e-7, f32), "chi_squared_sf(0, 3) = 1")
+}
+def test_chi_squared_sf_is_what_one_minus_the_cdf_cannot_be() -> unit ! { Test } = {
+  -- The failure case stated directly: at a statistic of 40 on 3 df the
+  -- cancelling form is exactly 0.0 while the survival function is 1.07e-8.
+  -- `gt` on the difference is the discriminator.
+  sf = chi_squared_sf(cast(40.0, f32), cast(3.0, f32))
+  cancelled = sub(cast(1.0, f32), chi_squared_cdf(cast(40.0, f32), cast(3.0, f32)))
+  _ = assert_true(eq(cancelled, cast(0.0, f32)), "1 - chi_squared_cdf(40, 3) cancels to exactly 0")
+  assert_true(gt(sf, cancelled), "chi_squared_sf(40, 3) recovers a tail the subtraction loses")
+}
+-- nautilus#137 follow-up: the upper tail of a *non-standard* normal needs the
+-- mean reflected as well as the point. `docs/book/src/distributions/overview.md`
+-- prescribes `normal_cdf(neg(x), neg(mean), std)`, and this test is what makes
+-- that sentence checkable. Negating only the point computes
+-- `Phi((-x - mu) / sigma)`, a different number entirely: for N(10, 2) at x = 13
+-- it is 6.6e-31 where the upper tail is 0.0668. Reference is
+-- `erfc((13 - 10) / (2 * sqrt(2))) / 2` at 60 decimal digits, rounded to f32.
+def test_normal_upper_tail_reflects_the_mean_not_only_the_point() -> unit ! { Test } = {
+  -- Three rows, not one. A single positive-mean point with x > mean is also
+  -- satisfied by `Phi((|mean| - x) / std)`, a near-miss that is wrong for
+  -- every negative mean: at N(-7, 1.5) it gives 1.0 against a true 0.00383.
+  -- The negative-mean row is what separates the documented rule from it; the
+  -- x < mean row covers the other ordering.
+  a = normal_cdf(neg(cast(13.0, f32)), neg(cast(10.0, f32)), cast(2.0, f32))
+  b = normal_cdf(neg(cast(-3.0, f32)), neg(cast(-7.0, f32)), cast(1.5, f32))
+  c = normal_cdf(neg(cast(5.0, f32)), neg(cast(10.0, f32)), cast(3.0, f32))
+  point_only = normal_cdf(neg(cast(13.0, f32)), cast(10.0, f32), cast(2.0, f32))
+  _ = assert_true(lt(dist_rel_err(a, cast(0.0668072, f32)), cast(0.00001, f32)), "upper tail of N(10,2) at 13 is 0.0668072")
+  _ = assert_true(lt(dist_rel_err(b, cast(0.0038303805, f32)), cast(0.00001, f32)), "upper tail of N(-7,1.5) at -3 is 0.0038303805, so the mean must be negated too")
+  _ = assert_true(lt(dist_rel_err(c, cast(0.9522096, f32)), cast(0.00001, f32)), "upper tail of N(10,3) at 5 is 0.9522096, so the rule holds for x < mean")
+  assert_true(gt(a, mul(cast(1e20, f32), point_only)), "negating only the point is wrong by orders of magnitude, not by rounding")
 }

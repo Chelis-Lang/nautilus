@@ -1,6 +1,6 @@
 module Nautilus.Testing
 import Nautilus.Special (erfinv)
-import Nautilus.Distributions (normal_cdf, normal_inv_cdf, chi_squared_cdf, student_t_cdf)
+import Nautilus.Distributions (normal_cdf, normal_inv_cdf, chi_squared_sf, student_t_cdf)
 export (z_statistic, z_p_value_two_sided, z_p_value_upper, z_p_value_lower, normal_ci_half_width, chi_squared_p_value, t_statistic_one_sample, t_statistic_two_sample_pooled, t_p_value_two_sided, t_p_value_upper, t_p_value_lower, welch_t_statistic, welch_t_df)
 def t_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def z_statistic(sample_mean: f32, pop_mean: f32, pop_std: f32, sample_n: f32) -> f32 = {
@@ -11,14 +11,10 @@ def z_statistic(sample_mean: f32, pop_mean: f32, pop_std: f32, sample_n: f32) ->
 }
 def z_p_value_two_sided(z: f32) -> f32 = {
   az = t_abs_f32(z)
-  upper = normal_cdf(az, cast(0.0, f32), cast(1.0, f32))
-  tail = cast(1.0, f32) |> sub(upper)
+  tail = normal_cdf(neg(az), cast(0.0, f32), cast(1.0, f32))
   cast(2.0, f32) |> mul(tail)
 }
-def z_p_value_upper(z: f32) -> f32 = {
-  cdf = normal_cdf(z, cast(0.0, f32), cast(1.0, f32))
-  cast(1.0, f32) |> sub(cdf)
-}
+def z_p_value_upper(z: f32) -> f32 = normal_cdf(neg(z), cast(0.0, f32), cast(1.0, f32))
 def z_p_value_lower(z: f32) -> f32 = normal_cdf(z, cast(0.0, f32), cast(1.0, f32))
 def normal_ci_half_width(confidence: f32, pop_std: f32, sample_n: f32) -> f32 = {
   alpha = cast(1.0, f32) |> sub(confidence)
@@ -29,10 +25,7 @@ def normal_ci_half_width(confidence: f32, pop_std: f32, sample_n: f32) -> f32 = 
   se = div(pop_std, sqrt_n)
   mul(z_crit, se)
 }
-def chi_squared_p_value(statistic: f32, df: f32) -> f32 = {
-  cdf = chi_squared_cdf(statistic, df)
-  cast(1.0, f32) |> sub(cdf)
-}
+def chi_squared_p_value(statistic: f32, df: f32) -> f32 = chi_squared_sf(statistic, df)
 def t_statistic_one_sample(sample_mean: f32, sample_std: f32, sample_n: f32, pop_mean: f32) -> f32 = {
   diff = sub(sample_mean, pop_mean)
   sqrt_n = sqrt(sample_n)
@@ -81,12 +74,8 @@ def welch_t_df(std1: f32, n1: f32, std2: f32, n2: f32) -> f32 = {
 }
 def t_p_value_two_sided(t: f32, df: f32) -> f32 = {
   at = t_abs_f32(t)
-  upper = student_t_cdf(at, df)
-  tail = cast(1.0, f32) |> sub(upper)
+  tail = student_t_cdf(neg(at), df)
   cast(2.0, f32) |> mul(tail)
 }
-def t_p_value_upper(t: f32, df: f32) -> f32 = {
-  cdf = student_t_cdf(t, df)
-  cast(1.0, f32) |> sub(cdf)
-}
+def t_p_value_upper(t: f32, df: f32) -> f32 = student_t_cdf(neg(t), df)
 def t_p_value_lower(t: f32, df: f32) -> f32 = student_t_cdf(t, df)

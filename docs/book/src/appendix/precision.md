@@ -111,6 +111,24 @@ suffer catastrophic cancellation. This affects:
 - `variance_vec` for data with very small variance relative to the mean
 - `gamma_cdf` for extreme shape/scale ratios
 
+The sharpest form of this is `1 - cdf` for an upper tail. The subtraction
+carries absolute error of about `0.5 * ulp(1.0)` -- 6e-8 in f32 -- however
+accurate the CDF is, so it returns exactly `0.0` once the true tail falls
+below that, and carries no significant digits for some way above it. Do not
+write it. The upper tail is available directly: `normal_cdf(neg(z), 0, 1)` and
+`student_t_cdf(neg(t), df)` by symmetry, and `gamma_sf` and `chi_squared_sf` as
+their own functions. Every *upper-tail and two-sided* p-value in
+`Nautilus.Testing` uses one of those; the two `_lower` functions take the CDF
+directly, which is already the tail they want. nautilus#137 is the instance
+that produced this paragraph; nautilus#113 is its left-tail twin.
+
+Two cases of `1 - exp(..)` in the CDFs themselves have the same shape at the
+*left* edge, and are equally total rather than merely imprecise:
+`exponential_cdf(1e-8, 1.0)` and `weibull_cdf(1e-8, 1.0, 1.0)` both return
+**exactly 0.0** where the answer is 1e-8. The fix is `expm1`, not a survival
+function -- a survival function cannot help an edge where the CDF itself is the
+small quantity -- and it is not fixed or tracked.
+
 When f32 precision is insufficient in `Nautilus.Special`, call it at f64
 directly. Its functions are generic over the `{f32, f64}` dtype set. Read the
 caveats above first, because several of them are coefficient-limited rather

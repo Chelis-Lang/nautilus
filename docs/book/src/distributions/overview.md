@@ -5,20 +5,37 @@ families. The table shows which operations each family exposes.
 
 ## Distribution families
 
-| Distribution | PDF | CDF | Inverse CDF | Sample |
-|---|---|---|---|---|
-| Normal | `normal_pdf` | `normal_cdf` | `normal_inv_cdf` | `normal_sample` |
-| LogNormal | `lognormal_pdf` | `lognormal_cdf` | `lognormal_inv_cdf` | `lognormal_sample` |
-| Uniform | `uniform_pdf` | `uniform_cdf` | `uniform_inv_cdf` | `uniform_sample` |
-| Exponential | `exponential_pdf` | `exponential_cdf` | `exponential_inv_cdf` | `exponential_sample` |
-| Gamma | `gamma_pdf` | `gamma_cdf` | `gamma_inv_cdf` | `gamma_sample` |
-| Chi-squared | `chi_squared_pdf` | `chi_squared_cdf` | `chi_squared_inv_cdf` | `chi_squared_sample` |
-| Student-t | `student_t_pdf` | `student_t_cdf` | | `student_t_sample` |
-| Poisson | `poisson_pmf` | `poisson_cdf` | | |
-| Binomial | `binomial_pmf` | `binomial_cdf` | | |
-| Beta | `beta_pdf` | `beta_cdf` | | |
-| F | `f_pdf` | `f_cdf` | | |
-| Weibull | `weibull_pdf` | `weibull_cdf` | `weibull_inv_cdf` | |
+| Distribution | PDF | CDF | Survival | Inverse CDF | Sample |
+|---|---|---|---|---|---|
+| Normal | `normal_pdf` | `normal_cdf` | | `normal_inv_cdf` | `normal_sample` |
+| LogNormal | `lognormal_pdf` | `lognormal_cdf` | | `lognormal_inv_cdf` | `lognormal_sample` |
+| Uniform | `uniform_pdf` | `uniform_cdf` | | `uniform_inv_cdf` | `uniform_sample` |
+| Exponential | `exponential_pdf` | `exponential_cdf` | | `exponential_inv_cdf` | `exponential_sample` |
+| Gamma | `gamma_pdf` | `gamma_cdf` | `gamma_sf` | `gamma_inv_cdf` | `gamma_sample` |
+| Chi-squared | `chi_squared_pdf` | `chi_squared_cdf` | `chi_squared_sf` | `chi_squared_inv_cdf` | `chi_squared_sample` |
+| Student-t | `student_t_pdf` | `student_t_cdf` | | | `student_t_sample` |
+| Poisson | `poisson_pmf` | `poisson_cdf` | | | |
+| Binomial | `binomial_pmf` | `binomial_cdf` | | | |
+| Beta | `beta_pdf` | `beta_cdf` | | | |
+| F | `f_pdf` | `f_cdf` | | | |
+| Weibull | `weibull_pdf` | `weibull_cdf` | | `weibull_inv_cdf` | |
+
+Only the gamma family carries a survival function. For the others, take the
+upper tail from the symmetry of the distribution where it has one, and never as
+`1 - cdf`, which loses the whole tail to `0.5 * ulp(1.0)`:
+
+- Standard normal: `normal_cdf(neg(z), 0, 1)` is the exact upper tail at `z`.
+- Student-t: `student_t_cdf(neg(t), df)` is the exact upper tail at `t`, for
+  every `df`, because the distribution is symmetric about zero. (Symmetric, not
+  merely centred -- at `df <= 1` the mean does not exist and the identity still
+  holds.)
+- A **non-standard** normal needs the mean reflected too, not just the point:
+  the upper tail of `N(mu, sigma)` at `x` is `Phi((mu - x) / sigma)`, so write
+  `normal_cdf(neg(x), neg(mean), std)`. Negating only the point gives
+  `Phi((-x - mu) / sigma)`, which is a different number entirely -- for
+  `N(10, 2)` at `x = 13` it returns `6.6e-31` where the answer is `0.0668`.
+
+See [Right-tail accuracy](../stats/testing.md#right-tail-accuracy).
 
 ## Parameter conventions
 
