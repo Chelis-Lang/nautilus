@@ -50,7 +50,7 @@ Nautilus and install its package artifacts into your local Reef registry.
 setup and explains how to use a published release instead.
 
 ```sh
-chelisup install 0.18.13
+chelisup install 0.19.0
 mkdir -p nautilus-work/packages
 git clone https://github.com/Chelis-Lang/nautilus.git nautilus-work/packages/nautilus
 cd nautilus-work/packages/nautilus
@@ -65,7 +65,7 @@ cd demo
 Add this line under `[dependencies]` in the generated `reef.toml`:
 
 ```toml
-nautilus = { version = "0.7.48" }
+nautilus = { version = "0.7.49" }
 ```
 
 Use the book's [first program](docs/book/src/getting-started/first-program.md)
@@ -79,16 +79,15 @@ describes the release artifacts and how to verify them.
 
 ## Developing
 
-From a fresh home, sign in to GitHub for the release download, install `chelisup`, and install the
+Install `chelisup` from the public Chelis release, then install the
 compiler pinned by Nautilus before running `chelis` in the clone:
 
 ```sh
-gh auth login
 gh release download --repo Chelis-Lang/chelis --pattern chelisup.sh --output - | sh
 export PATH="$HOME/.chelis/bin:$PATH"
 git clone https://github.com/Chelis-Lang/nautilus.git
 cd nautilus
-chelisup install 0.18.13
+chelisup install 0.19.0
 chelis reef setup
 ```
 
@@ -120,7 +119,6 @@ layout, and how compiler upgrades are handled.
 | `docs/` | benchmarks, release notes, and the Chelis capability inventory |
 | `spec/scope.md` | intent, architecture, acceptance rules, limitations, deferrals |
 | `scripts/` | CI and validation tooling (Python, standard library only) |
-| `provenance/` | requirement-to-code provenance records (advisory) |
 
 ## License
 

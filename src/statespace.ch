@@ -1,10 +1,5 @@
 module Nautilus.StateSpace
 export (kalman_predict_scalar, kalman_update_scalar, kalman_step_scalar, local_level_predict, local_level_update, local_level_step)
--- chelis:provenance/v1 authority
--- id = NAUT-MOD-STATESPACE
--- kind = behavioral
--- scopes = nautilus
--- statement = Nautilus.StateSpace MUST provide the scalar Kalman surface listed in the module support table.
 def kalman_predict_scalar(mean: f32, covariance: f32, transition: f32, process_var: f32, control: f32, control_input: f32) -> (f32, f32) = {
   predicted_mean = transition |> mul(mean) |> add(mul(control, control_input))
   predicted_covariance = add(mul(mul(transition, transition), covariance), process_var)

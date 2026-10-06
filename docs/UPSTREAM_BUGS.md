@@ -3,8 +3,8 @@
 This file records the upstream Chelis compiler issues that currently shape
 Nautilus: what each one blocks, how Nautilus works around it, and when to check
 it again. It describes the state at the current **pin**, the exact compiler
-release that `reef.toml` requires. Nautilus pins `chelis 0.18.13`
-(`compiler = "=0.18.13"`).
+release that `reef.toml` requires. Nautilus pins `chelis 0.19.0`
+(`compiler = "=0.19.0"`).
 
 ## How this file works
 
@@ -39,7 +39,7 @@ blocked` reports each probe as OK (still fails as pinned), FIX-DETECTED (now
 passes, so the upstream fix has landed and the workaround should be removed),
 or DRIFTED (fails with a different diagnostic, so the failure mode moved and
 needs investigation before the citation is reused). There are no executable
-blocked probes at the 0.18.13 pin. The remaining live entries require manual
+blocked probes at the 0.19.0 pin. The remaining live entries require manual
 probes in C host lowering or a full algorithm replacement;
 [`tests_blocked/README.md`](../tests_blocked/README.md) lists them and gives the
 recipes.
@@ -75,11 +75,12 @@ release.
       `tests/curvefit_lm_jacobian_model_wrapper.ch`, so no bounded blocked
       probe exists yet.
     - **Pinned result:** both isolated row witnesses and the shipped
-      finite-difference recovery suite pass. An exact-AD replacement
-      differentiating one seeded output at a time fails all six
-      multi-parameter recoveries with `[05-HOST-1]`: the reached model's
-      `to_list` has no numeric IR lowering. This failure occurs before the
-      runtime-extent provenance boundary, so that boundary remains unverified.
+      finite-difference recovery suite pass. At Chelis 0.19.0, replacing
+      `lm_jcol` with seeded-output gradients leaves five scalar-path
+      tests passing and fails all six multi-parameter recoveries with
+      `[05-HOST-1]`: the reached model's `to_list` has no numeric IR lowering.
+      This failure occurs before the runtime-extent provenance boundary,
+      so that boundary remains unverified.
     - **Re-probe trigger:** every pin bump and the release resolving
       chelis#2370. On pass, compare the full LM recovery trajectories before
       removing the finite-difference implementation.
@@ -150,17 +151,18 @@ release.
       `[prec: Float]` conversions, and no particular mechanism should be
       inferred from them.
     - **Workaround:** none needed for the shipped match shapes.
-    - **Pinned result:** the upstream Option and ADT `match` reproducers
-      each fail `chelis build` with `inconsistent live owners`; the same
-      block-bound owner in an `if` emits and compiles. Manual only because
-      `chelis test` never enters C host lowering. The source is in chelis#2520.
+    - **Pinned result:** at Chelis 0.19.0, the upstream Option and ADT
+      `match` reproducers each fail `chelis build` with `inconsistent live
+      owners`; the same block-bound owner in an `if` emits and compiles.
+      Manual only because `chelis test` never enters C host lowering. The
+      source is in chelis#2520.
     - **Re-probe trigger:** every pin bump, and before merging any change that
       adds a `match` over an owned value consumed on one arm.
 
 - **Float-generic downstream C consumers still require full verification** —
   `chelis#2152`
   ([Chelis-Lang/chelis#2152](https://github.com/Chelis-Lang/chelis/issues/2152)).
-    - **Pinned result:** a library exporting
+    - **Pinned result:** at Chelis 0.19.0, a library exporting
       `apply_cast[prec: Float](g: prec -> prec, x: prec)` was built and
       installed into an isolated Reef store. Separate f32 and f64 consumers
       each built and linked with `chelis build`; both executables printed
@@ -172,8 +174,9 @@ release.
       Generic Roots (`nautilus#67`) and LinAlg (`nautilus#12`) need their own
       measured consumers rather than inheriting a verdict from this probe.
     - **Special control:** `Nautilus.Special` uses `{f32, f64}`. The package
-      build and its positive/parity suites pass, but a separate-package C
-      control for this exact pin is still needed before claiming that lane.
+      build and its positive/parity suites pass. Separate-package C consumers
+      of `erfinv` and `gamma` build, link, and run at f32 and f64; the
+      remaining exports have no complete C consumer matrix.
     - **Why no automated gate catches it:** the dependent compile in
       `scripts/check_release_artifacts.py` runs `chelis reef build`, never
       `chelis build`.

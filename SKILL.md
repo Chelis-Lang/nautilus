@@ -11,7 +11,7 @@ f64, and `Nautilus.Rolling` is f64 over `List[f64]`; every other module works
 in f32. Section 6 lists every export with its
 signature and a stability label. The one export outside those tables,
 `Nautilus.Core.version`, returns the exact package-version string
-(`"0.7.48"` in this source checkout).
+(`"0.7.49"` in this source checkout).
 
 ## 2. Import Patterns
 
@@ -239,7 +239,7 @@ nothing.
 (`tests/special_f64.ch`) and the CurveFit Jacobian rows. A generic function
 has no fixed dtype, so the point-free `grad(erf)` does not type-check; wrap it
 as `def erf_at(x: f64) -> f64 = erf(x)` and take `grad(erf_at)`. Solvers built
-on recursion or `fold` are not differentiable in general: at Chelis 0.18.11,
+on recursion or `fold` are not differentiable in general: with the pinned compiler,
 `grad` through `rk4_solve` fails to lower because its step count is a runtime
 value. `lm_scalar_nparam` keeps a finite-difference Jacobian because exact AD
 through the full solver fails upstream (chelis#2370). The book's Greeks

@@ -1,9 +1,0 @@
-schema = "buoy/implementation-binding/v1"
-id = "NAUT-LINK-STATS-HELPERS"
-relation = "implements"
-subject = "blake3-256:3bf12a9038a3af6c2bb08cad81ee6c289e3d5ba5bcbe85963cdfbd5a3455992a"
-requirement = "blake3-256:84285f7926054c48cedb3e9d270e2d3b29a13e7907b59f4c2d8413bb9584e78c"
-
-[atom]
-id = "NAUT-MOD-STATS"
-revision = "blake3-256:ff765fb0cb921dc27791152e76665a90325d8efaa50260fb1bb6daf1da75aa64"

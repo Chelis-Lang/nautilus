@@ -51,6 +51,7 @@ for f in $(git ls-files 'src/*.ch' 'tests/*.ch' 'tests_neg/*.ch' 'tests_blocked/
 done
 chelis lint --check .
 chelis reef build
+for example in src/example*.ch; do chelis eval --file "$example"; done
 chelis test tests/ --timeout 600 --jobs auto
 chelis test tests_neg/ --expect neg
 chelis test tests_blocked/ --expect blocked      # when probes exist

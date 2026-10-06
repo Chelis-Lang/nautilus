@@ -1,11 +1,6 @@
 module Nautilus.CurveFit
 import Nautilus.LinAlg (inv_2x2, inv_3x3, matvec, l2_norm_vec, la_vec_sub, la_vec_add, scale_vec, la_basis_n_f32, cg_solve, la_zeros_mat_like, inner_product)
 export (lm_scalar_1param, lm_scalar_nparam)
--- chelis:provenance/v1 authority
--- id = NAUT-MOD-CURVEFIT
--- kind = behavioral
--- scopes = nautilus
--- statement = Nautilus.CurveFit MUST provide the Levenberg-Marquardt fitting surface listed in the module support table.
 def cf_zero_f() -> f32 = cast(0.0, f32)
 def cf_one_f() -> f32 = cast(1.0, f32)
 def cf_nan_f() -> f32 = div(cast(0.0, f32), cast(0.0, f32))

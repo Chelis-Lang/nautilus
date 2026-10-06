@@ -1,8 +1,8 @@
 # API Map
 
-Nautilus 0.7.48 exports functions from the modules below. Each source module
+Nautilus 0.7.49 exports functions from the modules below. Each source module
 contains the exact signatures for this package; the book chapters explain
-common calls and limits. Use the [package source tree](https://github.com/Chelis-Lang/nautilus/tree/d31891d72ebd112b3a03a1a8a403bd6e19ff48a0/src)
+common calls and limits. Use the [package source tree](https://github.com/Chelis-Lang/nautilus/tree/main/src)
 when you need an export beyond a chapter's examples.
 
 | Module | Start here |
@@ -21,12 +21,12 @@ when you need an export beyond a chapter's examples.
 | `Nautilus.Sde` | [SDE solvers](../solvers/sde.md) |
 | `Nautilus.CurveFit` | [Curve fitting](../other/curvefit.md) |
 | `Nautilus.Signal` | [`fftfreq` and placeholders](../other/signal.md) |
-| `Nautilus.Info` | [Package source](https://github.com/Chelis-Lang/nautilus/blob/d31891d72ebd112b3a03a1a8a403bd6e19ff48a0/src/info.ch) |
-| `Nautilus.Optimize` | [Package source](https://github.com/Chelis-Lang/nautilus/blob/d31891d72ebd112b3a03a1a8a403bd6e19ff48a0/src/optimize.ch) |
-| `Nautilus.StateSpace` | [Package source](https://github.com/Chelis-Lang/nautilus/blob/d31891d72ebd112b3a03a1a8a403bd6e19ff48a0/src/statespace.ch) |
-| `Nautilus.TimeSeries` | [Package source](https://github.com/Chelis-Lang/nautilus/blob/d31891d72ebd112b3a03a1a8a403bd6e19ff48a0/src/timeseries.ch) |
-| `Nautilus.Core` | [Package source](https://github.com/Chelis-Lang/nautilus/blob/d31891d72ebd112b3a03a1a8a403bd6e19ff48a0/src/core.ch) |
+| `Nautilus.Info` | [Package source](https://github.com/Chelis-Lang/nautilus/blob/main/src/info.ch) |
+| `Nautilus.Optimize` | [Package source](https://github.com/Chelis-Lang/nautilus/blob/main/src/optimize.ch) |
+| `Nautilus.StateSpace` | [Package source](https://github.com/Chelis-Lang/nautilus/blob/main/src/statespace.ch) |
+| `Nautilus.TimeSeries` | [Package source](https://github.com/Chelis-Lang/nautilus/blob/main/src/timeseries.ch) |
+| `Nautilus.Core` | [Package source](https://github.com/Chelis-Lang/nautilus/blob/main/src/core.ch) |
 
-The [stability inventory](https://github.com/Chelis-Lang/nautilus/blob/d31891d72ebd112b3a03a1a8a403bd6e19ff48a0/dist/stability.json)
+The [stability inventory](https://github.com/Chelis-Lang/nautilus/blob/main/dist/stability.json)
 lists machine-readable `stable` and `alpha` labels for exports. Review
 an `alpha` function's domain and numerical limits before relying on it.

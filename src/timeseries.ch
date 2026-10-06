@@ -1,14 +1,9 @@
 module Nautilus.TimeSeries
 export (ts_ewma_next, ts_ewma_series, exponential_smoothing_next, exponential_smoothing_series, ar1_predict_next, arma11_predict_next, arima110_predict_next)
--- chelis:provenance/v1 authority
--- id = NAUT-MOD-TIMESERIES
--- kind = behavioral
--- scopes = nautilus
--- statement = Nautilus.TimeSeries MUST provide the smoothing and forecasting surface listed in the module support table.
 def ts_ewma_next[n](values: &tensor[n, f32], alpha: f32, initial: f32) -> f32 = {
   one = cast(1.0, f32)
   one_minus_alpha = sub(one, alpha)
-  fold(fn (acc: f32, x: f32) -> alpha |> mul(x) |> add(mul(one_minus_alpha, acc)), initial, to_list(values))
+  fold(fn (acc: f32, x: f32) -> (alpha |> mul(x) |> add(mul(one_minus_alpha, acc))), initial, to_list(values))
 }
 def ts_ewma_series[n](values: &tensor[n, f32], alpha: f32, initial: f32) -> tensor[n, f32] = {
   one = cast(1.0, f32)

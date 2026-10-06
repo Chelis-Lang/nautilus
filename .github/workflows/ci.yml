@@ -15,8 +15,8 @@ env:
   # Audit-only mirror required by the shell contract. The installer resolves
   # its runtime tag and version directly from the exact pin in reef.toml; the
   # fail-fast guard and `conform audit` reject drift in this pair.
-  CHELIS_TAG: v0.18.13
-  CHELIS_VERSION: 0.18.13
+  CHELIS_TAG: v0.19.0
+  CHELIS_VERSION: 0.19.0
 
 jobs:
   pin-consistency-guard:
@@ -35,7 +35,7 @@ jobs:
       - name: Install reef-pinned Chelis
         uses: ./.github/actions/install-chelis
         with:
-          gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+          gh-token: ${{ github.token }}
 
       - name: Audit shell conformance and workflow pins
         run: chelis reef conform audit --explain
@@ -120,13 +120,19 @@ jobs:
         id: chelis
         uses: ./.github/actions/install-chelis
         with:
-          gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+          gh-token: ${{ github.token }}
 
       - name: Check all Chelis source formatting
         run: git ls-files -z '*.ch' | xargs -0 -n1 chelis fmt --check
 
       - name: Lint the repository tree
         run: chelis lint --check .
+
+      - name: Evaluate shipped examples
+        run: |
+          for example in src/example*.ch; do
+            chelis eval --file "$example"
+          done
 
       # chelis reef build type-checks the whole package: any src file that
       # fails type-checking or has unresolved imports fails the build. The
@@ -194,7 +200,7 @@ jobs:
         id: chelis
         uses: ./.github/actions/install-chelis
         with:
-          gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+          gh-token: ${{ github.token }}
 
       - name: chelis test (node-local parallel)
         # --suite-timeout is deliberately left at its stock default. Raising it
@@ -240,7 +246,7 @@ jobs:
         id: chelis
         uses: ./.github/actions/install-chelis
         with:
-          gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+          gh-token: ${{ github.token }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v8.1.0
@@ -272,7 +278,7 @@ jobs:
         uses: ./.github/actions/install-chelis
         with:
           platform: darwin-arm64
-          gh-token: ${{ secrets.CHELIS_RELEASE_TOKEN }}
+          gh-token: ${{ github.token }}
 
       - name: chelis reef build (proof-of-life)
         run: chelis reef build

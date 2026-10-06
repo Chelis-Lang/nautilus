@@ -1,11 +1,6 @@
 module Nautilus.Distance
 import Nautilus.LinAlg (l2_norm_vec, inner_product, matvec)
 export (squared_euclidean, euclidean, manhattan, chebyshev, cosine_similarity, cosine_distance, mahalanobis_squared, mahalanobis)
--- chelis:provenance/v1 authority
--- id = NAUT-MOD-DISTANCE
--- kind = behavioral
--- scopes = nautilus
--- statement = Nautilus.Distance MUST provide the distance-metric surface listed in the module support table.
 def d_abs_f32(x: f32) -> f32 = if lt(x, cast(0.0, f32)) then neg(x) else x
 def d_max_f32(a: f32, b: f32) -> f32 = if gt(a, b) then a else b
 def squared_euclidean[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> f32 = {

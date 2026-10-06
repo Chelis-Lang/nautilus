@@ -1,14 +1,7 @@
 module Nautilus.Stats
 import Nautilus.Distributions (chi_squared_cdf)
 export (mean_vec, variance_vec, std_vec, skewness_vec, kurtosis_vec, median_vec, covariance_scalar, correlation_scalar, min_vec, max_vec, range_vec, quantile_vec, percentile_vec, trimmed_mean_vec, rank_vec, zscore_vec, bonferroni_adjust, stat_holm_adjust, benjamini_hochberg_adjust, fdr_adjust, likelihood_ratio_stat, likelihood_ratio_p_value, covariance_2x2, correlation_2x2, covariance_matrix_2, correlation_matrix_2, covariance_matrix, correlation_matrix)
--- chelis:provenance/v1 authority
--- id = NAUT-MOD-STATS
--- kind = behavioral
--- scopes = nautilus
--- statement = Nautilus.Stats MUST provide the descriptive-statistics surface listed in the module support table.
 def zero_f() -> f32 = cast(0.0, f32)
--- chelis:provenance/v1 binding
--- record = blake3-256:d68b13e3a8466c421ba48e840a87cea11268bc08c074df3a15add39cfb1f000d
 def one_f() -> f32 = cast(1.0, f32)
 def two_f() -> f32 = cast(2.0, f32)
 def three_f() -> f32 = cast(3.0, f32)
@@ -94,7 +87,7 @@ def median_vec[n](v: &tensor[n, f32]) -> f32 = {
     take_even = is_odd |> not |> and(or(eq(i, lo_idx), eq(i, hi_idx)))
     if take_odd then x else if take_even then add(acc, x) else acc
   }, zero_f(), enum_lst)
-  if is_odd then picked else cast(0.5, f32) |> mul(picked)
+  if is_odd then picked else (cast(0.5, f32) |> mul(picked))
 }
 def covariance_scalar[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: i64) -> f32 = {
   n_i = numel(a)
@@ -176,7 +169,7 @@ def stats_rank_one[n](sample: &tensor[n, f32], x: f32) -> f32 = {
     (below, tied)
   }, (zero_f(), zero_f()), to_list(sample))
   half = cast(0.5, f32)
-  counts.0 |> add(one_f()) |> add(mul(half, sub(counts.1, one_f())))
+  (counts.0) |> add(one_f()) |> add(mul(half, sub(counts.1, one_f())))
 }
 def rank_vec[n](v: &tensor[n, f32]) -> tensor[n, f32] = to_tensor(map(fn (x: f32) -> stats_rank_one(v, x), to_list(v)))
 def zscore_vec[n](v: &tensor[n, f32], ddof: i64) -> tensor[n, f32] = {

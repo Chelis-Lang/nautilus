@@ -54,7 +54,7 @@ lm_scalar_nparam(
 `model(theta, x)` predicts the `m` observations. The fitter forms
 `J^T J + 0.01 I`, solves the damped normal equations with conjugate gradient,
 and updates the `n` parameters. It runs exactly `max_iters` iterations;
-`tol` is currently unused and does not stop iterations early.
+`tol` is unused and does not stop iterations early.
 
 The Jacobian uses forward differences with `eps=1e-5`. The fitter does
 not differentiate through the full optimization loop.

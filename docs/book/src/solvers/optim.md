@@ -96,7 +96,7 @@ def find_min_newton() -> f32 =
   returned as a minimiser however it got there -- including when a
   gradient that is zero everywhere makes `+-inf` satisfy the convergence
   test outright.
-- **An overflowing `ddf` near a minimiser is the one case this loses.**
+- **An overflowing `ddf` near a minimiser can return NaN.**
   A stall is rejected when its curvature is infinite but accepted when it
   is merely huge, and finiteness is the only discriminator the method has
   at a stall -- not a claim that `1e30` is better evidence than `+inf`.
@@ -105,11 +105,10 @@ def find_min_newton() -> f32 =
   `(x^2-2)^2` from `x0 = 1.2` stalls exactly *at* `sqrt(2.0f32)` with a
   gradient of `-6.74e-7` and a step of `-4.2e-8`), and accepting every
   stall returns the starting point whenever `ddf` is infinite, which is
-  the defect this exists to fix. What is lost in the middle is a point
-  near a minimiser whose curvature has overflowed to `+inf`: NaN, where
-  the previous behaviour returned the point. **The escape is a `tol`
-  above `|df(x)|` at that point, so the convergence test fires instead
-  -- and it is not always available.** One ulp above the minimiser of
+  the defect this exists to fix. A point near a minimiser whose curvature
+  has overflowed to `+inf` returns NaN. **A `tol` above `|df(x)|` at that
+  point enters the convergence test, but a useful tolerance may not exist.**
+  One ulp above the minimiser of
   `(x-3)^2` the gradient is `4.8e-7`, so `tol = 1e-6` recovers it and
   `tol = 1e-9` does not. For `2e38*(x-3)^2`, whose `ddf = 4e38`
   overflows f32 while `df = 9.5e31` there does not, no tolerance
@@ -117,15 +116,11 @@ def find_min_newton() -> f32 =
   tolerance, because the sign test rejects it at the converged exit too.
   Scale the objective so its second derivative is representable, or use
   `brent_minimize`, which needs no derivatives.
-- **A curvature below the 0.01 floor is now rejected at a stall as well
-  as at convergence, and no tolerance recovers that either.** This is
-  the same flat-minimum rejection the floor has always made, applied
-  uniformly: before, a tolerance small enough to reach the stall
-  bypassed it. `3.1e-4*(x^2-2)^2` with its own correct derivatives
+- **A curvature below the 0.01 floor is rejected at a stall and at
+  convergence, regardless of tolerance.** `3.1e-4*(x^2-2)^2` with its own correct derivatives
   stalls at `sqrt(2.0f32)` with a curvature of `0.00496` and a gradient
-  of `-2.09e-10`, so `tol = 1e-10` and `tol = 0` now return NaN where
-  they returned the minimiser, and `tol = 1e-6` returned NaN before and
-  after. Use `brent_minimize` or `golden_section_search` for flat
+  of `-2.09e-10`, so `tol = 1e-10`, `tol = 0`, and `tol = 1e-6` return NaN.
+  Use `brent_minimize` or `golden_section_search` for flat
   targets, as the floor's own note says.
 - **The method does not check that `ddf` is the derivative of `df`.**
   When they disagree the step comes from a curvature the objective does

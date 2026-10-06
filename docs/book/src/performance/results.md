@@ -24,6 +24,6 @@ measure the complete function as well as the surrounding expression.
 - Measure both small and representative large inputs. The fastest choice
   can change when dispatch overhead stops dominating the work.
 
-The [benchmark record](https://github.com/Chelis-Lang/nautilus/blob/main/docs/benchmark_findings.md)
+The [archived benchmark record](https://github.com/Chelis-Lang/nautilus/blob/main/docs/archive/benchmark_findings.md)
 contains measured configurations and results. Those measurements are not a
 performance promise for this release or for other hardware.

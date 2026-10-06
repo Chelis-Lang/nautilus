@@ -8,6 +8,16 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Build the next Nautilus package with Chelis 0.19.0. Group pipes where they
+  appear in conditional expressions, keep the shell conformance material at
+  the compiler pin, and update the runnable documentation. The private Buoy
+  provenance adapter and its stale receipts are retired; executable tests,
+  numerical parity, and release artifact checks remain the validation gates.
+
+## [0.7.48] - 2026-10-06
+
+### Changed
+
 - Prepare Nautilus 0.7.48 on Chelis 0.18.13. `Nautilus.Special` now restricts
   its generic precision to `{f32, f64}`, rejecting f16 and bf16 at checking.
   `Nautilus.Rolling` inlines four `Option` helper bodies after Chelis fixed

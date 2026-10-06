@@ -1,4 +1,0 @@
-[[oracle]]
-id = "FIX-PASS"
-program = "builtin:pass"
-timeout_ms = 1000

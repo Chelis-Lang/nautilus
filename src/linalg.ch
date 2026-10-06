@@ -1,13 +1,6 @@
 module Nautilus.LinAlg
 export (transpose, matmul_wrap, gram, aat, diag, trace_mat, trace_scalar, l2_norm_vec, inner_product, frobenius_sq, frobenius_norm, scale_vec, matvec, vecmat, det_2x2, det_3x3, la_vec_add, la_vec_sub, la_vec_saxpy, la_basis_n_f32, la_zeros_mat_like, la_tridiag_solve, cg_solve, inv_2x2, inv_3x3, solve_2x2, solve_3x3, eig_2x2_real, cholesky_2x2, cholesky_n, lu_solve, qr_decompose, svd_n, eig_n)
--- chelis:provenance/v1 authority
--- id = NAUT-MOD-LINALG
--- kind = behavioral
--- scopes = nautilus
--- statement = Nautilus.LinAlg MUST provide the linear-algebra surface listed in the module support table.
 def transpose[m, n](a: &tensor[m, n, f32]) -> tensor[n, m, f32] = permute(a, 1, 0)
--- chelis:provenance/v1 binding
--- record = blake3-256:7930634eace4246ffd2bd35fdaf7020a39b5e0d7f50259a607d877a668d06596
 def matmul_wrap[m, k, n](a: &tensor[m, k, f32], b: &tensor[k, n, f32]) -> tensor[m, n, f32] = matmul(a, b)
 def gram[m, n](a: &tensor[m, n, f32]) -> tensor[n, n, f32] = {
   at = permute(a, 1, 0)
@@ -130,7 +123,7 @@ def la_qr_hh_step_r[n](a_curr: tensor[n, n, f32], j: i64) -> tensor[n, n, f32] =
   rank1 = einsum("i,j->ij", scale_vec(v_hat, cast(2.0, f32)), vt_A)
   sub(a_curr, rank1)
 }
-def la_qr_apply_steps_rec[n](a: tensor[n, n, f32], k: i64, target: i64) -> tensor[n, n, f32] = if gte(k, target) then a else a |> la_qr_hh_step_r(k) |> la_qr_apply_steps_rec(add(k, cast(1, i64)), target)
+def la_qr_apply_steps_rec[n](a: tensor[n, n, f32], k: i64, target: i64) -> tensor[n, n, f32] = if gte(k, target) then a else (a |> la_qr_hh_step_r(k) |> la_qr_apply_steps_rec(add(k, cast(1, i64)), target))
 def la_qr_hh_step_q[n](a_orig: tensor[n, n, f32], q_curr: tensor[n, n, f32], j: i64) -> tensor[n, n, f32] = {
   a_j = la_qr_apply_steps_rec(a_orig, cast(0, i64), j)
   template = diag(a_j)
