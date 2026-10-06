@@ -64,11 +64,13 @@ def normal_pdf(x: f32, mean: f32, std: f32) -> f32 = {
   denom = mul(std, sqrt_2pi_f())
   div(e, denom)
 }
-def normal_cdf(x: f32, mean: f32, std: f32) -> f32 = {
-  z = div(sub(x, mean), mul(std, sqrt_two_f()))
-  e = erf(z)
-  mul(half_f(), add(one_f(), e))
-}
+-- `standard_normal_cdf` is the Chelis builtin `Phi`, an erfc-based graph with a
+-- Veltkamp/Dekker correction for the rounding of `-x/sqrt(2)`. The previous
+-- spelling `0.5 * (1 + erf(z))` cancelled as `erf(z)` approached `-1`: its
+-- absolute error was about `0.5 * ulp(1.0)` however accurate `erf` was, so it
+-- returned exactly `0.0` for every standardized point below about `-6` and
+-- carried no significant digits below about `-5.3`.
+def normal_cdf(x: f32, mean: f32, std: f32) -> f32 = standard_normal_cdf(div(sub(x, mean), std))
 def normal_inv_cdf(q: f32, mean: f32, std: f32) -> f32 =
   if or(lt(q, zero_f()), gt(q, one_f())) then nan_d() else if lte(q, zero_f()) then neg(pos_inf_d()) else if gte(q, one_f()) then pos_inf_d() else {
     two_q_minus_one = sub(mul(two_f(), q), one_f())
@@ -504,13 +506,12 @@ def student_t_sample[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, 
 -- option-pricing caller holding a tensor of paths can reach Phi and Phi-inverse
 -- without dropping to `List` and back, which the `*_sample` functions still do.
 def dist_lift_t[n](template: &tensor[n, f32], c: f32) -> tensor[n, f32] = insert(scalar_to_tensor(c), 0, shape(template, cast(0, i32)))
+-- [05-OP-48] admits a tensor operand and preserves its shape and dtype, so the
+-- tensor lane delegates to the same builtin as the scalar reference above.
 def normal_cdf_t[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] = {
   means = dist_lift_t(x, mean)
-  denom = dist_lift_t(x, mul(std, sqrt_two_f()))
-  halves = dist_lift_t(x, half_f())
-  ones = dist_lift_t(x, one_f())
-  z = div(sub(x, means), denom)
-  mul(halves, add(ones, erf(z)))
+  stds = dist_lift_t(x, std)
+  standard_normal_cdf(div(sub(x, means), stds))
 }
 def normal_pdf_t[n](x: &tensor[n, f32], mean: f32, std: f32) -> tensor[n, f32] = {
   means = dist_lift_t(x, mean)

@@ -28,9 +28,39 @@ def test_normal_cdf_at_nonzero_mean_is_half() -> unit ! { Test } = {
   v = normal_cdf(cast(7.5, f32), cast(7.5, f32), cast(2.0, f32))
   assert_close(v, cast(0.5, f32), cast(0.00001, f32), "N_cdf(mu;mu,sigma) = 0.5")
 }
-def test_normal_cdf_far_left_is_zero() -> unit ! { Test } = {
+-- nautilus#113: the deep left tail needs a *relative* contract. The previous
+-- `0.5 * (1 + erf(z))` spelling carried absolute error of about
+-- `0.5 * ulp(1.0)` however accurate `erf` was, so it returned exactly `0.0`
+-- below about `-6`, and an absolute tolerance near zero could not tell that
+-- apart from the true value. Every reference below is `Phi` at 40 decimal
+-- digits, rounded once to f32.
+def dist_rel_err(v: f32, ref: f32) -> f32 = div(abs(sub(v, ref)), ref)
+def test_normal_cdf_far_left_is_tiny_and_not_zero() -> unit ! { Test } = {
   v = normal_cdf(cast(-10.0, f32), cast(0.0, f32), cast(1.0, f32))
-  assert_close(v, cast(0.0, f32), cast(0.00001, f32), "N_cdf(-10;0,1) = 0")
+  _ = assert_true(gt(v, cast(0.0, f32)), "N_cdf(-10;0,1) is strictly positive")
+  assert_true(lt(dist_rel_err(v, cast(7.6198528e-24, f32)), cast(0.00001, f32)), "N_cdf(-10;0,1) = 7.6198528e-24")
+}
+def test_normal_cdf_deep_tail_keeps_significant_digits() -> unit ! { Test } = {
+  -- Each of these returned exactly zero under the cancelling form. Every
+  -- reference is Phi at the *f32* argument the function receives, not at the
+  -- decimal literal: f32(-12.6) is -12.600000381469727, and Phi there differs
+  -- from Phi(-12.6) by 57 ulp, which is 5e-6 relative and would eat half this
+  -- test's margin.
+  a = normal_cdf(cast(-6.0, f32), cast(0.0, f32), cast(1.0, f32))
+  b = normal_cdf(cast(-8.0, f32), cast(0.0, f32), cast(1.0, f32))
+  c = normal_cdf(cast(-12.6, f32), cast(0.0, f32), cast(1.0, f32))
+  _ = assert_true(lt(dist_rel_err(a, cast(9.865877e-10, f32)), cast(0.00001, f32)), "N_cdf(-6;0,1) = 9.865877e-10")
+  _ = assert_true(lt(dist_rel_err(b, cast(6.2209604e-16, f32)), cast(0.00001, f32)), "N_cdf(-8;0,1) = 6.2209604e-16")
+  assert_true(lt(dist_rel_err(c, cast(1.0557175e-36, f32)), cast(0.00001, f32)), "N_cdf(-12.6;0,1) = 1.0557175e-36")
+}
+def test_normal_cdf_shifted_tail_is_accurate_within_the_quotient_bound() -> unit ! { Test } = {
+  -- A shifted and scaled call rounds `(x-mean)/std` before `Phi` sees it, and
+  -- that error is amplified by about `w^2` in the tail, so this lane holds a
+  -- looser bound than the standardized one above. It is still about five
+  -- orders of magnitude tighter than the cancelling form, which returned zero.
+  v = normal_cdf(cast(-13.8, f32), cast(0.2, f32), cast(1.4, f32))
+  _ = assert_true(gt(v, cast(0.0, f32)), "shifted N_cdf tail is strictly positive")
+  assert_true(lt(dist_rel_err(v, cast(7.6198292e-24, f32)), cast(0.0001, f32)), "N_cdf(-13.8;0.2,1.4) = 7.6198292e-24")
 }
 def test_normal_cdf_far_right_is_one() -> unit ! { Test } = {
   v = normal_cdf(cast(10.0, f32), cast(0.0, f32), cast(1.0, f32))
@@ -525,6 +555,19 @@ def test_normal_cdf_t_matches_scalar_elementwise() -> unit ! { Test } = {
   _ = assert_close(index(ys, cast(1, i64)), normal_cdf(cast(-0.3, f32), mean, std), tol, "normal_cdf_t[1]")
   _ = assert_close(index(ys, cast(2, i64)), normal_cdf(cast(0.0, f32), mean, std), tol, "normal_cdf_t[2]")
   assert_close(index(ys, cast(3, i64)), normal_cdf(cast(1.7, f32), mean, std), tol, "normal_cdf_t[3]")
+}
+def test_normal_cdf_t_deep_tail_matches_scalar() -> unit ! { Test } = {
+  -- nautilus#113: the elementwise test above probes [-2.5, 1.7], where the
+  -- cancelling form still agreed with its own scalar reference. The contract
+  -- that distinguishes the two spellings is in the deep tail.
+  mean = cast(0.0, f32)
+  std = cast(1.0, f32)
+  xs = to_tensor([cast(-6.0, f32), cast(-8.0, f32), cast(-10.0, f32)])
+  ys = to_list(normal_cdf_t(xs, mean, std))
+  _ = assert_true(gt(index(ys, cast(2, i64)), cast(0.0, f32)), "normal_cdf_t deep tail is strictly positive")
+  _ = assert_true(lt(dist_rel_err(index(ys, cast(0, i64)), normal_cdf(cast(-6.0, f32), mean, std)), cast(1e-6, f32)), "normal_cdf_t[-6] matches scalar")
+  _ = assert_true(lt(dist_rel_err(index(ys, cast(1, i64)), normal_cdf(cast(-8.0, f32), mean, std)), cast(1e-6, f32)), "normal_cdf_t[-8] matches scalar")
+  assert_true(lt(dist_rel_err(index(ys, cast(2, i64)), normal_cdf(cast(-10.0, f32), mean, std)), cast(1e-6, f32)), "normal_cdf_t[-10] matches scalar")
 }
 def test_normal_pdf_t_matches_scalar_elementwise() -> unit ! { Test } = {
   mean = cast(0.2, f32)
