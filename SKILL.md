@@ -188,9 +188,9 @@ approximately 2.408.
   is a type error. Derive distinct children with `split_key`, `split_keys`, or
   `fold_in` for separate draws. Two fresh keys made from the same seed replay
   the same draw. The template supplies the output shape. `gamma_sample`
-  assumes `shape >= 1` but currently ignores its noise and returns a constant
-  tensor; `chi_squared_sample` and `student_t_sample` inherit that defect
-  (nautilus#84).
+  requires `shape >= 1` and assigns separate keys to each element and each
+  of its 64 candidate trials. It returns NaN for an element if every trial
+  rejects. `chi_squared_sample` and `student_t_sample` require `df >= 2`.
 - **Math builtins.** `cos`, `tan`, `atan`, `abs`, `floor`, and `ceil` are
   Chelis builtins alongside `exp`, `log`, `sin`, and `sqrt`.
 - **Fixed-size LinAlg.** `inv_2x2`, `solve_3x3`, and the other closed forms
@@ -322,14 +322,14 @@ package-version string, is the one export not listed here.
 | `gamma_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | (shape, scale) -- not (shape, rate) |
 | `gamma_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Series (gammap) + continued fraction (gammaq) |
 | `gamma_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Wilson-Hilferty init + Newton refinement |
-| `gamma_sample` | `[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]` | `alpha` | Explicit key; shape >= 1; constant output regardless of key (nautilus#84) |
+| `gamma_sample` | `[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]` | `alpha` | Explicit per-element and per-attempt keys; shape >= 1; NaN if 64 trials reject |
 | `chi_squared_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_pdf(x, df/2, 2) |
 | `chi_squared_cdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_cdf |
 | `chi_squared_inv_cdf` | `(q: f32, df: f32) -> f32` | `stable` | Via gamma_inv_cdf |
-| `chi_squared_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; constant output via gamma_sample (nautilus#84) |
+| `chi_squared_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; gamma sample with shape df/2 and scale 2; df >= 2 |
 | `student_t_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via log_gamma |
 | `student_t_cdf` | `(t: f32, df: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
-| `student_t_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; normal divided by constant (nautilus#84) |
+| `student_t_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; independent normal and chi-squared tensors; df >= 2 |
 | `poisson_pmf` | `(k: f32, lambda: f32) -> f32` | `stable` | k as f32 (integer-valued), discrete PMF |
 | `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | `stable` | Via gamma_cdf complement |
 | `binomial_pmf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | k, n as f32 (integer-valued), discrete PMF |

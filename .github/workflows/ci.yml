@@ -214,13 +214,15 @@ jobs:
       - name: Nautilus.Rolling pandas parity
         run: python3 scripts/check_rolling_parity.py
 
-      # The only `chelis build` in this repository. `chelis reef build` does
-      # not enter host lowering, so without this step a module can pass every
+      # `chelis reef build` does not enter host lowering, so a module can pass every
       # other gate while no consumer can compile against it (nautilus#70). The
       # second leg rebuilds the package and installs it into a throwaway
       # CHELIS_REEF_HOME, so it never writes the runner's shared store.
       - name: Nautilus.Rolling C lane
         run: python3 scripts/check_rolling_c_lane.py
+
+      - name: Gamma-family sampling C parity
+        run: python3 scripts/check_gamma_sampling_c_lane.py
 
       # Shell contract §5: blockers must keep failing with their pinned
       # diagnostic. A pass is FIX-DETECTED and fails until de-narrowed.

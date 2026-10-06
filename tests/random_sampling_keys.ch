@@ -45,3 +45,27 @@ def test_keyed_families_preserve_three_element_shape() -> unit ! { Test } = {
   _ = assert_true(eq(numel(c), 3i64), "chi-squared output keeps template extent")
   assert_true(eq(numel(t), 3i64), "Student-t output keeps template extent")
 }
+def test_gamma_replay_and_independent_elements() -> unit ! { Test } = {
+  a = gamma_sample(key_from_seed(13i64), sample_template_three(), 2.0f32, 1.0f32)
+  b = gamma_sample(key_from_seed(13i64), sample_template_three(), 2.0f32, 1.0f32)
+  aa = to_list(a)
+  bb = to_list(b)
+  _ = assert_true(eq(aa, bb), "a fixed gamma key replays all elements")
+  _ = assert_true(neq(index(aa, 0i64), index(aa, 1i64)), "gamma elements 0 and 1 use separate trials")
+  assert_true(neq(index(aa, 1i64), index(aa, 2i64)), "gamma elements 1 and 2 use separate trials")
+}
+def test_chi_squared_uses_independent_gamma_elements() -> unit ! { Test } = {
+  a = chi_squared_sample(key_from_seed(33i64), sample_template_three(), 4.0f32)
+  aa = to_list(a)
+  _ = assert_true(neq(index(aa, 0i64), index(aa, 1i64)), "chi-squared elements 0 and 1 use separate trials")
+  assert_true(neq(index(aa, 1i64), index(aa, 2i64)), "chi-squared elements 1 and 2 use separate trials")
+}
+-- Seed 33 gives a rejected first trial at index 0 and an accepted first trial at index 1.
+-- The expected values use the key-word rule and Marsaglia-Tsang acceptance rule.
+def test_gamma_retry_does_not_redraw_an_accepted_element() -> unit ! { Test } = {
+  values = to_list(gamma_sample(key_from_seed(33i64), sample_template_three(), 2.0f32, 1.0f32))
+  first = index(values, 0i64)
+  second = index(values, 1i64)
+  _ = assert_true(lt(abs(sub(first, 0.92623144f32)), 0.00002f32), "rejected first element uses its next trial")
+  assert_true(lt(abs(sub(second, 1.2592138f32)), 0.00002f32), "accepted second element keeps its first trial")
+}

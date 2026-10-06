@@ -76,9 +76,9 @@ samples = normal_sample(key_from_seed(42i64), template, cast(0.0, f32), cast(1.0
 | Uniform | `uniform_sample` | Direct scaling of uniform variates |
 | Exponential | `exponential_sample` | Inverse CDF: -ln(u) / rate |
 | LogNormal | `lognormal_sample` | exp(normal_sample(mu, sigma)) |
-| Gamma | `gamma_sample` | Constant tensor for shape >= 1; see limits below |
-| Chi-squared | `chi_squared_sample` | Constant tensor via `gamma_sample(df/2, 2)` |
-| Student-t | `student_t_sample` | Normal draw divided by a constant; not Student-t distributed |
+| Gamma | `gamma_sample` | Per-element keyed Marsaglia-Tsang trials for shape >= 1 |
+| Chi-squared | `chi_squared_sample` | Gamma sample with shape df/2 and scale 2 for df >= 2 |
+| Student-t | `student_t_sample` | Independent normal and chi-squared draws for df >= 2 |
 
 ## Signatures
 
@@ -111,10 +111,10 @@ def student_t_sample[n](k: key, template: tensor[n, f32], df: f32)
   uniform variates. It is not part of the Nautilus public API.
 - `normal_sample` derives two child keys internally, one per Box-Muller
   uniform draw.
-- `gamma_sample` uses shape >= 1. For finite shape >= 1 and positive
-  finite scale, every output element equals `(shape - 1/3) * scale`
-  regardless of key. It does not sample a gamma distribution.
-- `chi_squared_sample` and `student_t_sample` depend on `gamma_sample`.
-  For df >= 2, the former is constant and the latter divides a normal
-  draw by a constant. Neither samples its stated distribution. See
-  [nautilus#84](https://github.com/Chelis-Lang/nautilus/issues/84).
+- `gamma_sample` supports finite shape >= 1 and positive finite scale.
+  It derives a key for each element and 64 independent candidate keys per
+  element. Each element takes its first accepted candidate. An element
+  returns NaN if all 64 candidates reject.
+- `chi_squared_sample` and `student_t_sample` require df >= 2 because
+  they use `gamma_sample(df/2, 2)`. They inherit its rare exhausted-trial
+  NaN result.

@@ -25,10 +25,10 @@ Returns 0 at q=0, +inf at q=1, NaN outside [0,1].
 
 **`gamma_sample[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]`**
 
-For finite shape >= 1 and positive finite scale, every output element
-equals `(shape - 1/3) * scale`, regardless of the key. It does not sample
-a gamma distribution ([nautilus#84](https://github.com/Chelis-Lang/nautilus/issues/84)).
-See [Sampling limits](sampling.md#sampling-limits).
+For finite shape >= 1 and positive finite scale, the sampler gives each
+element a separate key and selects its first accepted Marsaglia-Tsang
+candidate. It tries at most 64 candidates per element and returns NaN at
+an element if all 64 reject. See [Sampling limits](sampling.md#sampling-limits).
 
 ```chelis
 module Nautilus.BookGammaFamily
@@ -59,8 +59,8 @@ shape = df/2 and scale = 2.
 **`chi_squared_sample[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]`**
 
 `chi2_critical` in the module above shows `chi_squared_cdf` in use.
-The sampler uses `gamma_sample` with shape df/2. For df >= 2 its output
-is constant, so it does not sample a chi-squared distribution.
+The sampler uses `gamma_sample` with shape df/2 and scale 2, so `df >= 2`
+is required. It uses separate keyed gamma trials for each element.
 
 ## Student's t distribution
 
@@ -75,8 +75,9 @@ a = df/2, b = 0.5, x = df/(df + t^2). Returns NaN if df <= 0.
 
 **`student_t_sample[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]`**
 
-The sampler divides a normal draw by the constant chi-squared term for
-df >= 2. Its output does not have a Student-t distribution.
+The sampler divides each normal draw by the square root of its corresponding
+chi-squared draw divided by `df`. It requires `df >= 2` and returns NaN
+at an element if its chi-squared sampler exhausts all 64 gamma trials.
 
 ```chelis-fragment
 import Nautilus.Distributions (student_t_pdf, student_t_cdf)

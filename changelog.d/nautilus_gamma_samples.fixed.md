@@ -1,0 +1,1 @@
+Gamma, chi-squared, and Student-t sampling now use independent keyed gamma trials for each tensor element. A gamma element returns NaN if all 64 rejection candidates fail, instead of returning a synthetic value.

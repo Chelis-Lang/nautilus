@@ -35,7 +35,8 @@ cp hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
 | Blocked probes | `chelis test tests_blocked/ --expect blocked` | Reproducers of open upstream compiler issues. Each must keep failing the way its `.expect` file says. See [`tests_blocked/README.md`](../tests_blocked/README.md) |
 | SciPy parity | `uv run --project parity --frozen python parity/run_parity.py --strict` | Selected Special and Distributions functions against reviewed SciPy/NumPy goldens. See [`parity/README.md`](../parity/README.md) |
 | Rolling pandas parity | `uv run --no-project --python 3.12 python scripts/check_rolling_parity.py` | `Nautilus.Rolling`'s warm-up and `min_periods` against reviewed pandas goldens. Needs the pinned compiler but not pandas; success is `ROLLING PARITY: PASS` |
-| Rolling C lane | `uv run --no-project --python 3.12 python scripts/check_rolling_c_lane.py` | Builds all 34 `Nautilus.Rolling` exports with `chelis build` twice: in-package plus the emitted clang line, and from a separate package in a throwaway Reef store (`--in-package-only` skips the second). The only `chelis build` in the repo; success is `ROLLING C LANE: PASS` |
+| Rolling C lane | `uv run --no-project --python 3.12 python scripts/check_rolling_c_lane.py` | Builds all 34 `Nautilus.Rolling` exports with `chelis build` twice: in-package plus the emitted clang line, and from a separate package in a throwaway Reef store (`--in-package-only` skips the second). Success is `ROLLING C LANE: PASS` |
+| Gamma-family C parity | `uv run --no-project --python 3.12 python scripts/check_gamma_sampling_c_lane.py` | Builds a keyed gamma, chi-squared, and Student-t consumer and requires its compiled C output to match `chelis eval` exactly; success is `GAMMA SAMPLING C LANE: PASS` |
 
 `tests/` must never contain Python, and SciPy, NumPy, or other oracle libraries
 may be imported only under `parity/`. CI enforces both rules.
@@ -62,6 +63,7 @@ uv run --no-project --python 3.12 python -m unittest discover -s scripts -p 'tes
 uv run --no-project --python 3.12 python scripts/check_rolling_tensor_parity.py
 uv run --no-project --python 3.12 python scripts/check_rolling_parity.py
 uv run --no-project --python 3.12 python scripts/check_rolling_c_lane.py
+uv run --no-project --python 3.12 python scripts/check_gamma_sampling_c_lane.py
 chelis reef conform audit
 ```
 

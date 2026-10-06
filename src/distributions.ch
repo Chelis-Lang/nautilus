@@ -445,45 +445,46 @@ def chi_squared_inv_cdf(q: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_inv_cdf(q, half_df, two_f())
 }
-def gamma_sample_ge1_try[n](k: key, template: tensor[n, f32], d: f32, c: f32, attempts: i64) -> tensor[n, f32] = {
-  zero_i = cast(0, i64)
-  one_i = cast(1, i64)
+-- Each mapped element owns one key; its 64 candidates use separate child keys.
+-- NaN marks a rejected candidate for first-accept selection below.
+def gamma_candidate(k: key, d: f32, c: f32, scale: f32) -> f32 = {
   ks = split_key(k)
-  kd = split_key(ks.0)
-  z_t = normal_sample(kd.0, copy(template), zero_f(), one_f())
-  u_t = uniform_like(kd.1, copy(template), 1e-7, 1.0)
-  z_list = to_list(z_t)
-  u_list = to_list(u_t)
-  head_z = fold(fn (acc: f32, x: f32) -> acc, zero_f(), z_list)
-  head_u = fold(fn (acc: f32, x: f32) -> acc, zero_f(), u_list)
-  v_base = add(one_f(), mul(c, head_z))
+  normal_keys = split_key(ks.0)
+  u1 = tensor_to_scalar(uniform_like(normal_keys.0, scalar_to_tensor(0.0f32), 1e-7f32, 1.0f32))
+  u2 = tensor_to_scalar(uniform_like(normal_keys.1, scalar_to_tensor(0.0f32), 0.0f32, 1.0f32))
+  u = tensor_to_scalar(uniform_like(ks.1, scalar_to_tensor(0.0f32), 1e-7f32, 1.0f32))
+  radius = sqrt(neg(mul(2.0f32, log(u1))))
+  angle = sub(1.5707964f32, mul(6.2831855f32, u2))
+  z = mul(radius, sin(angle))
+  v_base = add(1.0f32, mul(c, z))
   v = mul(mul(v_base, v_base), v_base)
-  if lte(attempts, zero_i) then {
-    result_val = mul(d, if gt(v, zero_f()) then v else one_f())
-    to_tensor(map(fn (x: f32) -> result_val, to_list(copy(template))))
-  } else if lte(v, zero_f()) then gamma_sample_ge1_try(ks.1, template, d, c, sub(attempts, one_i)) else {
-    lv = log(v)
-    z2 = mul(head_z, head_z)
-    half_z2 = mul(half_f(), z2)
-    crit = sub(sub(one_f(), mul(cast(0.0331, f32), mul(z2, z2))), half_z2)
-    lu = log(head_u)
-    crit2 = add(half_z2, mul(d, sub(sub(one_f(), v), lv)))
-    accept_fast = lt(head_u, crit)
-    accept_slow = lt(lu, crit2)
-    accept = or(accept_fast, accept_slow)
-    if accept then {
-      result_val = mul(d, v)
-      to_tensor(map(fn (x: f32) -> result_val, to_list(template)))
-    } else gamma_sample_ge1_try(ks.1, template, d, c, sub(attempts, one_i))
-  }
+  valid = gt(v_base, 0.0f32)
+  v_safe = if valid then v else 1.0f32
+  z2 = mul(z, z)
+  z4 = mul(z2, z2)
+  fast = lt(u, sub(1.0f32, mul(0.0331f32, z4)))
+  slow = lt(log(u), add(mul(0.5f32, z2), mul(d, add(sub(1.0f32, v_safe), log(v_safe)))))
+  if and(valid, or(fast, slow)) then mul(mul(d, v_safe), scale) else div(0.0f32, 0.0f32)
+}
+def gamma_candidates(k: key, d: f32, c: f32, scale: f32) -> tensor[64, f32] = vmap(gamma_candidate)(split_keys(k, 64i64), d, c, scale)
+def gamma_first_accepted[n](values: tensor[n, 64, f32]) -> tensor[n, f32] = {
+  accepted = eq(values, values)
+  accepted_i = cast(accepted, i64)
+  first = and(accepted, eq(cumsum(accepted_i, 1i32), accepted_i))
+  zero_matrix = sub(cast(accepted, f32), cast(accepted, f32))
+  selected = sum(where(first, values, zero_matrix), 1i32)
+  accepted_count = count(accepted, 1i32)
+  zero_vector = sub(accepted_count, accepted_count)
+  has_value = gt(accepted_count, zero_vector)
+  nan_vector = div(cast(zero_vector, f32), cast(zero_vector, f32))
+  where(has_value, selected, nan_vector)
 }
 def gamma_sample[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32] = {
-  d = sub(shape, cast(0.3333333333, f32))
-  inv_3 = cast(0.3333333333, f32)
-  sqrt_d = sqrt(d)
-  c = div(inv_3, sqrt_d)
-  raw = gamma_sample_ge1_try(k, template, d, c, cast(64, i64))
-  to_tensor(map(fn (x: f32) -> mul(x, scale), to_list(raw)))
+  d = sub(shape, 0.3333333333f32)
+  c = div(0.3333333333f32, sqrt(d))
+  -- Keep split_keys inline: its key axis is consumed directly by vmap.
+  values = vmap(gamma_candidates)(split_keys(k, numel(template)), d, c, scale)
+  gamma_first_accepted(values)
 }
 def chi_squared_sample[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32] = {
   half_df = mul(half_f(), df)
