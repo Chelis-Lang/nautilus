@@ -1,10 +1,10 @@
 # Nautilus tests/
 
-Native Chelis identity / structural tests, run by `chelis test tests/`.
-This is the **internal-correctness gate** on every PR.
+Native Chelis identity and structural tests run with `chelis test tests/`.
+This is the internal correctness gate on every PR.
 
-scipy parity lives in `parity/`, NOT here. Anything Python under `tests/`
-is a hard-rule violation (CI Guard 1).
+SciPy parity lives in `parity/`. Python files under `tests/` fail the CI
+hard-rule guard.
 
 ---
 
@@ -15,11 +15,12 @@ CI runs the positive and expected-failure suites on one runner:
 ```text
 chelis test tests/ --jobs auto
 chelis test tests_neg/ --expect neg
-chelis test tests_blocked/ --expect blocked
 ```
 
-The blocked suite must continue to fail with its pinned diagnostics. A
-FIX-DETECTED or DRIFTED verdict fails CI and requires immediate triage; see
+When `tests_blocked/` contains `.ch` probes, CI also runs
+`chelis test tests_blocked/ --expect blocked`. The directory is empty at this
+pin, so running that command exits nonzero. A populated blocked suite must
+keep its pinned diagnostics; FIX-DETECTED or DRIFTED requires triage. See
 [`tests_blocked/README.md`](../tests_blocked/README.md).
 
 Use the serial fallback only for debugging order-dependent failures:
@@ -37,8 +38,7 @@ It must not build Chelis from source.
 
 `chelis test` supports node-local file parallelism via `--jobs auto`.
 There is still fixed compile/setup cost per file, so file count matters
-for runtime even though CI no longer shards files across separate
-runners.
+for runtime. CI parallelizes files within a runner.
 
 The practical consequence:
 
@@ -80,7 +80,7 @@ already has 30 tests.
 
 5. **Per-file overhead still matters.** See the section above. Add tests
    to existing files unless the import surface materially changes
-   (e.g., bringing in heavy LinAlg factorizations into a currently-cheap
+   (e.g., bringing in heavy LinAlg factorizations into a low-cost
    file).
 
 6. **CI parallelizes locally at the file boundary.** Do not add custom
@@ -88,10 +88,10 @@ already has 30 tests.
    `chelis test tests/ --jobs auto`; use `--jobs 1` only as a debugging
    fallback. Don't structure tests assuming serial execution.
 
-7. **The legacy-harness sunset is complete.** Native `tests/*.ch`,
-   `tests_neg/`, and the single checked-golden `parity/` project are the
-   correctness gates. Do not recreate a second Python numerical harness or
-   duplicate golden corpus.
+7. **Use the existing correctness gates.** Native `tests/*.ch`,
+   `tests_neg/`, and the checked-golden `parity/` project cover the positive,
+   expected-failure, and external-oracle cases. Do not duplicate the golden
+   corpus in another harness.
 
 8. **Trivial tests are deleted on sight.** `assert_true(true, ...)`,
    `assert_close(x, x, tol)`, `assert_eq(constant, constant, label)`,
@@ -116,23 +116,21 @@ already has 30 tests.
    asserts:
 
    ```chelis
-   def test_normal_pdf_three_invariants() -> unit ! { Test } = {
-     -- All three test the same property (peak shape) at different x.
-     _ = assert_close(normal_pdf(cast(0.0, f32), m, s), expected_at_0,
-                      tol, "peak at mean")
-     _ = assert_close(normal_pdf(cast(-x, f32), m, s),
-                      normal_pdf(cast(x, f32), m, s),
-                      tol, "symmetric")
-     assert_true(gt(normal_pdf(m, m, s), normal_pdf(m_plus_3sd, m, s)),
-                 "peak > tail")
+   module Nautilus.Tests.ReadmeExample
+   import Nautilus.Distributions (normal_pdf)
+   import Std.Test (assert_close)
+   def test_normal_pdf_symmetry() -> unit ! { Test } = {
+     left_half = normal_pdf(cast(-0.5, f32), cast(0.0, f32), cast(1.0, f32))
+     right_half = normal_pdf(cast(0.5, f32), cast(0.0, f32), cast(1.0, f32))
+     _ = assert_close(left_half, right_half, cast(1e-7, f32), "symmetric at 0.5")
+     left_two = normal_pdf(cast(-2.0, f32), cast(0.0, f32), cast(1.0, f32))
+     right_two = normal_pdf(cast(2.0, f32), cast(0.0, f32), cast(1.0, f32))
+     assert_close(left_two, right_two, cast(1e-7, f32), "symmetric at 2")
    }
    ```
 
-   The v0.2.4 chelis test parser quirk: multiple bare `assert_*` calls
-   in one block trigger "function arity mismatch: expected 2 args,
-   got 3". Bind every leading assert as `_ = assert_*(...)` and leave
-   only the LAST one bare. (Documented in the file headers of every
-   test file.)
+   Bind leading assertions as `_ = assert_*(...)` and leave only the
+   final assertion bare in a multi-assert block.
 
 3. **Run locally** before pushing:
 
@@ -165,15 +163,14 @@ When you do:
 
 ---
 
-## Runtime constraints (chelis 0.18.1 release)
+## Runtime constraints
 
-The `chelis test` host runtime supports `matmul`, `permute`, and `sum`
-as of chelis v0.2.5. All `Nautilus.LinAlg` exports are testable
-natively. Earlier upstream limitations and their fix history are in
-`docs/UPSTREAM_BUGS.md`.
+The pinned `chelis test` host runtime supports `matmul`, `permute`, and
+`sum`. `Nautilus.LinAlg` exports are testable natively. See
+[`docs/UPSTREAM_BUGS.md`](../docs/UPSTREAM_BUGS.md) for active compiler
+limitations.
 
-Known quirks (still observed under the current pin; no workaround
-needed in tests/):
+Test conventions at the pinned compiler:
 
 - The chelis test parser requires `_ = assert_*(...)` for all but the
   last assert in a multi-assert block (see point 2 of "How to add a
