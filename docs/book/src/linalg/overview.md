@@ -52,8 +52,8 @@ def residual_norm[n](a: tensor[n, n, f32], x: tensor[n, f32], b: tensor[n, f32])
 - All inputs and outputs are `f32` tensors. Do not pass `f64`.
 - Most LinAlg functions borrow their tensor arguments (`&tensor` in the
   signature), so one tensor can feed several calls without `copy`.
-  `cg_solve` and `la_tridiag_solve` take ownership; pass `copy(t)` if you
-  still need `t` afterwards.
+  `cg_solve` and `la_tridiag_solve` take ownership. If the argument is a
+  borrowed `&tensor`, use `copy(t)` to supply an owned value.
 - The closed-form inverses use the Cayley-Hamilton theorem, not Cramer's
   rule. They return NaN-filled matrices when the determinant is near zero
   (threshold: 1e-30).
