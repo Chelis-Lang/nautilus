@@ -44,10 +44,35 @@ Two cases merit separate guidance:
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
-| `normal_cdf` | f32 arithmetic | Uses Chelis `erf` |
+| `normal_cdf` | ~1.5 ulp standardized; see the tail note below | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
 
 ## Known precision issues
+
+### The normal CDF's left tail depends on how you parameterise it
+
+`normal_cdf` and `normal_cdf_t` call Chelis's `standard_normal_cdf` on the
+standardized point `w = (x - mean) / std`. The builtin holds about 1.5 units in
+the last place, but Nautilus rounds `w` before the builtin sees it, and §12.3 of
+the Chelis `correctly_rounded_math` design note shows a relative error `d` in
+that argument is amplified to about `w^2 d` in `Phi`. So the error of these
+three-argument entry points depends on whether the quotient is exact:
+
+| parameterisation | worst measured, `w` in [-12.6, -3] |
+|---|---|
+| `mean = 0`, `std = 1` | 1.7 ulp |
+| exactly representable shift, power-of-two scale | 1.7 ulp |
+| `mean = 0.2`, `std = 1.4` | 79 ulp |
+
+Measured at f32 against mpmath at 60 decimal digits, with the reference taken on
+the exact real quotient of the f32 inputs. The residual is inherent to the
+`(x, mean, std)` signature, not to the builtin: standardize first if you need
+the full figure.
+
+For scale, the previous `0.5 * (1 + erf(z))` spelling returned **exactly zero**
+for every `w <= -6` at all three parameterisations, because its absolute error
+was about `0.5 * ulp(1.0)` however accurate `erf` was.
+
 
 ### Bessel function zeros
 

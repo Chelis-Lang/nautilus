@@ -21,7 +21,8 @@ p = normal_pdf(cast(0.0, f32), cast(0.0, f32), cast(1.0, f32))  -- approximately
 
 **Signature:** `(x: f32, mean: f32, std: f32) -> f32`
 
-Computes P(X <= x) via the error function: 0.5 * (1 + erf(z / sqrt(2)))
+Standardizes to z = (x - mean) / std and calls the Chelis
+`standard_normal_cdf` builtin, the erfc-based `Phi` graph.
 where z = (x - mean) / std.
 
 ```chelis-fragment
