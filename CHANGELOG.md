@@ -27,6 +27,11 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   provenance adapter and its stale receipts are retired; executable tests,
   numerical parity, and release artifact checks remain the validation gates.
 
+- Build Nautilus 0.7.50 with Chelis 0.19.1, a compiler patch release with no
+  intended language or standard-library change. The pinned upstream
+  limitations stay the same. The Greeks guide now shows Gamma from nested
+  `grad`, which the evaluator computes correctly.
+
 ## [0.7.48] - 2026-10-06
 
 ### Changed

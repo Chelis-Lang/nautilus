@@ -3,8 +3,8 @@
 This file records the upstream Chelis compiler issues that currently shape
 Nautilus: what each one blocks, how Nautilus works around it, and when to check
 it again. It describes the state at the current **pin**, the exact compiler
-release that `reef.toml` requires. Nautilus pins `chelis 0.19.0`
-(`compiler = "=0.19.0"`).
+release that `reef.toml` requires. Nautilus pins `chelis 0.19.1`
+(`compiler = "=0.19.1"`).
 
 ## How this file works
 
@@ -39,7 +39,7 @@ blocked` reports each probe as OK (still fails as pinned), FIX-DETECTED (now
 passes, so the upstream fix has landed and the workaround should be removed),
 or DRIFTED (fails with a different diagnostic, so the failure mode moved and
 needs investigation before the citation is reused). There are no executable
-blocked probes at the 0.19.0 pin. The remaining live entries require manual
+blocked probes at the 0.19.1 pin. The remaining live entries require manual
 probes in C host lowering or a full algorithm replacement;
 [`tests_blocked/README.md`](../tests_blocked/README.md) lists them and gives the
 recipes.
@@ -75,7 +75,7 @@ release.
       `tests/curvefit_lm_jacobian_model_wrapper.ch`, so no bounded blocked
       probe exists yet.
     - **Pinned result:** both isolated row witnesses and the shipped
-      finite-difference recovery suite pass. At Chelis 0.19.0, replacing
+      finite-difference recovery suite pass. At Chelis 0.19.1, replacing
       `lm_jcol` with seeded-output gradients leaves five scalar-path
       tests passing and fails all six multi-parameter recoveries with
       `[05-HOST-1]`: the reached model's `to_list` has no numeric IR lowering.
@@ -151,7 +151,7 @@ release.
       `[prec: Float]` conversions, and no particular mechanism should be
       inferred from them.
     - **Workaround:** none needed for the shipped match shapes.
-    - **Pinned result:** at Chelis 0.19.0, the upstream Option and ADT
+    - **Pinned result:** at Chelis 0.19.1, the upstream Option and ADT
       `match` reproducers each fail `chelis build` with `inconsistent live
       owners`; the same block-bound owner in an `if` emits and compiles.
       Manual only because `chelis test` never enters C host lowering. The
@@ -162,7 +162,7 @@ release.
 - **Float-generic downstream C consumers still require full verification** —
   `chelis#2152`
   ([Chelis-Lang/chelis#2152](https://github.com/Chelis-Lang/chelis/issues/2152)).
-    - **Pinned result:** at Chelis 0.19.0, a library exporting
+    - **Pinned result:** at Chelis 0.19.1, a library exporting
       `apply_cast[prec: Float](g: prec -> prec, x: prec)` was built and
       installed into an isolated Reef store. Separate f32 and f64 consumers
       each built and linked with `chelis build`; both executables printed
