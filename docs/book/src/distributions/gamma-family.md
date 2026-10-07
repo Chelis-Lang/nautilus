@@ -9,19 +9,26 @@ internally).
 
 Parameterized by `shape` (k) and `scale` (theta), SciPy's convention: the
 mean is `shape * scale`. Both must be positive and finite. No gamma function
-checks them, and the invalid results are not all NaN:
+checks them. An invalid value returns a misleading number, NaN, or, under
+`chelis eval` at the default 8 MB stack, stops evaluation with
+`fatal runtime error: stack overflow, aborting`:
 
 | Call | Result |
 |---|---|
 | `gamma_pdf(1, 0, 1)` or `gamma_pdf(1, -1, 1)` | `0.0` |
 | `gamma_cdf(1, 0, 1)` or `gamma_cdf(1, -1, 1)` | `1.0` |
-| `gamma_pdf(1, 2, 0)`, `gamma_pdf(1, 2, -1)`, `gamma_cdf(1, 2, 0)` | NaN |
+| `gamma_pdf(1, 2, 0)` or `gamma_pdf(1, 2, -1)` | NaN |
 | `gamma_cdf(1, 2, -1)` | `0.0` |
+| `gamma_cdf(1, 2, 0)` | stack overflow |
 | `gamma_inv_cdf(0.5, 0, 1)` | `0.0` |
 | `gamma_inv_cdf(0.5, -1, 1)` | `827180.6` |
-| `gamma_inv_cdf(0.5, 2, 0)` or `gamma_inv_cdf(0.5, 2, -1)` | NaN |
+| `gamma_inv_cdf(0.5, 2, 0)` or `gamma_inv_cdf(0.5, 2, -1)` | stack overflow |
 
-Validate computed parameters before the call.
+The stack overflows come from the incomplete-gamma helpers, which recurse
+once per series or continued-fraction term and run all 200 terms when the
+input is NaN. Each stack-overflow call in this table returns NaN when the
+stack limit is raised first with `ulimit -s 65520`. Validate computed
+parameters before the call.
 
 **`gamma_pdf(x: f32, shape: f32, scale: f32) -> f32`**
 
@@ -69,25 +76,25 @@ finite numbers there, but they are not Gamma draws.
 Both incomplete-gamma branches stop after 200 terms. That is enough for
 moderate shapes and too few for large ones, and the CDF then drifts with no
 signal. At `x = shape`, scale 1, against the exact regularized incomplete
-gamma:
+gamma, each call evaluated alone:
 
-| shape | `gamma_cdf` | exact | relative error |
-|---|---|---|---|
-| 100 | 0.5132978 | 0.5132988 | 1.9e-6 |
-| 1000 | 0.5043488 | 0.5042052 | 2.8e-4 |
-| 2000 | 0.50264823 | 0.50297355 | 6.5e-4 |
-| 20000 | 0.4219802 | 0.50094032 | 16% |
-| 30000 | 0.37090707 | 0.50076776 | 26% |
+| shape | `gamma_cdf`, default stack | with `ulimit -s 65520` | exact | relative error |
+|---|---|---|---|---|
+| 100 | 0.5132978 | 0.5132978 | 0.5132988 | 1.9e-6 |
+| 1000 | 0.5043488 | 0.5043488 | 0.5042052 | 2.8e-4 |
+| 2000 | stack overflow | 0.50264823 | 0.50297355 | 6.5e-4 |
+| 20000 | stack overflow | 0.4219802 | 0.50094032 | 16% |
+| 30000 | stack overflow | 0.37090707 | 0.50076776 | 26% |
 
 `chi_squared_cdf` and `chi_squared_sf` reach this at `df / 2`, and
 `poisson_cdf` at `k + 1`. For a chi-squared statistic with thousands of
 degrees of freedom, compare the table's error with your significance level
 before trusting the p-value.
 
-The incomplete-gamma helpers recurse once per term. Under `chelis eval`,
-a program with several large-shape calls can exhaust the default 8 MB stack
-and abort with `stack overflow`; raise the limit with `ulimit -s 65520`
-before evaluating.
+From shape 2000 up, a single `gamma_cdf` call at `x = shape` exhausts the
+default 8 MB stack under `chelis eval` and stops with a stack overflow.
+Raising the limit with `ulimit -s 65520` lets it finish, with the drifted
+values in the third column.
 
 ```chelis
 module Nautilus.BookGammaFamily

@@ -33,7 +33,7 @@ Domain: `k` a non-negative integer value, `lambda >= 0` and finite.
 |---|---|---|
 | `lambda < 0` | NaN | NaN |
 | `lambda = 0` | 1 at k = 0, else 0 | 1 for every k >= 0 |
-| `lambda` NaN | NaN | NaN |
+| `lambda` NaN | NaN | stack overflow under `chelis eval` at the default 8 MB stack; NaN after `ulimit -s 65520` |
 | `k < 0` | 0 | 0 |
 | non-integer `k` | 0 | not rounded: interpolates between the neighboring counts |
 
@@ -72,8 +72,9 @@ before reading `n` again, so a bad `n` does not produce NaN there.
   `binomial_cdf(3, 10, 0.3) = 0.6496109` and
   `binomial_cdf(4, 10, 0.3) = 0.8497317`, and is not P(X <= 3). Round a
   computed count with `floor` before the call.
-- `poisson_cdf(k, NaN)` is NaN, but `poisson_cdf(NaN, lambda)` stops
-  evaluation with `numeric trap: domain in cast_trunc at i64`. Check a
-  computed count for NaN first.
+- A NaN argument does not give a clean NaN from `poisson_cdf`:
+  `poisson_cdf(NaN, lambda)` stops evaluation with
+  `numeric trap: domain in cast_trunc at i64`, and `poisson_cdf(k, NaN)`
+  exhausts the default stack. Check computed arguments for NaN first.
 - For an upper tail, subtracting the CDF from 1 loses values below about
   6e-8. Neither family has a survival function.

@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
-"""Validate all compile-checked code examples in the mdBook.
+"""Validate the code examples in the mdBook against the pinned compiler.
 
-Walks docs/book/src/**/*.md and checks two kinds of example, each written as
-a temporary file inside src/ so reef imports resolve:
+Walks docs/book/src/**/*.md and checks two kinds of example. Each is written
+to a temporary file with a unique name inside src/, so reef imports resolve
+and no real source file is touched:
 
-- every ```chelis block (a complete module) must pass `chelis check`;
-- every ```chelis-fragment block followed directly by a ```text block is a
-  captured example: it is evaluated with `chelis eval --file` under a
-  generated module header, and its output must equal the text block exactly.
+- every ```chelis block is a complete module and must pass `chelis check`;
+- every ```text block is the captured output of the ```chelis-fragment block
+  before it (at most one short prose line, such as "`chelis eval --file`
+  prints:", may sit between them). The fragment is evaluated with
+  `chelis eval --file` under a generated module header, with the page's
+  earlier blocks in scope when it continues them, and every line of the
+  output block must appear in the evaluator's output, in order. The page may
+  omit setup lines, such as fixture bindings, that the evaluator also prints.
 
+An output block that is empty, or that does not follow a fragment, fails.
 Fragments without an output block are illustrative and are not run.
-Exit non-zero if any example fails or too few examples are found.
+Exit non-zero if any example fails or if either kind falls below its floor.
 """
 from __future__ import annotations
 
@@ -19,6 +25,8 @@ import os
 import re
 import subprocess
 import sys
+import uuid
+from dataclasses import dataclass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -30,23 +38,81 @@ from scripts.chelis_toolchain import resolve_chelis_bin
 
 
 CHELIS = resolve_chelis_bin()
-MIN_CHELIS_BLOCKS = int(os.environ.get("MIN_BOOK_CHELIS_BLOCKS", "13"))
+# Floors at the book's real counts, so a page that loses its examples fails.
+MIN_MODULES = int(os.environ.get("MIN_BOOK_MODULES", "9"))
+MIN_CAPTURED = int(os.environ.get("MIN_BOOK_CAPTURED", "35"))
+
+FENCE_OPEN = re.compile(r"^```(\S*)\s*$")
 
 
-def extract_chelis_blocks(text: str) -> list[str]:
-    """Extract ```chelis blocks but NOT ```chelis-fragment blocks."""
-    all_blocks = re.findall(r"```chelis\n(.*?)```", text, re.DOTALL)
-    fragments = set(re.findall(r"```chelis-fragment\n(.*?)```", text, re.DOTALL))
-    return [b for b in all_blocks if b not in fragments]
+@dataclass
+class Block:
+    lang: str
+    code: str
+    start: int  # line number of the opening fence, 1-based
+    end: int  # index of the closing fence line, 0-based
 
 
-def validate_block(code: str, source_file: str, index: int) -> bool:
-    mod_match = re.search(r"^module\s+Nautilus\.(\w+)", code, re.M)
-    if mod_match:
-        fname = mod_match.group(1).lower()
-    else:
-        fname = f"_book_check_{index}"
-    tmp = SRC / f"{fname}.ch"
+@dataclass
+class Captured:
+    code: str
+    expected: str
+    context: str
+    line: int
+
+
+def fenced_blocks(text: str) -> list[Block]:
+    lines = text.splitlines()
+    blocks, i = [], 0
+    while i < len(lines):
+        m = FENCE_OPEN.match(lines[i])
+        if not m:
+            i += 1
+            continue
+        j = i + 1
+        while j < len(lines) and not lines[j].startswith("```"):
+            j += 1
+        blocks.append(Block(m.group(1), "\n".join(lines[i + 1:j]) + "\n", i + 1, j))
+        i = j + 1
+    return blocks
+
+
+def module_blocks(blocks: list[Block]) -> list[Block]:
+    return [b for b in blocks if b.lang == "chelis"]
+
+
+def captured_examples(text: str, blocks: list[Block]) -> tuple[list[Captured], list[str]]:
+    """Pair every output block with its fragment; report the ones that fail to pair."""
+    lines = text.splitlines()
+    pairs, errors, earlier = [], [], []
+    for k, block in enumerate(blocks):
+        if block.lang == "text":
+            prev = blocks[k - 1] if k else None
+            between = [l for l in lines[prev.end + 1:block.start - 1] if l.strip()] if prev else []
+            if prev is None or prev.lang != "chelis-fragment" or len(between) > 1:
+                errors.append(f"line {block.start}: output block does not follow a chelis-fragment")
+            elif not block.code.strip():
+                errors.append(f"line {block.start}: output block is empty")
+            else:
+                pairs.append(Captured(prev.code, block.code, "\n".join(earlier[:-1]), block.start))
+        if block.lang in ("chelis", "chelis-fragment"):
+            earlier.append("\n".join(
+                line for line in block.code.splitlines()
+                if not re.match(r"^(module|export)\b", line)))
+    return pairs, errors
+
+
+def temp_source(stem: str) -> tuple[Path, str]:
+    """A src/ path and module name that cannot collide with a real module."""
+    tag = uuid.uuid4().hex[:12]
+    return SRC / f"{stem}{tag}.ch", f"{stem.capitalize()}{tag}"
+
+
+def validate_block(code: str, source_file: str, line: int) -> bool:
+    tmp, name = temp_source("bookcheck")
+    # Rename the module to match the unique file; the book's own name could
+    # be the name of a real src/ file.
+    code = re.sub(r"^module\s+Nautilus\.\w+", f"module Nautilus.{name}", code, count=1, flags=re.M)
     try:
         tmp.write_text(code)
         result = subprocess.run(
@@ -58,42 +124,20 @@ def validate_block(code: str, source_file: str, index: int) -> bool:
             d = json.loads(output)
             if result.returncode == 0 and d.get("score") == 1 and not d.get("errors"):
                 return True
-            print(f"  FAIL: {source_file} block {index} "
+            print(f"  FAIL: {source_file}:{line} module "
                   f"(exit={result.returncode}, score={d.get('score')}, "
                   f"errors={d.get('errors', [])}, stderr={result.stderr[:200]})")
             return False
         except json.JSONDecodeError:
-            print(f"  FAIL: {source_file} block {index}: "
+            print(f"  FAIL: {source_file}:{line} module: "
                   f"stdout={output[:300]}, stderr={result.stderr[:200]}")
             return False
     finally:
         tmp.unlink(missing_ok=True)
 
 
-BLOCK = re.compile(r"```(chelis|chelis-fragment)\n((?:(?!```).)*?)```(?:\n\n```text\n((?:(?!```).)*?)```)?", re.DOTALL)
-
-
-def extract_captured(text: str) -> list[tuple[str, str, str]]:
-    """Captured fragments as (code, expected output, page context).
-
-    A captured fragment may continue the page: it can use names that an
-    earlier block on the same page defined. The context is every earlier
-    block on the page, module and export lines dropped, so the fragment can be
-    retried in the setting the reader sees it in.
-    """
-    out, earlier = [], []
-    for m in BLOCK.finditer(text):
-        kind, code, expected = m.group(1), m.group(2), m.group(3)
-        if kind == "chelis-fragment" and expected is not None:
-            out.append((code, expected, "\n".join(earlier)))
-        earlier.append("\n".join(
-            line for line in code.splitlines()
-            if not re.match(r"^(module|export)\b", line)))
-    return out
-
-
-def run_captured(code: str, index: int) -> subprocess.CompletedProcess[str]:
-    tmp = SRC / f"bookcaptured{index}.ch"
+def run_captured(code: str) -> subprocess.CompletedProcess[str]:
+    tmp, name = temp_source("bookcaptured")
     try:
         lines, seen = [], set()
         for line in code.splitlines():
@@ -104,7 +148,7 @@ def run_captured(code: str, index: int) -> subprocess.CompletedProcess[str]:
                 continue
             seen.add(line)
             lines.append(line)
-        tmp.write_text(f"module Nautilus.BookCaptured{index}\n" + "\n".join(lines) + "\n")
+        tmp.write_text(f"module Nautilus.{name}\n" + "\n".join(lines) + "\n")
         # A page shows an excerpt, not a formatted file: format the temporary
         # copy so the style gate judges nothing the reader cannot see.
         subprocess.run([CHELIS, "fmt", "--inplace", str(tmp)],
@@ -116,21 +160,20 @@ def run_captured(code: str, index: int) -> subprocess.CompletedProcess[str]:
 
 
 def shows(expected: str, got: str) -> bool:
-    """The page shows the bindings it is about: every expected line must
-    appear in the evaluator's output, in order (fixture bindings may be
-    omitted from the page)."""
+    """Every expected line appears in the evaluator's output, in order. The
+    page may omit setup lines the evaluator also prints."""
     remaining = iter(got.strip().splitlines())
     return all(any(line == g for g in remaining) for line in expected.strip().splitlines())
 
 
-def validate_captured(code: str, expected: str, context: str, source_file: str, index: int) -> bool:
-    result = run_captured(code, index)
-    if not (result.returncode == 0 and shows(expected, result.stdout)) and context:
-        result = run_captured(f"{context}\n{code}", index)
-    if result.returncode == 0 and shows(expected, result.stdout):
+def validate_captured(ex: Captured, source_file: str) -> bool:
+    result = run_captured(ex.code)
+    if not (result.returncode == 0 and shows(ex.expected, result.stdout)) and ex.context:
+        result = run_captured(f"{ex.context}\n{ex.code}")
+    if result.returncode == 0 and shows(ex.expected, result.stdout):
         return True
-    print(f"  FAIL: {source_file} captured example {index} (exit={result.returncode})")
-    print(f"    expected: {expected.strip()!r}")
+    print(f"  FAIL: {source_file}:{ex.line} output (exit={result.returncode})")
+    print(f"    expected: {ex.expected.strip()!r}")
     print(f"    got:      {result.stdout.strip()!r}")
     if result.stderr.strip():
         print(f"    stderr:   {result.stderr.strip()[:300]}")
@@ -142,30 +185,33 @@ def main() -> int:
         print("docs/book/src/ not found, skipping book validation")
         return 0
 
-    failures = 0
-    total = 0
-
+    failures = modules = captured = 0
     for md_file in sorted(DOCS_SRC.rglob("*.md")):
         text = md_file.read_text()
-        blocks = extract_chelis_blocks(text)
-        rel = md_file.relative_to(DOCS_SRC)
-        for i, block in enumerate(blocks):
-            total += 1
-            if not validate_block(block, str(rel), i):
+        rel = str(md_file.relative_to(DOCS_SRC))
+        blocks = fenced_blocks(text)
+        for block in module_blocks(blocks):
+            modules += 1
+            if not validate_block(block.code, rel, block.start):
                 failures += 1
-        for code, expected, context in extract_captured(text):
-            total += 1
-            if not validate_captured(code, expected, context, str(rel), total):
+        pairs, errors = captured_examples(text, blocks)
+        for error in errors:
+            print(f"  FAIL: {rel} {error}")
+            failures += 1
+        for ex in pairs:
+            captured += 1
+            if not validate_captured(ex, rel):
                 failures += 1
 
-    if total == 0:
-        print("No compile-checked code blocks found in mdBook.")
-        return 1
-    print(f"{total - failures}/{total} mdBook examples passed.")
-    if total < MIN_CHELIS_BLOCKS:
-        print(f"FAIL: only {total} checked examples found; need at least {MIN_CHELIS_BLOCKS}.")
-        return 1
-    return 1 if failures else 0
+    print(f"{modules} complete modules and {captured} output examples checked; {failures} failures.")
+    status = 1 if failures else 0
+    if modules < MIN_MODULES:
+        print(f"FAIL: only {modules} complete `chelis` modules; need at least {MIN_MODULES}.")
+        status = 1
+    if captured < MIN_CAPTURED:
+        print(f"FAIL: only {captured} output examples; need at least {MIN_CAPTURED}.")
+        status = 1
+    return status
 
 
 if __name__ == "__main__":

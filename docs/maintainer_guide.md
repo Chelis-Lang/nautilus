@@ -94,8 +94,9 @@ git diff -- parity/goldens/rolling.json
 ```
 
 When you change documentation, also run the example validators, which compile
-every complete ```` ```chelis ```` block against the pinned compiler, and the
-book lint:
+every complete ```` ```chelis ```` block against the pinned compiler (the book
+validator also evaluates every snippet that shows its output and requires that
+output), and the book lint:
 
 ```sh
 uv run --no-project --python 3.12 python scripts/validate_skill_examples.py
