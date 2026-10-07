@@ -269,6 +269,13 @@ jobs:
       # in this job rather than beside the stdlib-only C-lane checks.
       - name: Beta-family accuracy range
         run: uv run --project parity --frozen python scripts/check_beta_accuracy.py
+
+      # The accuracy oracle's own unit tests. They build their fixtures through
+      # `cases()`, which needs SciPy, so the bare-python3 `unittest discover` in
+      # pin-consistency-guard skips them. Without this step they would be skipped
+      # everywhere, which is indistinguishable from passing.
+      - name: Beta-family oracle unit tests
+        run: uv run --project parity --frozen python -m unittest discover -s scripts -p 'test_check_beta_*.py'
   # The user-facing book: it must build, pass the writing-standard lint
   # (vendored from the chelis.ch website), and every complete ```chelis
   # example in it must check against the pinned compiler.
