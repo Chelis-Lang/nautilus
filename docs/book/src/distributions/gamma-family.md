@@ -26,7 +26,7 @@ checks them. An invalid value returns a misleading number, NaN, or, under
 
 The stack overflows come from the incomplete-gamma helpers, which recurse
 once per series or continued-fraction term and run all 200 terms when the
-input is NaN. Each stack-overflow call in this table returns NaN when the
+input is not finite. Each stack-overflow call in this table returns NaN when the
 stack limit is raised first with `ulimit -s 65520`. Validate computed
 parameters before the call.
 
