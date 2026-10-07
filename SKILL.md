@@ -322,16 +322,16 @@ package-version string, is the one export not listed here.
 | `chi_squared_inv_cdf` | `(q: f32, df: f32) -> f32` | `stable` | Via gamma_inv_cdf |
 | `chi_squared_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; gamma sample with shape df/2 and scale 2; df >= 2 |
 | `student_t_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via log_gamma |
-| `student_t_cdf` | `(t: f32, df: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
+| `student_t_cdf` | `(t: f32, df: f32) -> f32` | `stable` | Via regularized incomplete beta (betai), evaluated in f64 internally; worst measured relative error ~6e-7 |
 | `student_t_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; independent normal and chi-squared tensors; df >= 2 |
 | `poisson_pmf` | `(k: f32, lambda: f32) -> f32` | `stable` | k as f32 (integer-valued), discrete PMF |
 | `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | `stable` | Via gamma_cdf complement, which calls the series with shape k+1 at x = lambda; inherits its large-shape accuracy limit there |
 | `binomial_pmf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | k, n as f32 (integer-valued), discrete PMF |
-| `binomial_cdf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
+| `binomial_cdf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | Via regularized incomplete beta (betai), evaluated in f64 internally; worst measured relative error ~6e-7 |
 | `beta_pdf` | `(x: f32, a: f32, b: f32) -> f32` | `stable` | a, b > 0 |
-| `beta_cdf` | `(x: f32, a: f32, b: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
+| `beta_cdf` | `(x: f32, a: f32, b: f32) -> f32` | `stable` | Via regularized incomplete beta (betai), evaluated in f64 internally; NaN if the result falls outside [0, 1], which only the exhausted-budget extreme reaches |
 | `f_pdf` | `(x: f32, d1: f32, d2: f32) -> f32` | `stable` | d1, d2 degrees of freedom |
-| `f_cdf` | `(x: f32, d1: f32, d2: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
+| `f_cdf` | `(x: f32, d1: f32, d2: f32) -> f32` | `stable` | Via regularized incomplete beta (betai), evaluated in f64 internally; worst measured relative error ~6e-7 |
 | `weibull_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | (shape, scale) parameterization |
 | `weibull_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Closed-form |
 | `weibull_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Closed-form |

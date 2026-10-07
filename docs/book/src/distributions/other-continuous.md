@@ -77,6 +77,13 @@ import Nautilus.Distributions (beta_cdf)
 cdf = beta_cdf(cast(0.3, f32), cast(2.0, f32), cast(5.0, f32))  -- approximately 0.5798
 ```
 
+The incomplete beta is evaluated in f64 internally and returned as f32, which
+keeps the relative error under 1e-6 for `min(a, b)` up to about 3e8. Past that
+the iteration budget runs short and the result loses digits silently -- 1.2e-3
+at 1e10, 21% at 1e11 -- while a value that falls outside [0, 1] is returned as
+NaN. See [the precision guide](../appendix/precision.md) for the measured bounds
+and the exact limits.
+
 ## F distribution
 
 Parameterized by `d1` and `d2` degrees of freedom. Uses `betai` internally.
@@ -88,6 +95,12 @@ import Nautilus.Distributions (f_cdf)
 
 cdf = f_cdf(cast(3.0, f32), cast(5.0, f32), cast(10.0, f32))  -- approximately 0.918
 ```
+
+`f_cdf` forms both `u = d1*x/(d1*x + d2)` and its complement `d2/(d1*x + d2)` in
+f64 and passes both to the incomplete beta, rather than recovering the second by
+subtraction. In f32 `u` reached exactly 1.0 whenever `d2` was small beside
+`d1*x`, and the result was then 1.0 for a distribution whose value is nowhere
+near it: `f_cdf(1.0, 1e8, 1.0)` returned 1.0 against a true 0.317.
 
 ## Edge cases
 

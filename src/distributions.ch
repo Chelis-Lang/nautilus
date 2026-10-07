@@ -316,8 +316,9 @@ def nan_d64() -> f64 = div(zero_d64(), zero_d64())
 -- at all, and `beta_cdf(0.5, 1e12, 1e12)` produced -0.416. The guard is
 -- deliberately not a clamp -- 0.0 would be as plausible-looking as -0.416 --
 -- and it is deliberately not a convergence test, because an exhausted budget
--- still returns a useful value wherever that value is in range (see the
--- partial-value discussion in nautilus#140). It does not make an in-range
+-- still returns a useful value wherever that value is in range, which is the
+-- conclusion the gamma family reached for the same question (recorded in
+-- `docs/book/src/appendix/precision.md`). It does not make an in-range
 -- wrong answer impossible; `docs/book` states the parameter range instead.
 def betai_unit_or_nan(v: f64) -> f64 = if or(lt(v, zero_d64()), gt(v, one_d64())) then nan_d64() else v
 -- `omx` is the caller's own value for `1 - x`, not a value recovered by

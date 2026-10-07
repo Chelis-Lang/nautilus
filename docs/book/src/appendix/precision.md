@@ -44,6 +44,7 @@ Two cases merit separate guidance:
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
+| Beta-family CDFs | ~6e-7 | `beta_cdf`, `f_cdf`, `student_t_cdf`, `binomial_cdf`; incomplete beta evaluated in f64, see the note below |
 | `normal_cdf` | sub-ulp standardized; grows with the shift, see the tail note below | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
 
@@ -138,6 +139,51 @@ Two cases of `1 - exp(..)` in the CDFs themselves have the same shape at the
 **exactly 0.0** where the answer is 1e-8. The fix is `expm1`, not a survival
 function -- a survival function cannot help an edge where the CDF itself is the
 small quantity -- and it is not fixed or tracked.
+
+### The beta family is accurate well past where f32 arithmetic would be
+
+`beta_cdf`, `f_cdf`, `student_t_cdf` and `binomial_cdf` all route through the
+regularized incomplete beta, whose front factor is
+`exp(lgamma(a+b) - lgamma(a) - lgamma(b) + a*ln x + b*ln(1-x))`. That exponent is
+a difference of large quantities: at `a = b = 1e5` the individual log-gammas are
+about 2.2e6, where a single f32 rounding is an absolute error of 0.25 in the
+exponent and therefore a *multiplicative* error in the result. Evaluated in f32
+the family was wrong by 38% at `beta_cdf(0.5, 1e5, 1e5)` and by 87% at
+`beta_cdf(0.5, 1e6, 1e6)`, and the error was not monotone in the parameters,
+because its size and sign depended on which way the rounding fell.
+
+The incomplete beta is now evaluated in f64 and returned as f32. The public
+signatures are unchanged and remain f32; this is an internal working precision,
+not an f64 surface. Measured over 885 cases through `chelis eval`, with every
+reference taken at the f32 value of each argument, the worst relative error is
+**5.7e-7**, and `beta_cdf(0.5, a, a)` -- which is exactly 0.5 for every `a` by
+symmetry, so it needs no reference at all -- is correct to 1.5e-7 absolute out
+to `a = 1e8`.
+
+Two limits remain, both documented rather than hidden:
+
+- The continued fraction is given 4096 iterations. The number it needs grows
+  roughly as the cube root of `min(a, b)`: about 160 at 1e5, 340 at 1e6 and 1560
+  at 1e8. Beyond the budget the returned value loses digits gradually rather than
+  suddenly, and nothing in the result says so. Measured on
+  `beta_cdf(0.5, a, a)`, whose true value is exactly 0.5:
+
+  | `a = b` | 3e8 | 1e9 | 1e10 | 1e11 | 1e12 |
+  |---|---|---|---|---|---|
+  | relative error | 4.8e-7 | 8.0e-6 | 1.2e-3 | 2.1e-1 | NaN |
+- A regularized incomplete beta lies in [0, 1], so a computed value outside that
+  range is returned as **NaN** rather than as a number. Only the exhausted-budget
+  extreme reaches this: `beta_cdf(0.5, 1e12, 1e12)` is NaN, where the raw
+  computation produces -0.416. An exhausted budget is *not* by itself a NaN --
+  wherever the value is still in range it is returned, because near the budget
+  the partial value is usually the better answer. That is the same conclusion the
+  gamma family reached for its own continued fraction.
+
+So from about `min(a, b) = 1e9` to `1e12` the family returns an in-range value
+that is wrong without saying so, and the NaN guard does not help there:
+`beta_cdf(0.5, 1e11, 1e11)` returns 0.394 against a true 0.5. If your parameters
+reach that range, do not trust these functions. Below `3e8` the measured error
+stays under 1e-6.
 
 When f32 precision is insufficient in `Nautilus.Special`, call it at f64
 directly. Its functions are generic over the `{f32, f64}` dtype set. Read the

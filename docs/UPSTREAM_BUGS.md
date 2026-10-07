@@ -55,6 +55,42 @@ changelog claim is not a re-probe.
 **Re-probe cadence:** at every compiler pin bump and before every Nautilus
 release.
 
+- **The `chelis eval` lane has no tail-call elimination, and its depth limit
+  scales inversely with the recursive body's size** — `chelis#2471`
+  ([Chelis-Lang/chelis#2471](https://github.com/Chelis-Lang/chelis/issues/2471)).
+    - **Symptom:** a self-recursive function that is syntactically a tail call
+      still consumes a stack frame per step under `chelis eval --file`, and the
+      process dies with `fatal runtime error: stack overflow, aborting` and exit
+      134 rather than raising anything a Chelis caller can observe. The frame
+      budget depends on how large the recursive body is: a sixteen-binding body
+      aborts at about 136 frames where a single-expression body passes 1020.
+      The `chelis test` worker thread holds about 500 frames of the same shape,
+      so the same input can return a value under `chelis test` and kill the
+      process under `chelis eval`.
+    - **Affected Nautilus surface:** none as shipped. Every iterative
+      numerical kernel whose budget exceeds roughly a hundred steps is
+      constrained in how it may spend that budget.
+    - **Workaround:** the incomplete-beta continued fraction in
+      `src/distributions.ch` spends its 4096-iteration budget through three
+      levels of chunking — 16 single steps per chunk, 16 chunks per block, 16
+      blocks per driver call — so peak depth is about 48 frames rather than
+      4096. The chunking changes no arithmetic: the iteration sequence, the
+      convergence test and the result are the flat form's. Without it the
+      budget nautilus#143 requires could not be spent in this lane at all.
+    - **Reproducer:** `beta_cdf(cast(0.5, f32), cast(100000.0, f32),
+      cast(100000.0, f32))` under `chelis eval --file` on the flat recursion
+      that preceded the chunking: that case needs 162 iterations and aborted.
+      No blocked probe exists, because a probe of this cannot fail as a test —
+      it kills the process that would report the failure, which is the defect.
+      `tests_blocked/README.md` records it among the manual probes.
+    - **Pinned result:** at Chelis 0.19.1 the absent tail-call elimination and
+      the body-size-dependent limit both reproduce. With the chunking in place
+      every f32 parameter evaluates, including `beta_cdf(0.5, 3e38, 3e38)`.
+    - **Re-probe trigger:** every pin bump and the release resolving
+      chelis#2471. On pass, the chunking may be collapsed back to a flat
+      recursion, which would simplify `src/distributions.ch` substantially;
+      compare values bit-for-bit before doing so.
+
 - **Composed generic gradient helper loses runtime-extent binder provenance** —
   `chelis#2370`
   ([Chelis-Lang/chelis#2370](https://github.com/Chelis-Lang/chelis/issues/2370)),

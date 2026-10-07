@@ -90,6 +90,14 @@ Computed in log-space using `log_gamma` for the normalizing constant.
 Uses the regularized incomplete beta function (`betai`) with
 a = df/2, b = 0.5, x = df/(df + t^2). Returns NaN if df <= 0.
 
+Both `x` and its complement `t^2/(df + t^2)` are formed in f64 and passed to
+`betai`, rather than the complement being recovered as `1 - x`. Computed in f32,
+`x` was exactly 1.0 from `df = 2^24 = 16777216` upward -- `ulp(2^24)` is 2, so
+`df + 1` was a tie that rounded back to `df` -- and the function then returned
+exactly 0.5, which is also its value at `t = 0`. There was nothing in the output
+to indicate it. `student_t_cdf(1.0, 1e8)` now returns 0.8413447 against a true
+0.84134475.
+
 **`student_t_sample[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]`**
 
 The sampler divides each normal draw by the square root of its corresponding

@@ -43,6 +43,12 @@ or k outside [0, n].
 Computes P(X <= k) via the regularized incomplete beta function:
 betaI(n-k, k+1, 1-p). Returns 0 for k < 0, returns 1 for k >= n.
 
+`1-p` is formed in f64, where it is exact for any f32 `p`, and `p` itself is
+passed as the complement rather than being recovered by a second subtraction.
+Computed in f32, `1-p` was exactly 1.0 for tiny `p`, so `binomial_cdf(0, 1e6,
+1e-8)` returned 1.0 against a true 0.990; and it lost its digits for `p` near 1,
+where `binomial_cdf(999999, 1e6, 0.99999994)` was wrong by 84%.
+
 - **Parameters:** k in [0, n] (integer-valued f32), n positive integer, p in [0, 1]
 - **p = 0:** returns 1 if k = 0, else 0
 - **p = 1:** returns 1 if k = n, else 0

@@ -81,7 +81,7 @@ arguments whose answer is a normal f32 (the subnormal rows are below):
 | Family | Worst relative error | Route |
 |---|---|---|
 | `z_p_value_upper`, `z_p_value_two_sided` | 8.9e-8 | `Phi(-z)`, exact by standard-normal symmetry |
-| `t_p_value_upper`, `t_p_value_two_sided` | 4.4e-5 | `student_t_cdf(-t, df)`, exact by Student-t symmetry. The bound is `betai`'s, and it grows with `df` rather than with `t`: measured worst error is 4.3e-7 at `df = 1`, 4.4e-6 at `df = 30`, and 4.4e-5 at `df = 100`. Every row above 1.8e-5 in the sweep is `df = 100`. |
+| `t_p_value_upper`, `t_p_value_two_sided` | 7.3e-8 | `student_t_cdf(-t, df)`, exact by Student-t symmetry. The bound is `betai`'s, and it no longer grows with `df`: worst error is 6.3e-8 at `df = 1`, 3.9e-8 at `df = 30` and 4.9e-8 at `df = 100`, with no row in the sweep above 1e-6. It was 4.4e-5 and did grow with `df` -- 4.3e-7 at `df = 1` rising to 4.4e-5 at `df = 100` -- until nautilus#143 moved the incomplete beta to f64 internally. The `df` dependence *was* the defect: `betai`'s front factor is a difference of log-gammas that grow with `df`, so in f32 the cancellation worsened as `df` rose. |
 | `chi_squared_p_value` | 4.2e-6 | `chi_squared_sf`, which returns the upper regularized incomplete gamma `Q` directly |
 
 No p-value in the sweep crosses 0.05, 0.01 or 0.001 differently from the old
