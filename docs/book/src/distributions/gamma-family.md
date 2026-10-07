@@ -105,6 +105,11 @@ cdf = student_t_cdf(cast(2.0, f32), cast(10.0, f32)) -- approximately 0.963
 
 ## Edge cases
 
+Rows are in precedence order: where an input satisfies more than one condition,
+the first matching row wins. A non-positive `shape`, `scale` or `df` therefore
+gives `NaN` even when `x <= 0` would otherwise give `0.0` or `1.0` --
+`chi_squared_cdf(-1.0, -1.0)` is `NaN`.
+
 | Condition | Result |
 |---|---|
 | `gamma_pdf(x, shape, scale)` with x < 0 | 0.0 |

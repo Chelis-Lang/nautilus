@@ -26,8 +26,11 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   frames rather than 200. The arithmetic is unchanged -- the converging path is
   bit-identical to the flat form, and a non-converged budget still returns the
   partial sum. **Values change exactly where the new guards fire, which is
-  three input classes rather than a list of cases.** Every call with
-  `shape <= 0` or `scale <= 0` now returns `NaN` whatever `x` is, so
+  three input classes rather than a list of cases.** Every call to
+  `gamma_cdf` or `gamma_sf` with `shape <= 0` or `scale <= 0` now returns `NaN`
+  whatever `x` is, while a caller with its own earlier domain guard
+  (`gamma_inv_cdf` at `q <= 0` or `q >= 1`, `poisson_cdf` at `k < 0`) keeps the
+  answer that guard already gave. So
   `gamma_cdf(1.0, 0.0, 1.0)` was `1.0`, `gamma_cdf(1.0, 2.0, -1.0)` was `0.0`,
   `chi_squared_p_value(5.0, 0.0)` was `0.0` and `chi_squared_cdf(5.0, -1.0)` was
   a plausible-looking `0.99605733` — all `NaN` now, and all `nan` in SciPy.
