@@ -96,13 +96,17 @@ table.
 | Family | Worst relative error | Route |
 |---|---|---|
 | `z_p_value_upper`, `z_p_value_two_sided` | 8.9e-8 | `Phi(-z)`, exact by standard-normal symmetry |
-| `t_p_value_upper`, `t_p_value_two_sided` | 4.4e-5 | `student_t_cdf(-t, df)`, exact by Student-t symmetry |
+| `t_p_value_upper`, `t_p_value_two_sided` | 1.2e-7 | `student_t_cdf(-t, df)`, exact by Student-t symmetry |
 | `chi_squared_p_value` | 4.2e-6 | `chi_squared_sf`, which returns the upper regularized incomplete gamma `Q` directly |
 
-The Student-t bound comes from `betai`, and it grows with `df`, not with `t`.
-The measured worst error is 4.3e-7 at `df = 1`, 4.4e-6 at `df = 30`, and
-4.4e-5 at `df = 100`. Every result above 1.8e-5 in the sweep is at
-`df = 100`.
+The Student-t bound comes from `betai`. It no longer grows with `df`: over a
+406-point sweep the worst error is 1.15e-7 at `df = 1`, 9.1e-8 at `df = 2`,
+6.7e-8 at `df = 10` and 4.9e-8 at `df = 100`, with no result above 1e-6. It did
+grow with `df` while the incomplete beta was computed in f32, because the
+normalizing factor is a difference of log-gammas that grow with `df`. The figure
+is a sweep maximum rather than a bound: a denser sweep raised it once, so rely on
+the shape (flat in `df`, below 1e-6) and calibrate tolerances against a reference
+over the degrees of freedom your calculation uses.
 
 No p-value in the sweep is on a different side of 0.05, 0.01 or 0.001 than
 the `1 - cdf` form. Thus no test decision changes. The direct tail changes

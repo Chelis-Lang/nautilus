@@ -221,72 +221,150 @@ def gammaq_cf_rec(a: f32, b: f32, c: f32, d: f32, h: f32, i: i64) -> f32 = {
   }
 }
 def abs_f32_inner(x: f32) -> f32 = if lt(x, zero_f()) then neg(x) else x
-def betacf_rec(a: f32, b: f32, x: f32, c: f32, d: f32, h: f32, m: i64, max_m: i64) -> f32 = {
+-- The regularised incomplete beta is evaluated in f64 and returned as f32.
+-- `betai`'s front factor is `exp(lgamma(a+b) - lgamma(a) - lgamma(b)
+-- + a*ln x + b*ln(1-x))`, whose exponent is a difference of large quantities:
+-- at a = b = 1e5 the log-gammas are about 2.2e6, where one f32 rounding is an
+-- absolute error of 0.25 in the exponent and so a multiplicative error in the
+-- result. In f32 that dominated every value this family returned at large
+-- parameters, independently of how many continued-fraction iterations were
+-- spent. See `docs/book/src/distributions/beta-family.md`.
+-- The continued fraction also needs more than 200 iterations for a large
+-- min(a, b) -- first near 1.7e5, and consistently past about 4.2e5; the f32
+-- count is not monotone in the parameters, so there is no single threshold and
+-- a bisection for one lands wherever it starts. The budget below is 4096, spent through
+-- three levels of chunking: a chunk of 16 single steps, a block of 16 chunks,
+-- and a driver of 16 blocks. Peak depth is about 48 frames rather than 4096,
+-- because `chelis eval --file` evaluates on a bounded stack and aborts the
+-- process outright when a recursion outruns it (see the eval-lane entry in
+-- `docs/UPSTREAM_BUGS.md`, which cites the upstream issue by number).
+def zero_d64() -> f64 = cast(0.0, f64)
+def one_d64() -> f64 = cast(1.0, f64)
+def fabs64_inner(x: f64) -> f64 = if lt(x, zero_d64()) then neg(x) else x
+def betacf_tol() -> f64 = cast(1e-7, f64)
+def betacf_tiny() -> f64 = cast(1e-30, f64)
+def betacf_fanout_i() -> i64 = cast(16, i64)
+def betacf_max_m() -> i64 = cast(4096, i64)
+-- One Lentz iteration of the continued fraction for the incomplete beta.
+-- Returns the updated (c, d_inv, h) and whether the step met the tolerance.
+def betacf_step(a: f64, b: f64, x: f64, c: f64, d: f64, h: f64, m: i64) -> (f64, f64, f64, bool) = {
+  eps = betacf_tiny()
+  one = one_d64()
+  m_f = cast(m, f64)
+  m2_f = mul(cast(2.0, f64), m_f)
+  qab = add(a, b)
+  qap = add(a, one)
+  qam = sub(a, one)
+  aa1_num = mul(m_f, mul(sub(b, m_f), x))
+  aa1_den = mul(add(qam, m2_f), add(a, m2_f))
+  aa1 = div(aa1_num, aa1_den)
+  d1_raw = add(one, mul(aa1, d))
+  d1 = if lt(fabs64_inner(d1_raw), eps) then eps else d1_raw
+  c1_raw = add(one, div(aa1, c))
+  c1 = if lt(fabs64_inner(c1_raw), eps) then eps else c1_raw
+  d1_inv = div(one, d1)
+  h1 = mul(mul(h, d1_inv), c1)
+  aa2_num_neg = mul(neg(add(a, m_f)), mul(add(qab, m_f), x))
+  aa2_den = mul(add(a, m2_f), add(qap, m2_f))
+  aa2 = div(aa2_num_neg, aa2_den)
+  d2_raw = add(one, mul(aa2, d1_inv))
+  d2 = if lt(fabs64_inner(d2_raw), eps) then eps else d2_raw
+  c2_raw = add(one, div(aa2, c1))
+  c2 = if lt(fabs64_inner(c2_raw), eps) then eps else c2_raw
+  d2_inv = div(one, d2)
+  delta = mul(d2_inv, c2)
+  h2 = mul(h1, delta)
+  delta_err = fabs64_inner(sub(delta, one))
+  converged = lt(delta_err, betacf_tol())
+  (c2, d2_inv, h2, converged)
+}
+def betacf_chunk(a: f64, b: f64, x: f64, c: f64, d: f64, h: f64, m: i64, max_m: i64, steps: i64) -> (f64, f64, f64, i64, bool) = {
+  zero_i = cast(0, i64)
   one_i = cast(1, i64)
-  if gt(m, max_m) then h else {
-    eps = cast(1e-30, f32)
-    m_f = cast(m, f32)
-    m2_f = mul(cast(2.0, f32), m_f)
-    qab = add(a, b)
-    qap = add(a, one_f())
-    qam = sub(a, one_f())
-    aa1_num = mul(m_f, mul(sub(b, m_f), x))
-    aa1_den = mul(add(qam, m2_f), add(a, m2_f))
-    aa1 = div(aa1_num, aa1_den)
-    d1_raw = add(one_f(), mul(aa1, d))
-    d1 = if lt(abs_f32_inner(d1_raw), eps) then eps else d1_raw
-    c1_raw = add(one_f(), div(aa1, c))
-    c1 = if lt(abs_f32_inner(c1_raw), eps) then eps else c1_raw
-    d1_inv = div(one_f(), d1)
-    h1 = mul(mul(h, d1_inv), c1)
-    aa2_num_neg = mul(neg(add(a, m_f)), mul(add(qab, m_f), x))
-    aa2_den = mul(add(a, m2_f), add(qap, m2_f))
-    aa2 = div(aa2_num_neg, aa2_den)
-    d2_raw = add(one_f(), mul(aa2, d1_inv))
-    d2 = if lt(abs_f32_inner(d2_raw), eps) then eps else d2_raw
-    c2_raw = add(one_f(), div(aa2, c1))
-    c2 = if lt(abs_f32_inner(c2_raw), eps) then eps else c2_raw
-    d2_inv = div(one_f(), d2)
-    delta = mul(d2_inv, c2)
-    h2 = mul(h1, delta)
-    bcf_tol = cast(1e-7, f32)
-    delta_err = abs_f32_inner(sub(delta, one_f()))
-    converged = lt(delta_err, bcf_tol)
-    if converged then h2 else betacf_rec(a, b, x, c2, d2_inv, h2, add(m, one_i), max_m)
+  if or(gt(m, max_m), lte(steps, zero_i)) then (c, d, h, m, false) else {
+    st = betacf_step(a, b, x, c, d, h, m)
+    m_next = add(m, one_i)
+    if st.3 then (st.0, st.1, st.2, m_next, true) else betacf_chunk(a, b, x, st.0, st.1, st.2, m_next, max_m, sub(steps, one_i))
   }
 }
-def betacf(a: f32, b: f32, x: f32) -> f32 = {
-  eps = cast(1e-30, f32)
-  qab = add(a, b)
-  qap = add(a, one_f())
-  d0_raw = sub(one_f(), div(mul(qab, x), qap))
-  d0 = if lt(abs_f32_inner(d0_raw), eps) then eps else d0_raw
-  d0_inv = div(one_f(), d0)
-  c0 = one_f()
-  betacf_rec(a, b, x, c0, d0_inv, d0_inv, cast(1, i64), cast(200, i64))
+def betacf_block(a: f64, b: f64, x: f64, c: f64, d: f64, h: f64, m: i64, max_m: i64, chunks: i64) -> (f64, f64, f64, i64, bool) = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
+  if or(gt(m, max_m), lte(chunks, zero_i)) then (c, d, h, m, false) else {
+    st = betacf_chunk(a, b, x, c, d, h, m, max_m, betacf_fanout_i())
+    if st.4 then st else betacf_block(a, b, x, st.0, st.1, st.2, st.3, max_m, sub(chunks, one_i))
+  }
 }
-def betai(a: f32, b: f32, x: f32) -> f32 =
-  if lte(x, zero_f()) then zero_f() else if gte(x, one_f()) then one_f() else {
+def betacf_drive(a: f64, b: f64, x: f64, c: f64, d: f64, h: f64, m: i64, max_m: i64) -> (f64, bool) =
+  if gt(m, max_m) then (h, false) else {
+    st = betacf_block(a, b, x, c, d, h, m, max_m, betacf_fanout_i())
+    if st.4 then (st.2, true) else betacf_drive(a, b, x, st.0, st.1, st.2, st.3, max_m)
+  }
+def betacf64(a: f64, b: f64, x: f64) -> (f64, bool) = {
+  eps = betacf_tiny()
+  one = one_d64()
+  qab = add(a, b)
+  qap = add(a, one)
+  d0_raw = sub(one, div(mul(qab, x), qap))
+  d0 = if lt(fabs64_inner(d0_raw), eps) then eps else d0_raw
+  d0_inv = div(one, d0)
+  betacf_drive(a, b, x, one, d0_inv, d0_inv, cast(1, i64), betacf_max_m())
+}
+def nan_d64() -> f64 = div(zero_d64(), zero_d64())
+-- A regularised incomplete beta lies in [0, 1] by definition, so a value
+-- outside that range is not an approximation of anything. Two different things
+-- produce one, though, and they want opposite answers.
+-- A *converged* continued fraction can still overshoot by a rounding: the front
+-- factor's exponent is a difference of log-gammas whose absolute error is about
+-- one ulp of the larger one, so for a small `a` with a large `b`, where the true
+-- value is 1.0, the computation lands just above it. Measured up to 4.7e-7 --
+-- about four f32 ulps -- at a = 1e-7, b = 1e8, with the continued fraction
+-- converging in one to four iterations. That is the right answer with a
+-- rounding on it, so it is clamped to the boundary rather than discarded.
+-- An *abandoned* continued fraction that lands outside the range has produced
+-- nothing at all: `beta_cdf(0.5, 1e12, 1e12)` reaches -0.416 that way, and that
+-- becomes NaN rather than a number no caller can tell from a probability.
+-- Convergence is the separator rather than a tolerance because the overshoot
+-- grows with the cancellation and no fixed epsilon bounds it. An exhausted
+-- budget is still not by itself a NaN: wherever its value is in range it is
+-- returned, which is the conclusion the gamma family reached for the same
+-- question (recorded in `docs/book/src/appendix/precision.md`). None of this
+-- makes an in-range wrong answer impossible; `docs/book` states the parameter
+-- range instead.
+def betai_finish(v: f64, converged: bool) -> f64 = if or(lt(v, zero_d64()), gt(v, one_d64())) then if converged then if lt(v, zero_d64()) then zero_d64() else one_d64() else nan_d64() else v
+-- `omx` is the caller's own value for `1 - x`, not a value recovered by
+-- subtraction here. Every call site can form it exactly from its own inputs,
+-- and the two that could not would otherwise lose it: `x` saturates to 1.0
+-- for `student_t_cdf` once df reaches 2^24 and for `f_cdf` once d2 is small
+-- beside d1*x, and the guard below would then answer 1.0 for a distribution
+-- whose true value is nowhere near 1.
+def betai_core(a: f64, b: f64, x: f64, omx: f64) -> f64 =
+  if lte(x, zero_d64()) then zero_d64() else if lte(omx, zero_d64()) then one_d64() else {
+    one = one_d64()
     lg_ab = log_gamma(add(a, b))
     lg_a = log_gamma(a)
     lg_b = log_gamma(b)
     lx = log(x)
-    l1mx = log(sub(one_f(), x))
+    l1mx = log(omx)
     front_exp_arg = add(sub(sub(lg_ab, lg_a), lg_b), add(mul(a, lx), mul(b, l1mx)))
     front = exp(front_exp_arg)
-    threshold_num = add(a, one_f())
-    threshold_den = add(add(a, b), cast(2.0, f32))
+    threshold_num = add(a, one)
+    threshold_den = add(add(a, b), cast(2.0, f64))
     threshold = div(threshold_num, threshold_den)
-    if lt(x, threshold) then {
-      cf = betacf(a, b, x)
-      mul(front, div(cf, a))
+    st = if lt(x, threshold) then {
+      r = betacf64(a, b, x)
+      (mul(front, div(r.0, a)), r.1)
     } else {
-      one_minus_x = sub(one_f(), x)
-      cf = betacf(b, a, one_minus_x)
-      val = mul(front, div(cf, b))
-      sub(one_f(), val)
+      r = betacf64(b, a, omx)
+      val = mul(front, div(r.0, b))
+      (sub(one, val), r.1)
     }
+    betai_finish(st.0, st.1)
   }
+def betai(a: f32, b: f32, x: f32) -> f32 = {
+  x64 = cast(x, f64)
+  betai_core(cast(a, f64), cast(b, f64), x64, sub(one_d64(), x64)) |> cast(f32)
+}
 def is_integer_f32(x: f32) -> bool = {
   xi = cast(cast_trunc(x, i64), f32)
   eq(x, xi)
@@ -318,11 +396,17 @@ def binomial_pmf(k: f32, n: f32, p: f32) -> f32 =
     log_pmf = add(add(log_choose, k_lp), nmk_l1mp)
     exp(log_pmf)
   }
+-- `n - k` and `k + 1` are formed in f64, not in f32 and then widened. In
+-- f32 the `+ 1` vanishes for k >= 2^24 (ulp(5e7) is 4), which turned
+-- `binomial_cdf(5e7, 1e8, 0.5)` into the symmetric `I(0.5; 5e7, 5e7)` --
+-- exactly 0.5 -- instead of `I(0.5; 5e7, 5e7+1)` = 0.50003989, an error of
+-- 8e-5 at an ordinary sample size. `n - k` loses its low bits the same way.
 def binomial_cdf(k: f32, n: f32, p: f32) -> f32 =
   if or(lt(p, zero_f()), gt(p, one_f())) then nan_d() else if lt(k, zero_f()) then zero_f() else if gte(k, n) then one_f() else {
-    a = sub(n, k)
-    b = add(k, one_f())
-    betai(a, b, sub(one_f(), p))
+    a = sub(cast(n, f64), cast(k, f64))
+    b = add(cast(k, f64), one_d64())
+    p64 = cast(p, f64)
+    betai_core(a, b, sub(one_d64(), p64), p64) |> cast(f32)
   }
 def beta_pdf(x: f32, a: f32, b: f32) -> f32 =
   if or(lte(a, zero_f()), lte(b, zero_f())) then nan_d() else if or(lt(x, zero_f()), gt(x, one_f())) then zero_f() else if eq(x, zero_f()) then if gt(a, one_f()) then zero_f() else if eq(a, one_f()) then b else pos_inf_d() else if eq(x, one_f()) then if gt(b, one_f()) then zero_f() else if eq(b, one_f()) then a else pos_inf_d() else {
@@ -360,13 +444,14 @@ def f_pdf(x: f32, d1: f32, d2: f32) -> f32 =
   }
 def f_cdf(x: f32, d1: f32, d2: f32) -> f32 =
   if lte(x, zero_f()) then zero_f() else if or(lte(d1, zero_f()), lte(d2, zero_f())) then nan_d() else {
-    half = half_f()
-    half_d1 = mul(half, d1)
-    half_d2 = mul(half, d2)
-    d1x = mul(d1, x)
-    denom = add(d1x, d2)
+    half = cast(0.5, f64)
+    half_d1 = mul(half, cast(d1, f64))
+    half_d2 = mul(half, cast(d2, f64))
+    d1x = mul(cast(d1, f64), cast(x, f64))
+    denom = add(d1x, cast(d2, f64))
     u = div(d1x, denom)
-    betai(half_d1, half_d2, u)
+    omu = div(cast(d2, f64), denom)
+    betai_core(half_d1, half_d2, u, omu) |> cast(f32)
   }
 def weibull_pdf(x: f32, shape: f32, scale: f32) -> f32 =
   if lt(x, zero_f()) then zero_f() else if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else if eq(x, zero_f()) then if gt(shape, one_f()) then zero_f() else if eq(shape, one_f()) then div(one_f(), scale) else pos_inf_d() else {
@@ -404,13 +489,15 @@ def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
   }
 def student_t_cdf(t: f32, df: f32) -> f32 =
   if lte(df, zero_f()) then nan_d() else {
-    half_df = mul(half_f(), df)
-    half = half_f()
-    t2 = mul(t, t)
-    df_plus_t2 = add(df, t2)
-    x_arg = div(df, df_plus_t2)
-    bi = betai(half_df, half, x_arg)
-    half_bi = mul(half, bi)
+    df64 = cast(df, f64)
+    half_df = mul(cast(0.5, f64), df64)
+    t64 = cast(t, f64)
+    t2 = mul(t64, t64)
+    df_plus_t2 = add(df64, t2)
+    x_arg = div(df64, df_plus_t2)
+    om_x_arg = div(t2, df_plus_t2)
+    bi = betai_core(half_df, cast(0.5, f64), x_arg, om_x_arg) |> cast(f32)
+    half_bi = mul(half_f(), bi)
     if gte(t, zero_f()) then sub(one_f(), half_bi) else half_bi
   }
 def gammaq(a: f32, x: f32) -> f32 =

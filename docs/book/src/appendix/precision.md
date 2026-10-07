@@ -43,6 +43,7 @@ Two cases need separate guidance:
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
+| Beta-family CDFs | below 2e-6 over a stated parameter range | `beta_cdf`, `f_cdf`, `student_t_cdf`, `binomial_cdf`; the range is part of the figure, see the note below |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
 
@@ -100,6 +101,48 @@ oscillatory regime for x < 0 and the power series degrades for |x| much
 larger than 5. `airy_bi` has the same limitation but is less affected
 because it grows exponentially for positive x where the asymptotic
 branch covers it.
+
+### The beta family holds below 2e-6 over a stated parameter range
+
+`beta_cdf`, `f_cdf`, `student_t_cdf` and `binomial_cdf` all compute the
+regularized incomplete beta. Its normalizing factor is
+`exp(lgamma(a+b) - lgamma(a) - lgamma(b) + a*ln x + b*ln(1-x))`, and that exponent
+is a difference of large quantities whose rounding error grows with the
+parameters. The incomplete beta is computed in f64 and returned as f32, which
+keeps that error small over a wide range but not an unlimited one.
+
+> Relative error stays below 2e-6 when every parameter you pass is at least 1 and
+> the largest is at most 1e8.
+
+The range applies to `a` and `b` for `beta_cdf`, to `d1` and `d2` for `f_cdf`, to
+`df` for `student_t_cdf`, and to `n` for `binomial_cdf`.
+
+Outside the range the error grows in both directions, and nothing in the result
+indicates it. Below 1, a small shape parameter amplifies the same cancellation:
+`beta_cdf(0.9, 0.5, 1e-4)` errs by about 2e-6 and `beta_cdf(0.9, 0.5, 1e-10)` by
+183%. A large and a small parameter together are worse than either alone, so
+`f_cdf(0.5, 1e8, 1e-3)` errs by about 2.5e-5. Above 1e8 the continued fraction
+runs out of iterations: on `beta_cdf(0.5, a, a)`, whose value is exactly 0.5 by
+symmetry, the relative error is about 8e-6 at `a = 1e9`, 1.2e-3 at 1e10 and 21%
+at 1e11, and `beta_cdf(0.5, 3e38, 3e38)` returns a confident 1.0.
+
+`student_t_cdf` leaves the range earliest, because its cancellation is driven by
+`df` alone: 1.7e-6 at `df = 1e9`, 4e-4 at 1e12, 51% at 1e14, and from
+`df = 1e16` it returns exactly 0.5, which is also its value at `t = 0`. **Above
+`df` of about 1e9, use `normal_cdf` instead.** The t distribution is within 1e-9
+of the standard normal there, so the substitution costs nothing f32 can measure.
+
+A regularized incomplete beta lies in [0, 1]. A converged computation that
+overshoots that range by a rounding is clamped to the boundary, because the
+boundary is the answer. A computation that exhausts its iteration budget and
+lands outside the range returns NaN instead, since such a value carries no
+information: `beta_cdf(0.5, 1e12, 1e12)` is NaN. An exhausted budget whose value
+is still inside the range is returned, because near the budget the partial value
+is usually the better answer.
+
+The error is driven by rounding, so it oscillates in every parameter and no
+finite set of sample points locates its maximum. Calibrate tolerances against a
+reference over the parameters your calculation actually uses.
 
 ### Cancellation in subtraction-heavy expressions
 

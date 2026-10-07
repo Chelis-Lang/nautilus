@@ -25,8 +25,8 @@ logn_cdf = 0.5
 unif_cdf = 0.25
 weib_cdf = 0.63212055
 weib_median = 0.83255464
-beta = 0.5798245
-f_c = 0.9344424
+beta = 0.57982504
+f_c = 0.93444246
 f_p = 0.49547988
 ```
 
@@ -114,6 +114,11 @@ Parameterized by shape parameters `a` and `b`, both positive.
 `a <= 0` or `b <= 0` returns NaN. At x = 0 the PDF is 0 for a > 1, `b` for
 a = 1, and +inf for a < 1; x = 1 mirrors this with `b`.
 
+The incomplete beta is computed in f64 and returned as f32. Relative error stays
+below 2e-6 while `a` and `b` are both at least 1 and the larger is at most 1e8,
+and grows outside that range in both directions. The precision guide states the
+range and what happens beyond it.
+
 ## F distribution
 
 Parameterized by the numerator and denominator degrees of freedom `d1` and
@@ -127,6 +132,15 @@ function at `d1*x / (d1*x + d2)`.
 
 `d1 <= 0` or `d2 <= 0` returns NaN for x > 0. Non-integer degrees of freedom
 are accepted.
+
+Both `d1*x / (d1*x + d2)` and its complement `d2 / (d1*x + d2)` are formed in f64,
+so a small `d2` beside a large `d1*x` keeps its digits instead of rounding the
+argument to 1. Relative error stays below 2e-6 while `d1` and `d2` are both at
+least 1 and the larger is at most 1e8, and grows outside that range in both
+directions: `f_cdf(0.5, 2e8, 0.5)` errs by about 2e-6 and
+`f_cdf(0.5, 1e8, 1e-3)` by 2.5e-5. The
+[precision guide](../appendix/precision.md) states the range for every export in
+this family.
 
 ## Pitfalls
 

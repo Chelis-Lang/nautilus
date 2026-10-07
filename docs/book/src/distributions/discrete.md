@@ -17,7 +17,7 @@ bcdf = binomial_cdf(3.0f32, 10.0f32, 0.3f32)
 ppmf = 0.21376282
 pcdf = 0.75757635
 bpmf = 0.26682863
-bcdf = 0.6496109
+bcdf = 0.6496107
 ```
 
 ## Poisson
@@ -47,7 +47,7 @@ at shape `k + 1`.
 | Function | Signature | Returns |
 |---|---|---|
 | `binomial_pmf` | `(k: f32, n: f32, p: f32) -> f32` | P(X = k) = C(n, k) p^k (1-p)^(n-k), in log space via `log_gamma` |
-| `binomial_cdf` | `(k: f32, n: f32, p: f32) -> f32` | P(X <= k) = I_(1-p)(n - k, k + 1), the regularized incomplete beta |
+| `binomial_cdf` | `(k: f32, n: f32, p: f32) -> f32` | P(X <= k) = I_(1-p)(n - k, k + 1), the regularized incomplete beta, computed in f64 |
 
 Domain: `n` a non-negative integer value, `k` an integer value, `p` in [0, 1].
 
@@ -65,12 +65,17 @@ Domain: `n` a non-negative integer value, `k` an integer value, `p` in [0, 1].
 The CDF checks `p` first, then returns 0 for `k < 0` and 1 for `k >= n`
 before reading `n` again, so a bad `n` does not produce NaN there.
 
+`binomial_cdf` forms `n - k`, `k + 1` and `1 - p` in f64 before computing the
+incomplete beta. In f32 the `+ 1` is lost once `k` reaches 16777216, because the
+spacing of f32 values there exceeds 1, and the result then describes a different
+distribution. Relative error stays below 2e-6 for `n` up to 1e8.
+
 ## Pitfalls
 
 - Non-integer counts are not rounded by the CDFs.
   `binomial_cdf(3.5, 10, 0.3)` returns `0.761939`, between
-  `binomial_cdf(3, 10, 0.3) = 0.6496109` and
-  `binomial_cdf(4, 10, 0.3) = 0.8497317`, and is not P(X <= 3). Round a
+  `binomial_cdf(3, 10, 0.3) = 0.6496107` and
+  `binomial_cdf(4, 10, 0.3) = 0.8497316`, and is not P(X <= 3). Round a
   computed count with `floor` before the call.
 - A NaN argument does not give a clean NaN from `poisson_cdf`:
   `poisson_cdf(NaN, lambda)` stops evaluation with

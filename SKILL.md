@@ -322,16 +322,16 @@ package-version string, is the one export not listed here.
 | `chi_squared_inv_cdf` | `(q: f32, df: f32) -> f32` | `stable` | Via gamma_inv_cdf |
 | `chi_squared_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; gamma sample with shape df/2 and scale 2; df >= 2 |
 | `student_t_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via log_gamma |
-| `student_t_cdf` | `(t: f32, df: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
+| `student_t_cdf` | `(t: f32, df: f32) -> f32` | `stable` | Via regularized incomplete beta (betai), evaluated in f64 internally; relative error below 2e-6 for `df` in [1, 1e8], enforced by `parity/check_beta_accuracy.py`; past that it degrades to 51% by 1e14 and returns 0.5 from 1e16, so use `normal_cdf` above `df` ~1e9 |
 | `student_t_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; independent normal and chi-squared tensors; df >= 2 |
 | `poisson_pmf` | `(k: f32, lambda: f32) -> f32` | `stable` | k as f32 (integer-valued), discrete PMF |
 | `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | `stable` | Via gamma_cdf complement, which calls the series with shape k+1 at x = lambda; inherits its large-shape accuracy limit there |
 | `binomial_pmf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | k, n as f32 (integer-valued), discrete PMF |
-| `binomial_cdf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
+| `binomial_cdf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | Via regularized incomplete beta (betai), evaluated in f64 internally; `n-k` and `k+1` formed in f64; relative error below 2e-6 for `n` up to 1e8 |
 | `beta_pdf` | `(x: f32, a: f32, b: f32) -> f32` | `stable` | a, b > 0 |
-| `beta_cdf` | `(x: f32, a: f32, b: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
+| `beta_cdf` | `(x: f32, a: f32, b: f32) -> f32` | `stable` | Via regularized incomplete beta (betai), evaluated in f64 internally; relative error below 2e-6 for `a` and `b` both in [1, 1e8]; it grows below 1 as well as above 1e8. A converged overshoot is clamped to [0, 1]; an exhausted budget that leaves [0, 1] returns NaN |
 | `f_pdf` | `(x: f32, d1: f32, d2: f32) -> f32` | `stable` | d1, d2 degrees of freedom |
-| `f_cdf` | `(x: f32, d1: f32, d2: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) |
+| `f_cdf` | `(x: f32, d1: f32, d2: f32) -> f32` | `stable` | Via regularized incomplete beta (betai), evaluated in f64 internally; relative error below 2e-6 for `d1` and `d2` both in [1, 1e8] |
 | `weibull_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | (shape, scale) parameterization |
 | `weibull_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Closed-form |
 | `weibull_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Closed-form |

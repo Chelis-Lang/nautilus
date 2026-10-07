@@ -149,6 +149,17 @@ NaN for df <= 0.
 Uses the regularized incomplete beta function (`betai`) with
 a = df/2, b = 0.5, x = df/(df + t^2). Returns NaN if df <= 0.
 
+Both `x` and its complement `t^2/(df + t^2)` are formed in f64 and passed to
+`betai`, so the complement keeps its digits for large `df` instead of being
+recovered as `1 - x`, where it would round to zero.
+
+Relative error stays below 2e-6 for `df` in [1, 1e8]. Past that it grows: about
+1.7e-6 at `df = 1e9`, 4e-4 at 1e12 and 51% at 1e14, and from `df = 1e16` the
+function returns exactly 0.5, which is also its value at `t = 0`. **Above `df` of
+about 1e9, use `normal_cdf`.** The t distribution is within 1e-9 of the standard
+normal there, so the substitution costs nothing f32 can measure. The precision
+guide covers the whole beta family.
+
 **`student_t_sample[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]`**
 
 The sampler divides each normal draw by the square root of its related
@@ -165,7 +176,7 @@ t_cdf = student_t_cdf(2.0f32, 10.0f32)
 
 ```text
 t_peak = 0.37960654
-t_cdf = 0.96330595
+t_cdf = 0.963306
 ```
 
 ## Edge cases

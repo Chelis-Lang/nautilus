@@ -53,6 +53,38 @@ the current verdicts.
   list. **Re-probe trigger:** every pin bump and the release resolving
   chelis#2370.
 
+- **`chelis#2471`**: the `chelis eval` lane performs no tail-call elimination,
+  and its frame budget shrinks as the recursive body grows. This one cannot be
+  probed for a reason the other entries do not share: the failure is a process
+  abort (`fatal runtime error: stack overflow`, exit 134), so it kills the
+  harness that would record the verdict. `chelis test` cannot see it either,
+  because its worker thread holds about 500 frames and the same input returns a
+  value there. The incomplete-beta continued fraction in `src/distributions.ch`
+  spends its budget through three levels of chunking so peak depth is about 48
+  frames; that narrowing site points here rather than spelling the issue
+  number, for the same reason the `chelis#2370` entry above does. Manual
+  probe: flatten `betacf_chunk`/`betacf_block`/`betacf_drive` into a single
+  recursion over `betacf_step` and run `beta_cdf(cast(0.5, f32),
+  cast(1e7, f32), cast(1e7, f32))` under `chelis eval --file`; that case needs
+  **726** f64 iterations and must abort with exit 134, while the chunked form
+  returns 0.5. **Do not use `a = 1e5` for this.** A review round executed that
+  spelling: at 156 f64 iterations the flattened form returns 0.49999997 — the
+  same value the chunked form gives — so the probe cannot distinguish the two
+  states and a maintainer would read a pass as "chelis#2471 fixed". The
+  flattened form's own ceiling is about 535 iterations, because delegating each
+  step to `betacf_step` leaves a thin recursive frame; `a = 1e6` (337
+  iterations) also returns. The 162 figure that spelling carried was the f32
+  iteration count from before this module moved to f64.
+  The **gamma family** (`nautilus#140`) is narrowed by the same limitation and
+  was previously listed separately here; one upstream issue gets one entry. Its
+  observing gate is the same CI step, where
+  `example_gamma_cdf_degenerate_arguments` prints `11111.0` with the chunked
+  recursions and exits 134 without them, and
+  `example_beta_family_large_parameters` does the same for this family.
+  **Re-probe trigger:** every pin bump, any release touching eval-lane stack
+  sizing or tail calls, and the release resolving chelis#2471. On pass, collapse
+  the chunking and compare values bit-for-bit.
+
 - **`chelis#2520`**: `match` does not release a branch arm's owner when only a
   sibling arm consumed it. The failure occurs during C host lowering, which
   `chelis test` never enters. The shipped `Reducer` match and `Option` paths
@@ -68,18 +100,6 @@ the current verdicts.
   consumer builds at both f32 and f64, but a complete Float-generic
   Nautilus consumer matrix is still needed. `chelis test` does not exercise
   that C lane. Use the manual recipe below.
-
-- **`chelis#2471`** (narrowing `nautilus#140`): **cannot be probed here.** The limitation is that
-  `chelis eval --file` aborts the process at about 135 frames of a let-heavy
-  recursion. `chelis test` runs each file on a `chelis-test-worker` thread that
-  holds about 500 frames of the same shape, so the 200-frame recursion this
-  entry is about completes in the test lane and returns a value. A blocked
-  probe here would pass and prove nothing. The observing gate is the CI step
-  that runs `chelis eval --file` over `src/example*.ch`, where
-  `example_gamma_cdf_degenerate_arguments` prints `11111.0` with the chunked
-  recursions and exits 134 without them.
-  **Re-probe trigger:** every pin bump, and any release touching eval-lane
-  stack sizing or tail calls.
 
 ## Manual probe: `chelis#2152`
 

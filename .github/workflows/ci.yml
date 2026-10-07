@@ -230,6 +230,13 @@ jobs:
       - name: Gamma-family sampling C parity
         run: python3 scripts/check_gamma_sampling_c_lane.py
 
+      # The incomplete beta moved to f64 internals, so f64 arithmetic, f64 tuple
+      # members and f64->f32 casts are new to this module's host-lowered path and
+      # nothing else in CI compiles them. Stdlib-only, like the two above.
+      - name: Beta-family C lane
+        run: python3 scripts/check_beta_c_lane.py
+
+
       # Shell contract §5: blockers must keep failing with their pinned
       # diagnostic. A pass is FIX-DETECTED and fails until de-narrowed.
       - name: chelis test (upstream-blocker probes)
@@ -257,6 +264,19 @@ jobs:
       - name: SciPy parity (validate reviewed goldens; never regenerate in CI)
         run: uv run --project parity --frozen python parity/run_parity.py --strict
 
+      # The accuracy range docs/book and SKILL.md state for the beta family, as a
+      # gate rather than a sentence. It needs SciPy for its references, so it runs
+      # in this job rather than beside the stdlib-only C-lane checks.
+      - name: Beta-family accuracy range
+        run: uv run --project parity --frozen python parity/check_beta_accuracy.py
+
+      # The accuracy oracle's own unit tests. It lives under `parity/` because it
+      # imports SciPy, which `scripts/check_oracle_isolation.py` confines to that
+      # directory, so `unittest discover -s scripts` never sees these. Without
+      # this step they would not run anywhere, which is indistinguishable from
+      # passing.
+      - name: Beta-family oracle unit tests
+        run: uv run --project parity --frozen python -m unittest discover -s . -t . -p 'test_check_beta_accuracy.py'
   # The user-facing book: it must build, pass the writing-standard lint
   # (vendored from the chelis.ch website), and every complete ```chelis
   # example in it must check against the pinned compiler.
