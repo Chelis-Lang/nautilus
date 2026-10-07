@@ -64,9 +64,17 @@ the current verdicts.
   frames; that narrowing site points here rather than spelling the issue
   number, for the same reason the `chelis#2370` entry above does. Manual
   probe: flatten `betacf_chunk`/`betacf_block`/`betacf_drive` into a single
-  recursion and run `beta_cdf(cast(0.5, f32), cast(100000.0, f32),
-  cast(100000.0, f32))` under `chelis eval --file`; it needs 162 iterations and
-  must abort with exit 134 while the chunked form returns 0.49999997.
+  recursion over `betacf_step` and run `beta_cdf(cast(0.5, f32),
+  cast(1e7, f32), cast(1e7, f32))` under `chelis eval --file`; that case needs
+  **726** f64 iterations and must abort with exit 134, while the chunked form
+  returns 0.5. **Do not use `a = 1e5` for this.** A review round executed that
+  spelling: at 156 f64 iterations the flattened form returns 0.49999997 — the
+  same value the chunked form gives — so the probe cannot distinguish the two
+  states and a maintainer would read a pass as "chelis#2471 fixed". The
+  flattened form's own ceiling is about 535 iterations, because delegating each
+  step to `betacf_step` leaves a thin recursive frame; `a = 1e6` (337
+  iterations) also returns. The 162 figure that spelling carried was the f32
+  iteration count from before this module moved to f64.
   **Re-probe trigger:** every pin bump and the release resolving chelis#2471.
   On pass, collapse the chunking and compare values bit-for-bit.
 

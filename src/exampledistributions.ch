@@ -37,7 +37,8 @@ def example_gamma_cdf_degenerate_arguments() -> f32 = {
 -- binomial 1.0 for a true 0.990).
 def example_beta_family_large_parameters() -> f32 = {
   tol = cast(0.00001, f32)
-  -- 0.5 exactly, by symmetry; needs 542 and 1564 continued-fraction iterations.
+  -- 0.5 exactly, by symmetry; needs 726 and 1564 f64 continued-fraction
+  -- iterations, so both are past the 535 a flattened recursion survives.
   b7 = beta_cdf(cast(0.5, f32), cast(10000000.0, f32), cast(10000000.0, f32))
   b8 = beta_cdf(cast(0.5, f32), cast(100000000.0, f32), cast(100000000.0, f32))
   d1 = if lt(ex_rel(b7, cast(0.5, f32)), tol) then cast(10000.0, f32) else cast(0.0, f32)

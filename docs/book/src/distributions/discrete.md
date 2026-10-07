@@ -43,8 +43,11 @@ or k outside [0, n].
 Computes P(X <= k) via the regularized incomplete beta function:
 betaI(n-k, k+1, 1-p). Returns 0 for k < 0, returns 1 for k >= n.
 
-`1-p` is formed in f64, where it is exact for any f32 `p`, and `p` itself is
-passed as the complement rather than being recovered by a second subtraction.
+`n - k`, `k + 1` and `1 - p` are all formed in f64. In f32 the `+ 1` vanishes
+once `k` reaches 2^24 — `ulp(5e7)` is 4 — which turned
+`binomial_cdf(5e7, 1e8, 0.5)` into the exactly-symmetric `I(0.5; 5e7, 5e7)` and
+lost the 4e-5 offset that is the whole answer there. `p` itself is passed as the
+complement rather than recovered by a second subtraction.
 Computed in f32, `1-p` was exactly 1.0 for tiny `p`, so `binomial_cdf(0, 1e6,
 1e-8)` returned 1.0 against a true 0.990; and it lost its digits for `p` near 1,
 where `binomial_cdf(999999, 1e6, 0.99999994)` was wrong by 84%.

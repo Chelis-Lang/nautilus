@@ -909,11 +909,16 @@ def test_binomial_cdf_keeps_its_digits_at_both_ends_of_p() -> unit ! { Test } = 
   _ = assert_true(lt(dist_rel_err(nearone, cast(0.057863064, f32)), tol), "binomial_cdf(999999,1e6,0.99999994) = 0.057863064 (was 0.0094174901)")
   assert_true(lt(dist_rel_err(median, cast(0.50039893, f32)), tol), "binomial_cdf(5e5,1e6,0.5) = 0.50039893 (was 0.5787672)")
 }
--- A regularised incomplete beta lies in [0,1], so a value outside it carries no
--- information and is returned as NaN rather than as a number. These two tests
--- are a pair: the guard must fire on the impossible value and must NOT fire
--- merely because the iteration budget ran out, because an exhausted budget
--- still returns a useful value wherever that value is in range.
+-- A regularised incomplete beta lies in [0,1], and two different things produce
+-- a value outside that range. These four tests are the whole rule:
+--  * a CONVERGED continued fraction that overshoots by a rounding is the right
+--    answer with a rounding on it, and is clamped to the boundary;
+--  * an ABANDONED one that lands outside has produced nothing, and becomes NaN;
+--  * an abandoned one that lands INSIDE is kept, per nautilus#140;
+--  * and the ordinary case is untouched.
+-- The first of these was wrong in review: the guard was an untoleranced
+-- `v < 0 || v > 1`, so it discarded correct answers for a small `a` with a large
+-- `b`, where the true value is 1.0 and f64 lands a few f32 ulps above it.
 def test_beta_cdf_out_of_range_result_is_nan_not_a_negative_probability() -> unit ! { Test } = {
   v = beta_cdf(cast(0.5, f32), cast(1000000000000.0, f32), cast(1000000000000.0, f32))
   assert_true(dist_is_nan(v), "beta_cdf(0.5,1e12,1e12) is NaN, not the -0.41600209 the computation produces")
@@ -942,4 +947,39 @@ def test_beta_cdf_boundaries_survive_the_f64_path() -> unit ! { Test } = {
   _ = assert_close(at0, cast(0.0, f32), cast(1e-9, f32), "beta_cdf(0;2,3) = 0")
   _ = assert_close(at1, cast(1.0, f32), cast(1e-9, f32), "beta_cdf(1;2,3) = 1")
   assert_close(uniform, cast(0.5, f32), cast(1e-6, f32), "Beta(1,1) is uniform, so its cdf at 0.5 is 0.5")
+}
+def test_beta_cdf_clamps_a_converged_overshoot_instead_of_discarding_it() -> unit ! { Test } = {
+  -- Small `a` with large `b`: the true value is 1.0, the continued fraction
+  -- converges in one to four iterations, and the f64 front factor lands up to
+  -- about four f32 ulps above 1.0 because its exponent is a difference of
+  -- log-gammas. An untoleranced range guard returned NaN for all of these.
+  a = beta_cdf(cast(0.0833333283662796, f32), cast(1e-12, f32), cast(10.0, f32))
+  b = beta_cdf(cast(9.999998e-8, f32), cast(1e-7, f32), cast(10000000.0, f32))
+  c = beta_cdf(cast(0.0009980038739740849, f32), cast(1e-30, f32), cast(1000.0, f32))
+  _ = assert_true(not(dist_is_nan(a)), "beta_cdf(0.0833;1e-12,10) is a number, not NaN")
+  _ = assert_close(a, cast(1.0, f32), cast(1e-6, f32), "and that number is 1.0")
+  _ = assert_true(not(dist_is_nan(b)), "beta_cdf(1e-7;1e-7,1e7) is a number, not NaN")
+  _ = assert_close(b, cast(1.0, f32), cast(1e-6, f32), "and that number is 1.0")
+  _ = assert_true(not(dist_is_nan(c)), "beta_cdf(0.000998;1e-30,1e3) is a number, not NaN")
+  assert_close(c, cast(1.0, f32), cast(1e-6, f32), "and that number is 1.0")
+}
+def test_f_cdf_clamps_a_converged_overshoot_instead_of_discarding_it() -> unit ! { Test } = {
+  -- `f_cdf` reaches the same corner with no tuning of `x` at all: a tiny `d1`
+  -- or `d2` is enough. On the version before nautilus#143 the first of these
+  -- returned 0.9999989, correct to 1.1e-6, so NaN here was a regression.
+  a = f_cdf(cast(1.0, f32), cast(1e-20, f32), cast(10.0, f32))
+  b = f_cdf(cast(1.0, f32), cast(1e-30, f32), cast(10.0, f32))
+  _ = assert_true(not(dist_is_nan(a)), "f_cdf(1;1e-20,10) is a number, not NaN")
+  _ = assert_close(a, cast(1.0, f32), cast(1e-6, f32), "and that number is 1.0")
+  _ = assert_true(not(dist_is_nan(b)), "f_cdf(1;1e-30,10) is a number, not NaN")
+  assert_close(b, cast(1.0, f32), cast(1e-6, f32), "and that number is 1.0")
+}
+def test_binomial_cdf_forms_its_beta_parameters_in_f64() -> unit ! { Test } = {
+  -- `n - k` and `k + 1` are f64. Formed in f32, the `+ 1` vanishes for
+  -- k >= 2^24 -- ulp(5e7) is 4 -- which made this the symmetric
+  -- `I(0.5; 5e7, 5e7)`, exactly 0.5, instead of `I(0.5; 5e7, 5e7+1)`.
+  v = binomial_cdf(cast(50000000.0, f32), cast(100000000.0, f32), cast(0.5, f32))
+  _ = assert_true(lt(dist_rel_err(v, cast(0.5000398, f32)), cast(0.00001, f32)), "binomial_cdf(5e7,1e8,0.5) = 0.5000398")
+  -- and it is not the 0.5 the f32 arithmetic produced, which is the whole point
+  assert_true(gt(v, cast(0.5000199, f32)), "and it is not exactly 0.5, which is what losing the +1 gives")
 }

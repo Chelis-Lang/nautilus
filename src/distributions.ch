@@ -229,8 +229,10 @@ def abs_f32_inner(x: f32) -> f32 = if lt(x, zero_f()) then neg(x) else x
 -- result. In f32 that dominated every value this family returned at large
 -- parameters, independently of how many continued-fraction iterations were
 -- spent. See `docs/book/src/distributions/beta-family.md`.
--- The continued fraction also needs more than 200 iterations once
--- min(a, b) passes about 3.4e5, so the budget below is 4096, spent through
+-- The continued fraction also needs more than 200 iterations for a large
+-- min(a, b) -- first near 1.7e5, and consistently past about 4.2e5; the f32
+-- count is not monotone in the parameters, so there is no single threshold and
+-- a bisection for one lands wherever it starts. The budget below is 4096, spent through
 -- three levels of chunking: a chunk of 16 single steps, a block of 16 chunks,
 -- and a driver of 16 blocks. Peak depth is about 48 frames rather than 4096,
 -- because `chelis eval --file` evaluates on a bounded stack and aborts the
@@ -293,12 +295,12 @@ def betacf_block(a: f64, b: f64, x: f64, c: f64, d: f64, h: f64, m: i64, max_m: 
     if st.4 then st else betacf_block(a, b, x, st.0, st.1, st.2, st.3, max_m, sub(chunks, one_i))
   }
 }
-def betacf_drive(a: f64, b: f64, x: f64, c: f64, d: f64, h: f64, m: i64, max_m: i64) -> f64 =
-  if gt(m, max_m) then h else {
+def betacf_drive(a: f64, b: f64, x: f64, c: f64, d: f64, h: f64, m: i64, max_m: i64) -> (f64, bool) =
+  if gt(m, max_m) then (h, false) else {
     st = betacf_block(a, b, x, c, d, h, m, max_m, betacf_fanout_i())
-    if st.4 then st.2 else betacf_drive(a, b, x, st.0, st.1, st.2, st.3, max_m)
+    if st.4 then (st.2, true) else betacf_drive(a, b, x, st.0, st.1, st.2, st.3, max_m)
   }
-def betacf64(a: f64, b: f64, x: f64) -> f64 = {
+def betacf64(a: f64, b: f64, x: f64) -> (f64, bool) = {
   eps = betacf_tiny()
   one = one_d64()
   qab = add(a, b)
@@ -310,17 +312,26 @@ def betacf64(a: f64, b: f64, x: f64) -> f64 = {
 }
 def nan_d64() -> f64 = div(zero_d64(), zero_d64())
 -- A regularised incomplete beta lies in [0, 1] by definition, so a value
--- outside it is not an approximation of anything and must not be returned as
--- though it were. Only the budget-exhausted extreme reaches this: a sweep of
--- 3024 (a, b, x) points with min(a, b) <= 1e7 produced no out-of-range value
--- at all, and `beta_cdf(0.5, 1e12, 1e12)` produced -0.416. The guard is
--- deliberately not a clamp -- 0.0 would be as plausible-looking as -0.416 --
--- and it is deliberately not a convergence test, because an exhausted budget
--- still returns a useful value wherever that value is in range, which is the
--- conclusion the gamma family reached for the same question (recorded in
--- `docs/book/src/appendix/precision.md`). It does not make an in-range
--- wrong answer impossible; `docs/book` states the parameter range instead.
-def betai_unit_or_nan(v: f64) -> f64 = if or(lt(v, zero_d64()), gt(v, one_d64())) then nan_d64() else v
+-- outside that range is not an approximation of anything. Two different things
+-- produce one, though, and they want opposite answers.
+-- A *converged* continued fraction can still overshoot by a rounding: the front
+-- factor's exponent is a difference of log-gammas whose absolute error is about
+-- one ulp of the larger one, so for a small `a` with a large `b`, where the true
+-- value is 1.0, the computation lands just above it. Measured up to 4.7e-7 --
+-- about four f32 ulps -- at a = 1e-7, b = 1e8, with the continued fraction
+-- converging in one to four iterations. That is the right answer with a
+-- rounding on it, so it is clamped to the boundary rather than discarded.
+-- An *abandoned* continued fraction that lands outside the range has produced
+-- nothing at all: `beta_cdf(0.5, 1e12, 1e12)` reaches -0.416 that way, and that
+-- becomes NaN rather than a number no caller can tell from a probability.
+-- Convergence is the separator rather than a tolerance because the overshoot
+-- grows with the cancellation and no fixed epsilon bounds it. An exhausted
+-- budget is still not by itself a NaN: wherever its value is in range it is
+-- returned, which is the conclusion the gamma family reached for the same
+-- question (recorded in `docs/book/src/appendix/precision.md`). None of this
+-- makes an in-range wrong answer impossible; `docs/book` states the parameter
+-- range instead.
+def betai_finish(v: f64, converged: bool) -> f64 = if or(lt(v, zero_d64()), gt(v, one_d64())) then if converged then if lt(v, zero_d64()) then zero_d64() else one_d64() else nan_d64() else v
 -- `omx` is the caller's own value for `1 - x`, not a value recovered by
 -- subtraction here. Every call site can form it exactly from its own inputs,
 -- and the two that could not would otherwise lose it: `x` saturates to 1.0
@@ -340,15 +351,15 @@ def betai_core(a: f64, b: f64, x: f64, omx: f64) -> f64 =
     threshold_num = add(a, one)
     threshold_den = add(add(a, b), cast(2.0, f64))
     threshold = div(threshold_num, threshold_den)
-    raw = if lt(x, threshold) then {
-      cf = betacf64(a, b, x)
-      mul(front, div(cf, a))
+    st = if lt(x, threshold) then {
+      r = betacf64(a, b, x)
+      (mul(front, div(r.0, a)), r.1)
     } else {
-      cf = betacf64(b, a, omx)
-      val = mul(front, div(cf, b))
-      sub(one, val)
+      r = betacf64(b, a, omx)
+      val = mul(front, div(r.0, b))
+      (sub(one, val), r.1)
     }
-    betai_unit_or_nan(raw)
+    betai_finish(st.0, st.1)
   }
 def betai(a: f32, b: f32, x: f32) -> f32 = {
   x64 = cast(x, f64)
@@ -385,10 +396,15 @@ def binomial_pmf(k: f32, n: f32, p: f32) -> f32 =
     log_pmf = add(add(log_choose, k_lp), nmk_l1mp)
     exp(log_pmf)
   }
+-- `n - k` and `k + 1` are formed in f64, not in f32 and then widened. In
+-- f32 the `+ 1` vanishes for k >= 2^24 (ulp(5e7) is 4), which turned
+-- `binomial_cdf(5e7, 1e8, 0.5)` into the symmetric `I(0.5; 5e7, 5e7)` --
+-- exactly 0.5 -- instead of `I(0.5; 5e7, 5e7+1)` = 0.50003989, an error of
+-- 8e-5 at an ordinary sample size. `n - k` loses its low bits the same way.
 def binomial_cdf(k: f32, n: f32, p: f32) -> f32 =
   if or(lt(p, zero_f()), gt(p, one_f())) then nan_d() else if lt(k, zero_f()) then zero_f() else if gte(k, n) then one_f() else {
-    a = cast(sub(n, k), f64)
-    b = cast(add(k, one_f()), f64)
+    a = sub(cast(n, f64), cast(k, f64))
+    b = add(cast(k, f64), one_d64())
     p64 = cast(p, f64)
     betai_core(a, b, sub(one_d64(), p64), p64) |> cast(f32)
   }

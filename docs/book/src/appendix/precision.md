@@ -154,36 +154,77 @@ because its size and sign depended on which way the rounding fell.
 
 The incomplete beta is now evaluated in f64 and returned as f32. The public
 signatures are unchanged and remain f32; this is an internal working precision,
-not an f64 surface. Measured over 885 cases through `chelis eval`, with every
-reference taken at the f32 value of each argument, the worst relative error is
-**5.7e-7**, and `beta_cdf(0.5, a, a)` -- which is exactly 0.5 for every `a` by
-symmetry, so it needs no reference at all -- is correct to 1.5e-7 absolute out
-to `a = 1e8`.
+not an f64 surface.
 
-Two limits remain, both documented rather than hidden:
+**The range that holds is set by the LARGE parameter, not the small one.** That
+distinction matters because for `student_t_cdf` the small parameter is always
+0.5, so a range stated in terms of it would say nothing at all. Measured through
+`chelis eval` by `scripts/check_beta_accuracy.py`, which is the oracle for every
+number in this section and fails the build if one drifts:
 
-- The continued fraction is given 4096 iterations. The number it needs grows
-  roughly as the cube root of `min(a, b)`: about 160 at 1e5, 340 at 1e6 and 1560
-  at 1e8. Beyond the budget the returned value loses digits gradually rather than
-  suddenly, and nothing in the result says so. Measured on
-  `beta_cdf(0.5, a, a)`, whose true value is exactly 0.5:
+| export | governing parameter | holds to | worst measured inside it |
+|---|---|---|---|
+| `beta_cdf` | `max(a, b)` | 3e8 | 4.8e-7 |
+| `f_cdf` | `max(d1, d2)` | 3e8 | 9.3e-7 |
+| `student_t_cdf` | `df` | 3e8 | 2.9e-7 |
+| `binomial_cdf` | `n` | 3e8 | 1.9e-7 |
 
-  | `a = b` | 3e8 | 1e9 | 1e10 | 1e11 | 1e12 |
-  |---|---|---|---|---|---|
-  | relative error | 4.8e-7 | 8.0e-6 | 1.2e-3 | 2.1e-1 | NaN |
-- A regularized incomplete beta lies in [0, 1], so a computed value outside that
-  range is returned as **NaN** rather than as a number. Only the exhausted-budget
-  extreme reaches this: `beta_cdf(0.5, 1e12, 1e12)` is NaN, where the raw
-  computation produces -0.416. An exhausted budget is *not* by itself a NaN --
-  wherever the value is still in range it is returned, because near the budget
-  the partial value is usually the better answer. That is the same conclusion the
-  gamma family reached for its own continued fraction.
+So: **relative error below 1e-6 while the largest parameter stays under about
+3e8.** References come from SciPy's `betainc` at the f32 value of every argument,
+except where no library can adjudicate — `beta_cdf(0.5, a, a)` and
+`f_cdf(1, d, d)` are 0.5 exactly by symmetry, and past `df = 1e15` SciPy's own
+`betainc` saturates exactly as Nautilus does, so `student_t_cdf` is checked
+against the standard normal limit there instead.
 
-So from about `min(a, b) = 1e9` to `1e12` the family returns an in-range value
-that is wrong without saying so, and the NaN guard does not help there:
-`beta_cdf(0.5, 1e11, 1e11)` returns 0.394 against a true 0.5. If your parameters
-reach that range, do not trust these functions. Below `3e8` the measured error
-stays under 1e-6.
+Beyond that range the error grows, and nothing in the result says so. Two
+different mechanisms do it, so the two worst cases are tabulated separately.
+
+The iteration budget is 4096, and the count needed grows roughly as the cube
+root of the smaller parameter: about 160 at 1e5, 340 at 1e6 and 1560 at 1e8.
+Past the budget, on `beta_cdf(0.5, a, a)`, whose true value is exactly 0.5:
+
+| `a = b` | 3e8 | 1e9 | 1e10 | 1e11 | 1e12 |
+|---|---|---|---|---|---|
+| relative error | 4.8e-7 | 8.0e-6 | 1.2e-3 | 2.1e-1 | NaN |
+
+`student_t_cdf` degrades earlier and for the other reason — the front factor's
+log-gamma cancellation, driven by `df` alone — and it degrades badly:
+
+| `df` | 3e8 | 1e9 | 1e11 | 1e12 | 1e13 | 1e14 | 1e16 and up |
+|---|---|---|---|---|---|---|---|
+| relative error | 2.9e-7 | 1.7e-6 | 3.8e-5 | 3.8e-4 | 5.7e-2 | **51%** | returns 0.5 or 1.0 |
+
+At `df = 1e16` and beyond, `student_t_cdf(1, df)` returns exactly **0.5**, which
+is also its value at `t = 0`. The explicit complement moved that from `df = 2^24`
+on the previous version to about `2^53`; it did not remove it. **If your `df`
+exceeds about 1e9, use `normal_cdf` instead** — the t distribution is within
+1e-9 of the standard normal there anyway, which is the same fact that makes the
+normal a valid reference above.
+
+A regularized incomplete beta also lies in [0, 1], and a computed value outside
+that range gets one of two treatments:
+
+- A **converged** continued fraction can overshoot by a rounding, because the
+  front factor's exponent is a difference of log-gammas. For a small `a` with a
+  large `b` the true value is 1.0 and the computation lands up to about four f32
+  ulps above it. That is the right answer with a rounding on it, so it is
+  **clamped to the boundary**.
+- An **abandoned** one that lands outside has produced nothing:
+  `beta_cdf(0.5, 1e12, 1e12)` reaches -0.416 that way, and becomes **NaN**.
+
+Convergence is the separator rather than a tolerance, because the overshoot
+grows with the cancellation and no fixed epsilon bounds it. An exhausted budget
+is *not* by itself a NaN: wherever its value is in range it is returned, because
+near the budget the partial value is usually the better answer — the same
+conclusion the gamma family reached for its own continued fraction.
+
+So from about `max(a, b) = 1e9` upward the family returns an in-range value that
+is wrong without saying so: `beta_cdf(0.5, 1e11, 1e11)` returns 0.394 against a
+true 0.5, and `beta_cdf(0.5, 3e38, 3e38)` returns a confident **1.0** against a
+true 0.5. The NaN guard catches only the subset that leaves [0, 1] — for
+`beta_cdf(0.5, a, a)` that is 1e12 but not 3e38, and `f_cdf` is a different mix
+again. **Do not read a number from these functions when the largest parameter
+exceeds about 1e9.**
 
 When f32 precision is insufficient in `Nautilus.Special`, call it at f64
 directly. Its functions are generic over the `{f32, f64}` dtype set. Read the

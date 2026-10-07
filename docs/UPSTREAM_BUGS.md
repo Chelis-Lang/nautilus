@@ -85,7 +85,11 @@ release.
       `tests_blocked/README.md` records it among the manual probes.
     - **Pinned result:** at Chelis 0.19.1 the absent tail-call elimination and
       the body-size-dependent limit both reproduce. With the chunking in place
-      every f32 parameter evaluates, including `beta_cdf(0.5, 3e38, 3e38)`.
+      every f32 parameter *evaluates* rather than killing the process, including
+      `beta_cdf(0.5, 3e38, 3e38)` — which returns a confident `1.0` against a
+      true 0.5, so this entry claims only that the process survives, not that the
+      answer is usable. The accuracy range is in
+      `docs/book/src/appendix/precision.md`.
     - **Re-probe trigger:** every pin bump and the release resolving
       chelis#2471. On pass, the chunking may be collapsed back to a flat
       recursion, which would simplify `src/distributions.ch` substantially;
