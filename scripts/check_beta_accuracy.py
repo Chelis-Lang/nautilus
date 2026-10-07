@@ -38,6 +38,22 @@ Values come from the shipped compiler through one batched `chelis eval --file`,
 the pattern `parity/run_parity.py` uses, so this measures the real lane and not a
 transcription.
 
+**This is a regression detector, not a maximiser, and the distinction is the
+point.** The error is rounding-driven, so it oscillates in every parameter: its
+maximum over a continuum cannot be found by evaluating finitely many points, and
+every refinement of this grid has raised the observed worst (5.7e-7, 1.21e-6,
+1.45e-6). Review round 4 found 1.45e-6 at `f_cdf(0.501, 1e8, 2.0)` — a point
+0.2% off the derived locus, which this grid contains the neighbourhood of but
+not the exact peak of. That is not a gap to close; it is what sampling a
+rounding surface does.
+
+So the contract is the **bound plus headroom**, which a finite grid can defend,
+rather than a published worst case, which it cannot. The grid's job is to hold
+the known-hard corners — both range edges, the branch threshold derived per
+parameter pair, the mid-range region, and the hardest case any review has found
+— so that a real regression trips the bound. No document quotes the number this
+prints, deliberately.
+
 This script does **not** read `precision.md` or `SKILL.md`: `DOCUMENTED` below is
 transcribed by hand, so it catches an implementation drift but not a document
 drift. `test_the_bound_is_not_silently_widened` pins the table so it cannot move
@@ -66,8 +82,11 @@ MODULE = "Nautilus.AccBeta"
 PHI1 = 0.8413447460685429          # the standard normal CDF at 1
 
 # (ceiling on the large parameter, floor on the small one, permitted relative
-# error). Measured worst inside: `f_cdf(0.5, 1e8, 0.5)` at 9.3e-7, which is the
-# binding case for all four. Just outside: `f_cdf(0.5, 2e8, 0.5)` is 1.7e-6,
+# error). The bound carries deliberate headroom over the measurement: every
+# refinement of the grid below has raised the observed worst (5.7e-7, 1.21e-6,
+# 1.45e-6), so a bound that tracks it is a bound the next refinement falsifies.
+# The run prints the current worst; no document quotes it, deliberately.
+# Just outside the range: `f_cdf(0.5, 2e8, 0.5)` is 1.7e-6,
 # `binomial_cdf(1.5e8, 3e8, 0.5)` is 1.3e-6, and `beta_cdf(0.9, 0.5, 1e-4)` is
 # 1.9e-6 with a large parameter of only 0.5.
 DOCUMENTED = {
@@ -97,7 +116,7 @@ def f32(value: float) -> float:
 
 def cases() -> list[tuple[str, str, str, float, float, float]]:
     """(name, export, expression, large parameter, reference, small parameter)."""
-    from scipy.special import betainc
+    from scipy.special import betainc, betaincinv
 
     out: list[tuple[str, str, str, float, float, float]] = []
 
@@ -128,7 +147,31 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
         """student_t's branch boundary: x == threshold reduces to t^2 = 3df/(df+2)."""
         return math.sqrt(3.0 * df / (df + 2.0))
 
-    NEAR = (0.95, 0.99, 1.0, 1.01, 1.05)
+    # A neighbourhood of the threshold, in units of the beta distribution's own
+    # standard deviation. A percentage band does not work: at a = b = 1e8 the sd
+    # is 3.5e-5, so +-5% of the threshold is ~700 sd and every point but the
+    # centre lands where the CDF has saturated and is then excluded. Round 4
+    # found 278 of 327 exclusions were exactly that shape.
+    SD_STEPS = (0.0, 0.5, -0.5, 1.0, -1.0, 2.0, -2.0, 4.0, -4.0)
+
+    def beta_sd(a, b):
+        return math.sqrt(a * b / ((a + b) ** 2 * (a + b + 1.0)))
+
+    def near_threshold(a, b):
+        """x values around the branch threshold, spaced by the beta sd."""
+        thr, sd = beta_threshold(a, b), beta_sd(a, b)
+        out = []
+        for k in SD_STEPS:
+            x = f32(thr + k * sd)
+            if 0.0 < x < 1.0:
+                out.append(x)
+        # and a few true f32 ulps either side of the threshold itself
+        bits = struct.unpack("<I", struct.pack("<f", f32(thr)))[0]
+        for delta in (-2, -1, 1, 2):
+            x = struct.unpack("<f", struct.pack("<I", bits + delta))[0]
+            if 0.0 < x < 1.0:
+                out.append(x)
+        return list(dict.fromkeys(out))
 
     # ---- beta_cdf -------------------------------------------------------
     for a in [1e2, 1e3, 1e4, 1e5, 1e6, 1e7, CEILING, 3e8]:
@@ -140,14 +183,10 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
                 add("beta_cdf", f"beta_cdf({lit(x)}, {lit(a)}, {lit(b)})",
                     max(A, B), float(betainc(A, B, X)), min(A, B))
     # x ON the branch threshold, for every (a, b) pair in the grid
-    for a in [FLOOR, 1.0, 10.0, 1e4, 1e6, CEILING]:
-        for b in [FLOOR, 1.0, 10.0, 1e4, 1e6, CEILING]:
-            thr = beta_threshold(f32(a), f32(b))
-            for mult in NEAR:
-                x = f32(thr * mult)
-                if not 0.0 < x < 1.0:
-                    continue
-                A, B = f32(a), f32(b)
+    for a in [FLOOR, 1.0, 2.0, 10.0, 1e4, 1e6, CEILING]:
+        for b in [FLOOR, 1.0, 2.0, 10.0, 1e4, 1e6, CEILING]:
+            A, B = f32(a), f32(b)
+            for x in near_threshold(A, B):
                 add("beta_cdf", f"beta_cdf({lit(x)}, {lit(a)}, {lit(b)})",
                     max(A, B), float(betainc(A, B, x)), min(A, B))
 
@@ -170,22 +209,26 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
                     max(D1, D2), float(betainc(D1 / 2, D2 / 2, u)),
                     min(D1, D2))
 
-    # x ON the branch threshold for f_cdf
-    for d1 in [FLOOR, 1.0, 4.0, 1e4, 1e6, CEILING]:
-        for d2 in [FLOOR, 1.0, 10.0, 1e3, 1e6, CEILING]:
+    # x ON the branch threshold for f_cdf. `d = 2` and `d = 3` are in the list
+    # because they make the beta parameter exactly 1.0 and 1.5 -- the beta-space
+    # floor, and structurally the worst corner. Round 4 found f_cdf's peak at
+    # d2 = 2, which the previous lists skipped by jumping 1.0 -> 10.0.
+    for d1 in [FLOOR, 1.0, 2.0, 4.0, 1e4, 1e6, CEILING]:
+        for d2 in [FLOOR, 1.0, 2.0, 3.0, 10.0, 1e3, 1e6, CEILING]:
             D1, D2 = f32(d1), f32(d2)
-            base = f_x_at_threshold(D1, D2)
-            if base is None:
-                continue
-            for mult in NEAR:
-                x = f32(base * mult)
-                if not 0.0 < x < float("inf"):
-                    continue
-                u = D1 * x / (D1 * x + D2)
+            for u in near_threshold(D1 / 2.0, D2 / 2.0):
+                # invert u = d1*x/(d1*x + d2)
                 if not 0.0 < u < 1.0:
                     continue
+                x = f32(u * D2 / (D1 * (1.0 - u)))
+                if not 0.0 < x < float("inf"):
+                    continue
+                u_actual = D1 * x / (D1 * x + D2)
+                if not 0.0 < u_actual < 1.0:
+                    continue
                 add("f_cdf", f"f_cdf({lit(x)}, {lit(d1)}, {lit(d2)})",
-                    max(D1, D2), float(betainc(D1 / 2, D2 / 2, u)), min(D1, D2))
+                    max(D1, D2), float(betainc(D1 / 2, D2 / 2, u_actual)),
+                    min(D1, D2))
 
     # ---- student_t_cdf: df is the large parameter; the small one is always 0.5
     for df in [1.0, 10.0, 1e3, 1e5, 1e7, CEILING]:
@@ -197,12 +240,19 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
                 D, upper if T < 0 else 1 - upper)
     # t ON the branch boundary, both tails. This is the locus that made the
     # previous ceiling false: at df = 1e8 and t = -sqrt(3) the error is 1.2e-6.
+    # The neighbourhood here is in `t`, not in `x`, so it is relative plus a few
+    # true f32 ulps rather than sd-scaled. The 1.2e-6 case sits at the boundary
+    # exactly, which is why the ulp steps matter more than the percentage band.
     for df in [1.0, 10.0, 1e3, 1e5, 1e6, 1e7, 3e7, CEILING]:
         D = f32(df)
         base = t_at_boundary(D)
-        for mult in NEAR:
+        ts = [f32(base * m) for m in (0.99, 0.999, 1.0, 1.001, 1.01)]
+        bits = struct.unpack("<I", struct.pack("<f", f32(base)))[0]
+        ts += [struct.unpack("<f", struct.pack("<I", bits + d))[0]
+               for d in (-2, -1, 1, 2)]
+        for mag in dict.fromkeys(ts):
             for sign in (1.0, -1.0):
-                t = f32(sign * base * mult)
+                t = f32(sign * mag)
                 x = D / (D + t * t)
                 upper = float(betainc(D / 2, 0.5, x)) / 2
                 add("student_t_cdf", f"student_t_cdf({lit(t)}, {lit(df)})",
@@ -223,6 +273,57 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
                     continue
                 add("binomial_cdf", f"binomial_cdf({lit(k)}, {lit(n)}, {lit(p)})",
                     N, float(betainc(N - K, K + 1, 1 - P)))
+    # The MID-RANGE locus, complementary to the threshold one. Relative error is
+    # most meaningful where the CDF is neither saturated nor tiny, and round 4
+    # found f_cdf's true peak slightly OFF the threshold, at a point where the
+    # value is about 0.135 -- i.e. in this region rather than on the branch
+    # switch. `betaincinv` gives the x that puts the CDF on a target value, so
+    # this locus is derived too rather than guessed.
+    # (5e7, 1.0) is here because it is f_cdf(x, 1e8, 2.0) -- the hardest case any
+    # review has found (1.45e-6 in round 4), where d2 = 2 puts the beta parameter
+    # exactly at 1.0 and d1 at the ceiling. A known worst case belongs in the grid
+    # whether or not it is the maximum.
+    for a, b in [(1.0, 1.0), (2.0, 1.0), (1e4, 1.0), (1e6, 1.0), (CEILING, 1.0),
+                 (CEILING, 2.0), (1.0, CEILING), (2.0, CEILING), (1e4, 1e4),
+                 (CEILING, CEILING), (1e4, CEILING), (CEILING, 1e4),
+                 (5e7, 1.0), (5e7, 1.5), (5e7, 5e7)]:
+        A, B = f32(a), f32(b)
+        for target in (0.05, 0.135, 0.25, 0.5, 0.75, 0.95):
+            try:
+                x = f32(float(betaincinv(A, B, target)))
+            except Exception:
+                continue
+            if not 0.0 < x < 1.0:
+                continue
+            add("beta_cdf", f"beta_cdf({lit(x)}, {lit(a)}, {lit(b)})",
+                max(A, B), float(betainc(A, B, x)), min(A, B))
+            # the same locus reached through f_cdf, whose beta parameters are d/2
+            D1, D2 = f32(2.0 * a), f32(2.0 * b)
+            u = float(betaincinv(A, B, target))
+            if 0.0 < u < 1.0:
+                fx = f32(u * D2 / (D1 * (1.0 - u)))
+                if 0.0 < fx < float("inf"):
+                    ua = D1 * fx / (D1 * fx + D2)
+                    if 0.0 < ua < 1.0:
+                        add("f_cdf", f"f_cdf({lit(fx)}, {lit(D1)}, {lit(D2)})",
+                            max(D1, D2), float(betainc(A, B, ua)), min(D1, D2))
+
+    # binomial_cdf's branch threshold was never derived. Its beta call is
+    # I_{1-p}(n-k, k+1), so the threshold `1-p = (a+1)/(a+b+2)` reduces to
+    # p* = (k+1)/(n+2). Round 4 found probing it raises binomial's worst 1.4x
+    # over the hand-listed p values.
+    for n in [10.0, 1e3, 1e5, 1e6, 1e7, CEILING]:
+        for frac in [0.0, 0.1, 0.5, 0.9, None]:
+            k = float(int(n) - 1) if frac is None else float(int(frac * n))
+            N, K = f32(n), f32(k)
+            if K >= N or K < 0.0:
+                continue
+            for om in near_threshold(N - K, K + 1.0):
+                p = f32(1.0 - om)
+                if not 0.0 < p < 1.0:
+                    continue
+                add("binomial_cdf", f"binomial_cdf({lit(k)}, {lit(n)}, {lit(p)})",
+                    N, float(betainc(N - K, K + 1.0, 1.0 - f32(p))))
     return out
 
 

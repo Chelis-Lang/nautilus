@@ -14,6 +14,7 @@ lexed as a number. Names are positional now, and this pins that.
 
 from __future__ import annotations
 
+import math
 import re
 import unittest
 
@@ -128,6 +129,120 @@ class Coverage(unittest.TestCase):
             self.assertEqual(floor, 1.0, export)
             self.assertEqual(bound, 2e-6, export)
         self.assertEqual((CEILING, FLOOR, BOUND), (1e8, 1.0, 2e-6))
+
+
+class ThresholdLocusCoverage(unittest.TestCase):
+    """The branch threshold `x = (a+1)/(a+b+2)` is where the continued fraction
+    converges slowest and the error peaks. Leaving it out of the grid is what
+    made the documented range false in review round 3, and the ceiling and floor
+    each got an "AT its own value" guard for the same reason — this is that guard
+    for the locus.
+
+    These assert the *output* rather than calling the derivation helpers. A
+    silently broken `f_x_at_threshold` or `t_at_boundary` would still produce
+    cases, just not on the locus, and only an output check catches that. The
+    thresholds below are recomputed here independently of the script.
+    """
+
+    ULPS = 8
+
+    @staticmethod
+    def _near(a: float, b: float, tol_ulps: int = 8) -> float:
+        import struct as _s
+        bits = _s.unpack("<I", _s.pack("<f", a))[0]
+        other = _s.unpack("<I", _s.pack("<f", b))[0]
+        return abs(bits - other) <= tol_ulps
+
+    def setUp(self) -> None:
+        self.spec = cases()
+
+    def _numbers(self, expr: str) -> list[float]:
+        return [float(v) for v in re.findall(r"cast\(([-\d.e+]+), f32\)", expr)]
+
+    def test_beta_cases_reach_the_branch_threshold(self) -> None:
+        by_params: dict[tuple[float, float], list[float]] = {}
+        for _, export, expr, _, _, _ in self.spec:
+            if export != "beta_cdf":
+                continue
+            x, a, b = self._numbers(expr)
+            by_params.setdefault((a, b), []).append(x)
+        self.assertTrue(by_params)
+        # Not every pair needs a threshold case -- the mid-range locus adds pairs
+        # for a different purpose. What matters is that the locus is exercised,
+        # and that it is exercised at the hard corner: the ceiling.
+        on_locus = {(a, b) for (a, b), xs in by_params.items()
+                    if any(self._near(x, f32((a + 1.0) / (a + b + 2.0)), self.ULPS)
+                           for x in xs)}
+        self.assertGreater(len(on_locus), 10,
+                           f"only {len(on_locus)} (a,b) pairs sit on the threshold")
+        corners = [(CEILING, CEILING), (CEILING, FLOOR), (FLOOR, CEILING)]
+        for corner in corners:
+            self.assertIn(corner, on_locus,
+                          f"the threshold is never evaluated at {corner}")
+
+    def test_f_cases_reach_the_branch_threshold_in_u(self) -> None:
+        by_params: dict[tuple[float, float], list[float]] = {}
+        for _, export, expr, _, _, _ in self.spec:
+            if export != "f_cdf":
+                continue
+            x, d1, d2 = self._numbers(expr)
+            by_params.setdefault((d1, d2), []).append(x)
+        self.assertTrue(by_params)
+        on_locus = set()
+        for (d1, d2), xs in by_params.items():
+            a, b = d1 / 2.0, d2 / 2.0
+            thr = (a + 1.0) / (a + b + 2.0)
+            us = [d1 * x / (d1 * x + d2) for x in xs]
+            if any(abs(u - thr) <= 1e-6 * max(thr, 1e-12) for u in us):
+                on_locus.add((d1, d2))
+        self.assertGreater(len(on_locus), 10,
+                           f"only {len(on_locus)} (d1,d2) pairs sit on the threshold")
+        # d2 = 2 makes the beta parameter exactly 1.0 -- the beta-space floor,
+        # and where round 4 found f_cdf's peak. The previous lists skipped it.
+        self.assertTrue(any(d2 == 2.0 for _, d2 in on_locus),
+                        "f_cdf never evaluates the threshold at d2 = 2")
+        self.assertTrue(any(d1 == CEILING for d1, _ in on_locus),
+                        "f_cdf never evaluates the threshold at the ceiling")
+
+    def test_student_t_cases_reach_the_branch_boundary(self) -> None:
+        by_df: dict[float, list[float]] = {}
+        for _, export, expr, large, _, _ in self.spec:
+            if export != "student_t_cdf":
+                continue
+            t, df = self._numbers(expr)
+            by_df.setdefault(df, []).append(abs(t))
+        self.assertTrue(by_df)
+        hit = 0
+        for df, ts in by_df.items():
+            boundary = f32(math.sqrt(3.0 * df / (df + 2.0)))
+            if any(self._near(t, boundary, self.ULPS) for t in ts):
+                hit += 1
+        # the three normal-limit df values carry no boundary case by design
+        self.assertGreaterEqual(hit, len(by_df) - 3,
+                                f"only {hit} of {len(by_df)} df values are evaluated "
+                                f"ON the branch boundary")
+
+    def test_binomial_cases_reach_its_own_threshold(self) -> None:
+        # binomial's beta call is I_{1-p}(n-k, k+1), so its threshold is
+        # p* = (k+1)/(n+2).
+        hits = 0
+        for _, export, expr, _, _, _ in self.spec:
+            if export != "binomial_cdf":
+                continue
+            k, n, p = self._numbers(expr)
+            star = (k + 1.0) / (n + 2.0)
+            if abs(p - star) <= 1e-5 * max(star, 1e-12):
+                hits += 1
+        self.assertGreater(hits, 0, "no binomial case sits on p* = (k+1)/(n+2)")
+
+    def test_every_export_has_a_mid_range_case(self) -> None:
+        """Relative error is only meaningful where the value is neither saturated
+        nor tiny, and round 4 found the true peak in that region rather than on
+        the branch switch."""
+        for export in DOCUMENTED:
+            mid = [r for _, e, _, _, r, _ in self.spec
+                   if e == export and 0.02 < r < 0.98]
+            self.assertTrue(mid, f"{export} has no case with a mid-range value")
 
 
 class ReferenceFreeAnchors(unittest.TestCase):

@@ -163,23 +163,39 @@ only the ceiling was wrong, since `beta_cdf(0.9, 0.5, 1e-4)` errs 1.9e-6 with a
 largest parameter of merely 0.5.
 
 > **Relative error below 2e-6 when every parameter you pass is at least 1 and the
-> largest is at most 1e8.** Worst measured inside that range: **1.2e-6**, at
-> `f_cdf(0.33667, 1e8, 1.0)` and `student_t_cdf(-1.7320508, 1e8)`.
+> largest is at most 1e8.**
 
-| export | parameters the range applies to | worst measured inside |
-|---|---|---|
-| `beta_cdf` | `a`, `b` | 3.2e-7 |
-| `f_cdf` | `d1`, `d2` | 1.2e-6 |
-| `student_t_cdf` | `df` (its other beta parameter is structurally 0.5) | 1.2e-6 |
-| `binomial_cdf` | `n` (`n - k` and `k + 1` are at least 1 for any legal `k`) | 1.9e-7 |
+| export | parameters the range applies to |
+|---|---|
+| `beta_cdf` | `a`, `b` |
+| `f_cdf` | `d1`, `d2` |
+| `student_t_cdf` | `df` (its other beta parameter is structurally 0.5) |
+| `binomial_cdf` | `n` (`n - k` and `k + 1` are at least 1 for any legal `k`) |
 
-**Why 2e-6 and not the 1.2e-6 measured.** This bound has been wrong three times,
-each time because the grid behind it missed a corner: first a range indexed on the
-wrong parameter, then a ceiling never evaluated at its own value, then a worst-case
-locus that was known and simply not sampled. Each refinement raised the measured
-worst — 5.7e-7, then 1.21e-6. The stated bound therefore carries deliberate
-headroom over the measurement rather than tracking it, so that a further
-refinement reports a number inside the claim instead of falsifying it again.
+**This page deliberately does not publish a "worst measured" figure.** Four
+rounds of review falsified four successive versions of one, each time because the
+grid behind it had missed a corner — a range indexed on the wrong parameter, a
+ceiling never evaluated at its own value, a known worst-case locus left unsampled,
+and then a parameter value between two listed ones. Every refinement raised the
+number (5.7e-7, 1.21e-6, 1.45e-6), so any figure printed here is a fresh
+falsifiable claim with a short shelf life, and no caller needs it: what a caller
+needs is the bound and the range, which are stated above and enforced.
+
+`scripts/check_beta_accuracy.py` is the record. It prints the current worst, both
+inside and outside the range, and fails the build if the implementation exceeds
+the bound. Run it for the measurement; the number it prints is as of its own grid
+and nothing else.
+
+There is a reason no grid settles this. The error is rounding-driven, so it
+oscillates in every parameter, and the maximum over a continuum is not reachable
+by evaluating finitely many points — an independent review sweep of 7,652 cases
+found 1.45e-6 at a point 0.2% away from the worst any derived locus gives. The
+bound with headroom is therefore the only form of this claim a finite check can
+actually defend, which is why it is the form stated.
+
+**Why 2e-6 and not the measured worst.** The bound carries deliberate headroom for
+the same reason, so a further refinement of the grid reports a number inside the
+claim instead of falsifying it again.
 
 Both worst cases sit on the continued fraction's **branch threshold**,
 `x = (a+1)/(a+b+2)`, which is where it converges slowest and so where the error

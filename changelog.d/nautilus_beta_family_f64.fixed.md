@@ -85,58 +85,45 @@ A threshold-adjacent probe found 47 such inputs. The claim that accompanied it -
 
 ## The range this holds over
 
-**This bound was wrong three times, and the third repair changed the method
-rather than the number.**
-
-- Round 1: indexed on `min(a, b)`, which for `student_t_cdf` is permanently 0.5
-  and so described nothing.
-- Round 2: the 3e8 ceiling that replaced it was false at its own boundary for two
-  of four exports -- the grids stopped a decade below it, and the unit test
-  written to prevent that accepted a case one decade down.
-- Round 3: the 1e8 ceiling that replaced *that* was false at the continued
-  fraction's **branch threshold** `x = (a+1)/(a+b+2)`, which is where it converges
-  slowest and so where the error peaks. `student_t_cdf(-sqrt(3), 1e8)` errs 1.21e-6
-  and `f_cdf(0.33667, 1e8, 1)` errs 1.21e-6, both on that locus. It was a known
-  worst case -- named in this very change set for the iteration count -- and simply
-  not sampled.
-
-Three failures, one cause: **the grid behind the number missed a corner.** So the
-fix is to the generator, not the figure. `cases()` now **derives** the branch
-threshold from the parameters at every grid point (`t^2 = 3df/(df+2)` for
-`student_t_cdf`, the equivalent `x` for `f_cdf`, `(a+1)/(a+b+2)` for `beta_cdf`)
-instead of sampling hand-listed points, so the grid cannot drift off the worst
-case again.
-
 > **Relative error below 2e-6 when every parameter is at least 1 and the largest
-> is at most 1e8.** Worst measured inside: **1.2e-6**.
+> is at most 1e8.**
 
-| export | parameters | worst measured inside |
-|---|---|---|
-| `beta_cdf` | `a`, `b` | 3.2e-7 |
-| `f_cdf` | `d1`, `d2` | 1.2e-6 (on the branch threshold) |
-| `student_t_cdf` | `df` (its other beta parameter is structurally 0.5) | 1.2e-6 (at `t = -sqrt(3)`) |
-| `binomial_cdf` | `n` (`n - k` and `k + 1` are at least 1 for any legal `k`) | 1.9e-7 |
+| export | parameters |
+|---|---|
+| `beta_cdf` | `a`, `b` |
+| `f_cdf` | `d1`, `d2` |
+| `student_t_cdf` | `df` (its other beta parameter is structurally 0.5) |
+| `binomial_cdf` | `n` (`n - k` and `k + 1` are at least 1 for any legal `k`) |
 
-**The stated 2e-6 carries deliberate headroom over the measured 1.2e-6.** Each
-refinement of the grid raised the worst -- 5.7e-7, then 1.21e-6 -- so a bound that
-tracks the measurement is a bound that the next refinement falsifies. This one is
-set so a further refinement reports a number inside the claim.
+**No "worst measured" figure is published, deliberately.** Four rounds of review
+falsified four successive versions of one:
 
-`scripts/check_beta_accuracy.py` enforces it, evaluates each export **at** both
-edges and on the derived threshold, and reports the in-range worst separately from
-the overall worst -- quoting a worst that includes out-of-range inputs is the same
-number/scope mismatch that made the earlier claims wrong.
+- indexed on `min(a, b)`, which for `student_t_cdf` is permanently 0.5 and so
+  described nothing;
+- a 3e8 ceiling never evaluated at its own value, with grids a decade short and a
+  unit test that accepted a case a decade down;
+- a 1e8 ceiling false on the continued fraction's **branch threshold**
+  `x = (a+1)/(a+b+2)`, a locus named elsewhere in this very change set and still
+  not sampled;
+- and then a figure understated by a parameter value sitting between two listed
+  ones (`f_cdf` at `d2 = 2`, where the beta parameter is exactly 1).
 
-Outside either edge the error grows. Above the ceiling, `f_cdf(0.5, 2e8, 0.5)`
-errs 1.7e-6 and `binomial_cdf(1.5e8, 3e8, 0.5)` errs 1.3e-6. Below the floor,
-`beta_cdf(0.9, 0.5, b)` errs 6.1e-7 at `b = 3e-4`, 1.9e-6 at 1e-4 and **183%** at
-1e-10 -- with a largest parameter of only 0.5 -- and `f_cdf(0.5, 1e8, 1e-3)` errs
-2.5e-5, because a large and a small parameter together are worse than either
-alone. `beta_cdf(0.5, a, a)` is 8.0e-6 at 1e9, 1.2e-3 at 1e10, 2.1e-1 at 1e11 and
-NaN at 1e12; `beta_cdf(0.5, 3e38, 3e38)` returns a confident **1.0** against a
-true 0.5, which the NaN guard does not catch. `student_t_cdf` degrades earliest --
-1.7e-6 at `df = 1e9`, 3.8e-4 at 1e12, **51%** at 1e14, and exactly 0.5 from 1e16
--- so above `df` of about 1e9, use `normal_cdf`.
+Each refinement raised the number -- 5.7e-7, 1.21e-6, 1.45e-6 -- and that is not
+a sequence of four mistakes but one fact about the quantity: **the error is
+rounding-driven, so it oscillates in every parameter and its maximum over a
+continuum is not reachable by evaluating finitely many points.** An independent
+sweep of 7,652 adversarial cases found 1.45e-6 at a point 0.2% off the worst any
+derived locus gives.
+
+So the published contract is the **bound with headroom**, which a finite check can
+defend, and `scripts/check_beta_accuracy.py` is the record for the measurement.
+That script now derives its hard cases rather than listing them -- the branch
+threshold per parameter pair (`t^2 = 3df/(df+2)` for `student_t_cdf`,
+`p* = (k+1)/(n+2)` for `binomial_cdf`, the inverted `u` for `f_cdf`), a
+neighbourhood scaled by the distribution's own standard deviation rather than a
+percentage, the mid-range region via `betaincinv`, and the hardest corner any
+review has found. Five tests pin that coverage, including one for the locus,
+which previously had none while the ceiling and floor each had one.
 
 ## What changed, measured
 
