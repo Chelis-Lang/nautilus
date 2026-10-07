@@ -1,9 +1,7 @@
-# Monte Carlo Pricing
+# Monte Carlo pricing
 
-Monte Carlo simulation is the standard approach for pricing path-dependent
-options and options with multiple underlying assets. Nautilus provides the
-building blocks: `normal_sample` for generating random draws and
-`euler_maruyama_fixed` for simulating SDEs.
+Use `normal_sample` to generate noise and `euler_maruyama_fixed` to simulate
+terminal prices, then average and discount the option payoffs.
 
 ## The pattern
 
@@ -12,7 +10,7 @@ building blocks: `normal_sample` for generating random draws and
 2. Compute the payoff for each path.
 3. Average the payoffs and discount to present value.
 
-## Geometric Brownian Motion paths
+## Geometric Brownian motion paths
 
 Under the risk-neutral measure, a stock price follows:
 
@@ -54,19 +52,52 @@ noise tensors, derive a child key per draw with `split_key` or
 
 ## Computing the price
 
-For a European call with strike K:
+The program below prices a one-year at-the-money European call (spot and
+strike 100, rate 5%, volatility 20%) from 2,000 Euler-Maruyama paths of 50
+steps each. `fold` carries the key: each iteration splits it, spends one child
+on a path, and passes the other to the next iteration, so no key is used
+twice. The accumulator also sums squared payoffs for the standard error.
 
 ```chelis-fragment
--- After simulating terminal price s_T:
-payoff = if gt(s_T, k) then sub(s_T, k) else cast(0.0, f32)
-discounted = mul(payoff, exp(neg(mul(r, t))))
+import Nautilus.Distributions (normal_sample)
+import Nautilus.Sde (euler_maruyama_fixed)
+
+def gbm_drift(y: f32, t: f32) -> f32 = mul(0.05f32, y)
+def gbm_diff(y: f32, t: f32) -> f32 = mul(0.2f32, y)
+def discounted_payoff(k: key, strike: f32) -> f32 = {
+  steps = to_tensor(map(fn (i: i64) -> 0.0f32, range(0i64, 50i64)))
+  noise = normal_sample(k, steps, 0.0f32, 1.0f32)
+  s_t = euler_maruyama_fixed(gbm_drift, gbm_diff, 100.0f32, 0.0f32, 1.0f32, noise)
+  payoff = if gt(s_t, strike) then sub(s_t, strike) else 0.0f32
+  mul(payoff, exp(neg(0.05f32)))
+}
+def mc_call(seed: i64, n_paths: i64) -> (f32, f32) = {
+  totals = fold(fn (acc: (key, f32, f32), i: i64) -> {
+    ks = split_key(acc.0)
+    v = discounted_payoff(ks.0, 100.0f32)
+    (ks.1, add(acc.1, v), add(acc.2, mul(v, v)))
+  }, (key_from_seed(seed), 0.0f32, 0.0f32), range(0i64, n_paths))
+  n = cast(n_paths, f32)
+  mean = div(totals.1, n)
+  sample_var = div(sub(totals.2, mul(n, mul(mean, mean))), sub(n, 1.0f32))
+  (mean, sqrt(div(sample_var, n)))
+}
+estimate = mc_call(7i64, 2000i64)
 ```
 
-The Monte Carlo estimate is the average of `discounted` over all paths.
-For a European call under this model, compare the estimate with the
-[Black-Scholes price](black-scholes.md). A path-dependent payoff requires
-the intermediate path values, while `euler_maruyama_fixed` returns only
-the terminal value.
+```text
+estimate.0 = 10.738255
+estimate.1 = 0.336055
+```
+
+The estimate is 10.738 with a standard error of 0.336. The
+[Black-Scholes price](black-scholes.md) for the same
+contract is 10.450577, within one standard error. The same seed reproduces
+the same estimate; quadrupling the path count halves the standard error.
+
+`euler_maruyama_fixed` returns only the terminal value. A path-dependent
+payoff, such as an Asian or barrier option, needs the intermediate values, so
+step the state yourself with a `fold` over the noise.
 
 ## Practical considerations
 

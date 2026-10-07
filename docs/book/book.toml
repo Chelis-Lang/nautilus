@@ -1,5 +1,5 @@
 [book]
-title = "Nautilus — Numerical Computing for Chelis"
+title = "Nautilus: numerical computing for Chelis"
 authors = ["Chelis contributors"]
 language = "en"
 src = "src"
@@ -11,4 +11,3 @@ build-dir = "book"
 default-theme = "light"
 preferred-dark-theme = "navy"
 git-repository-url = "https://github.com/Chelis-Lang/nautilus"
-edit-url-template = "https://github.com/Chelis-Lang/nautilus/edit/main/docs/book/src/{path}"

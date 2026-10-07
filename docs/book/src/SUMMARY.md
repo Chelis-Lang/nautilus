@@ -1,69 +1,49 @@
 # Summary
 
-[Introduction](introduction.md)
+[Nautilus](index.md)
 
-# Getting Started
-
-- [Installation](getting-started/installation.md)
-- [Your First Nautilus Program](getting-started/first-program.md)
-
-# Special Functions
-
-- [Overview](special/overview.md)
-- [Error Function (erf, erfc, erfinv)](special/erf.md)
-- [Gamma Functions (gamma, log_gamma, digamma, beta)](special/gamma.md)
-- [Bessel Functions](special/bessel.md)
-- [Airy Functions](special/airy.md)
-- [Elliptic Integrals](special/elliptic.md)
-
-# Distributions
-
-- [Overview](distributions/overview.md)
-- [Normal Distribution](distributions/normal.md)
-- [Gamma, Chi-squared, Student-t](distributions/gamma-family.md)
-- [Discrete Distributions (Poisson, Binomial)](distributions/discrete.md)
-- [Other Continuous (Exponential, Weibull, Beta, F)](distributions/other-continuous.md)
-- [Sampling with Explicit Keys](distributions/sampling.md)
-
-# Linear Algebra
-
-- [Overview](linalg/overview.md)
-- [Small-n Closed Forms (2x2, 3x3)](linalg/small-n.md)
-- [Conjugate Gradient (cg_solve)](linalg/cg-solve.md)
-
-# Statistics
-
-- [Descriptive Statistics](stats/descriptive.md)
-- [Hypothesis Testing](stats/testing.md)
-- [Rolling and Expanding Windows](stats/rolling.md)
-
-# Solvers
-
-- [Root Finding (Newton, Bisection, Brent)](solvers/roots.md)
-- [ODE Integration (Euler, RK4, RK45)](solvers/ode.md)
-- [SDE Integration](solvers/sde.md)
-- [Numerical Quadrature](solvers/integrate.md)
-- [Scalar Optimization](solvers/optim.md)
-
-# Other Modules
-
-- [Interpolation](other/interpolation.md)
-- [Distance Metrics](other/distance.md)
-- [Curve Fitting](other/curvefit.md)
-- [Signal Processing (Stubs)](other/signal.md)
-
-# For Finance Users
-
-- [Black-Scholes Pricing](finance/black-scholes.md)
-- [Greeks via grad](finance/greeks.md)
-- [Monte Carlo with Explicit Keys](finance/monte-carlo.md)
-
-# Performance
-
-- [Performance](performance/results.md)
-
-# Appendices
-
-- [API Map](appendix/api.md)
-- [Precision and Tolerance Guide](appendix/precision.md)
-- [Known Limitations](appendix/limitations.md)
+- [Getting started]()
+  - [Installation](getting-started/installation.md)
+  - [Your first Nautilus program](getting-started/first-program.md)
+- [Special]()
+  - [Special functions](special/overview.md)
+  - [Error functions](special/erf.md)
+  - [Gamma-related functions](special/gamma.md)
+  - [Bessel functions](special/bessel.md)
+  - [Airy functions](special/airy.md)
+  - [Complete elliptic integrals](special/elliptic.md)
+- [Distributions]()
+  - [Distributions](distributions/overview.md)
+  - [Normal distribution](distributions/normal.md)
+  - [Gamma family distributions](distributions/gamma-family.md)
+  - [Discrete distributions](distributions/discrete.md)
+  - [Other continuous distributions](distributions/other-continuous.md)
+  - [Sampling with explicit keys](distributions/sampling.md)
+- [Linalg]()
+  - [Linear algebra](linalg/overview.md)
+  - [Small-matrix linear algebra](linalg/small-n.md)
+  - [Conjugate gradient solver](linalg/cg-solve.md)
+- [Stats]()
+  - [Descriptive statistics](stats/descriptive.md)
+  - [Hypothesis testing](stats/testing.md)
+  - [Rolling and expanding windows](stats/rolling.md)
+- [Solvers]()
+  - [Root finding](solvers/roots.md)
+  - [ODE solvers](solvers/ode.md)
+  - [SDE solvers](solvers/sde.md)
+  - [Numerical integration](solvers/integrate.md)
+  - [Scalar optimization](solvers/optim.md)
+- [Other]()
+  - [Interpolation](other/interpolation.md)
+  - [Distance](other/distance.md)
+  - [Curve fitting](other/curvefit.md)
+  - [Signal processing](other/signal.md)
+- [Finance]()
+  - [Black-Scholes pricing](finance/black-scholes.md)
+  - [Greeks via automatic differentiation](finance/greeks.md)
+  - [Monte Carlo pricing](finance/monte-carlo.md)
+- [Performance]()
+  - [Performance](performance/results.md)
+- [Appendix]()
+  - [API map](appendix/api.md)
+  - [Precision guide](appendix/precision.md)

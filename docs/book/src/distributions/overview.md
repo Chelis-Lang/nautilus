@@ -1,7 +1,7 @@
 # Distributions
 
 `Nautilus.Distributions` provides functions for 12 probability distribution
-families. The table shows which operations each family exposes.
+families.
 
 ## Distribution families
 
@@ -20,20 +20,20 @@ families. The table shows which operations each family exposes.
 | F | `f_pdf` | `f_cdf` | | | |
 | Weibull | `weibull_pdf` | `weibull_cdf` | | `weibull_inv_cdf` | |
 
-Only the gamma family carries a survival function. For the others, take the
-upper tail from the symmetry of the distribution where it has one, and never as
-`1 - cdf`, which loses the whole tail to `0.5 * ulp(1.0)`:
+Only the gamma family has a survival function. For the other families, get
+the upper tail from the symmetry of the distribution, if it has one. Do not
+calculate `1 - cdf`, which loses the full tail to `0.5 * ulp(1.0)`.
 
 - Standard normal: `normal_cdf(neg(z), 0, 1)` is the exact upper tail at `z`.
-- Student-t: `student_t_cdf(neg(t), df)` is the exact upper tail at `t`, for
-  every `df`, because the distribution is symmetric about zero. (Symmetric, not
-  merely centred -- at `df <= 1` the mean does not exist and the identity still
-  holds.)
-- A **non-standard** normal needs the mean reflected too, not just the point:
-  the upper tail of `N(mu, sigma)` at `x` is `Phi((mu - x) / sigma)`, so write
-  `normal_cdf(neg(x), neg(mean), std)`. Negating only the point gives
-  `Phi((-x - mu) / sigma)`, which is a different number entirely -- for
-  `N(10, 2)` at `x = 13` it returns `6.6e-31` where the answer is `0.0668`.
+- Student-t: `student_t_cdf(neg(t), df)` is the exact upper tail at `t` for
+  all `df`, because the distribution is symmetric about zero. The identity
+  also applies at `df <= 1`, where the mean does not exist.
+- Non-standard normal: reflect the mean and the point. The upper tail of
+  `N(mu, sigma)` at `x` is `Phi((mu - x) / sigma)`, so write
+  `normal_cdf(neg(x), neg(mean), std)`. If you negate only the point, the
+  result is `Phi((-x - mu) / sigma)`, which is a different value. For
+  `N(10, 2)` at `x = 13`, that call returns `6.6e-31`, but the correct value
+  is `0.0668`.
 
 See [Right-tail accuracy](../stats/testing.md#right-tail-accuracy).
 
@@ -47,8 +47,12 @@ See [Right-tail accuracy](../stats/testing.md#right-tail-accuracy).
 - Poisson: `(k, lambda)` where k is the count
 - Binomial: `(k, n, p)` where n is trials and p is probability
 - Beta: `(x, a, b)` where a, b are shape parameters
-- F: `(x, d1, d2)`
-- Weibull: `(x, shape, scale)`
+- F: `(x, d1, d2)` where d1 and d2 are the numerator and denominator degrees of freedom
+- Weibull: `(x, shape, scale)` where shape is k and scale is lambda
+
+Discrete counts and trial numbers are `f32` values, not integers. Each
+family page lists its parameter domain and what an invalid parameter returns;
+several families do not check their parameters at all.
 
 ## Sampling with explicit keys
 
@@ -60,7 +64,7 @@ def normal_sample[n](k: key, template: tensor[n, f32], mean: f32, std: f32) -> t
 
 The `template` tensor determines the output shape. The actual values
 in the template are ignored; only its shape is used. See
-[Sampling with Explicit Keys](sampling.md) for key derivation, methods,
+[Sampling with explicit keys](sampling.md) for key derivation, methods,
 and the gamma, chi-squared, and Student-t sampling limits.
 
 ## Imports
@@ -73,7 +77,6 @@ import Nautilus.Distributions (poisson_cdf, binomial_cdf, beta_cdf)
 
 ## Common usage
 
-The most frequently used functions are `normal_cdf` and `normal_inv_cdf`,
-which appear in Black-Scholes pricing, Value-at-Risk computation, and
+`normal_cdf` and `normal_inv_cdf` appear in Black-Scholes pricing, value-at-risk computation, and
 hypothesis testing. `gamma_cdf` and `student_t_cdf` underpin chi-squared
 and t-test p-values through the `Nautilus.Testing` module.

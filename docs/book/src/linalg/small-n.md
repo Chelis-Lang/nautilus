@@ -1,10 +1,9 @@
-# Small-N Linear Algebra
+# Small-matrix linear algebra
 
 Fixed-size closed-form routines for 2x2 and 3x3 matrices. These use the
 Cayley-Hamilton theorem for inversion and determinants, avoiding
 pivoting or iteration entirely. Every input matrix is a read-only borrow
-(`&tensor`). No gradient test covers these routines, so they are not
-advertised as differentiable.
+(`&tensor`).
 
 ## Determinants
 
@@ -47,10 +46,10 @@ entries are NaN.
 
 ## Cholesky
 
-| Function | Signature | Stability |
-|---|---|---|
-| `cholesky_2x2` | `(a: &tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` |
-| `cholesky_n` | `[n](a: &tensor[n, n, f32]) -> tensor[n, n, f32]` | `alpha` |
+| Function | Signature |
+|---|---|
+| `cholesky_2x2` | `(a: &tensor[2, 2, f32]) -> tensor[2, 2, f32]` |
+| `cholesky_n` | `[n](a: &tensor[n, n, f32]) -> tensor[n, n, f32]` |
 
 Returns the lower-triangular Cholesky factor L such that A = L L^T.
 
@@ -61,21 +60,24 @@ matrix is not symmetric positive-definite (symmetry tolerance: 1e-6).
 form). It assumes the input is SPD and does not emit NaN markers; on a
 non-SPD matrix the output is undefined.
 
-## General-N Decompositions
+## General-dimension decompositions
 
-`alpha` stability. Square matrices only.
+These general-dimension decompositions accept square matrices only.
 
-| Function | Signature | Stability |
-|---|---|---|
-| `lu_solve` | `[n](a: &tensor[n, n, f32], b: &tensor[n, f32]) -> tensor[n, f32]` | `alpha` |
-| `qr_decompose` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, n, f32])` | `alpha` |
-| `svd_n` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor[n, n, f32])` | `alpha` |
-| `eig_n` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32])` | `alpha` |
+| Function | Signature |
+|---|---|
+| `lu_solve` | `[n](a: tensor[n, n, f32], b: tensor[n, f32]) -> tensor[n, f32]` |
+| `qr_decompose` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, n, f32])` |
+| `svd_n` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor[n, n, f32])` |
+| `eig_n` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32])` |
 
 **`lu_solve`** solves `A x = b` via Doolittle LU factorization (no partial
-pivoting). Requires all leading principal submatrices of A to be nonsingular.
-Well-conditioned matrices that need row swaps (e.g. `[[0,1],[1,0]]`) will
-produce wrong results, not an error.
+pivoting). It takes `a` and `b` by value; pass `copy(t)` for a tensor you
+still need. Requires all leading principal submatrices of A to be
+nonsingular. A matrix that needs a row swap gets no error: the permutation
+`[[0,1],[1,0]]` with `b = [2, 3]` returns `[NaN, NaN]`, and a small nonzero
+pivot returns an inaccurate solution instead of NaN. Use `cg_solve` for a
+symmetric positive-definite system.
 
 **`qr_decompose`** applies Householder reflections and returns `(Q, R)` where
 Q is orthogonal and R is upper triangular, so `A = Q R`. Householder sign
@@ -95,11 +97,28 @@ input, and does not guarantee eigenvalue order.
 ## Example
 
 ```chelis-fragment
-import Nautilus.LinAlg (solve_2x2, l2_norm_vec)
+import Nautilus.LinAlg (solve_2x2, solve_3x3, det_2x2, inv_2x2, eig_2x2_real)
 
-def demo_solve(a: tensor[2, 2, f32], b: tensor[2, f32]) -> f32 =
-  l2_norm_vec(solve_2x2(a, b))
+def a2() -> tensor[2, 2, f32] = to_tensor([[4.0f32, 1.0f32], [1.0f32, 3.0f32]])
+x2 = solve_2x2(a2(), to_tensor([1.0f32, 2.0f32]))
+det = det_2x2(a2())
+eigs = eig_2x2_real(a2())
+singular_inv = inv_2x2(to_tensor([[1.0f32, 2.0f32], [2.0f32, 4.0f32]]))
+x3 = solve_3x3(to_tensor([[2.0f32, 0.0f32, 1.0f32], [0.0f32, 3.0f32, 0.0f32], [1.0f32, 0.0f32, 2.0f32]]), to_tensor([3.0f32, 3.0f32, 3.0f32]))
 ```
+
+```text
+x2 = tensor(shape=[2], data=[0.09090909, 0.6363636])
+det = 11.0
+eigs.0 = 4.618034
+eigs.1 = 2.381966
+singular_inv = tensor(shape=[2, 2], data=[NaN, NaN, NaN, NaN])
+x3 = tensor(shape=[3], data=[1.0, 1.0, 1.0])
+```
+
+`eig_2x2_real` returns the larger eigenvalue first, `(5 + sqrt(5)) / 2` and
+`(5 - sqrt(5)) / 2` here. The second matrix has determinant 0, so its
+inverse is all NaN.
 
 ## Edge cases
 
@@ -109,4 +128,4 @@ def demo_solve(a: tensor[2, 2, f32], b: tensor[2, f32]) -> f32 =
 - For general-n linear solve use `lu_solve` (Doolittle, no partial pivoting)
   or `cg_solve` (iterative, SPD only). For decompositions use `qr_decompose`
   (Householder QR), `svd_n` (Jacobi SVD), or `eig_n` (symmetric
-  eigendecomposition). All are `alpha` stability.
+  eigendecomposition).

@@ -1,4 +1,4 @@
-# Hypothesis Testing
+# Hypothesis testing
 
 The `Nautilus.Testing` module provides building blocks for classical
 hypothesis tests. All functions are pure f32 computations that compose
@@ -13,7 +13,7 @@ Distributions module.
 | `z_p_value_two_sided` | `(z: f32) -> f32` | 2 * Phi(-\|z\|), the upper tail doubled |
 | `z_p_value_upper` | `(z: f32) -> f32` | Phi(-z), the upper tail |
 | `z_p_value_lower` | `(z: f32) -> f32` | Phi(z) |
-| `normal_ci_half_width` | `(confidence, pop_std, sample_n: f32) -> f32` | z_crit * sigma / sqrt(n) |
+| `normal_ci_half_width` | `(confidence, pop_std, sample_n: f32) -> f32` | z_crit * sigma / sqrt(n), with `confidence` a fraction such as 0.95 |
 
 ## T-tests
 
@@ -50,14 +50,28 @@ def welch_demo() -> f32 = {
 }
 ```
 
-`z_test_demo` computes z = (5.2 - 5.0) / (1.5 / sqrt(36)) = 0.8 and its
-two-sided p-value, approximately 0.424. `welch_demo` compares two samples
-with unequal variances (means 12 and 10, standard deviations 2 and 3, sizes
-30 and 25) and returns a two-sided p-value of approximately 0.0069.
+`z_test_demo` computes z = (5.2 - 5.0) / (1.5 / sqrt(36)) = 0.8 and
+returns its two-sided p-value, `0.42371124`. `welch_demo` compares two
+samples with unequal variances (means 12 and 10, standard deviations 2 and 3,
+sizes 30 and 25) and returns a two-sided p-value of `0.0068913926`.
 
 ## Notes
 
 - All parameters are `f32`, including sample sizes. Pass `cast(n, f32)`.
+- No argument is validated. Pass a sample size of at least 1 (at least 2
+  for anything that divides by `n - 1`), a positive standard deviation, and
+  a `confidence` strictly between 0 and 1. Out-of-range inputs return a
+  number or NaN without an error, as the table shows. A fractional size is
+  used as given, not rounded.
+
+| Call | Result |
+|---|---|
+| `normal_ci_half_width(0.95, 1.5, 36.0)` | `0.48996764` |
+| `normal_ci_half_width(95.0, 1.5, 36.0)` | `NaN`: 95 is read as a probability |
+| `z_statistic(5.2, 5.0, 1.5, 0.0)` | `0.0`: the standard error is `inf` |
+| `z_statistic(5.2, 5.0, 1.5, -4.0)` | `NaN`: square root of a negative size |
+| `welch_t_df(2.0, 1.0, 3.0, 25.0)` | `0.0`: `n1 - 1 = 0` makes a term infinite |
+
 - The p-value functions use the standard-normal or Student-t CDF
   internally. Accuracy depends on the underlying CDF approximation
   (erf-based for normal, betai-based for Student-t).
@@ -66,41 +80,48 @@ with unequal variances (means 12 and 10, standard deviations 2 and 3, sizes
 
 ## Right-tail accuracy
 
-Every upper-tail and two-sided p-value here is computed as a tail value
-directly, never as `1 - cdf`. The distinction is not cosmetic. Subtracting a
-CDF from `1.0` leaves an absolute error of about `0.5 * ulp(1.0)`, which is
-6e-8 in f32, however accurate the CDF itself is -- so the subtraction returns
-exactly `0.0` as soon as the true tail falls below that, and the result has no
-significant digits before it does. The old spelling collapsed at `z = 6`, at a
-chi-squared statistic of `40` on 3 degrees of freedom, and at `t = 100` on 5
-degrees of freedom (nautilus#137, the right-tail mirror of nautilus#113).
+Every upper-tail and two-sided p-value here is a tail value that the module
+calculates directly, not as `1 - cdf`. A subtraction of a CDF from `1.0` has
+an absolute error of about `0.5 * ulp(1.0)`, which is 6e-8 in f32, for any
+CDF accuracy. Thus the subtraction returns exactly `0.0` when the true tail
+is below that value. Above that point, the result has no significant digits
+for some distance.
 
-What the current spelling gives you instead, measured over the 265 of those
-arguments whose answer is a normal f32 (the subnormal rows are below):
+The `1 - cdf` form gives `0.0` at `z = 6`, at a chi-squared statistic of `40`
+with 3 degrees of freedom, and at `t = 100` with 5 degrees of freedom. The
+table gives the worst relative error of the direct tail over a sweep of 265
+arguments where the result is a normal f32. The subnormal results follow the
+table.
 
 | Family | Worst relative error | Route |
 |---|---|---|
 | `z_p_value_upper`, `z_p_value_two_sided` | 8.9e-8 | `Phi(-z)`, exact by standard-normal symmetry |
-| `t_p_value_upper`, `t_p_value_two_sided` | 4.4e-5 | `student_t_cdf(-t, df)`, exact by Student-t symmetry. The bound is `betai`'s, and it grows with `df` rather than with `t`: measured worst error is 4.3e-7 at `df = 1`, 4.4e-6 at `df = 30`, and 4.4e-5 at `df = 100`. Every row above 1.8e-5 in the sweep is `df = 100`. |
+| `t_p_value_upper`, `t_p_value_two_sided` | 4.4e-5 | `student_t_cdf(-t, df)`, exact by Student-t symmetry |
 | `chi_squared_p_value` | 4.2e-6 | `chi_squared_sf`, which returns the upper regularized incomplete gamma `Q` directly |
 
-No p-value in the sweep crosses 0.05, 0.01 or 0.001 differently from the old
-spelling, so no test verdict changes; what changes is the magnitude you can
-read off a tail.
+The Student-t bound comes from `betai`, and it grows with `df`, not with `t`.
+The measured worst error is 4.3e-7 at `df = 1`, 4.4e-6 at `df = 30`, and
+4.4e-5 at `df = 100`. Every result above 1.8e-5 in the sweep is at
+`df = 100`.
 
-Two limits remain, and both are f32's rather than the algorithm's:
+No p-value in the sweep is on a different side of 0.05, 0.01 or 0.001 than
+the `1 - cdf` form. Thus no test decision changes. The direct tail changes
+only the tail magnitudes that you can read.
 
-- Below about `1.2e-38` the answer is subnormal and carries only a few bits.
-  `z_p_value_upper(14.0)` returns `8.4e-45` against a true `7.8e-45`.
-- Around `1e-45` there is nothing left and the answer is `0.0`. f32's own
-  round-to-zero point is `7.0e-46`, half the smallest subnormal, but
-  `z_p_value_upper` reaches zero a little above it, at a true tail of about
-  `8e-46`: at `z = 14.160367` the standardized tail is the smallest subnormal
-  once, and halving a value already at the smallest subnormal gives zero.
-  Either way the zero is correct, not a recurrence of the defect above:
-  `z_p_value_upper(15.0)` is `0.0` because `Phi(-15)` is `3.7e-51`. If you need
-  those magnitudes, you need a log-scale tail function, which this module does
-  not yet have.
+Two limits remain, and both come from f32, not from the algorithm:
 
-`Nautilus.Stats.likelihood_ratio_p_value` is a chi-squared upper tail and
-shares all of this.
+- Below about `1.2e-38`, the result is subnormal and has only a few bits.
+  `z_p_value_upper(14.0)` returns `8.4e-45`, but the true value is `7.8e-45`.
+- Near `1e-45`, no bits remain and the result is `0.0`. The f32
+  round-to-zero point is `7.0e-46`, half the smallest subnormal.
+  `z_p_value_upper` gets to zero at a true tail of about `8e-46`, slightly
+  above that point. At `z = 14.160367`, the standardized tail is the
+  smallest subnormal, and half of that value rounds to zero. In both
+  situations the zero is correct: `z_p_value_upper(15.0)` is `0.0` because
+  `Phi(-15)` is `3.7e-51`.
+
+For tails this small, you need a log-scale tail function, which this module
+does not have.
+
+`Nautilus.Stats.likelihood_ratio_p_value` is a chi-squared upper tail and has
+the same properties.

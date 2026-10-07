@@ -1,4 +1,4 @@
-# Numerical Integration
+# Numerical integration
 
 The `Nautilus.Integrate` module provides quadrature rules for computing
 definite integrals of scalar functions. Methods range from basic
@@ -33,6 +33,37 @@ approximates the integrand.
 exceeds `15 * tol`. The tolerance is halved at each recursion level,
 with a floor of 1e-7. Max depth is capped at 30.
 
+When a subinterval reaches `max_depth` without meeting the tolerance, the
+function keeps that subinterval's Richardson-corrected Simpson estimate and
+carries on. It returns a number either way and gives no signal that the
+tolerance was missed. For the integral of `1 / sqrt(x)` over `[1e-6, 1]`,
+exactly 1.998:
+
+```chelis-fragment
+import Nautilus.Integrate (adaptive_simpson)
+
+def spike(x: f32) -> f32 = div(1.0f32, sqrt(x))
+shallow = adaptive_simpson(spike, 0.000001f32, 1.0f32, 1e-7f32, 3i64)
+deep = adaptive_simpson(spike, 0.000001f32, 1.0f32, 1e-7f32, 20i64)
+```
+
+```text
+shallow = 11.505836
+deep = 1.9980001
+```
+
+Depth 3 stops after three levels of halving, too coarse for the steep
+rise near 0, and returns a value nearly six times too large. To check
+an answer, run again with a larger `max_depth` and compare. `max_depth <= 0`
+returns a single Richardson-corrected Simpson estimate over `[a, b]`.
+
+`tol` should be positive. It is not checked. With `tol <= 0` the top level
+never meets the test and subdivides once; each child then gets the 1e-7
+floor and the search proceeds normally. A NaN `tol` propagates to every
+level, so the tolerance test never passes and every subinterval recurses to
+`max_depth` unless its two half estimates are exactly equal; with a large
+`max_depth` that is up to `2^max_depth` subintervals.
+
 ## Specialized weight functions
 
 | Function | Signature | Notes |
@@ -65,13 +96,9 @@ same interval with a closure and returns approximately 0.746824
 
 - `simpsons` returns NaN for odd `n_steps`.
 - `trapezoidal` and `simpsons` return NaN for `n_steps <= 0`.
-- `gauss_legendre_5` traps unless `n_points` is 5. The argument selects
-  the rule order and 5 is the only order this entry point implements, so
-  an unsupported order has no correct answer to return. Quadrature at an
-  arbitrary order is [nautilus#104][gl-arbitrary-order].
+- `gauss_legendre_5` traps unless `n_points` is 5. This entry point
+  implements only the five-point rule.
 - For smooth integrands, `gauss_legendre_10` or `romberg_5` typically
   gives high accuracy without tuning a step count.
 - For integrands with localized sharp features, prefer
   `adaptive_simpson`.
-
-[gl-arbitrary-order]: https://github.com/Chelis-Lang/nautilus/issues/104
