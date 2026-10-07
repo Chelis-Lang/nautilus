@@ -1,4 +1,4 @@
-# Root Finding
+# Root finding
 
 The `Nautilus.Roots` module provides three scalar root-finders. Each takes
 a function `f: f32 -> f32` and returns an approximate root. Invalid brackets,
@@ -13,9 +13,9 @@ limits can produce NaN.
 | `newton` | `(f: f32 -> f32, df: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32` |
 | `brent` | `(f: f32 -> f32, lo: f32, hi: f32, tol: f32, max_iters: i64) -> f32` |
 
-## When to use which
+## Choosing a method
 
-- **bisection:** Simplest and most robust. Requires a bracket [lo, hi]
+- **bisection:** Requires a bracket [lo, hi]
   where f changes sign. Converges linearly (one bit per iteration). Use
   when you have a reliable bracket and do not need speed.
 - **newton:** Quadratic convergence near simple roots, but requires the
@@ -24,7 +24,7 @@ limits can produce NaN.
   derivatives and a good starting point.
 - **brent:** Combines inverse quadratic interpolation, secant, and
   bisection fallback. Requires a sign-change bracket like bisection but
-  converges superlinearly. The best general-purpose choice.
+  converges superlinearly. Use it when you have a bracket but no derivative.
 
 ## Example: Brent's method and Newton's method
 
@@ -53,15 +53,11 @@ cos(x) = x with the analytic derivative -sin(x) - 1 and returns approximately
   `f(lo) * f(hi) > 0`.
 - **NaN input or NaN residual**: all three return NaN when `tol` is NaN, when a
   bracket endpoint or starting point is NaN, or when `f` (or `df` for `newton`)
-  returns NaN at any point they evaluate. The first two are rejected before `f`
-  is called at all. The third is reported when it is reached, which may be
-  several iterations in; a residual that is NaN only on an interval the
-  iteration never probes is never seen, and such a run converges normally. NaN compares false against everything, so a NaN residual carries
-  neither the sign a bracket update needs nor a magnitude the tolerance test
-  can read: there is nothing for an iteration to make progress on. An
-  **infinite** residual is a different case and is not rejected. `-inf` and
-  `+inf` still carry a sign, so a bracket with an infinite endpoint residual
-  is still a bracket and `bisection` and `brent` still converge on it.
+  returns NaN at any point they evaluate. NaN tolerance and coordinates are
+  rejected before calling `f`; a NaN function result is rejected when the
+  iteration reaches it. The methods cannot detect NaN in a region they never
+  probe. Infinite residuals are accepted: `-inf` and `+inf` retain signs that
+  bisection and Brent can use to update a bracket.
 - **Zero derivative**: `newton` returns NaN if `|df(x)| < 1e-30` at
   any step.
 - **Iteration limit**: all three return NaN when `max_iters` is exhausted

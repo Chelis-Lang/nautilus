@@ -1,8 +1,7 @@
 # Performance
 
-Nautilus has no release-wide performance threshold. Measure the function,
-input size, dtype, and Chelis target used by your application before making
-speed claims.
+Measure the function, input size, dtype, and build target used by your
+application before making performance decisions.
 
 ## Keep tensor arithmetic on tensors
 
@@ -24,6 +23,6 @@ measure the complete function as well as the surrounding expression.
 - Measure both small and representative large inputs. The fastest choice
   can change when dispatch overhead stops dominating the work.
 
-The [archived benchmark record](https://github.com/Chelis-Lang/nautilus/blob/main/docs/archive/benchmark_findings.md)
-contains measured configurations and results. Those measurements are not a
-performance promise for this release or for other hardware.
+Results can vary with the compiler, hardware, operating system, and thread
+configuration, so measurements from another machine are not a performance
+promise.

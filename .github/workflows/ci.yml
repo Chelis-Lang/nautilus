@@ -269,6 +269,36 @@ jobs:
       # in this job rather than beside the stdlib-only C-lane checks.
       - name: Beta-family accuracy range
         run: uv run --project parity --frozen python scripts/check_beta_accuracy.py
+  # The user-facing book: it must build, pass the writing-standard lint
+  # (vendored from the chelis.ch website), and every complete ```chelis
+  # example in it must check against the pinned compiler.
+  book:
+    runs-on: ubuntu-latest
+    needs: hard-rule-guard
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mdBook
+        uses: taiki-e/install-action@v2
+        with:
+          tool: mdbook@0.5.2
+
+      - name: Build the book
+        run: mdbook build docs/book
+
+      - name: Lint the book and README
+        run: python3 scripts/check_book.py docs/book/src README.md
+
+      - name: Install chelis toolchain (cached)
+        id: chelis
+        uses: ./.github/actions/install-chelis
+        with:
+          gh-token: ${{ github.token }}
+
+      - name: Validate book examples
+        env:
+          CHELIS_BIN: chelis
+        run: python3 scripts/validate_book_examples.py
 
   # Mac proof-of-life: the Nautilus reef package builds under the
   # Darwin chelis toolchain. NOT a duplicate test suite — the full

@@ -1,9 +1,9 @@
-# Greeks via Automatic Differentiation
+# Greeks via automatic differentiation
 
 Chelis provides reverse-mode differentiation through `grad`.
 `grad(f, wrt=x)` returns a function with the same parameters as `f` that
-computes df/dx. With the pinned evaluator, this form differentiates
-the Black-Scholes call formula through `normal_cdf`.
+computes df/dx. The example applies it to a Black-Scholes call formula and
+the `normal_cdf` function.
 
 ## The Greeks as derivatives
 
@@ -28,25 +28,49 @@ def rho(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = grad(black_scholes_
 ```
 
 Each function names the parameter to differentiate with `wrt=` and passes
-every argument through.
+every argument through. `theta` negates the time derivative, so it reports
+the value lost per year as expiry approaches.
 
-For an at-the-money call (S = K = 100, r = 5%, sigma = 20%, T = 1 year), the
-evaluator (`chelis eval`) at Chelis 0.19.1 returns these first derivatives,
-which agree with the closed-form Greeks to f32 precision:
+For an at-the-money call (S = K = 100, r = 5%, sigma = 20%, T = 1 year),
+evaluating the four functions gives:
 
-| Greek | Value |
-|---|---|
-| Delta | 0.63683 |
-| Vega | 37.524 |
-| Theta | -6.4140 (per year) |
-| Rho | 53.232 |
+```chelis-fragment
+call_delta = delta(100.0, 100.0, 0.05, 0.2, 1.0)
+call_vega = vega(100.0, 100.0, 0.05, 0.2, 1.0)
+call_theta = theta(100.0, 100.0, 0.05, 0.2, 1.0)
+call_rho = rho(100.0, 100.0, 0.05, 0.2, 1.0)
+```
 
-## Evaluation scope
+```text
+call_delta = 0.6368303
+call_vega = 37.524048
+call_theta = -6.414027
+call_rho = 53.232445
+```
 
-The four values above are from `chelis eval` with Chelis 0.19.1. Nested
-`grad` also gives Gamma, the second spot derivative: `grad(delta, wrt=s)`
-returns 0.018762 at the same point, which agrees with the closed form. Use the
-explicit `wrt=` argument as shown for a function with several parameters.
-This chapter demonstrates evaluator behavior; it does not establish the
-same result for generated C. Nautilus's test suite does not include a
-gradient test for this pricing path.
+These agree with the closed-form Greeks, `N(d1) = 0.63683` for Delta and
+`S * phi(d1) * sqrt(T) = 37.524` for Vega, to f32 precision. Vega and Rho
+are per unit of volatility and rate, so divide by 100 for a one-point move.
+
+## Second derivatives
+
+`grad` nests. Gamma is the spot derivative of `delta`:
+
+```chelis-fragment
+def gamma(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = grad(delta, wrt=s)(s, k, r, sigma, t)
+call_gamma = gamma(100.0, 100.0, 0.05, 0.2, 1.0)
+```
+
+```text
+call_gamma = 0.018762024
+```
+
+## Limits
+
+- `grad` needs a function whose parameters and result have a fixed
+  floating type. Wrap a dtype-generic function, such as a `Nautilus.Special`
+  export, in a definition with concrete types before differentiating it.
+- The pricing function must avoid primitives without derivatives, such as
+  `cast_trunc`, and loops whose length is known only at run time.
+  Differentiating through `rk4_solve` or `gamma` fails when `grad` is
+  lowered.

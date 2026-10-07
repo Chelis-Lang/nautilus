@@ -1,9 +1,9 @@
-# Error Functions
+# Error functions
 
 Chelis provides correctly rounded `erf` and `erfc` builtins. Call them directly
-without importing from Nautilus. They accept scalar or tensor inputs at the
-active float dtypes. Nautilus provides `erfinv` for inverse error functions at
-f32 and f64.
+without an import from Nautilus. They accept scalar or tensor inputs at the
+active float dtypes. Nautilus provides `erfinv` for the inverse error function
+at f32 and f64.
 
 ## erf
 
@@ -26,8 +26,9 @@ neg_val = erf(cast(-1.0, f32))   -- approximately -0.8427
 
 **Chelis builtin:** `erfc(x)` preserves the input shape and dtype.
 
-Computes the complementary error function `erfc(x) = 1 - erf(x)` directly,
-preserving relative precision in the positive tail that subtraction loses.
+Computes the complementary error function `erfc(x) = 1 - erf(x)` directly.
+It keeps relative precision in the positive tail, where the subtraction
+loses it.
 
 - **Domain:** all reals
 - **Range:** [0, 2] at finite precision; the result can round to either

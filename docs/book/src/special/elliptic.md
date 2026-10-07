@@ -1,4 +1,4 @@
-# Complete Elliptic Integrals
+# Complete elliptic integrals
 
 The complete elliptic integrals of the first and second kind, K(m) and
 E(m), arise in pendulum motion, magnetic field calculations, and

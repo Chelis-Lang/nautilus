@@ -1,4 +1,4 @@
-# Black-Scholes Pricing
+# Black-Scholes pricing
 
 The Black-Scholes formula for a European call option composes `log`,
 `exp`, `sqrt`, and `normal_cdf`. All are available in Nautilus without any
@@ -14,6 +14,13 @@ volatility sigma, and time to expiry T:
     C  = S * N(d1) - K * exp(-rT) * N(d2)
 
 where N(x) is the standard normal CDF.
+
+S and K must be positive, sigma and T positive, and r is an annual rate as a
+fraction (0.05 for 5%). The function below checks none of them. At the edges
+it returns the arithmetic limit: with S = 110 and K = 100, `T = 0` gives
+`10.0` (the intrinsic value) and `sigma = 0` gives `14.877052`
+(`S - K * exp(-rT)`), and `S = 0` gives `0.0`. When S = K and T = 0, `d1` is
+`0 / 0` and the price is NaN.
 
 ## Chelis implementation
 
@@ -33,31 +40,25 @@ def black_scholes_call(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = {
 }
 ```
 
-Note that `normal_cdf` takes three arguments `(x, mean, std)`. For the
+`normal_cdf` takes three arguments `(x, mean, std)`. For the
 standard normal, pass `(x, 0.0, 1.0)`.
 
 ## Example: ATM call
 
+S = K = 100, r = 5%, sigma = 20%, T = 1 year:
+
 ```chelis-fragment
-def main() -> f32 = black_scholes_call(
-  cast(100.0, f32),   -- S = 100
-  cast(100.0, f32),   -- K = 100 (at-the-money)
-  cast(0.05, f32),    -- r = 5%
-  cast(0.2, f32),     -- sigma = 20%
-  cast(1.0, f32)      -- T = 1 year
-)
--- Expected result: approximately 10.45
+atm_call = black_scholes_call(100.0f32, 100.0f32, 0.05f32, 0.2f32, 1.0f32)
 ```
 
-The ATM call price of about 10.4506 matches the closed-form f64 value to
-within f32 precision.
+```text
+atm_call = 10.450577
+```
 
-## How it works
+This matches the closed-form f64 value, 10.4506, to f32 precision.
 
-The computation composes Chelis primitives (`log`, `exp`, `sqrt`,
-`div`, `mul`, `add`, `sub`, `neg`) with `normal_cdf`. The
-[Greeks chapter](greeks.md) shows how the pinned evaluator differentiates
-this function with `grad`.
+Use `grad` to calculate first-order sensitivities of this function, as shown
+in [Greeks](greeks.md).
 
 ## Put-call parity
 
@@ -70,4 +71,11 @@ def black_scholes_put(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = {
   -- P = C - S + K * exp(-rT)
   add(sub(call, s), mul(k, discount))
 }
+atm_put = black_scholes_put(100.0f32, 100.0f32, 0.05f32, 0.2f32, 1.0f32)
 ```
+
+```text
+atm_put = 5.5735245
+```
+
+Check: `10.450577 - 100 + 100 * exp(-0.05) = 5.5735`.
