@@ -44,7 +44,7 @@ Two cases merit separate guidance:
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
-| Beta-family CDFs | below 1e-6 over a stated range | `beta_cdf`, `f_cdf`, `student_t_cdf`, `binomial_cdf`; incomplete beta evaluated in f64. **The range matters** — read the note below before relying on a figure |
+| Beta-family CDFs | below 2e-6 over a stated range | `beta_cdf`, `f_cdf`, `student_t_cdf`, `binomial_cdf`; incomplete beta evaluated in f64. **The range matters** — read the note below before relying on a figure |
 | `normal_cdf` | sub-ulp standardized; grows with the shift, see the tail note below | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
 
@@ -162,22 +162,35 @@ and a floor, because a small shape parameter amplifies the same error — statin
 only the ceiling was wrong, since `beta_cdf(0.9, 0.5, 1e-4)` errs 1.9e-6 with a
 largest parameter of merely 0.5.
 
-> **Relative error below 1e-6 when every parameter you pass is at least 1 and the
-> largest is at most 1e8.** Worst measured inside that range: **5.7e-7**, at
-> `f_cdf(0.5, 1e8, 1.0)`.
+> **Relative error below 2e-6 when every parameter you pass is at least 1 and the
+> largest is at most 1e8.** Worst measured inside that range: **1.2e-6**, at
+> `f_cdf(0.33667, 1e8, 1.0)` and `student_t_cdf(-1.7320508, 1e8)`.
 
 | export | parameters the range applies to | worst measured inside |
 |---|---|---|
-| `beta_cdf` | `a`, `b` | 3.0e-7 |
-| `f_cdf` | `d1`, `d2` | 5.7e-7 |
-| `student_t_cdf` | `df` (its other beta parameter is structurally 0.5) | 2.2e-7 |
+| `beta_cdf` | `a`, `b` | 3.2e-7 |
+| `f_cdf` | `d1`, `d2` | 1.2e-6 |
+| `student_t_cdf` | `df` (its other beta parameter is structurally 0.5) | 1.2e-6 |
 | `binomial_cdf` | `n` (`n - k` and `k + 1` are at least 1 for any legal `k`) | 1.9e-7 |
 
-`scripts/check_beta_accuracy.py` is the oracle for every number in this section,
-evaluates each export **at** both edges, and fails the build if the
-implementation drifts. It does not read this page, so keeping the two in step is
-a reviewer's job — a hand-transcribed table in the script pins the values so they
-cannot move silently.
+**Why 2e-6 and not the 1.2e-6 measured.** This bound has been wrong three times,
+each time because the grid behind it missed a corner: first a range indexed on the
+wrong parameter, then a ceiling never evaluated at its own value, then a worst-case
+locus that was known and simply not sampled. Each refinement raised the measured
+worst — 5.7e-7, then 1.21e-6. The stated bound therefore carries deliberate
+headroom over the measurement rather than tracking it, so that a further
+refinement reports a number inside the claim instead of falsifying it again.
+
+Both worst cases sit on the continued fraction's **branch threshold**,
+`x = (a+1)/(a+b+2)`, which is where it converges slowest and so where the error
+peaks. `scripts/check_beta_accuracy.py` now *derives* that locus from the
+parameters for every grid point — `t² = 3df/(df+2)` for `student_t_cdf`, the
+equivalent `x` for `f_cdf` — rather than sampling hand-listed points, which is
+what let the corner hide. It evaluates each export **at** both edges of the range,
+reports the in-range worst separately from the overall worst, and fails the build
+if the implementation drifts. It does not read this page, so keeping the two in
+step is a reviewer's job; a hand-transcribed table in the script pins the values
+so they cannot move silently.
 
 References come from SciPy's `betainc` at the f32 value of every argument, except
 where no library can adjudicate — `beta_cdf(0.5, a, a)` and `f_cdf(1, d, d)` are
@@ -187,7 +200,8 @@ normal limit there instead.
 
 **Outside either edge the error grows quickly.** Above the ceiling,
 `f_cdf(0.5, 2e8, 0.5)` errs 1.7e-6 and `binomial_cdf(1.5e8, 3e8, 0.5)` errs
-1.3e-6. Below the floor, with `a = 0.5` fixed and `b` shrinking,
+1.3e-6 — both above 1e-6 but still inside the 2e-6 the range claims, which is why
+the ceiling is stated separately from the bound rather than inferred from it. Below the floor, with `a = 0.5` fixed and `b` shrinking,
 `beta_cdf(0.9, 0.5, b)` errs 6.1e-7 at `b = 3e-4`, 1.9e-6 at 1e-4, 1.8e-5 at
 1e-5 and **183%** at 1e-10; `f_cdf(0.5, 1e8, 1e-3)` errs 2.5e-5, because a large
 and a small parameter together are worse than either alone. A previous version of

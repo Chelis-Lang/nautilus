@@ -78,7 +78,7 @@ cdf = beta_cdf(cast(0.3, f32), cast(2.0, f32), cast(5.0, f32))  -- approximately
 ```
 
 The incomplete beta is evaluated in f64 internally and returned as f32, which
-keeps the relative error under 1e-6 **while `a` and `b` are both at least 1 and
+keeps the relative error under 2e-6 **while `a` and `b` are both at least 1 and
 the larger is at most 1e8**. It grows outside *either* edge: below 1,
 `beta_cdf(0.9, 0.5, 1e-4)` errs 1.9e-6 and `beta_cdf(0.9, 0.5, 1e-10)` by 183%;
 above 1e8 the iteration budget runs short -- 1.2e-3 at 1e10, 21% at 1e11 -- and

@@ -126,8 +126,8 @@ class Coverage(unittest.TestCase):
         for export, (ceiling, floor, bound) in DOCUMENTED.items():
             self.assertEqual(ceiling, 1e8, export)
             self.assertEqual(floor, 1.0, export)
-            self.assertEqual(bound, 1e-6, export)
-        self.assertEqual((CEILING, FLOOR, BOUND), (1e8, 1.0, 1e-6))
+            self.assertEqual(bound, 2e-6, export)
+        self.assertEqual((CEILING, FLOOR, BOUND), (1e8, 1.0, 2e-6))
 
 
 class ReferenceFreeAnchors(unittest.TestCase):

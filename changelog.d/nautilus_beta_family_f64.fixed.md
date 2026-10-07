@@ -85,26 +85,47 @@ A threshold-adjacent probe found 47 such inputs. The claim that accompanied it -
 
 ## The range this holds over
 
-**Two edges, and review found the claim false at each in turn.** Round 1 found it
-indexed on `min(a, b)`, which for `student_t_cdf` is permanently 0.5 and so
-described nothing. Round 2 found the replacement -- a 3e8 ceiling on the large
-parameter -- false at its own boundary for two of four exports, with grids that
-stopped a decade below it and a unit test that accepted a case one decade down.
+**This bound was wrong three times, and the third repair changed the method
+rather than the number.**
 
-> **Relative error below 1e-6 when every parameter is at least 1 and the largest
-> is at most 1e8.** Worst measured inside: **5.7e-7**, at `f_cdf(0.5, 1e8, 1.0)`.
+- Round 1: indexed on `min(a, b)`, which for `student_t_cdf` is permanently 0.5
+  and so described nothing.
+- Round 2: the 3e8 ceiling that replaced it was false at its own boundary for two
+  of four exports -- the grids stopped a decade below it, and the unit test
+  written to prevent that accepted a case one decade down.
+- Round 3: the 1e8 ceiling that replaced *that* was false at the continued
+  fraction's **branch threshold** `x = (a+1)/(a+b+2)`, which is where it converges
+  slowest and so where the error peaks. `student_t_cdf(-sqrt(3), 1e8)` errs 1.21e-6
+  and `f_cdf(0.33667, 1e8, 1)` errs 1.21e-6, both on that locus. It was a known
+  worst case -- named in this very change set for the iteration count -- and simply
+  not sampled.
+
+Three failures, one cause: **the grid behind the number missed a corner.** So the
+fix is to the generator, not the figure. `cases()` now **derives** the branch
+threshold from the parameters at every grid point (`t^2 = 3df/(df+2)` for
+`student_t_cdf`, the equivalent `x` for `f_cdf`, `(a+1)/(a+b+2)` for `beta_cdf`)
+instead of sampling hand-listed points, so the grid cannot drift off the worst
+case again.
+
+> **Relative error below 2e-6 when every parameter is at least 1 and the largest
+> is at most 1e8.** Worst measured inside: **1.2e-6**.
 
 | export | parameters | worst measured inside |
 |---|---|---|
-| `beta_cdf` | `a`, `b` | 3.0e-7 |
-| `f_cdf` | `d1`, `d2` | 5.7e-7 |
-| `student_t_cdf` | `df` (its other beta parameter is structurally 0.5) | 2.2e-7 |
+| `beta_cdf` | `a`, `b` | 3.2e-7 |
+| `f_cdf` | `d1`, `d2` | 1.2e-6 (on the branch threshold) |
+| `student_t_cdf` | `df` (its other beta parameter is structurally 0.5) | 1.2e-6 (at `t = -sqrt(3)`) |
 | `binomial_cdf` | `n` (`n - k` and `k + 1` are at least 1 for any legal `k`) | 1.9e-7 |
 
+**The stated 2e-6 carries deliberate headroom over the measured 1.2e-6.** Each
+refinement of the grid raised the worst -- 5.7e-7, then 1.21e-6 -- so a bound that
+tracks the measurement is a bound that the next refinement falsifies. This one is
+set so a further refinement reports a number inside the claim.
+
 `scripts/check_beta_accuracy.py` enforces it, evaluates each export **at** both
-edges, and reports the in-range worst separately from the overall worst -- quoting
-a worst that includes out-of-range inputs is the same number/scope mismatch that
-made the earlier claims wrong.
+edges and on the derived threshold, and reports the in-range worst separately from
+the overall worst -- quoting a worst that includes out-of-range inputs is the same
+number/scope mismatch that made the earlier claims wrong.
 
 Outside either edge the error grows. Above the ceiling, `f_cdf(0.5, 2e8, 0.5)`
 errs 1.7e-6 and `binomial_cdf(1.5e8, 3e8, 0.5)` errs 1.3e-6. Below the floor,

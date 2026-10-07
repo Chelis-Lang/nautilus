@@ -99,7 +99,8 @@ to indicate it. `student_t_cdf(1.0, 1e8)` now returns 0.8413447 against a true
 0.84134475.
 
 That moved the saturation from `df = 2^24` to about `2^53`; it did not remove it.
-`student_t_cdf` holds a relative error below 1e-6 for `df` in [1, 1e8], then
+`student_t_cdf` holds a relative error below 2e-6 for `df` in [1, 1e8] — worst
+measured 1.2e-6, at the branch boundary `t = -sqrt(3)` — then
 degrades — 1.7e-6 at 1e9, 3.8e-4 at 1e12, 51% at 1e14 — and from `df = 1e16` it
 returns exactly 0.5 again. **Above `df` of about 1e9 use `normal_cdf`**: the t
 distribution is within 1e-9 of the standard normal there. See [the precision

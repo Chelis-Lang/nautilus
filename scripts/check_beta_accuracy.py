@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import os
 import re
+import math
 import struct
 import subprocess
 import sys
@@ -70,12 +71,12 @@ PHI1 = 0.8413447460685429          # the standard normal CDF at 1
 # `binomial_cdf(1.5e8, 3e8, 0.5)` is 1.3e-6, and `beta_cdf(0.9, 0.5, 1e-4)` is
 # 1.9e-6 with a large parameter of only 0.5.
 DOCUMENTED = {
-    "beta_cdf": (1e8, 1.0, 1e-6),
-    "f_cdf": (1e8, 1.0, 1e-6),
-    "student_t_cdf": (1e8, 1.0, 1e-6),
-    "binomial_cdf": (1e8, 1.0, 1e-6),
+    "beta_cdf": (1e8, 1.0, 2e-6),
+    "f_cdf": (1e8, 1.0, 2e-6),
+    "student_t_cdf": (1e8, 1.0, 2e-6),
+    "binomial_cdf": (1e8, 1.0, 2e-6),
 }
-CEILING, FLOOR, BOUND = 1e8, 1.0, 1e-6
+CEILING, FLOOR, BOUND = 1e8, 1.0, 2e-6
 
 # The floor is on the parameters a CALLER passes -- `a` and `b`, `d1` and `d2` --
 # not on the beta parameters `betai` receives. `student_t_cdf` and `binomial_cdf`
@@ -108,6 +109,27 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
 
     lit = lambda v: f"cast({f32(v)!r}, f32)"
 
+    # The continued fraction switches branch at x == (a+1)/(a+b+2), and that is
+    # where it converges slowest -- so it is where the error peaks. A grid of
+    # hand-listed points misses it, which is how this claim came to be false
+    # three times running. These helpers DERIVE the locus from the parameters,
+    # so the grid cannot drift away from the worst case.
+    def beta_threshold(a, b):
+        return (a + 1.0) / (a + b + 2.0)
+
+    def f_x_at_threshold(d1, d2):
+        """The `x` that puts f_cdf's `u` exactly on the branch threshold."""
+        u = beta_threshold(d1 / 2.0, d2 / 2.0)
+        if not 0.0 < u < 1.0:
+            return None
+        return u * d2 / (d1 * (1.0 - u))
+
+    def t_at_boundary(df):
+        """student_t's branch boundary: x == threshold reduces to t^2 = 3df/(df+2)."""
+        return math.sqrt(3.0 * df / (df + 2.0))
+
+    NEAR = (0.95, 0.99, 1.0, 1.01, 1.05)
+
     # ---- beta_cdf -------------------------------------------------------
     for a in [1e2, 1e3, 1e4, 1e5, 1e6, 1e7, CEILING, 3e8]:
         add("beta_cdf", f"beta_cdf({lit(0.5)}, {lit(a)}, {lit(a)})", f32(a), 0.5)
@@ -117,6 +139,18 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
                 A, B, X = f32(a), f32(b), f32(x)
                 add("beta_cdf", f"beta_cdf({lit(x)}, {lit(a)}, {lit(b)})",
                     max(A, B), float(betainc(A, B, X)), min(A, B))
+    # x ON the branch threshold, for every (a, b) pair in the grid
+    for a in [FLOOR, 1.0, 10.0, 1e4, 1e6, CEILING]:
+        for b in [FLOOR, 1.0, 10.0, 1e4, 1e6, CEILING]:
+            thr = beta_threshold(f32(a), f32(b))
+            for mult in NEAR:
+                x = f32(thr * mult)
+                if not 0.0 < x < 1.0:
+                    continue
+                A, B = f32(a), f32(b)
+                add("beta_cdf", f"beta_cdf({lit(x)}, {lit(a)}, {lit(b)})",
+                    max(A, B), float(betainc(A, B, x)), min(A, B))
+
     # the floor itself, in the shape that breaks below it
     for b in [FLOOR, 2e-3, 5e-3]:
         for x in [0.5, 0.9, 0.99]:
@@ -136,6 +170,23 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
                     max(D1, D2), float(betainc(D1 / 2, D2 / 2, u)),
                     min(D1, D2))
 
+    # x ON the branch threshold for f_cdf
+    for d1 in [FLOOR, 1.0, 4.0, 1e4, 1e6, CEILING]:
+        for d2 in [FLOOR, 1.0, 10.0, 1e3, 1e6, CEILING]:
+            D1, D2 = f32(d1), f32(d2)
+            base = f_x_at_threshold(D1, D2)
+            if base is None:
+                continue
+            for mult in NEAR:
+                x = f32(base * mult)
+                if not 0.0 < x < float("inf"):
+                    continue
+                u = D1 * x / (D1 * x + D2)
+                if not 0.0 < u < 1.0:
+                    continue
+                add("f_cdf", f"f_cdf({lit(x)}, {lit(d1)}, {lit(d2)})",
+                    max(D1, D2), float(betainc(D1 / 2, D2 / 2, u)), min(D1, D2))
+
     # ---- student_t_cdf: df is the large parameter; the small one is always 0.5
     for df in [1.0, 10.0, 1e3, 1e5, 1e7, CEILING]:
         for t in [-2.0, -1.0, 0.5, 1.0, 1.5, 3.0]:
@@ -144,6 +195,19 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
             upper = float(betainc(D / 2, 0.5, x)) / 2
             add("student_t_cdf", f"student_t_cdf({lit(t)}, {lit(df)})",
                 D, upper if T < 0 else 1 - upper)
+    # t ON the branch boundary, both tails. This is the locus that made the
+    # previous ceiling false: at df = 1e8 and t = -sqrt(3) the error is 1.2e-6.
+    for df in [1.0, 10.0, 1e3, 1e5, 1e6, 1e7, 3e7, CEILING]:
+        D = f32(df)
+        base = t_at_boundary(D)
+        for mult in NEAR:
+            for sign in (1.0, -1.0):
+                t = f32(sign * base * mult)
+                x = D / (D + t * t)
+                upper = float(betainc(D / 2, 0.5, x)) / 2
+                add("student_t_cdf", f"student_t_cdf({lit(t)}, {lit(df)})",
+                    D, upper if t < 0 else 1 - upper)
+
     for df in [1e10, 1e11, 1e12]:          # past where SciPy can adjudicate
         add("student_t_cdf", f"student_t_cdf({lit(1.0)}, {lit(df)})", f32(df), PHI1)
 
