@@ -136,7 +136,11 @@ are accepted.
 Both `d1*x / (d1*x + d2)` and its complement `d2 / (d1*x + d2)` are formed in f64,
 so a small `d2` beside a large `d1*x` keeps its digits instead of rounding the
 argument to 1. Relative error stays below 2e-6 while `d1` and `d2` are both at
-least 1 and the larger is at most 1e8.
+least 1 and the larger is at most 1e8, and grows outside that range in both
+directions: `f_cdf(0.5, 2e8, 0.5)` errs by about 2e-6 and
+`f_cdf(0.5, 1e8, 1e-3)` by 2.5e-5. The
+[precision guide](../appendix/precision.md) states the range for every export in
+this family.
 
 ## Pitfalls
 

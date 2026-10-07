@@ -74,8 +74,8 @@ distribution. Relative error stays below 2e-6 for `n` up to 1e8.
 
 - Non-integer counts are not rounded by the CDFs.
   `binomial_cdf(3.5, 10, 0.3)` returns `0.761939`, between
-  `binomial_cdf(3, 10, 0.3) = 0.6496109` and
-  `binomial_cdf(4, 10, 0.3) = 0.8497317`, and is not P(X <= 3). Round a
+  `binomial_cdf(3, 10, 0.3) = 0.6496107` and
+  `binomial_cdf(4, 10, 0.3) = 0.8497316`, and is not P(X <= 3). Round a
   computed count with `floor` before the call.
 - A NaN argument does not give a clean NaN from `poisson_cdf`:
   `poisson_cdf(NaN, lambda)` stops evaluation with

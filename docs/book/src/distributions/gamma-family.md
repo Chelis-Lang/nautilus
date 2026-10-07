@@ -154,7 +154,7 @@ Both `x` and its complement `t^2/(df + t^2)` are formed in f64 and passed to
 recovered as `1 - x`, where it would round to zero.
 
 Relative error stays below 2e-6 for `df` in [1, 1e8]. Past that it grows: about
-2e-6 at `df = 1e9`, 4e-4 at 1e12 and 51% at 1e14, and from `df = 1e16` the
+1.7e-6 at `df = 1e9`, 4e-4 at 1e12 and 51% at 1e14, and from `df = 1e16` the
 function returns exactly 0.5, which is also its value at `t = 0`. **Above `df` of
 about 1e9, use `normal_cdf`.** The t distribution is within 1e-9 of the standard
 normal there, so the substitution costs nothing f32 can measure. The precision

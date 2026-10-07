@@ -116,7 +116,7 @@ sweep of 7,652 adversarial cases found 1.45e-6 at a point 0.2% off the worst any
 derived locus gives.
 
 So the published contract is the **bound with headroom**, which a finite check can
-defend, and `scripts/check_beta_accuracy.py` is the record for the measurement.
+defend, and `parity/check_beta_accuracy.py` is the record for the measurement.
 That script now derives its hard cases rather than listing them -- the branch
 threshold per parameter pair (`t^2 = 3df/(df+2)` for `student_t_cdf`,
 `p* = (k+1)/(n+2)` for `binomial_cdf`, the inverted `u` for `f_cdf`), a

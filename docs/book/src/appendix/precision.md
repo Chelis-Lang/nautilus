@@ -127,7 +127,7 @@ symmetry, the relative error is about 8e-6 at `a = 1e9`, 1.2e-3 at 1e10 and 21%
 at 1e11, and `beta_cdf(0.5, 3e38, 3e38)` returns a confident 1.0.
 
 `student_t_cdf` leaves the range earliest, because its cancellation is driven by
-`df` alone: about 2e-6 at `df = 1e9`, 4e-4 at 1e12, 51% at 1e14, and from
+`df` alone: 1.7e-6 at `df = 1e9`, 4e-4 at 1e12, 51% at 1e14, and from
 `df = 1e16` it returns exactly 0.5, which is also its value at `t = 0`. **Above
 `df` of about 1e9, use `normal_cdf` instead.** The t distribution is within 1e-9
 of the standard normal there, so the substitution costs nothing f32 can measure.
