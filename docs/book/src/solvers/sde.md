@@ -26,6 +26,18 @@ number of timesteps: `dt = (t1 - t0) / numel(noise)`. The solvers
 scale each noise element by `sqrt(dt)` internally to produce the
 Brownian increment dW.
 
+The interval must run forward, `t1 > t0`. Neither solver checks it:
+
+| Interval | Result |
+|---|---|
+| `t1 > t0` | the simulated `y(t1)` |
+| `t1 = t0` | `y0`, since every increment is zero |
+| `t1 < t0` | NaN, from `sqrt` of the negative step |
+
+With `f(y, t) = -y`, `g(y, t) = 0.1`, `y0 = 1`, and the noise
+`[0.5, -1.0, 0.25, 1.0]`, `euler_maruyama_fixed` returns `0.3582031` over
+`[0, 1]`, `1.0` over `[1, 1]`, and `NaN` over `[1, 0]`.
+
 This design makes paths reproducible and keeps keys out of the solver
 signature entirely. Generate noise separately using `normal_sample` with its
 own key, or pass a fixed tensor for testing.
@@ -47,7 +59,18 @@ def milstein_path[n](noise: tensor[n, f32]) -> f32 = milstein_fixed(drift, scale
 `euler_maruyama_path` simulates dY = -Y dt + 0.1 dW from Y(0) = 1 to t = 1;
 with an all-zero noise tensor it reduces to Euler's method on exponential
 decay. `milstein_path` uses the multiplicative diffusion g(y) = 0.3y, whose
-derivative with respect to y is the constant 0.3.
+derivative with respect to y is the constant 0.3. With four fixed noise
+values:
+
+```chelis-fragment
+em = euler_maruyama_path(to_tensor([0.5f32, -1.0f32, 0.25f32, 1.0f32]))
+mil = milstein_path(to_tensor([0.5f32, -1.0f32, 0.25f32, 1.0f32]))
+```
+
+```text
+em = 0.3582031
+mil = 0.34259263
+```
 
 ## Milstein correction
 
@@ -58,6 +81,7 @@ supply `dg_dy` analytically, as `scale_slope` does in the module above.
 ## Notes
 
 - An empty noise tensor (length 0) returns NaN.
+- A NaN or infinite noise element propagates to the result.
 - Both solvers return only the terminal value y(t1). Intermediate path
   values are not stored.
 - Call drift and diffusion functions with both arguments at once:

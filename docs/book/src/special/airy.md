@@ -16,7 +16,7 @@ decaying asymptotic form exp(-2/3 * x^(3/2)) / (2*sqrt(pi) * x^(1/4))
 is used.
 
 - **Domain:** all reals
-- **Precision:** f32-grade at either dtype. Above x = 5 only the leading asymptotic term is used, so f64 gains nothing there; below it, f64 is substantially better.
+- **Precision:** for |x| <= 5 the power series gives f32-grade results at f32 and much smaller errors at f64. Above x = 5 only the leading asymptotic term is used, so f64 gives no improvement there; see the [precision guide](../appendix/precision.md).
 - **Known limitation:** for large negative x (x < -5), only the power
   series is available. The oscillatory regime works for moderate |x|
   but degrades for very large negative x.
@@ -39,7 +39,7 @@ For x > 5, an exponentially growing asymptotic form
 exp(2/3 * x^(3/2)) / (sqrt(pi) * x^(1/4)) is used.
 
 - **Domain:** all reals
-- **Precision:** f32-grade at either dtype above x = 5; see `airy_ai`.
+- **Precision:** as for `airy_ai`: f64 helps for |x| <= 5 and not above x = 5.
 
 ```chelis-fragment
 import Nautilus.Special (airy_bi)

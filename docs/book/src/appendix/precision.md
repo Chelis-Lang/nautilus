@@ -50,8 +50,10 @@ Two cases need separate guidance:
 
 ### The normal CDF left tail depends on the parameters
 
-`normal_cdf` and `normal_cdf_t` call the Chelis `standard_normal_cdf` builtin
-on the standardized point `w = (x - mean) / std`. The builtin error bound is
+`normal_cdf` and its elementwise tensor version `normal_cdf_t` (see
+[Normal distribution](../distributions/normal.md#tensor-versions))
+call the Chelis `standard_normal_cdf` builtin on the standardized point
+`w = (x - mean) / std`. The builtin error bound is
 about 1.5 units in the last place (ulp). Nautilus rounds `w` before the builtin
 receives it. A relative error `d` in `w` becomes a relative error of about
 `w^2 d` in `Phi`. Thus the error of these three-argument functions depends on

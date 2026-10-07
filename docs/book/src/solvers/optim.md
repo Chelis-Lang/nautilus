@@ -22,46 +22,61 @@ NaN on failure).
   section fallback. Superlinear convergence for smooth functions while
   staying within [lo, hi]. Use it when derivatives are unavailable.
 - **gradient_descent_1d:** Uses a fixed learning rate and needs the derivative
-  `df`. Returns NaN on divergence (|x| > 1e15). Useful when you have
-  analytic gradients and want to tune learning rate.
+  `df`. Each step is `x - lr * df(x)`. Returns NaN on divergence
+  (|x| > 1e15). Useful when you have analytic gradients and want to tune
+  learning rate.
 - **newton_minimize_1d:** Uses both first and second derivatives
   (`df`, `ddf`). Quadratic convergence near a minimum with positive
   curvature. Returns NaN if the Hessian is non-positive or below 0.01
   at the point it stops on.
 
-## Example: golden section
+## Example
 
 ```chelis-fragment
-import Nautilus.Optim (golden_section_search)
-
-def find_min() -> f32 = {
-  f = fn (x: f32) -> {
-    d = sub(x, cast(3.0, f32))
-    add(mul(d, d), cast(7.0, f32))
-  }
-  golden_section_search(f, cast(0.0, f32), cast(10.0, f32),
-                        cast(1.0e-8, f32), cast(200, i64))
-}
-```
-
-Returns approximately 3.0 (the minimum of (x-3)^2 + 7).
-
-## Example: Newton minimization
-
-```chelis-fragment
-import Nautilus.Optim (newton_minimize_1d)
+import Nautilus.Optim (golden_section_search, brent_minimize, newton_minimize_1d, gradient_descent_1d)
 
 def parabola(x: f32) -> f32 = {
-  d = sub(x, cast(3.0, f32))
-  add(mul(d, d), cast(7.0, f32))
+  d = sub(x, 3.0f32)
+  add(mul(d, d), 7.0f32)
 }
-def d_parabola(x: f32) -> f32 = mul(cast(2.0, f32), sub(x, cast(3.0, f32)))
-def dd_parabola(x: f32) -> f32 = cast(2.0, f32)
-
-def find_min_newton() -> f32 =
-  newton_minimize_1d(parabola, d_parabola, dd_parabola,
-                     cast(0.0, f32), cast(1.0e-10, f32), cast(50, i64))
+def d_parabola(x: f32) -> f32 = mul(2.0f32, sub(x, 3.0f32))
+def dd_parabola(x: f32) -> f32 = 2.0f32
+golden = golden_section_search(parabola, 0.0f32, 10.0f32, 1.0e-6f32, 200i64)
+brent = brent_minimize(parabola, 0.0f32, 10.0f32, 1.0e-6f32, 200i64)
+newton = newton_minimize_1d(parabola, d_parabola, dd_parabola, 0.0f32, 1.0e-6f32, 50i64)
+gd = gradient_descent_1d(parabola, d_parabola, 0.0f32, 0.1f32, 500i64)
 ```
+
+```text
+golden = 3.000132
+brent = 2.9998934
+newton = 3.0
+gd = 2.9999995
+```
+
+All four find the minimum of `(x - 3)^2 + 7`. Newton lands on 3 exactly in
+one step because the objective is quadratic. The two bracketing methods stop
+on bracket width, so their answers are within about 1e-4 of 3 for this
+`tol`: the minimum of a smooth function is flat, and an f32 objective cannot
+distinguish points closer than about `sqrt(ulp)` of the minimum.
+
+## gradient_descent_1d contract
+
+`lr` must be positive and small enough for the iteration to contract:
+below `2 / f''(x)` near the minimum, so below 1 for this parabola. It is not
+checked. With the parabola above and `x0 = 0`:
+
+| `lr` and budget | Result | Why |
+|---|---|---|
+| `0.1`, 500 iterations | `2.9999995` | converged |
+| `0.01`, 10 iterations | `0.5487816` | budget exhausted; the last iterate, with no signal |
+| `0.0` | `0.0` | the first step leaves x unchanged, which ends the search |
+| `-0.1` | NaN | ascends until \|x\| > 1e15 |
+| `1.5` | NaN | overshoots with growing amplitude until \|x\| > 1e15 |
+
+Gradient descent stops when `|df(x)| < 1e-10`, when a step leaves `x`
+unchanged, or when the budget runs out; only divergence returns NaN. Check
+`df` at the result when convergence matters.
 
 ## Notes
 
@@ -108,6 +123,11 @@ def find_min_newton() -> f32 =
   initially samples the quarter, midpoint, and three-quarter points;
   `golden_section_search` samples different points. One can return NaN while
   the other returns a finite point for the same partially defined objective.
+- `tol` for the bracketing methods is a bracket width in x and should be
+  positive. `brent_minimize` raises any `tol` below 1e-6 to 1e-6.
+  `golden_section_search` does not: with `tol <= 0` the width test never
+  passes, and it returns the bracket midpoint after `max_iters` iterations,
+  or earlier if `f` returns equal values at its two probe points.
 - A NaN `tol` is not rejected. For the bracketing methods, it disables width
   stopping; the method can still return at its iteration budget or an f32
   stall. Validate a computed tolerance before calling.

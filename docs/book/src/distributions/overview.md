@@ -47,8 +47,12 @@ See [Right-tail accuracy](../stats/testing.md#right-tail-accuracy).
 - Poisson: `(k, lambda)` where k is the count
 - Binomial: `(k, n, p)` where n is trials and p is probability
 - Beta: `(x, a, b)` where a, b are shape parameters
-- F: `(x, d1, d2)`
-- Weibull: `(x, shape, scale)`
+- F: `(x, d1, d2)` where d1 and d2 are the numerator and denominator degrees of freedom
+- Weibull: `(x, shape, scale)` where shape is k and scale is lambda
+
+Discrete counts and trial numbers are `f32` values, not integers. Each
+family page lists its parameter domain and what an invalid parameter returns;
+several families do not check their parameters at all.
 
 ## Sampling with explicit keys
 

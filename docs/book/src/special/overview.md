@@ -68,3 +68,31 @@ import Nautilus.Special (airy_ai, airy_bi, ellipk, ellipe)
 
 Both use the arithmetic-geometric mean (AGM) recurrence, which
 converges quadratically in about 10 iterations.
+
+## Differentiation
+
+`grad` needs a function with a fixed floating type, so wrap a generic export
+in a concrete definition before differentiating it. Calling `grad(erfinv)`
+directly fails to type-check with `grad requires a scalar floating output`.
+
+```chelis-fragment
+import Nautilus.Special (erfinv, bessel_j0)
+
+def erfinv_at(x: f64) -> f64 = erfinv(x)
+def j0_at(x: f64) -> f64 = bessel_j0(x)
+d_erfinv = grad(erfinv_at)(0.5f64)
+d_j0 = grad(j0_at)(0.5f64)
+```
+
+```text
+d_erfinv = 1.1125848087047903
+d_j0 = -0.2422684661906818
+```
+
+`erfinv` and the eight `bessel_*` functions differentiate. The others do
+not: `gamma`, `log_gamma`, `digamma`, `trigamma`, `beta`, `lbeta`, `ellipk`,
+`ellipe`, `airy_ai`, and `airy_bi` reach a primitive with no derivative or
+recurse a run-time number of times, and `grad` fails when it is lowered. For
+`gamma` the error is `grad: cast_trunc is non-differentiable`. Where you need
+the derivative of one of these, use its closed form: the derivative of
+`log_gamma` is `digamma`, and the derivative of `digamma` is `trigamma`.

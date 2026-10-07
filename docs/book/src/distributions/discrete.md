@@ -1,68 +1,79 @@
 # Discrete distributions
 
-Two discrete distribution families: Poisson and Binomial. Both provide
-a probability mass function (PMF) and a cumulative distribution function
-(CDF). Pass counts as integer-valued `f32` values. The PMFs return zero
-for non-integer `k`, but the CDFs do not round `k` to a count.
+Two discrete families, Poisson and binomial, each with a probability mass
+function (PMF) and a cumulative distribution function (CDF). Counts and trial
+numbers are `f32` values; pass integer values such as `3.0f32`.
+
+```chelis-fragment
+import Nautilus.Distributions (poisson_pmf, poisson_cdf, binomial_pmf, binomial_cdf)
+
+ppmf = poisson_pmf(3.0f32, 2.5f32)
+pcdf = poisson_cdf(3.0f32, 2.5f32)
+bpmf = binomial_pmf(3.0f32, 10.0f32, 0.3f32)
+bcdf = binomial_cdf(3.0f32, 10.0f32, 0.3f32)
+```
+
+```text
+ppmf = 0.21376282
+pcdf = 0.75757635
+bpmf = 0.26682863
+bcdf = 0.6496109
+```
 
 ## Poisson
 
-**`poisson_pmf(k: f32, lambda: f32) -> f32`**
+| Function | Signature | Returns |
+|---|---|---|
+| `poisson_pmf` | `(k: f32, lambda: f32) -> f32` | P(X = k) = exp(k*ln(lambda) - lambda - ln(Gamma(k+1))) |
+| `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | P(X <= k) = 1 - P(k+1, lambda), the regularized lower incomplete gamma complement |
 
-Computes P(X = k) = exp(k*ln(lambda) - lambda - ln(Gamma(k+1))) in
-log-space to avoid factorial overflow. Returns 0 for non-integer or
-negative k. At lambda = 0, returns 1 if k = 0, else 0.
+Domain: `k` a non-negative integer value, `lambda >= 0` and finite.
 
-**`poisson_cdf(k: f32, lambda: f32) -> f32`**
+| Input | `poisson_pmf` | `poisson_cdf` |
+|---|---|---|
+| `lambda < 0` | NaN | NaN |
+| `lambda = 0` | 1 at k = 0, else 0 | 1 for every k >= 0 |
+| `lambda` NaN | NaN | NaN |
+| `k < 0` | 0 | 0 |
+| non-integer `k` | 0 | not rounded: interpolates between the neighboring counts |
 
-Computes P(X <= k) via the complement of the regularized lower
-incomplete gamma function: 1 - gammaP(k+1, lambda). This avoids
-summing individual PMF values.
-
-- **Parameters:** k >= 0 (integer-valued f32), lambda > 0
-- **lambda < 0:** returns NaN
-- **lambda = 0:** CDF returns 1.0 for all k >= 0
-
-```chelis-fragment
-import Nautilus.Distributions (poisson_pmf, poisson_cdf)
-
-pmf = poisson_pmf(cast(3.0, f32), cast(2.5, f32))  -- approximately 0.2138
-cdf = poisson_cdf(cast(3.0, f32), cast(2.5, f32))  -- approximately 0.7576
-```
+The PMF works in log space, so large counts do not overflow a factorial. The
+CDF does not sum PMF terms; it evaluates the incomplete gamma function, which
+inherits the [large-shape limit](gamma-family.md#large-shapes)
+at shape `k + 1`.
 
 ## Binomial
 
-**`binomial_pmf(k: f32, n: f32, p: f32) -> f32`**
-
-Computes P(X = k) = C(n,k) * p^k * (1-p)^(n-k) in log-space using
-`log_gamma` for the binomial coefficient. Returns 0 for non-integer k
-or k outside [0, n].
-
-**`binomial_cdf(k: f32, n: f32, p: f32) -> f32`**
-
-Computes P(X <= k) via the regularized incomplete beta function:
-betaI(n-k, k+1, 1-p). Returns 0 for k < 0, returns 1 for k >= n.
-
-- **Parameters:** k in [0, n] (integer-valued f32), n positive integer, p in [0, 1]
-- **p = 0:** returns 1 if k = 0, else 0
-- **p = 1:** returns 1 if k = n, else 0
-- **p outside [0, 1]:** returns NaN
-
-```chelis-fragment
-import Nautilus.Distributions (binomial_pmf, binomial_cdf)
-
-pmf = binomial_pmf(cast(3.0, f32), cast(10.0, f32), cast(0.3, f32))
--- approximately 0.2668
-cdf = binomial_cdf(cast(3.0, f32), cast(10.0, f32), cast(0.3, f32))
--- approximately 0.6496
-```
-
-## Edge cases
-
-| Condition | PMF | CDF |
+| Function | Signature | Returns |
 |---|---|---|
-| Non-integer k | 0.0 | no count rounding; pass an integer-valued `f32` |
-| k < 0 | 0.0 | 0.0 |
-| lambda < 0 (Poisson) | NaN | NaN |
-| p outside [0,1] (Binomial) | NaN | NaN |
-| k > n (Binomial) | 0.0 | 1.0 |
+| `binomial_pmf` | `(k: f32, n: f32, p: f32) -> f32` | P(X = k) = C(n, k) p^k (1-p)^(n-k), in log space via `log_gamma` |
+| `binomial_cdf` | `(k: f32, n: f32, p: f32) -> f32` | P(X <= k) = I_(1-p)(n - k, k + 1), the regularized incomplete beta |
+
+Domain: `n` a non-negative integer value, `k` an integer value, `p` in [0, 1].
+
+| Input | `binomial_pmf` | `binomial_cdf` |
+|---|---|---|
+| `p` outside [0, 1] | NaN | NaN |
+| `p = 0` | 1 at k = 0, else 0 | 1 for every k >= 0 |
+| `p = 1` | 1 at k = n, else 0 | 0 for k < n, 1 at k >= n |
+| `k < 0` | 0 | 0 |
+| `k > n` | 0 | 1 |
+| non-integer `k` | 0 | not rounded: interpolates between the neighboring counts |
+| non-integer `n` | NaN | a value from the continuous formula, not a probability of any binomial |
+| `n < 0` | 0 | 1 for k >= 0 |
+
+The CDF checks `p` first, then returns 0 for `k < 0` and 1 for `k >= n`
+before reading `n` again, so a bad `n` does not produce NaN there.
+
+## Pitfalls
+
+- Non-integer counts are not rounded by the CDFs.
+  `binomial_cdf(3.5, 10, 0.3)` returns `0.761939`, between
+  `binomial_cdf(3, 10, 0.3) = 0.6496109` and
+  `binomial_cdf(4, 10, 0.3) = 0.8497317`, and is not P(X <= 3). Round a
+  computed count with `floor` before the call.
+- `poisson_cdf(k, NaN)` is NaN, but `poisson_cdf(NaN, lambda)` stops
+  evaluation with `numeric trap: domain in cast_trunc at i64`. Check a
+  computed count for NaN first.
+- For an upper tail, subtracting the CDF from 1 loses values below about
+  6e-8. Neither family has a survival function.

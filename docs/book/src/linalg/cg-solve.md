@@ -56,17 +56,34 @@ returned residual if convergence matters to your calculation.
 
 ## Example
 
+A least-squares line fit through the normal equations `A^T A x = A^T b`.
+The design matrix has a column of ones and a column of x values; the
+observations lie exactly on `y = 1 + 2x`.
+
 ```chelis-fragment
 import Nautilus.LinAlg (cg_solve, gram, matvec, la_vec_sub, l2_norm_vec)
 
-def solve_normal_eq[m, n](a: tensor[m, n, f32],
-                          b: tensor[m, f32]) -> tensor[n, f32] = {
-  ata = gram(copy(a))
+def solve_normal_eq[m, n](a: &tensor[m, n, f32], b: &tensor[m, f32]) -> tensor[n, f32] = {
+  ata = gram(a)
   atb = einsum("ji,j->i", a, b)
-  x0 = to_tensor(map(fn (x: f32) -> cast(0.0, f32), to_list(copy(atb))))
-  cg_solve(ata, atb, x0, cast(1.0e-10, f32), cast(200, i64))
+  x0 = to_tensor(map(fn (x: f32) -> 0.0f32, to_list(copy(atb))))
+  cg_solve(ata, atb, x0, 1.0e-10f32, 200i64)
 }
+def design() -> tensor[4, 2, f32] = to_tensor([[1.0f32, 0.0f32], [1.0f32, 1.0f32], [1.0f32, 2.0f32], [1.0f32, 3.0f32]])
+def obs() -> tensor[4, f32] = to_tensor([1.0f32, 3.0f32, 5.0f32, 7.0f32])
+coef = solve_normal_eq(design(), obs())
+res_norm = l2_norm_vec(la_vec_sub(obs(), matvec(design(), solve_normal_eq(design(), obs()))))
 ```
+
+```text
+coef = tensor(shape=[2], data=[1.0000002, 1.9999999])
+res_norm = 2.3841858e-7
+```
+
+`gram(a)` is `A^T A`, here `[[4, 6], [6, 14]]`, which is SPD because the two
+columns are independent. The solve recovers intercept 1 and slope 2 to f32
+rounding. Forming `A^T A` squares the condition number of `A`, so this route
+loses accuracy on nearly collinear columns.
 
 ## Edge cases
 
@@ -78,3 +95,7 @@ def solve_normal_eq[m, n](a: tensor[m, n, f32],
   roughly 1e-5 residual norm.
 - **Zero initial guess**: passing a zero vector for `x0` is always safe
   and is the standard choice.
+- **No convergence flag**: the result is the last iterate whether or not
+  the residual reached `tol`. `max_iters <= 0` returns `x0` unchanged. Compute
+  `b - A x` afterwards, as the example does, when the answer matters.
+- **NaN**: a NaN in `a_mat`, `b`, or `x0` propagates to the result.

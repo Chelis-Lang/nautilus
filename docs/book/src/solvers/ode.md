@@ -18,8 +18,8 @@ state and reports it at caller-chosen times.
 | `rk45_adaptive_solve_grid` | `[n, p](f: tensor[n, f32] -> f32 -> tensor[n, f32], t0: f32, y0: tensor[n, f32], t_end, rtol, atol: f32, t_out: &tensor[p, f32]) -> tensor[n, p, f32]` | Vector Dormand-Prince 5(4) with Hermite cubic dense output; column j is the state at `t_out[j]` |
 
 The right-hand side `f` takes `(y, t)` as two separate arguments. For the
-grid solver `y` is the state vector, and `t_out` must be sorted ascending
-with every value in `(t0, t_end]`.
+grid solver `y` is the state vector and the result has one column per entry
+of `t_out`.
 
 ## Fixed-step and adaptive design
 
@@ -48,9 +48,56 @@ adaptive RK45 both agree with it to f32 rounding; Euler with 1000 steps is
 off by about 2e-4. `forced_response` solves y' = -y + cos(t) from y(0) = 0,
 whose exact value at t = 1 is (cos 1 + sin 1 - e^{-1}) / 2 ≈ 0.50695.
 
+## Failure behavior
+
+No solver raises an error. Each returns a value, and some of those values
+look like results:
+
+| Situation | Result |
+|---|---|
+| `n_steps <= 0` (Euler, RK4) | NaN |
+| `t1 < t0` (Euler, RK4) | integrates backward with a negative step |
+| `t_end = t0` (RK45) | `y0`, or an all-zero grid |
+| `rtol <= 0` or `atol <= 0` | NaN from `rk45_adaptive_solve`; an all-zero tensor from `rk45_adaptive_solve_grid` |
+| `t_end < t0` | `rk45_adaptive_solve` integrates backward; `rk45_adaptive_solve_grid` returns all zeros |
+| a `t_out` entry outside `(t0, t_end]` | that column is all zeros |
+| step budget exhausted | the state at the time reached, not at `t_end` |
+
+`t_out` need not be sorted: each entry is filled from the accepted step that
+contains it. Both RK45 solvers attempt at most 4096 steps, counting rejected
+ones. A stiff problem can use them all on tiny steps. For
+`y' = -1e5 * (y - cos(t))` from `y(0) = 0` to `t = 10`, `rk45_adaptive_solve`
+returns `0.99999976`, a value of `cos(t)` near `t = 0`, while the true value
+is `cos(10) = -0.839`. Nothing in the result marks the
+shortfall, so check stiff problems against a second method or a shorter
+interval. The scalar solver also stops early when an accepted step leaves `y`
+unchanged.
+
+## Grid output
+
+```chelis-fragment
+import Nautilus.Ode (rk45_adaptive_solve_grid)
+
+def decay_v(y: tensor[2, f32], t: f32) -> tensor[2, f32] = neg(y)
+grid = rk45_adaptive_solve_grid(decay_v, 0.0f32, to_tensor([1.0f32, 2.0f32]), 1.0f32, 1e-6f32, 1e-8f32, to_tensor([0.5f32, 1.0f32]))
+grid_unsorted = rk45_adaptive_solve_grid(decay_v, 0.0f32, to_tensor([1.0f32, 2.0f32]), 1.0f32, 1e-6f32, 1e-8f32, to_tensor([1.0f32, 0.0f32, 0.5f32, 2.0f32]))
+```
+
+```text
+grid = tensor(shape=[2, 2], data=[0.60652786, 0.36787948, 1.2130557, 0.73575896])
+grid_unsorted = tensor(shape=[2, 4], data=[0.36787948, 0.0, 0.60652786, 0.0, 0.73575896, 0.0, 1.2130557, 0.0])
+```
+
+Row `i` is state component `i` and column `j` is time `t_out[j]`, so the first
+row of `grid` is `exp(-0.5)` and `exp(-1)`. In `grid_unsorted`, the times 0.0
+and 2.0 lie outside `(0, 1]` and their columns are zero.
+
 ## Notes
 
-- `n_steps <= 0` returns NaN for the fixed-step solvers.
-- `rk45_adaptive_solve` returns NaN if `rtol <= 0` or `atol <= 0`.
 - The scalar solvers return only the final value; use
   `rk45_adaptive_solve_grid` when you need the trajectory.
+- `grad` does not differentiate through these solvers. Their step loops
+  recurse a number of times known only at run time, and lowering `grad`
+  through `rk4_solve` fails with `recursive inlining of ... exceeded the
+  static unroll limit of 512 levels`. Differentiate the right-hand side, or
+  use finite differences of the solve.

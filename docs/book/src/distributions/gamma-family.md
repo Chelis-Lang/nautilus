@@ -7,16 +7,33 @@ internally).
 
 ## Gamma distribution
 
+Parameterized by `shape` (k) and `scale` (theta), SciPy's convention: the
+mean is `shape * scale`. Both must be positive and finite. No gamma function
+checks them, and the invalid results are not all NaN:
+
+| Call | Result |
+|---|---|
+| `gamma_pdf(1, 0, 1)` or `gamma_pdf(1, -1, 1)` | `0.0` |
+| `gamma_cdf(1, 0, 1)` or `gamma_cdf(1, -1, 1)` | `1.0` |
+| `gamma_pdf(1, 2, 0)`, `gamma_pdf(1, 2, -1)`, `gamma_cdf(1, 2, 0)` | NaN |
+| `gamma_cdf(1, 2, -1)` | `0.0` |
+| `gamma_inv_cdf(0.5, 0, 1)` | `0.0` |
+| `gamma_inv_cdf(0.5, -1, 1)` | `827180.6` |
+| `gamma_inv_cdf(0.5, 2, 0)` or `gamma_inv_cdf(0.5, 2, -1)` | NaN |
+
+Validate computed parameters before the call.
+
 **`gamma_pdf(x: f32, shape: f32, scale: f32) -> f32`**
 
 Computes the PDF via log-space: exp((k-1)*ln(x) - x/scale - k*ln(scale) - lgamma(k)).
-Returns 0 for x < 0; at x = 0 returns 1/scale when shape = 1, +inf when shape < 1.
+Returns 0 for x < 0; at x = 0 returns 0 when shape > 1, 1/scale when shape = 1,
+and +inf when shape < 1.
 
 **`gamma_cdf(x: f32, shape: f32, scale: f32) -> f32`**
 
 Uses the regularized lower incomplete gamma function (series expansion
-`gammap` for x < shape+1, continued-fraction `gammaq` complement
-otherwise).
+`gammap` for x/scale < shape+1, continued-fraction `gammaq` complement
+otherwise). Returns 0 for x <= 0.
 
 **`gamma_sf(x: f32, shape: f32, scale: f32) -> f32`**
 
@@ -33,8 +50,9 @@ That loss is about 6e-8, for any accuracy of the incomplete gamma. Use
 
 **`gamma_inv_cdf(q: f32, shape: f32, scale: f32) -> f32`**
 
-Wilson-Hilferty initial guess refined by up to 80 Newton iterations.
-Returns 0 at q=0, +inf at q=1, NaN outside [0,1].
+Wilson-Hilferty initial guess refined by 80 Newton iterations on
+`gamma_cdf`. Returns 0 at q=0, +inf at q=1, NaN outside [0,1]. It inherits
+the large-shape limit below.
 
 **`gamma_sample[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]`**
 
@@ -43,6 +61,33 @@ element a separate key and selects its first accepted Marsaglia-Tsang
 candidate. It tries at most 64 candidates for each element. It returns NaN
 at an element if all 64 candidates reject.
 See [Sampling limits](sampling.md#sampling-limits).
+Below shape 1 the method does not apply; `gamma_sample` still returns
+finite numbers there, but they are not Gamma draws.
+
+### Large shapes
+
+Both incomplete-gamma branches stop after 200 terms. That is enough for
+moderate shapes and too few for large ones, and the CDF then drifts with no
+signal. At `x = shape`, scale 1, against the exact regularized incomplete
+gamma:
+
+| shape | `gamma_cdf` | exact | relative error |
+|---|---|---|---|
+| 100 | 0.5132978 | 0.5132988 | 1.9e-6 |
+| 1000 | 0.5043488 | 0.5042052 | 2.8e-4 |
+| 2000 | 0.50264823 | 0.50297355 | 6.5e-4 |
+| 20000 | 0.4219802 | 0.50094032 | 16% |
+| 30000 | 0.37090707 | 0.50076776 | 26% |
+
+`chi_squared_cdf` and `chi_squared_sf` reach this at `df / 2`, and
+`poisson_cdf` at `k + 1`. For a chi-squared statistic with thousands of
+degrees of freedom, compare the table's error with your significance level
+before trusting the p-value.
+
+The incomplete-gamma helpers recurse once per term. Under `chelis eval`,
+a program with several large-shape calls can exhaust the default 8 MB stack
+and abort with `stack overflow`; raise the limit with `ulimit -s 65520`
+before evaluating.
 
 ```chelis
 module Nautilus.BookGammaFamily
@@ -54,15 +99,16 @@ def median_shape_2() -> f32 = gamma_inv_cdf(cast(0.5, f32), cast(2.0, f32), cast
 def chi2_critical() -> f32 = chi_squared_cdf(cast(3.84, f32), cast(1.0, f32))
 ```
 
-`pdf_at_2` is approximately 0.2707, `cdf_at_2` (shape 1, scale 3, so
-1 - e^(-2/3)) approximately 0.4866, `median_shape_2` approximately 1.678, and
-`chi2_critical` approximately 0.950: 3.84 is the 95% critical value of a
-chi-squared with one degree of freedom.
+Evaluated, the four functions return `pdf_at_2 = 0.27067044`,
+`cdf_at_2 = 0.4865827` (shape 1, scale 3, so 1 - e^(-2/3)),
+`median_shape_2 = 1.678348`, and `chi2_critical = 0.94995654`: 3.84 is the
+95% critical value of a chi-squared with one degree of freedom.
 
 ## Chi-squared distribution
 
-All four functions delegate to the gamma distribution with
-shape = df/2 and scale = 2.
+All five functions delegate to the gamma distribution with
+shape = df/2 and scale = 2, so `df` must be positive and the gamma
+parameter rules above apply at shape df/2.
 
 **`chi_squared_pdf(x: f32, df: f32) -> f32`** -- via `gamma_pdf(x, df/2, 2)`
 
@@ -83,9 +129,13 @@ The sampler uses `gamma_sample` with shape df/2 and scale 2, so it needs
 
 ## Student's t distribution
 
+Parameterized by the degrees of freedom `df`, which must be positive.
+Non-integer `df` is accepted.
+
 **`student_t_pdf(x: f32, df: f32) -> f32`**
 
-Computed in log-space using `log_gamma` for the normalizing constant.
+Computed in log-space using `log_gamma` for the normalizing constant. Returns
+NaN for df <= 0.
 
 **`student_t_cdf(t: f32, df: f32) -> f32`**
 
@@ -102,8 +152,13 @@ accepted candidate.
 ```chelis-fragment
 import Nautilus.Distributions (student_t_pdf, student_t_cdf)
 
-pdf = student_t_pdf(cast(0.0, f32), cast(5.0, f32))  -- peak of t(5)
-cdf = student_t_cdf(cast(2.0, f32), cast(10.0, f32)) -- approximately 0.963
+t_peak = student_t_pdf(0.0f32, 5.0f32)
+t_cdf = student_t_cdf(2.0f32, 10.0f32)
+```
+
+```text
+t_peak = 0.37960654
+t_cdf = 0.96330595
 ```
 
 ## Edge cases

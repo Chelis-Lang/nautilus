@@ -42,9 +42,9 @@ chelis eval --file src/main.ch
 ```
 
 `chelis check` should report a score of `1` and an empty error list. The
-evaluator prints `price = 10.450577` for this example. Formatting
-comes first because both `check` and `eval --file` enforce Chelis's source
-style gate.
+evaluator prints `price = 10.450577` for this example. Run `chelis fmt`
+first: `check` and `eval --file` refuse a file that is not in canonical
+format.
 
 For machine-readable output, add `--json` to the evaluation command.
 Its `roots` array contains the `price` result; the `f32` value is
@@ -66,4 +66,4 @@ runtime files under `out/`; it does not run the calculation.
 - `price` is a top-level value, which gives `chelis eval` a result to print.
   Defining a function alone does not evaluate it.
 
-For the pricing formula and its domain, see [Black-Scholes pricing](../finance/black-scholes.md).
+For the pricing formula, its input domain, and its edge cases, see [Black-Scholes pricing](../finance/black-scholes.md).

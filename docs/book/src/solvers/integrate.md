@@ -33,6 +33,37 @@ approximates the integrand.
 exceeds `15 * tol`. The tolerance is halved at each recursion level,
 with a floor of 1e-7. Max depth is capped at 30.
 
+When a subinterval reaches `max_depth` without meeting the tolerance, the
+function keeps that subinterval's Richardson-corrected Simpson estimate and
+carries on. It returns a number either way and gives no signal that the
+tolerance was missed. For the integral of `1 / sqrt(x)` over `[1e-6, 1]`,
+exactly 1.998:
+
+```chelis-fragment
+import Nautilus.Integrate (adaptive_simpson)
+
+def spike(x: f32) -> f32 = div(1.0f32, sqrt(x))
+shallow = adaptive_simpson(spike, 0.000001f32, 1.0f32, 1e-7f32, 3i64)
+deep = adaptive_simpson(spike, 0.000001f32, 1.0f32, 1e-7f32, 20i64)
+```
+
+```text
+shallow = 11.505836
+deep = 1.9980001
+```
+
+Depth 3 stops after three levels of halving, too coarse for the steep
+rise near 0, and returns a value nearly six times too large. To check
+an answer, run again with a larger `max_depth` and compare. `max_depth <= 0`
+returns a single Richardson-corrected Simpson estimate over `[a, b]`.
+
+`tol` should be positive. It is not checked. With `tol <= 0` the top level
+never meets the test and subdivides once; each child then gets the 1e-7
+floor and the search proceeds normally. A NaN `tol` propagates to every
+level, so the tolerance test never passes and every subinterval recurses to
+`max_depth` unless its two half estimates are exactly equal; with a large
+`max_depth` that is up to `2^max_depth` subintervals.
+
 ## Specialized weight functions
 
 | Function | Signature | Notes |

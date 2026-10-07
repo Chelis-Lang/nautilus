@@ -1,100 +1,137 @@
 # Other continuous distributions
 
-Six additional continuous distribution families: Exponential, LogNormal,
-Uniform, Weibull, Beta, and F. Each provides PDF and CDF; some also
-provide inverse CDF and sampling.
+Six more continuous families. Each has a PDF and CDF; Exponential, LogNormal,
+Uniform, and Weibull also have an inverse CDF, and the first three have a
+sampler. Every function is f32.
+
+```chelis-fragment
+import Nautilus.Distributions (exponential_cdf, exponential_inv_cdf, lognormal_cdf, uniform_cdf, weibull_cdf, weibull_inv_cdf, beta_cdf, f_cdf, f_pdf)
+
+exp_cdf = exponential_cdf(1.0f32, 2.0f32)
+exp_median = exponential_inv_cdf(0.5f32, 2.0f32)
+logn_cdf = lognormal_cdf(1.0f32, 0.0f32, 1.0f32)
+unif_cdf = uniform_cdf(0.25f32, 0.0f32, 1.0f32)
+weib_cdf = weibull_cdf(1.0f32, 2.0f32, 1.0f32)
+weib_median = weibull_inv_cdf(0.5f32, 2.0f32, 1.0f32)
+beta = beta_cdf(0.3f32, 2.0f32, 5.0f32)
+f_c = f_cdf(3.0f32, 5.0f32, 10.0f32)
+f_p = f_pdf(1.0f32, 5.0f32, 10.0f32)
+```
+
+```text
+exp_cdf = 0.86466473
+exp_median = 0.3465736
+logn_cdf = 0.5
+unif_cdf = 0.25
+weib_cdf = 0.63212055
+weib_median = 0.83255464
+beta = 0.5798245
+f_c = 0.9344424
+f_p = 0.49547988
+```
+
+Beta and F reject non-positive parameters with NaN. The other four families
+do not check their parameters; each section says what an invalid value
+returns, so validate computed parameters before the call.
 
 ## Exponential
 
-Parameterized by `rate` (not scale). PDF: rate * exp(-rate * x) for x >= 0.
+Parameterized by `rate` (lambda), not scale: the mean is `1 / rate`.
+`rate` must be positive and finite.
 
-- **`exponential_pdf(x: f32, rate: f32) -> f32`**
-- **`exponential_cdf(x: f32, rate: f32) -> f32`** -- 1 - exp(-rate * x)
-- **`exponential_inv_cdf(q: f32, rate: f32) -> f32`** -- -ln(1 - q) / rate
-- **`exponential_sample[n](k, template, rate) -> tensor`**
+| Function | Signature | Returns |
+|---|---|---|
+| `exponential_pdf` | `(x: f32, rate: f32) -> f32` | rate * exp(-rate * x) for x >= 0, else 0 |
+| `exponential_cdf` | `(x: f32, rate: f32) -> f32` | 1 - exp(-rate * x) for x >= 0, else 0 |
+| `exponential_inv_cdf` | `(q: f32, rate: f32) -> f32` | -ln(1 - q) / rate; 0 at q = 0, +inf at q = 1, NaN outside [0, 1] |
+| `exponential_sample` | `[n](k: key, template: tensor[n, f32], rate: f32) -> tensor[n, f32]` | n draws of -ln(u) / rate |
 
-```chelis-fragment
-import Nautilus.Distributions (exponential_cdf)
-
-cdf = exponential_cdf(cast(1.0, f32), cast(2.0, f32))  -- approximately 0.8647
-```
+With `rate = 0` the PDF and CDF are 0 everywhere and `exponential_inv_cdf`
+returns +inf. A negative rate gives negative values:
+`exponential_pdf(1, -1)` is `-2.7182817` and `exponential_cdf(1, -1)` is
+`-1.7182817`.
 
 ## LogNormal
 
-Parameterized by `mu` and `sigma` of the underlying normal. Delegates
-to `normal_cdf`/`normal_inv_cdf` after taking log(x).
+Parameterized by `mu` and `sigma`, the mean and standard deviation of
+`ln(X)`, not of X. `sigma` must be positive and finite.
 
-- **`lognormal_pdf(x: f32, mu: f32, sigma: f32) -> f32`** -- 0 for x <= 0
-- **`lognormal_cdf(x: f32, mu: f32, sigma: f32) -> f32`** -- normal_cdf(ln(x), mu, sigma)
-- **`lognormal_inv_cdf(q: f32, mu: f32, sigma: f32) -> f32`** -- exp(normal_inv_cdf(q))
-- **`lognormal_sample[n](k, template, mu, sigma) -> tensor`**
+| Function | Signature | Returns |
+|---|---|---|
+| `lognormal_pdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | density of X; 0 for x <= 0 |
+| `lognormal_cdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | `normal_cdf(ln(x), mu, sigma)`; 0 for x <= 0 |
+| `lognormal_inv_cdf` | `(q: f32, mu: f32, sigma: f32) -> f32` | `exp(normal_inv_cdf(q, mu, sigma))` |
+| `lognormal_sample` | `[n](k: key, template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32]` | `exp` of `normal_sample` draws |
 
-```chelis-fragment
-import Nautilus.Distributions (lognormal_cdf)
-
-cdf = lognormal_cdf(cast(1.0, f32), cast(0.0, f32), cast(1.0, f32))  -- approximately 0.5
-```
+`sigma` behaves as `std` does in the [normal distribution](normal.md):
+at 0 the PDF is NaN and the CDF is a step at `exp(mu)`; a negative `sigma`
+gives a negative PDF and the upper tail from the CDF.
 
 ## Uniform
 
-Parameterized by `lo` and `hi` endpoints. 1/(hi - lo) inside, 0 outside.
+Parameterized by the endpoints `lo` and `hi`, which must satisfy `lo < hi`.
 
-- **`uniform_pdf(x: f32, lo: f32, hi: f32) -> f32`**
-- **`uniform_cdf(x: f32, lo: f32, hi: f32) -> f32`**
-- **`uniform_inv_cdf(q: f32, lo: f32, hi: f32) -> f32`** -- lo + q*(hi-lo)
-- **`uniform_sample[n](k, template, lo, hi) -> tensor`**
+| Function | Signature | Returns |
+|---|---|---|
+| `uniform_pdf` | `(x: f32, lo: f32, hi: f32) -> f32` | 1 / (hi - lo) on [lo, hi], else 0 |
+| `uniform_cdf` | `(x: f32, lo: f32, hi: f32) -> f32` | 0 at or below `lo`, 1 at or above `hi`, (x - lo) / (hi - lo) between |
+| `uniform_inv_cdf` | `(q: f32, lo: f32, hi: f32) -> f32` | lo + q * (hi - lo) |
+| `uniform_sample` | `[n](k: key, template: tensor[n, f32], lo: f32, hi: f32) -> tensor[n, f32]` | n draws, each lo + (hi - lo) * u for a uniform u in [0, 1] |
 
-```chelis-fragment
-import Nautilus.Distributions (uniform_cdf)
+The endpoints are not checked:
 
-cdf = uniform_cdf(cast(0.25, f32), cast(0.0, f32), cast(1.0, f32)) -- 0.25
-```
+- `lo = hi`: `uniform_pdf(lo, lo, lo)` is `inf` and `uniform_cdf(lo, lo, lo)` is 0.
+- `lo > hi`: the PDF and CDF are 0 between the endpoints, and
+  `uniform_inv_cdf(0.25, 1, 0)` is `0.75`, counting down from `lo`.
+- `uniform_inv_cdf` does not reject q outside [0, 1]; it extrapolates, so
+  `uniform_inv_cdf(1.5, 0, 1)` is `1.5`.
 
 ## Weibull
 
-Parameterized by `shape` (k) and `scale` (lambda). CDF is closed-form.
+Parameterized by `shape` (k) and `scale` (lambda), both positive. The CDF is
+the closed form 1 - exp(-(x/scale)^shape).
 
-- **`weibull_pdf(x: f32, shape: f32, scale: f32) -> f32`**
-- **`weibull_cdf(x: f32, shape: f32, scale: f32) -> f32`** -- 1 - exp(-(x/scale)^shape)
-- **`weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32`**
+| Function | Signature | Returns |
+|---|---|---|
+| `weibull_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | density; 0 for x < 0 |
+| `weibull_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | P(X <= x); 0 for x < 0 |
+| `weibull_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | scale * (-ln(1 - q))^(1/shape); 0 at q = 0, +inf at q = 1, NaN outside [0, 1] |
 
-```chelis-fragment
-import Nautilus.Distributions (weibull_cdf)
-
-cdf = weibull_cdf(cast(1.0, f32), cast(2.0, f32), cast(1.0, f32))
-```
+`shape <= 0` or `scale <= 0` returns NaN, except where the result is fixed
+before the parameters are read: x < 0 gives 0, and q = 0 or q = 1 gives 0 or
++inf. At x = 0 the PDF is 0 for shape > 1, `1/scale` for shape = 1, and +inf
+for shape < 1.
 
 ## Beta
 
-Parameterized by shape parameters `a` and `b`, both > 0. PDF is 0 outside [0, 1].
+Parameterized by shape parameters `a` and `b`, both positive.
 
-- **`beta_pdf(x: f32, a: f32, b: f32) -> f32`** -- via log_gamma
-- **`beta_cdf(x: f32, a: f32, b: f32) -> f32`** -- via regularized incomplete beta
+| Function | Signature | Returns |
+|---|---|---|
+| `beta_pdf` | `(x: f32, a: f32, b: f32) -> f32` | density, computed in log space with `log_gamma`; 0 outside [0, 1] |
+| `beta_cdf` | `(x: f32, a: f32, b: f32) -> f32` | regularized incomplete beta I_x(a, b); 0 for x <= 0, 1 for x >= 1 |
 
-```chelis-fragment
-import Nautilus.Distributions (beta_cdf)
-
-cdf = beta_cdf(cast(0.3, f32), cast(2.0, f32), cast(5.0, f32))  -- approximately 0.5798
-```
+`a <= 0` or `b <= 0` returns NaN. At x = 0 the PDF is 0 for a > 1, `b` for
+a = 1, and +inf for a < 1; x = 1 mirrors this with `b`.
 
 ## F distribution
 
-Parameterized by `d1` and `d2` degrees of freedom. Uses `betai` internally.
+Parameterized by the numerator and denominator degrees of freedom `d1` and
+`d2`, both positive. The CDF evaluates the regularized incomplete beta
+function at `d1*x / (d1*x + d2)`.
 
-- **`f_pdf(x: f32, d1: f32, d2: f32) -> f32`** / **`f_cdf(...) -> f32`**
+| Function | Signature | Returns |
+|---|---|---|
+| `f_pdf` | `(x: f32, d1: f32, d2: f32) -> f32` | density; 0 for x <= 0 |
+| `f_cdf` | `(x: f32, d1: f32, d2: f32) -> f32` | P(X <= x); 0 for x <= 0 |
 
-```chelis-fragment
-import Nautilus.Distributions (f_cdf)
+`d1 <= 0` or `d2 <= 0` returns NaN for x > 0. Non-integer degrees of freedom
+are accepted.
 
-cdf = f_cdf(cast(3.0, f32), cast(5.0, f32), cast(10.0, f32))  -- approximately 0.918
-```
+## Pitfalls
 
-## Edge cases
-
-| Condition | Result |
-|---|---|
-| Any PDF with x < 0 (except Uniform) | 0.0 |
-| `exponential_inv_cdf(1.0, rate)` | +inf |
-| `weibull_inv_cdf(0.0/1.0, ...)` | 0.0 / +inf |
-| `beta_pdf` or `f_pdf` with params <= 0 | NaN |
-| `lognormal_pdf(0.0, ...)` | 0.0 |
+- `exponential_cdf` and `weibull_cdf` compute `1 - exp(..)`, which loses
+  small values: `exponential_cdf(1e-8, 1.0)` is exactly 0, though the true
+  value is 1e-8. See the [precision guide](../appendix/precision.md).
+- Only the gamma family has survival functions. For the upper tail of these
+  families, subtracting the CDF from 1 loses everything below about 6e-8.

@@ -13,7 +13,7 @@ Distributions module.
 | `z_p_value_two_sided` | `(z: f32) -> f32` | 2 * Phi(-\|z\|), the upper tail doubled |
 | `z_p_value_upper` | `(z: f32) -> f32` | Phi(-z), the upper tail |
 | `z_p_value_lower` | `(z: f32) -> f32` | Phi(z) |
-| `normal_ci_half_width` | `(confidence, pop_std, sample_n: f32) -> f32` | z_crit * sigma / sqrt(n) |
+| `normal_ci_half_width` | `(confidence, pop_std, sample_n: f32) -> f32` | z_crit * sigma / sqrt(n), with `confidence` a fraction such as 0.95 |
 
 ## T-tests
 
@@ -50,14 +50,28 @@ def welch_demo() -> f32 = {
 }
 ```
 
-`z_test_demo` computes z = (5.2 - 5.0) / (1.5 / sqrt(36)) = 0.8 and its
-two-sided p-value, approximately 0.424. `welch_demo` compares two samples
-with unequal variances (means 12 and 10, standard deviations 2 and 3, sizes
-30 and 25) and returns a two-sided p-value of approximately 0.0069.
+`z_test_demo` computes z = (5.2 - 5.0) / (1.5 / sqrt(36)) = 0.8 and
+returns its two-sided p-value, `0.42371124`. `welch_demo` compares two
+samples with unequal variances (means 12 and 10, standard deviations 2 and 3,
+sizes 30 and 25) and returns a two-sided p-value of `0.0068913926`.
 
 ## Notes
 
 - All parameters are `f32`, including sample sizes. Pass `cast(n, f32)`.
+- No argument is validated. Pass a sample size of at least 1 (at least 2
+  for anything that divides by `n - 1`), a positive standard deviation, and
+  a `confidence` strictly between 0 and 1. Out-of-range inputs return a
+  number or NaN without an error, as the table shows. A fractional size is
+  used as given, not rounded.
+
+| Call | Result |
+|---|---|
+| `normal_ci_half_width(0.95, 1.5, 36.0)` | `0.48996764` |
+| `normal_ci_half_width(95.0, 1.5, 36.0)` | `NaN`: 95 is read as a probability |
+| `z_statistic(5.2, 5.0, 1.5, 0.0)` | `0.0`: the standard error is `inf` |
+| `z_statistic(5.2, 5.0, 1.5, -4.0)` | `NaN`: square root of a negative size |
+| `welch_t_df(2.0, 1.0, 3.0, 25.0)` | `0.0`: `n1 - 1 = 0` makes a term infinite |
+
 - The p-value functions use the standard-normal or Student-t CDF
   internally. Accuracy depends on the underlying CDF approximation
   (erf-based for normal, betai-based for Student-t).
