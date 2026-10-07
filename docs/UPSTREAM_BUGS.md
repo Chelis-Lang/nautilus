@@ -77,9 +77,13 @@ release.
       4096. The chunking changes no arithmetic: the iteration sequence, the
       convergence test and the result are the flat form's. Without it the
       budget nautilus#143 requires could not be spent in this lane at all.
-    - **Reproducer:** `beta_cdf(cast(0.5, f32), cast(100000.0, f32),
-      cast(100000.0, f32))` under `chelis eval --file` on the flat recursion
-      that preceded the chunking: that case needs 162 iterations and aborted.
+    - **Reproducer:** on the *inlined* flat recursion that preceded the
+      chunking, `beta_cdf(cast(0.5, f32), cast(100000.0, f32),
+      cast(100000.0, f32))` needed 162 f32 iterations and aborted. **That
+      spelling no longer reproduces anything**: against the current f64 code a
+      flattened recursion returns at 1e5 and at 1e6, because delegating each
+      step to `betacf_step` leaves a thin frame. Use `a = 1e7` (726 f64
+      iterations), and see `tests_blocked/README.md`, which owns the recipe.
       No blocked probe exists, because a probe of this cannot fail as a test —
       it kills the process that would report the failure, which is the defect.
       `tests_blocked/README.md` records it among the manual probes.

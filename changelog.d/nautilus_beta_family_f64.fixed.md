@@ -85,29 +85,37 @@ A threshold-adjacent probe found 47 such inputs. The claim that accompanied it -
 
 ## The range this holds over
 
-**Indexed on the LARGE parameter**, because for `student_t_cdf` the small one is
-always 0.5 and a range stated in terms of it would describe nothing. Measured
-through `chelis eval` by the new `scripts/check_beta_accuracy.py`, which is the
-oracle for every number here and fails the build if one drifts:
+**Two edges, and review found the claim false at each in turn.** Round 1 found it
+indexed on `min(a, b)`, which for `student_t_cdf` is permanently 0.5 and so
+described nothing. Round 2 found the replacement -- a 3e8 ceiling on the large
+parameter -- false at its own boundary for two of four exports, with grids that
+stopped a decade below it and a unit test that accepted a case one decade down.
 
-| export | governing parameter | holds to | worst measured inside |
-|---|---|---|---|
-| `beta_cdf` | `max(a, b)` | 3e8 | 4.8e-7 |
-| `f_cdf` | `max(d1, d2)` | 3e8 | 9.3e-7 |
-| `student_t_cdf` | `df` | 3e8 | 2.9e-7 |
-| `binomial_cdf` | `n` | 3e8 | 1.9e-7 |
+> **Relative error below 1e-6 when every parameter is at least 1 and the largest
+> is at most 1e8.** Worst measured inside: **5.7e-7**, at `f_cdf(0.5, 1e8, 1.0)`.
 
-Beyond it the error grows and nothing in the result says so. `beta_cdf(0.5,a,a)`
-is 8.0e-6 at 1e9, 1.2e-3 at 1e10, 2.1e-1 at 1e11 and NaN at 1e12;
-`beta_cdf(0.5, 3e38, 3e38)` returns a confident **1.0** against a true 0.5, which
-the NaN guard does not catch. `student_t_cdf` degrades earlier and harder --
+| export | parameters | worst measured inside |
+|---|---|---|
+| `beta_cdf` | `a`, `b` | 3.0e-7 |
+| `f_cdf` | `d1`, `d2` | 5.7e-7 |
+| `student_t_cdf` | `df` (its other beta parameter is structurally 0.5) | 2.2e-7 |
+| `binomial_cdf` | `n` (`n - k` and `k + 1` are at least 1 for any legal `k`) | 1.9e-7 |
+
+`scripts/check_beta_accuracy.py` enforces it, evaluates each export **at** both
+edges, and reports the in-range worst separately from the overall worst -- quoting
+a worst that includes out-of-range inputs is the same number/scope mismatch that
+made the earlier claims wrong.
+
+Outside either edge the error grows. Above the ceiling, `f_cdf(0.5, 2e8, 0.5)`
+errs 1.7e-6 and `binomial_cdf(1.5e8, 3e8, 0.5)` errs 1.3e-6. Below the floor,
+`beta_cdf(0.9, 0.5, b)` errs 6.1e-7 at `b = 3e-4`, 1.9e-6 at 1e-4 and **183%** at
+1e-10 -- with a largest parameter of only 0.5 -- and `f_cdf(0.5, 1e8, 1e-3)` errs
+2.5e-5, because a large and a small parameter together are worse than either
+alone. `beta_cdf(0.5, a, a)` is 8.0e-6 at 1e9, 1.2e-3 at 1e10, 2.1e-1 at 1e11 and
+NaN at 1e12; `beta_cdf(0.5, 3e38, 3e38)` returns a confident **1.0** against a
+true 0.5, which the NaN guard does not catch. `student_t_cdf` degrades earliest --
 1.7e-6 at `df = 1e9`, 3.8e-4 at 1e12, **51%** at 1e14, and exactly 0.5 from 1e16
 -- so above `df` of about 1e9, use `normal_cdf`.
-
-An earlier revision of this entry claimed a flat "~6e-7" bound indexed on
-`min(a, b)`. Both halves were wrong: `f_cdf(0.5, 1e8, 0.5)` errs 9.3e-7 and
-`student_t_cdf(-1, 1e10)` errs 1.3e-6, and both have a small parameter of 0.5 or
-less, so they sat inside the band as it was written.
 
 ## What changed, measured
 
@@ -120,11 +128,14 @@ standard-normal limits where no library can adjudicate:
   1.5e-7 at 1e8. It was 8.5e-4 at 1e3, 38% at 1e5, 87% at 1e6, `-inf` at 1e8.
 - **The old code cannot evaluate a large grid at all** -- an 885-case probe dies
   on `origin/main` with `fatal runtime error: stack overflow, aborting`.
-- **`t_p_value_upper` / `t_p_value_two_sided`**: worst relative error 7.3e-8
-  against 4.4e-5 before, and no longer growing with `df` (6.3e-8 at `df = 1`,
-  3.9e-8 at 30, 4.9e-8 at 100). The `df` dependence
-  `docs/book/src/stats/testing.md` recorded *was* this defect, since the
-  log-gammas grow with `df`.
+- **`t_p_value_upper` / `t_p_value_two_sided`**: over a 406-point grid, worst
+  relative error **1.2e-7** against 4.4e-5 before, and **no longer growing with
+  `df`** (1.15e-7 at `df = 1`, 9.1e-8 at 2, 6.7e-8 at 10, 4.9e-8 at 100), with no
+  row above 1e-6. The `df` dependence `docs/book/src/stats/testing.md` recorded
+  *was* this defect, since the log-gammas grow with `df`. An earlier revision of
+  this entry said 7.3e-8, from a 210-point grid; a denser grid raised it, so the
+  flat-in-`df` shape is the robust claim and the digit is indicative. Nothing in
+  the repo pins this sweep.
 - **Which values move.** On the 567-case range the old code can also evaluate
   (its small parameter at most 2000), 299 values are bit-identical and 268
   change; of the 263 with a usable reference, **261 are closer to it and 2 are
@@ -144,6 +155,9 @@ counts are 72 / 156 / 337 / 726 / 1564 at `a` = 1e4 / 1e5 / 1e6 / 1e7 / 1e8,
 growing as the cube root. The f32 counts are 64 / 162 / 261 / 542 / 1213. The
 f32 budget of 200 first falls short near `a = 1.7e5` and is consistently short
 only past about 4.2e5 -- the f32 count is **not monotone** in `a`, so there is no
-single threshold, and a bisection for one lands wherever it starts.
+single threshold, and a bisection for one lands wherever it starts. Both figures
+are grid-dependent: they come from a step-500 scan, and a coarser step-5000 scan
+reads the first shortfall as 3.15e5. Two bisections during review produced 3.45e5
+and 3.074e5, both artifacts of the same non-monotonicity.
 
 Addresses nautilus#143.

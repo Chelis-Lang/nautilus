@@ -123,12 +123,20 @@ def field(pattern: str) -> str:
 
 
 def store_digest(root: Path) -> str:
+    """Content hash of the shared Reef store, to prove the run did not write it.
+
+    Hashes file *contents*, not sizes: a same-size overwrite would read as
+    unchanged otherwise, which is the whole property this is asserting.
+    """
     if not root.exists():
         return "absent"
     h = hashlib.sha256()
     for path in sorted(p for p in root.rglob("*") if p.is_file()):
         h.update(str(path.relative_to(root)).encode())
-        h.update(str(path.stat().st_size).encode())
+        h.update(b"\0")
+        with path.open("rb") as handle:
+            for block in iter(lambda: handle.read(1 << 20), b""):
+                h.update(block)
     return h.hexdigest()[:16]
 
 

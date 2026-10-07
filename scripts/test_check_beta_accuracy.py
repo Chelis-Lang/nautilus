@@ -17,7 +17,7 @@ from __future__ import annotations
 import re
 import unittest
 
-from check_beta_accuracy import DOCUMENTED, PHI1, cases, f32
+from check_beta_accuracy import BOUND, CEILING, DOCUMENTED, FLOOR, PHI1, cases, f32
 
 IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -27,24 +27,24 @@ class Names(unittest.TestCase):
         self.spec = cases()
 
     def test_every_generated_name_is_a_valid_identifier(self) -> None:
-        for name, _, _, _, _ in self.spec:
+        for name, *_ in self.spec:
             self.assertRegex(name, IDENTIFIER, f"{name!r} is not a usable def name")
 
     def test_no_name_contains_a_character_the_lexer_reads_as_a_literal(self) -> None:
-        for name, _, _, _, _ in self.spec:
+        for name, *_ in self.spec:
             for bad in "+-.e":
                 if bad == "e":
                     continue        # 'e' is fine in a name, just not beside digits
                 self.assertNotIn(bad, name, f"{name!r} would not lex")
 
     def test_names_are_unique(self) -> None:
-        names = [name for name, _, _, _, _ in self.spec]
+        names = [name for name, *_ in self.spec]
         self.assertEqual(len(names), len(set(names)))
 
     def test_every_name_shares_the_module_domain_prefix(self) -> None:
         # chelis §7.1 rejects a shared prefix that is not the module's own
         # shorthand, and the style gate runs before the build.
-        for name, _, _, _, _ in self.spec:
+        for name, *_ in self.spec:
             self.assertTrue(name.startswith("acc_"), name)
 
 
@@ -53,62 +53,96 @@ class GoverningParameter(unittest.TestCase):
     is the defect a red-team round found: for `student_t_cdf` the small parameter
     is always 0.5, so such a range would describe nothing."""
 
-    def test_beta_cases_are_indexed_on_the_larger_parameter(self) -> None:
+    def test_beta_cases_carry_both_the_large_and_the_small_parameter(self) -> None:
         spec = [s for s in cases() if s[1] == "beta_cdf"]
         self.assertTrue(spec)
-        for name, _, expr, governing, _ in spec:
+        for name, _, expr, large, _, small in spec:
             numbers = [float(v) for v in re.findall(r"cast\(([-\d.e+]+), f32\)", expr)]
-            # expr is beta_cdf(x, a, b)
-            _, a, b = numbers
-            self.assertEqual(governing, max(a, b), f"{name}: {expr}")
+            _, a, b = numbers                      # beta_cdf(x, a, b)
+            self.assertEqual(large, max(a, b), f"{name}: {expr}")
+            if small != float("inf"):
+                self.assertEqual(small, min(a, b), f"{name}: {expr}")
             if a != b:
-                self.assertNotEqual(governing, min(a, b), f"{name} indexed on the small one")
+                self.assertNotEqual(large, min(a, b), f"{name} indexed on the small one")
 
     def test_student_t_is_indexed_on_df_not_on_the_constant_half(self) -> None:
         spec = [s for s in cases() if s[1] == "student_t_cdf"]
         self.assertTrue(spec)
-        for name, _, expr, governing, _ in spec:
-            self.assertNotEqual(governing, 0.5, f"{name}: df, not b")
-            self.assertGreaterEqual(governing, 1.0)
+        for name, _, expr, large, _, _ in spec:
+            self.assertNotEqual(large, 0.5, f"{name}: df, not b")
+            self.assertGreaterEqual(large, 1.0)
 
 
 class Coverage(unittest.TestCase):
     def test_documented_covers_every_export_measured(self) -> None:
-        measured = {export for _, export, _, _, _ in cases()}
+        measured = {export for _, export, _, _, _, _ in cases()}
         self.assertEqual(measured, set(DOCUMENTED))
 
     def test_every_export_has_a_case_inside_its_documented_range(self) -> None:
-        inside = {export for _, export, _, governing, _ in cases()
-                  if governing <= DOCUMENTED[export][0]}
+        inside = {export for _, export, _, large, _, small in cases()
+                  if large <= DOCUMENTED[export][0] and small >= DOCUMENTED[export][1]}
         self.assertEqual(inside, set(DOCUMENTED),
                          "an export with no in-range case cannot fail the gate")
 
-    def test_every_export_has_a_case_at_the_top_of_its_range(self) -> None:
-        for export, (limit, _) in DOCUMENTED.items():
-            tops = [g for _, e, _, g, _ in cases() if e == export and g >= limit / 10]
-            self.assertTrue(tops, f"{export} is never exercised near {limit:g}")
+    def test_every_export_is_exercised_AT_its_ceiling(self) -> None:
+        # Not "within a decade of". The previous version of this test accepted
+        # `large >= limit / 10`, so it passed on grids that stopped at 1e8 while
+        # the documented ceiling was 3e8 -- and the ceiling was false at 3e8 for
+        # two exports. A guard that cannot fail at its own boundary is the defect.
+        for export, (ceiling, _, _) in DOCUMENTED.items():
+            at = [large for _, e, _, large, _, _ in cases()
+                  if e == export and large == ceiling]
+            self.assertTrue(at, f"{export} is never evaluated AT {ceiling:g}")
 
-    def test_the_bound_is_not_silently_widened(self) -> None:
-        # A future edit that relaxes a bound has to change docs/book too; this
-        # pins the value the documents currently state.
-        for export, (limit, bound) in DOCUMENTED.items():
+    # `student_t_cdf` and `binomial_cdf` have no user-facing small parameter: the
+    # former's beta `b` is structurally 0.5 and the latter's are `n - k` and
+    # `k + 1`, both at least 1 for any legal `k`. Exempted by name, with the
+    # next test covering what they do have instead.
+    NO_USER_FACING_FLOOR = {"student_t_cdf", "binomial_cdf"}
+
+    def test_every_export_is_exercised_AT_its_floor(self) -> None:
+        for export, (_, floor, _) in DOCUMENTED.items():
+            if export in self.NO_USER_FACING_FLOOR:
+                continue
+            at = [small for _, e, _, _, _, small in cases()
+                  if e == export and small == floor]
+            self.assertTrue(at, f"{export} is never evaluated AT the floor {floor:g}")
+
+    def test_binomial_is_exercised_at_its_own_smallest_beta_parameter(self) -> None:
+        # k = n - 1 makes the beta parameter `n - k` exactly 1.
+        spec = [s for s in cases() if s[1] == "binomial_cdf"]
+        self.assertTrue(spec)
+        extremes = []
+        for _, _, expr, _, _, _ in spec:
+            numbers = [float(v) for v in re.findall(r"cast\(([-\d.e+]+), f32\)", expr)]
+            k, n, _ = numbers
+            if n - k == 1.0:
+                extremes.append(expr)
+        self.assertTrue(extremes, "no binomial case has n - k == 1")
+
+    def test_the_range_is_not_silently_widened(self) -> None:
+        # A future edit that relaxes either edge has to change docs/book and
+        # SKILL.md too; this pins what those documents currently state.
+        for export, (ceiling, floor, bound) in DOCUMENTED.items():
+            self.assertEqual(ceiling, 1e8, export)
+            self.assertEqual(floor, 1.0, export)
             self.assertEqual(bound, 1e-6, export)
-            self.assertEqual(limit, 3e8, export)
+        self.assertEqual((CEILING, FLOOR, BOUND), (1e8, 1.0, 1e-6))
 
 
 class ReferenceFreeAnchors(unittest.TestCase):
     def test_symmetric_beta_and_f_cases_use_the_exact_half(self) -> None:
         anchors = [s for s in cases()
                    if s[1] in {"beta_cdf", "f_cdf"} and s[4] == 0.5
-                   and re.search(r"cast\(([-\d.e+]+), f32\)\, cast\(\1, f32\)", s[2])]
+                   and re.search(r"cast\(([-\d.e+]+), f32\), cast\(\1, f32\)", s[2])]
         self.assertTrue(anchors, "the symmetry anchors are gone")
 
     def test_the_largest_df_cases_use_the_normal_limit(self) -> None:
         normals = [s for s in cases() if s[1] == "student_t_cdf" and s[4] == PHI1]
         self.assertTrue(normals, "no case checks student_t against the normal limit")
         # and they are the ones past where scipy's own betainc saturates
-        for _, _, _, governing, _ in normals:
-            self.assertGreaterEqual(governing, 1e9)
+        for _, _, _, large, _, _ in normals:
+            self.assertGreaterEqual(large, 1e9)
 
 
 class F32(unittest.TestCase):

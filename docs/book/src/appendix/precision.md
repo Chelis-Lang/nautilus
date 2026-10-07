@@ -44,7 +44,7 @@ Two cases merit separate guidance:
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
-| Beta-family CDFs | ~6e-7 | `beta_cdf`, `f_cdf`, `student_t_cdf`, `binomial_cdf`; incomplete beta evaluated in f64, see the note below |
+| Beta-family CDFs | below 1e-6 over a stated range | `beta_cdf`, `f_cdf`, `student_t_cdf`, `binomial_cdf`; incomplete beta evaluated in f64. **The range matters** — read the note below before relying on a figure |
 | `normal_cdf` | sub-ulp standardized; grows with the shift, see the tail note below | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
 
@@ -156,25 +156,42 @@ The incomplete beta is now evaluated in f64 and returned as f32. The public
 signatures are unchanged and remain f32; this is an internal working precision,
 not an f64 surface.
 
-**The range that holds is set by the LARGE parameter, not the small one.** That
-distinction matters because for `student_t_cdf` the small parameter is always
-0.5, so a range stated in terms of it would say nothing at all. Measured through
-`chelis eval` by `scripts/check_beta_accuracy.py`, which is the oracle for every
-number in this section and fails the build if one drifts:
+**The range has two edges, and both are part of the contract.** A ceiling,
+because the front factor's log-gamma cancellation grows with the large parameter;
+and a floor, because a small shape parameter amplifies the same error — stating
+only the ceiling was wrong, since `beta_cdf(0.9, 0.5, 1e-4)` errs 1.9e-6 with a
+largest parameter of merely 0.5.
 
-| export | governing parameter | holds to | worst measured inside it |
-|---|---|---|---|
-| `beta_cdf` | `max(a, b)` | 3e8 | 4.8e-7 |
-| `f_cdf` | `max(d1, d2)` | 3e8 | 9.3e-7 |
-| `student_t_cdf` | `df` | 3e8 | 2.9e-7 |
-| `binomial_cdf` | `n` | 3e8 | 1.9e-7 |
+> **Relative error below 1e-6 when every parameter you pass is at least 1 and the
+> largest is at most 1e8.** Worst measured inside that range: **5.7e-7**, at
+> `f_cdf(0.5, 1e8, 1.0)`.
 
-So: **relative error below 1e-6 while the largest parameter stays under about
-3e8.** References come from SciPy's `betainc` at the f32 value of every argument,
-except where no library can adjudicate — `beta_cdf(0.5, a, a)` and
-`f_cdf(1, d, d)` are 0.5 exactly by symmetry, and past `df = 1e15` SciPy's own
-`betainc` saturates exactly as Nautilus does, so `student_t_cdf` is checked
-against the standard normal limit there instead.
+| export | parameters the range applies to | worst measured inside |
+|---|---|---|
+| `beta_cdf` | `a`, `b` | 3.0e-7 |
+| `f_cdf` | `d1`, `d2` | 5.7e-7 |
+| `student_t_cdf` | `df` (its other beta parameter is structurally 0.5) | 2.2e-7 |
+| `binomial_cdf` | `n` (`n - k` and `k + 1` are at least 1 for any legal `k`) | 1.9e-7 |
+
+`scripts/check_beta_accuracy.py` is the oracle for every number in this section,
+evaluates each export **at** both edges, and fails the build if the
+implementation drifts. It does not read this page, so keeping the two in step is
+a reviewer's job — a hand-transcribed table in the script pins the values so they
+cannot move silently.
+
+References come from SciPy's `betainc` at the f32 value of every argument, except
+where no library can adjudicate — `beta_cdf(0.5, a, a)` and `f_cdf(1, d, d)` are
+0.5 exactly by symmetry, and past `df = 1e15` SciPy's own `betainc` saturates
+exactly as Nautilus does, so `student_t_cdf` is checked against the standard
+normal limit there instead.
+
+**Outside either edge the error grows quickly.** Above the ceiling,
+`f_cdf(0.5, 2e8, 0.5)` errs 1.7e-6 and `binomial_cdf(1.5e8, 3e8, 0.5)` errs
+1.3e-6. Below the floor, with `a = 0.5` fixed and `b` shrinking,
+`beta_cdf(0.9, 0.5, b)` errs 6.1e-7 at `b = 3e-4`, 1.9e-6 at 1e-4, 1.8e-5 at
+1e-5 and **183%** at 1e-10; `f_cdf(0.5, 1e8, 1e-3)` errs 2.5e-5, because a large
+and a small parameter together are worse than either alone. A previous version of
+this page stated a 3e8 ceiling and no floor, and was false in both directions.
 
 Beyond that range the error grows, and nothing in the result says so. Two
 different mechanisms do it, so the two worst cases are tabulated separately.
