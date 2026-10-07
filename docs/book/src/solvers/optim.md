@@ -1,4 +1,4 @@
-# Scalar Optimization
+# Scalar optimization
 
 The `Nautilus.Optim` module provides four 1D minimization methods. All
 take function-typed arguments and return the approximate minimizer (or
@@ -13,21 +13,21 @@ NaN on failure).
 | `gradient_descent_1d` | `(f, df: f32 -> f32, x0, lr: f32, max_iters: i64) -> f32` |
 | `newton_minimize_1d` | `(f, df, ddf: f32 -> f32, x0: f32, tol: f32, max_iters: i64) -> f32` |
 
-## When to use which
+## Choosing a method
 
 - **golden_section_search:** Requires only function evaluations on a
   bracket [lo, hi] where f is unimodal. Linear convergence (golden
-  ratio reduction per step). Simplest and most robust.
+  ratio reduction per step).
 - **brent_minimize:** Alternates parabolic interpolation with golden
   section fallback. Superlinear convergence for smooth functions while
-  staying within [lo, hi]. Best general-purpose choice.
+  staying within [lo, hi]. Use it when derivatives are unavailable.
 - **gradient_descent_1d:** Uses a fixed learning rate and needs the derivative
   `df`. Returns NaN on divergence (|x| > 1e15). Useful when you have
   analytic gradients and want to tune learning rate.
 - **newton_minimize_1d:** Uses both first and second derivatives
   (`df`, `ddf`). Quadratic convergence near a minimum with positive
   curvature. Returns NaN if the Hessian is non-positive or below 0.01
-  at the point it stops on, guarding against saddle points.
+  at the point it stops on.
 
 ## Example: golden section
 
@@ -69,87 +69,48 @@ def find_min_newton() -> f32 =
   [lo, hi]. Multiple local minima may cause convergence to any one of
   them.
 - `gradient_descent_1d` stops when `|df(x)| < 1e-10` (hard-coded).
-- **`newton_minimize_1d` stops in one of two ways, and certifies the
-  point either way.** It has *converged* when `|df(x)| < tol`, or when
-  `df(x)` is exactly zero -- the second clause matters because
-  `|df(x)| < tol` is false for every gradient when `tol` is zero,
-  negative or NaN, so without it those tolerances would have no
-  convergence test at all. It has *stalled* when `x - df(x)/ddf(x)`
-  rounds back to `x`, which is where the method ends up at the limit of
-  f32 resolution. In both cases the second derivative at that point must
-  be positive and above 0.01, or NaN is returned to signal that the
-  point may be a saddle or inflection. A NaN second derivative returns
-  NaN: it cannot establish positive curvature.
-- **An infinite second derivative is accepted at a converged point and
-  rejected at a stalled one.** `+inf` is strictly positive and above
-  0.01, so at a point whose stationarity the gradient test has already
-  established it certifies a minimum and the minimiser is returned --
-  which matters because an infinite `ddf` is reachable by ordinary
-  overflow in a correct expression. A stall has satisfied no stationarity
-  test, so it carries one extra requirement that convergence does not:
-  the point and its curvature must both be finite. That is the whole
-  difference between the two, and it is what the `+-inf` cases turn on.
-  An infinite `ddf` makes every step zero, so the iterate stalls at `x0`
-  with a gradient that is not small, and `x0` is rejected rather than
-  returned. A non-finite point is rejected by the certification itself,
-  at both exits, so an iterate that has run away to `+-inf` is never
-  returned as a minimiser however it got there -- including when a
-  gradient that is zero everywhere makes `+-inf` satisfy the convergence
-  test outright.
-- **An overflowing `ddf` near a minimiser can return NaN.**
-  A stall is rejected when its curvature is infinite but accepted when it
-  is merely huge, and finiteness is the only discriminator the method has
-  at a stall -- not a claim that `1e30` is better evidence than `+inf`.
-  The two cases that must work force it: rejecting every stall whose
-  gradient is not exactly zero breaks a genuine convergence (the quartic
-  `(x^2-2)^2` from `x0 = 1.2` stalls exactly *at* `sqrt(2.0f32)` with a
-  gradient of `-6.74e-7` and a step of `-4.2e-8`), and accepting every
-  stall returns the starting point whenever `ddf` is infinite, which is
-  the defect this exists to fix. A point near a minimiser whose curvature
-  has overflowed to `+inf` returns NaN. **A `tol` above `|df(x)|` at that
-  point enters the convergence test, but a useful tolerance may not exist.**
-  One ulp above the minimiser of
-  `(x-3)^2` the gradient is `4.8e-7`, so `tol = 1e-6` recovers it and
-  `tol = 1e-9` does not. For `2e38*(x-3)^2`, whose `ddf = 4e38`
-  overflows f32 while `df = 9.5e31` there does not, no tolerance
-  recovers it. A `-inf` curvature is never recoverable at any
-  tolerance, because the sign test rejects it at the converged exit too.
-  Scale the objective so its second derivative is representable, or use
-  `brent_minimize`, which needs no derivatives.
-- **A curvature below the 0.01 floor is rejected at a stall and at
-  convergence, regardless of tolerance.** `3.1e-4*(x^2-2)^2` with its own correct derivatives
-  stalls at `sqrt(2.0f32)` with a curvature of `0.00496` and a gradient
-  of `-2.09e-10`, so `tol = 1e-10`, `tol = 0`, and `tol = 1e-6` return NaN.
-  Use `brent_minimize` or `golden_section_search` for flat
-  targets, as the floor's own note says.
-- **The method does not check that `ddf` is the derivative of `df`.**
-  When they disagree the step comes from a curvature the objective does
-  not have, and a `ddf` large enough underflows the step to nothing at a
-  point that is not stationary. That stall is finite throughout and its
-  curvature certifies, so the point is returned. Supply consistent
-  derivatives, or use `brent_minimize`, which needs none.
-- **A NaN the method evaluates is a failure.** A NaN bracket endpoint,
-  a NaN starting point, or a NaN from the function a method actually
-  evaluates gives NaN. `golden_section_search` and `brent_minimize`
-  evaluate the objective; `gradient_descent_1d` and `newton_minimize_1d`
-  evaluate only `df` and `ddf` and never call `f` at all, so a NaN
-  objective does not reach them. NaN compares false against everything,
-  so without this the interval comparison `f(c) < f(d)` would pick the
-  same branch at every step whatever the objective, and the method would
-  narrow to one end and report that point as a minimiser.
-- **A NaN the method never evaluates changes nothing.** An objective
-  defined everywhere the iteration samples converges normally even if it
-  is NaN elsewhere, and the two bracketing methods sample different
-  points: `brent_minimize` seeds at the quarter, midpoint and
-  three-quarter points, `golden_section_search` does not. So for an
-  objective that is NaN on part of `[lo, hi]`, one may report NaN while
-  the other converges. Neither is wrong; they looked at different
-  places.
-- **A NaN `tol` is not rejected.** It only disables the width stopping
-  condition, which is what `tol = 0.0` does, so the iteration runs to
-  the budget or to an f32 stall and still returns a minimiser. If your
-  tolerance is computed rather than literal, check it yourself: nothing
-  here will tell you it went NaN.
+- Newton stops when `|df(x)| < tol` or `df(x)` is exactly zero. The exact-zero
+  test still works when `tol` is zero, negative, or NaN. It also stops when
+  `x - df(x)/ddf(x)` rounds back to `x`. Both exits require a finite point
+  and positive curvature at least at the `0.01` floor; NaN curvature fails.
+- At a gradient-based stop, Newton accepts `ddf(x) = +inf`. At a rounding
+  stall it requires finite curvature. Infinite curvature can make the step
+  zero even when the gradient is large, so such a stall returns NaN.
+  Negative infinite curvature fails at either exit.
+- A finite rounding stall can occur near a minimum with a nonzero gradient.
+  For `(x^2-2)^2` from `x0 = 1.2`, the iterate stalls at `sqrt(2.0f32)` with
+  gradient `-6.74e-7` and step `-4.2e-8`. Rejecting every nonzero gradient
+  would also reject this result. The finite-curvature check does not prove
+  stationarity, however; a very large finite `ddf` can also make a step vanish.
+- Curvature overflow near a minimum can therefore produce NaN. A `tol` above
+  the gradient magnitude uses the gradient-based exit instead, but must be
+  appropriate to the calculation. One ULP above the minimum of `(x-3)^2`,
+  the gradient is `4.8e-7`, so `tol = 1e-6` accepts it and `tol = 1e-9` does
+  not. Scaling to `2e38*(x-3)^2` gives `ddf = 4e38`, which overflows f32,
+  and a gradient of `9.5e31` at that point. A tolerance useful for resolving
+  this minimum cannot recover it. Scale the objective so its curvature is
+  representable, or use derivative-free `brent_minimize`.
+- The curvature floor also rejects flat minima. For `3.1e-4*(x^2-2)^2`,
+  Newton stalls at `sqrt(2.0f32)` with curvature `0.00496` and gradient
+  `-2.09e-10`. It returns NaN with `tol = 1e-10`, `tol = 0`, or
+  `tol = 1e-6`. Changing tolerance cannot bypass the floor; use
+  `brent_minimize` or `golden_section_search` for flat objectives.
+- Newton does not check that `ddf` is the derivative of `df`. Inconsistent
+  derivatives can produce a finite stall at a nonstationary point that passes
+  the curvature check. Supply consistent derivatives or use a derivative-free
+  method.
+- A NaN endpoint, starting point, or evaluated function result gives NaN.
+  `golden_section_search` and `brent_minimize` evaluate `f`;
+  `gradient_descent_1d` and `newton_minimize_1d` evaluate only the supplied
+  derivatives and never call `f`. A NaN objective therefore does not reach
+  the derivative-based methods.
+- No method detects NaN in regions it never evaluates. `brent_minimize`
+  initially samples the quarter, midpoint, and three-quarter points;
+  `golden_section_search` samples different points. One can return NaN while
+  the other returns a finite point for the same partially defined objective.
+- A NaN `tol` is not rejected. For the bracketing methods, it disables width
+  stopping; the method can still return at its iteration budget or an f32
+  stall. Validate a computed tolerance before calling.
 - All methods are pure Chelis. AD flows through the objective function
   but you must supply `df`/`ddf` explicitly. The optimizer does not
   call `grad` internally.

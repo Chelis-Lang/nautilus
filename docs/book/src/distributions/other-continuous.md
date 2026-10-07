@@ -1,4 +1,4 @@
-# Other Continuous Distributions
+# Other continuous distributions
 
 Six additional continuous distribution families: Exponential, LogNormal,
 Uniform, Weibull, Beta, and F. Each provides PDF and CDF; some also

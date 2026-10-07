@@ -1,4 +1,4 @@
-# Bessel Functions
+# Bessel functions
 
 Eight Bessel functions covering orders 0 and 1 for all four kinds: J
 (first kind), Y (second kind), I (modified first kind), and K (modified
@@ -11,8 +11,8 @@ separate small-argument and large-argument branches.
 
 J0 is even; J1 is odd. For |x| < 8, a rational polynomial in x^2 is
 used. For |x| >= 8, an asymptotic trigonometric form sqrt(2/(pi*x)) *
-cos/sin(...) is used. Precision degrades to ~1e-5 near the function
-zeros.
+cos/sin(...) is used. Near function zeros, compare absolute errors;
+relative error divides by a value approaching zero.
 
 ```chelis-fragment
 import Nautilus.Special (bessel_j0, bessel_j1)
@@ -85,11 +85,11 @@ k1_1 = bessel_k1(cast(1.0, f32))    -- approximately 0.6019
 
 | Function | x = 0 | x < 0 | x = NaN |
 |---|---|---|---|
-| `bessel_j0` | 1.0 | J0(|x|) (even) | NaN |
-| `bessel_j1` | 0.0 | -J1(|x|) (odd) | NaN |
+| `bessel_j0` | 1.0 | J0(\|x\|) (even) | NaN |
+| `bessel_j1` | 0.0 | -J1(\|x\|) (odd) | NaN |
 | `bessel_y0` | -inf | NaN | NaN |
 | `bessel_y1` | -inf | NaN | NaN |
-| `bessel_i0` | 1.0 | I0(|x|) (even) | NaN |
-| `bessel_i1` | 0.0 | -I1(|x|) (odd) | NaN |
+| `bessel_i0` | 1.0 | I0(\|x\|) (even) | NaN |
+| `bessel_i1` | 0.0 | -I1(\|x\|) (odd) | NaN |
 | `bessel_k0` | +inf | NaN | NaN |
 | `bessel_k1` | +inf | NaN | NaN |

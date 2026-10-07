@@ -1,8 +1,8 @@
-# Gamma-Related Functions
+# Gamma-related functions
 
-Six functions related to the gamma function: the gamma function itself,
-its log, its first and second derivatives (digamma, trigamma), and the
-beta function in both regular and log forms.
+The module provides Gamma, its log-magnitude, the first and second
+derivatives of the log-magnitude (digamma and trigamma), and beta in
+ordinary and logarithmic forms.
 
 ## gamma
 
@@ -14,7 +14,7 @@ with `g=7` and 8-term series. For `x < 0.5`, the reflection formula
 same Lanczos-sum core that `log_gamma` uses.
 
 - **Domain:** all reals except non-positive integers
-- **Precision:** ~1e-7 relative at f32. This one is bounded by f32 rounding, not by the Lanczos coefficients, so it reaches f64 grade when called at f64.
+- **Precision:** ~1e-7 relative at f32, limited by rounding. The Lanczos coefficients support f64 accuracy when called at f64.
 - **At non-positive integers:** returns +inf (poles)
 
 ```chelis-fragment
@@ -30,9 +30,11 @@ where `Gamma(x)` would underflow or overflow), prefer `log_gamma`.
 
 **Signature:** `[prec: {f32, f64}](x: prec) -> prec`
 
-Computes ln(Gamma(x)) using the Lanczos approximation with g=7 and
-8-term series. For x < 0.5, the reflection formula via sin(pi*x) is
-applied.
+Computes `ln(abs(Gamma(x)))` using the Lanczos approximation with g=7 and
+an 8-term series. For x < 0.5, reflection uses `log(abs(sin(pi*x)))`,
+discarding the sign of Gamma. For positive x, Gamma is positive, so this
+is also `ln(Gamma(x))`. For a negative noninteger x where Gamma is negative,
+the result is still a real log-magnitude; use `gamma` when the sign is needed.
 
 - **Domain:** all reals except non-positive integers
 - **Precision:** ~1e-9 relative at f32; f64 grade when called at f64

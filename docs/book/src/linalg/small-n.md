@@ -1,10 +1,9 @@
-# Small-N Linear Algebra
+# Small-matrix linear algebra
 
 Fixed-size closed-form routines for 2x2 and 3x3 matrices. These use the
 Cayley-Hamilton theorem for inversion and determinants, avoiding
 pivoting or iteration entirely. Every input matrix is a read-only borrow
-(`&tensor`). No gradient test covers these routines, so they are not
-advertised as differentiable.
+(`&tensor`).
 
 ## Determinants
 
@@ -47,10 +46,10 @@ entries are NaN.
 
 ## Cholesky
 
-| Function | Signature | Stability |
-|---|---|---|
-| `cholesky_2x2` | `(a: &tensor[2, 2, f32]) -> tensor[2, 2, f32]` | `stable` |
-| `cholesky_n` | `[n](a: &tensor[n, n, f32]) -> tensor[n, n, f32]` | `alpha` |
+| Function | Signature |
+|---|---|
+| `cholesky_2x2` | `(a: &tensor[2, 2, f32]) -> tensor[2, 2, f32]` |
+| `cholesky_n` | `[n](a: &tensor[n, n, f32]) -> tensor[n, n, f32]` |
 
 Returns the lower-triangular Cholesky factor L such that A = L L^T.
 
@@ -61,16 +60,16 @@ matrix is not symmetric positive-definite (symmetry tolerance: 1e-6).
 form). It assumes the input is SPD and does not emit NaN markers; on a
 non-SPD matrix the output is undefined.
 
-## General-N Decompositions
+## General-dimension decompositions
 
-`alpha` stability. Square matrices only.
+These general-dimension decompositions accept square matrices only.
 
-| Function | Signature | Stability |
-|---|---|---|
-| `lu_solve` | `[n](a: &tensor[n, n, f32], b: &tensor[n, f32]) -> tensor[n, f32]` | `alpha` |
-| `qr_decompose` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, n, f32])` | `alpha` |
-| `svd_n` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor[n, n, f32])` | `alpha` |
-| `eig_n` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32])` | `alpha` |
+| Function | Signature |
+|---|---|
+| `lu_solve` | `[n](a: &tensor[n, n, f32], b: &tensor[n, f32]) -> tensor[n, f32]` |
+| `qr_decompose` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, n, f32])` |
+| `svd_n` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, n, f32], tensor[n, f32], tensor[n, n, f32])` |
+| `eig_n` | `[n](a: &tensor[n, n, f32]) -> (tensor[n, f32], tensor[n, n, f32])` |
 
 **`lu_solve`** solves `A x = b` via Doolittle LU factorization (no partial
 pivoting). Requires all leading principal submatrices of A to be nonsingular.
@@ -109,4 +108,4 @@ def demo_solve(a: tensor[2, 2, f32], b: tensor[2, f32]) -> f32 =
 - For general-n linear solve use `lu_solve` (Doolittle, no partial pivoting)
   or `cg_solve` (iterative, SPD only). For decompositions use `qr_decompose`
   (Householder QR), `svd_n` (Jacobi SVD), or `eig_n` (symmetric
-  eigendecomposition). All are `alpha` stability.
+  eigendecomposition).

@@ -77,7 +77,7 @@ a full piecewise Hermite spline, call this function once per interval.
 `spline_eval` fits a natural cubic spline through sorted knots and evaluates
 it at one query point. `spline_fit` returns the vector M of second
 derivatives at the knots that the spline uses; natural boundary conditions
-fix M[0] = M[m-1] = 0. Both are `alpha` stability.
+fix M[0] = M[m-1] = 0.
 
 **Signatures:**
 `spline_eval[m](xs: &tensor[m, f32], ys: &tensor[m, f32], x_query: f32) -> f32` and

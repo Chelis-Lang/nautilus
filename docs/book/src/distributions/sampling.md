@@ -1,4 +1,4 @@
-# Sampling with Explicit Keys
+# Sampling with explicit keys
 
 Nautilus provides sampling functions for seven distribution families.
 Every sampling function takes an explicit `key` as its first argument and
@@ -71,7 +71,7 @@ samples = normal_sample(key_from_seed(42i64), template, cast(0.0, f32), cast(1.0
 
 ## Other sampling methods
 
-| Distribution | Function | Current behavior |
+| Distribution | Function | Behavior |
 |---|---|---|
 | Uniform | `uniform_sample` | Direct scaling of uniform variates |
 | Exponential | `exponential_sample` | Inverse CDF: -ln(u) / rate |
@@ -112,9 +112,9 @@ def student_t_sample[n](k: key, template: tensor[n, f32], df: f32)
 - `normal_sample` derives two child keys internally, one per Box-Muller
   uniform draw.
 - `gamma_sample` supports finite shape >= 1 and positive finite scale.
-  It derives a key for each element and 64 independent candidate keys per
-  element. Each element takes its first accepted candidate. An element
+  It derives a key for each element and 64 independent candidate keys for
+  each element. Each element takes its first accepted candidate. An element
   returns NaN if all 64 candidates reject.
-- `chi_squared_sample` and `student_t_sample` require df >= 2 because
-  they use `gamma_sample(df/2, 2)`. They inherit its rare exhausted-trial
-  NaN result.
+- `chi_squared_sample` and `student_t_sample` need df >= 2 because
+  they use `gamma_sample(df/2, 2)`. They also return NaN at an element in
+  the rare case that all 64 gamma trials reject.

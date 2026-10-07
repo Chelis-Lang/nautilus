@@ -1,66 +1,28 @@
 # Installation
 
-Nautilus 0.7.50 is a Reef package for Chelis 0.19.1. Reef installs the package
-for use from your own Chelis project. The commands below build and install the
-package from this repository's source.
+Nautilus 0.7.50 is a Reef package for Chelis 0.19.1. Install Chelis from the
+[official releases](https://chelis.ch/docs/chelis/install/), using the compiler version
+required by the Nautilus release.
 
-## Install the toolchain
-
-Use the GitHub CLI (`gh`) to download `chelisup`, then install the version
-Nautilus pins:
-
-```sh
-gh release download --repo Chelis-Lang/chelis --pattern chelisup.sh --output - | sh
-export PATH="$HOME/.chelis/bin:$PATH"
-chelisup install 0.19.1
-chelis --version
-```
-
-The version command should print `chelis 0.19.1`. If you already have
-`chelisup`, start with `chelisup install`. `chelisup` keeps versions side by
-side, and its `chelis` command selects the exact compiler named in a nearby
-`reef.toml`.
-
-## Install Nautilus
-
-```sh
-mkdir -p nautilus-work/packages
-git clone https://github.com/Chelis-Lang/nautilus.git nautilus-work/packages/nautilus
-cd nautilus-work/packages/nautilus
-chelis reef setup
-chelis reef build
-chelis reef install --from-monorepo ../.. nautilus
-cd ../..
-```
-
-The install command copies the built artifacts into your local Reef registry.
-It does not add Nautilus to a project's dependencies. To install a published
-release instead, read its tagged `reef.toml` for the compiler and package
-versions, then use `chelis reef install --from-github
-Chelis-Lang/nautilus@vX.Y.Z` with that tag. Reef's GitHub installer requires
-`GITHUB_TOKEN` or a working `gh auth token`, even for a public release.
-
-Create a project with the same compiler:
-
-```sh
-chelis reef init demo --module-prefix Demo --output demo
-cd demo
-```
-
-In the generated `reef.toml`, add this line under the existing
-`[dependencies]` table:
+Add Nautilus to your project's `[dependencies]` table in `reef.toml`:
 
 ```toml
+[dependencies]
 nautilus = { version = "0.7.50" }
 ```
 
-Keep the generated `compiler = "=0.19.1"` pin. Continue with
-[Your first Nautilus program](first-program.md) to evaluate a calculation.
+Set the project's `compiler` pin to `"=0.19.1"`. From the project directory,
+run:
 
-## Work from a source checkout
+```sh
+chelis reef setup
+chelis reef build
+```
 
-The clone above is also the development checkout. `chelis reef build` writes
-`dist/nautilus-0.7.50.chb` and a source archive; it does not produce an
-executable. The [maintainer guide](https://github.com/Chelis-Lang/nautilus/blob/main/docs/maintainer_guide.md)
-has the native tests and optional SciPy parity commands. Parity needs uv and
-Python 3.12; ordinary use of the Reef package does not.
+Reef downloads Nautilus and its declared dependencies from their releases. A
+Nautilus source checkout is needed only if you want to inspect or modify the
+library itself.
+
+Continue with [Your first Nautilus program](first-program.md)
+to evaluate a calculation. The [Reef and packages guide](https://chelis.ch/docs/chelis/reef/)
+covers dependency setup and compiler compatibility.

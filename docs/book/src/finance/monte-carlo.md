@@ -1,9 +1,7 @@
-# Monte Carlo Pricing
+# Monte Carlo pricing
 
-Monte Carlo simulation is the standard approach for pricing path-dependent
-options and options with multiple underlying assets. Nautilus provides the
-building blocks: `normal_sample` for generating random draws and
-`euler_maruyama_fixed` for simulating SDEs.
+Use `normal_sample` to generate noise and `euler_maruyama_fixed` to simulate
+terminal prices, then average and discount the option payoffs.
 
 ## The pattern
 
@@ -12,7 +10,7 @@ building blocks: `normal_sample` for generating random draws and
 2. Compute the payoff for each path.
 3. Average the payoffs and discount to present value.
 
-## Geometric Brownian Motion paths
+## Geometric Brownian motion paths
 
 Under the risk-neutral measure, a stock price follows:
 

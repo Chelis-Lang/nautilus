@@ -1,10 +1,9 @@
-# Conjugate Gradient Solver
+# Conjugate gradient solver
 
 `cg_solve` implements the conjugate gradient method for solving linear
 systems Ax = b where A is symmetric positive-definite (SPD). It works
-at any dimension `n`. It is not advertised as differentiable: the iteration
-is recursive with a data-dependent stopping rule, and no gradient test covers
-it.
+at any dimension `n`, with recursive iterations controlled by a tolerance
+and maximum iteration count.
 
 ## Signature
 
@@ -22,6 +21,7 @@ All three tensor arguments are taken by value (no `&`), so pass `copy(t)`
 for any of them you still need afterwards.
 
 **Parameters:**
+
 - `a_mat` -- the SPD coefficient matrix.
 - `b` -- the right-hand side vector.
 - `x0` -- initial guess (a zero vector is a safe default).
@@ -33,6 +33,7 @@ for any of them you still need afterwards.
 ## What SPD means
 
 A matrix A is symmetric positive-definite when:
+
 1. A = A^T (symmetric).
 2. For every nonzero vector v, v^T A v > 0 (positive-definite).
 

@@ -1,5 +1,19 @@
 # Maintainer guide
 
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `src/` | the library, one file per module, plus runnable example programs |
+| `tests/` | native Chelis tests (`chelis test tests/`) |
+| `tests_neg/` | programs that must fail to compile, each with the diagnostic it must produce |
+| `tests_blocked/` | compiler compatibility fixtures |
+| `parity/` | SciPy/NumPy parity checks, an isolated uv project with reviewed goldens |
+| `docs/book/` | the Nautilus book (mdBook), rendered from the chelis.ch docs |
+| `docs/` | maintainer guide, release notes, and the Chelis capability inventory |
+| `spec/scope.md` | intent, architecture, acceptance rules, limitations, deferrals |
+| `scripts/` | CI and validation tooling (Python, standard library only) |
+
 ## Setup
 
 Nautilus builds with one exact Chelis compiler version, recorded as the
@@ -80,13 +94,21 @@ git diff -- parity/goldens/rolling.json
 ```
 
 When you change documentation, also run the example validators, which compile
-every complete ```` ```chelis ```` block against the pinned compiler:
+every complete ```` ```chelis ```` block against the pinned compiler, and the
+book lint:
 
 ```sh
 uv run --no-project --python 3.12 python scripts/validate_skill_examples.py
 uv run --no-project --python 3.12 python scripts/validate_book_examples.py
+uv run --no-project --python 3.12 python scripts/check_book.py docs/book/src README.md
 mdbook build docs/book
 ```
+
+The book under `docs/book/src` mirrors the Nautilus docs on chelis.ch page for
+page, and the chelis.ch text is canonical. The website's
+`scripts/sync_books.py render nautilus` writes the pages; do not hand-edit them
+without making the same edit on the site. `scripts/check_book.py` is vendored
+byte for byte from the website's `red-team/gates/book_lint.py`.
 
 ## Continuous integration
 
@@ -104,6 +126,8 @@ mdbook build docs/book
    reproducibility check on the release artifacts, the native, negative, and
    blocked suites, and the strict SciPy parity check. On pushes to `main`, a
    macOS job also builds and validates the package.
+4. **Book.** `mdbook build docs/book`, the book lint over the book and
+   `README.md`, and the book example validator.
 
 `nightly.yml` runs the slower checks: a per-file `chelis check` over every
 module and the `SKILL.md` and book example validators. A failed nightly opens a

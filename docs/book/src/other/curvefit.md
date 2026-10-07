@@ -1,4 +1,4 @@
-# Curve Fitting
+# Curve fitting
 
 `Nautilus.CurveFit` exports two Levenberg-Marquardt fitters:
 

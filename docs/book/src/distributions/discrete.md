@@ -1,4 +1,4 @@
-# Discrete Distributions
+# Discrete distributions
 
 Two discrete distribution families: Poisson and Binomial. Both provide
 a probability mass function (PMF) and a cumulative distribution function

@@ -1,9 +1,8 @@
-# Normal Distribution
+# Normal distribution
 
-The normal (Gaussian) distribution is the most commonly used continuous
-distribution in Nautilus. It provides PDF, CDF, inverse CDF, and
-sampling. The CDF and inverse CDF are the workhorses for Black-Scholes
-pricing, Value-at-Risk, and hypothesis testing.
+`Nautilus.Distributions` provides the normal PDF, CDF, inverse CDF, and
+sampler. The CDF appears in Black-Scholes pricing; the inverse CDF gives
+normal quantiles for value-at-risk and hypothesis tests.
 
 ## normal_pdf
 

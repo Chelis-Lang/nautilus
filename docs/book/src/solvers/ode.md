@@ -1,4 +1,4 @@
-# ODE Solvers
+# ODE solvers
 
 The `Nautilus.Ode` module provides initial-value solvers for
 dy/dt = f(y, t). Euler and RK4 are available in fixed-step scalar form,
@@ -52,8 +52,5 @@ whose exact value at t = 1 is (cos 1 + sin 1 - e^{-1}) / 2 ≈ 0.50695.
 
 - `n_steps <= 0` returns NaN for the fixed-step solvers.
 - `rk45_adaptive_solve` returns NaN if `rtol <= 0` or `atol <= 0`.
-- These solvers are not advertised as differentiable. For example, `grad`
-  through `rk4_solve` fails to lower at the pinned compiler, because the
-  recursion depth depends on a runtime step count.
 - The scalar solvers return only the final value; use
   `rk45_adaptive_solve_grid` when you need the trajectory.

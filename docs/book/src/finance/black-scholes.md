@@ -1,4 +1,4 @@
-# Black-Scholes Pricing
+# Black-Scholes pricing
 
 The Black-Scholes formula for a European call option composes `log`,
 `exp`, `sqrt`, and `normal_cdf`. All are available in Nautilus without any
@@ -33,7 +33,7 @@ def black_scholes_call(s: f32, k: f32, r: f32, sigma: f32, t: f32) -> f32 = {
 }
 ```
 
-Note that `normal_cdf` takes three arguments `(x, mean, std)`. For the
+`normal_cdf` takes three arguments `(x, mean, std)`. For the
 standard normal, pass `(x, 0.0, 1.0)`.
 
 ## Example: ATM call
@@ -52,12 +52,8 @@ def main() -> f32 = black_scholes_call(
 The ATM call price of about 10.4506 matches the closed-form f64 value to
 within f32 precision.
 
-## How it works
-
-The computation composes Chelis primitives (`log`, `exp`, `sqrt`,
-`div`, `mul`, `add`, `sub`, `neg`) with `normal_cdf`. The
-[Greeks chapter](greeks.md) shows how the pinned evaluator differentiates
-this function with `grad`.
+Use `grad` to calculate first-order sensitivities of this function, as shown
+in [Greeks](greeks.md).
 
 ## Put-call parity
 

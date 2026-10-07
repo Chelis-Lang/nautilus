@@ -1,5 +1,5 @@
 [book]
-title = "Nautilus — Numerical Computing for Chelis"
+title = "Nautilus: numerical computing for Chelis"
 authors = ["Chelis contributors"]
 language = "en"
 src = "src"

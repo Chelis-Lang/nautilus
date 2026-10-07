@@ -1,4 +1,4 @@
-# Descriptive Statistics
+# Descriptive statistics
 
 The `Nautilus.Stats` module provides descriptive statistics over
 `tensor[n, f32]` vectors. All functions are polymorphic over the tensor
@@ -45,7 +45,7 @@ correlation matrices return a square tensor over the variables.
 | `covariance_scalar` | `[n](a: &tensor[n, f32], b: &tensor[n, f32], ddof: i64) -> f32` | Scalar covariance between two vectors |
 | `correlation_scalar` | `[n](a: &tensor[n, f32], b: &tensor[n, f32]) -> f32` | Pearson r (uses ddof=0 internally) |
 
-## Standardisation and ranks
+## Standardization and ranks
 
 These return a tensor of the same length rather than a scalar.
 
@@ -72,7 +72,7 @@ markedly slower than the sort-based reductions in this module; prefer
 Each **row** is a variable and each **column** an observation, matching
 `numpy.cov`'s default `rowvar=True`. `covariance_matrix` over two stacked
 rows therefore agrees entrywise with `covariance_matrix_2` on the same two
-vectors, which `tests/stats.ch` pins. `correlation_matrix` is
+vectors. `correlation_matrix` is
 scale-invariant, so it takes no `ddof`.
 
 ## Example

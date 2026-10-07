@@ -1,4 +1,4 @@
-# SDE Solvers
+# SDE solvers
 
 The `Nautilus.Sde` module provides two fixed-step stochastic
 differential equation integrators: Euler-Maruyama (strong order 0.5)
@@ -12,6 +12,7 @@ and Milstein (strong order 1.0).
 | `milstein_fixed` | `[n](f, g, dg_dy: f32 -> f32 -> f32, y0, t0, t1: f32, noise: tensor[n, f32]) -> f32` |
 
 **Parameters:**
+
 - `f(y, t)` -- drift coefficient (deterministic part).
 - `g(y, t)` -- diffusion coefficient (stochastic part).
 - `dg_dy(y, t)` -- derivative of g with respect to y (Milstein only).

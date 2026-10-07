@@ -1,4 +1,4 @@
-# Airy Functions
+# Airy functions
 
 The Airy functions Ai(x) and Bi(x) are solutions to the Airy
 differential equation y'' - x*y = 0. They arise in quantum mechanics
