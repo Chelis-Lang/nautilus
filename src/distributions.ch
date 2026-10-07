@@ -145,10 +145,21 @@ def student_t_pdf(x: f32, df: f32) -> f32 = {
   log_pdf = sub(sub(sub(add(lg_num, exponent_term), lg_den), half_log_df), half_log_pi)
   exp(log_pdf)
 }
-def gammainc_series(a: f32, x: f32, term: f32, acc: f32, ap: f32, iters: i64) -> f32 = {
+-- The incomplete-gamma series and continued fraction below each carry a
+-- 200-iteration budget, and each runs it in chunks of this many steps through
+-- an outer driver so the budget costs about 30 stack frames instead of 200.
+-- `chelis eval --file` evaluates on `main` and aborts the process at 136
+-- frames of a body this size, so the flat recursion could not spend its budget:
+-- see the eval-lane entry in `docs/UPSTREAM_BUGS.md`, which cites the
+-- upstream issue by number.
+-- The chunking changes no arithmetic: the iteration sequence, the convergence
+-- test and the result are the flat form's, bit for bit, on every converging
+-- input.
+def gammainc_chunk_i() -> i64 = cast(16, i64)
+def gammainc_series_chunk(x: f32, term: f32, acc: f32, ap: f32, iters: i64, steps: i64) -> (f32, f32, f32, i64, bool) = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
-  if lte(iters, zero_i) then acc else {
+  if or(lte(iters, zero_i), lte(steps, zero_i)) then (term, acc, ap, iters, false) else {
     ap_next = add(ap, one_f())
     term_next = mul(term, div(x, ap_next))
     acc_next = add(acc, term_next)
@@ -158,7 +169,15 @@ def gammainc_series(a: f32, x: f32, term: f32, acc: f32, ap: f32, iters: i64) ->
     scale = if gt(abs_acc, floor) then abs_acc else floor
     tol = cast(1e-7, f32)
     converged = lt(abs_term, mul(tol, scale))
-    if converged then acc_next else gammainc_series(a, x, term_next, acc_next, ap_next, sub(iters, one_i))
+    iters_next = sub(iters, one_i)
+    if converged then (term_next, acc_next, ap_next, iters_next, true) else gammainc_series_chunk(x, term_next, acc_next, ap_next, iters_next, sub(steps, one_i))
+  }
+}
+def gammainc_series(x: f32, term: f32, acc: f32, ap: f32, iters: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  if lte(iters, zero_i) then acc else {
+    st = gammainc_series_chunk(x, term, acc, ap, iters, gammainc_chunk_i())
+    if st.4 then st.1 else gammainc_series(x, st.0, st.1, st.2, st.3)
   }
 }
 def gammap(a: f32, x: f32) -> f32 =
@@ -169,13 +188,13 @@ def gammap(a: f32, x: f32) -> f32 =
     front_exp_arg = sub(sub(a_lx, x), la)
     front = exp(front_exp_arg)
     inv_a = div(one_f(), a)
-    series = gammainc_series(a, x, inv_a, inv_a, a, cast(200, i64))
+    series = gammainc_series(x, inv_a, inv_a, a, cast(200, i64))
     mul(front, series)
   }
-def gammaq_cf_rec(a: f32, x: f32, b: f32, c: f32, d: f32, h: f32, i: i64) -> f32 = {
+def gammaq_cf_chunk(a: f32, b: f32, c: f32, d: f32, h: f32, i: i64, steps: i64) -> (f32, f32, f32, f32, i64, bool) = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
-  if lte(i, zero_i) then h else {
+  if or(lte(i, zero_i), lte(steps, zero_i)) then (b, c, d, h, i, false) else {
     fi = cast(201, f32)
     j = sub(fi, cast(i, f32))
     an = mul(neg(j), sub(j, a))
@@ -190,7 +209,15 @@ def gammaq_cf_rec(a: f32, x: f32, b: f32, c: f32, d: f32, h: f32, i: i64) -> f32
     cf_tol = cast(1e-7, f32)
     delta_err = abs_f32_inner(sub(delta, one_f()))
     converged = lt(delta_err, cf_tol)
-    if converged then h_next else gammaq_cf_rec(a, x, b_next, c_guard, d_inv, h_next, sub(i, one_i))
+    i_next = sub(i, one_i)
+    if converged then (b_next, c_guard, d_inv, h_next, i_next, true) else gammaq_cf_chunk(a, b_next, c_guard, d_inv, h_next, i_next, sub(steps, one_i))
+  }
+}
+def gammaq_cf_rec(a: f32, b: f32, c: f32, d: f32, h: f32, i: i64) -> f32 = {
+  zero_i = cast(0, i64)
+  if lte(i, zero_i) then h else {
+    st = gammaq_cf_chunk(a, b, c, d, h, i, gammainc_chunk_i())
+    if st.5 then st.3 else gammaq_cf_rec(a, st.0, st.1, st.2, st.3, st.4)
   }
 }
 def abs_f32_inner(x: f32) -> f32 = if lt(x, zero_f()) then neg(x) else x
@@ -398,17 +425,25 @@ def gammaq(a: f32, x: f32) -> f32 =
     c0 = div(one_f(), tiny)
     d0 = div(one_f(), b0)
     h0 = d0
-    h = gammaq_cf_rec(a, x, b0, c0, d0, h0, cast(200, i64))
+    h = gammaq_cf_rec(a, b0, c0, d0, h0, cast(200, i64))
     mul(front, h)
   }
-def gamma_cdf(x: f32, shape: f32, scale: f32) -> f32 = {
-  xs = div(x, scale)
-  if lt(xs, add(shape, one_f())) then gammap(shape, xs) else sub(one_f(), gammaq(shape, xs))
-}
-def gamma_sf(x: f32, shape: f32, scale: f32) -> f32 = {
-  xs = div(x, scale)
-  if lt(xs, add(shape, one_f())) then sub(one_f(), gammap(shape, xs)) else gammaq(shape, xs)
-}
+-- A non-positive `shape` or `scale` is not a distribution, and a non-finite
+-- `x` is a limit rather than a point to integrate to, so both are decided
+-- before the standardised argument `xs` reaches either recursion.
+-- These are the guards `gamma_pdf`, `gamma_inv_cdf` and `weibull_cdf` already
+-- use, and they agree with SciPy. The guards read `xs`, not `x`, so a finite
+-- `x` whose `x / scale` overflows lands on the same answer as `x = +inf`.
+def gamma_cdf(x: f32, shape: f32, scale: f32) -> f32 =
+  if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else {
+    xs = div(x, scale)
+    if neq(xs, xs) then nan_d() else if lte(xs, zero_f()) then zero_f() else if eq(xs, pos_inf_d()) then one_f() else if lt(xs, add(shape, one_f())) then gammap(shape, xs) else sub(one_f(), gammaq(shape, xs))
+  }
+def gamma_sf(x: f32, shape: f32, scale: f32) -> f32 =
+  if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else {
+    xs = div(x, scale)
+    if neq(xs, xs) then nan_d() else if lte(xs, zero_f()) then one_f() else if eq(xs, pos_inf_d()) then zero_f() else if lt(xs, add(shape, one_f())) then sub(one_f(), gammap(shape, xs)) else gammaq(shape, xs)
+  }
 def chi_squared_cdf(x: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_cdf(x, half_df, two_f())

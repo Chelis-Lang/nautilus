@@ -1,5 +1,6 @@
 module Nautilus.Tests.Distributions
 import Nautilus.Distributions (normal_cdf_t, normal_inv_cdf_t, normal_pdf_t, uniform_pdf, uniform_cdf, uniform_inv_cdf, exponential_pdf, exponential_cdf, exponential_inv_cdf, normal_pdf, normal_cdf, normal_inv_cdf, lognormal_pdf, lognormal_cdf, lognormal_inv_cdf, gamma_pdf, gamma_cdf, gamma_sf, gamma_inv_cdf, chi_squared_pdf, chi_squared_cdf, chi_squared_sf, chi_squared_inv_cdf, student_t_pdf, student_t_cdf, poisson_pmf, poisson_cdf, binomial_pmf, binomial_cdf, beta_pdf, beta_cdf, f_pdf, f_cdf, weibull_pdf, weibull_cdf, weibull_inv_cdf)
+import Nautilus.ExampleDistributions (example_gamma_cdf_degenerate_arguments)
 import Std.Test (assert_close, assert_true)
 def test_normal_pdf_at_mean_is_one_over_sqrt_2pi() -> unit ! { Test } = {
   v = normal_pdf(cast(0.0, f32), cast(0.0, f32), cast(1.0, f32))
@@ -697,4 +698,135 @@ def test_normal_upper_tail_reflects_the_mean_not_only_the_point() -> unit ! { Te
   _ = assert_true(lt(dist_rel_err(b, cast(0.0038303805, f32)), cast(0.00001, f32)), "upper tail of N(-7,1.5) at -3 is 0.0038303805, so the mean must be negated too")
   _ = assert_true(lt(dist_rel_err(c, cast(0.9522096, f32)), cast(0.00001, f32)), "upper tail of N(10,3) at 5 is 0.9522096, so the rule holds for x < mean")
   assert_true(gt(a, mul(cast(1e20, f32), point_only)), "negating only the point is wrong by orders of magnitude, not by rounding")
+}
+-- nautilus#140: `gamma_cdf` and `gamma_sf` validated neither parameter, so a
+-- degenerate `scale` or a non-finite `x` produced a non-finite standardised
+-- argument `xs = x / scale`, took the `gammaq` branch, and never satisfied the
+-- continued fraction's convergence test. The recursion then spent its whole
+-- 200-iteration budget, which the `chelis eval` lane cannot afford: see
+-- the eval-lane entry in `docs/UPSTREAM_BUGS.md` (chelis#2471). The guards below
+-- are the ones `weibull_cdf`, `gamma_pdf` and `gamma_inv_cdf` already use in
+-- this module, and they agree with SciPy on every row.
+def test_gamma_cdf_rejects_a_nonpositive_scale() -> unit ! { Test } = {
+  z = gamma_cdf(cast(1.0, f32), cast(2.0, f32), cast(0.0, f32))
+  n = gamma_cdf(cast(1.0, f32), cast(2.0, f32), cast(-1.0, f32))
+  _ = assert_true(neq(z, z), "gamma_cdf(1;2,0) is NaN, not a crash")
+  assert_true(neq(n, n), "gamma_cdf(1;2,-1) is NaN; a negative scale is not a left tail")
+}
+def test_gamma_cdf_rejects_a_nonpositive_shape() -> unit ! { Test } = {
+  z = gamma_cdf(cast(1.0, f32), cast(0.0, f32), cast(1.0, f32))
+  n = gamma_cdf(cast(1.0, f32), cast(-2.0, f32), cast(1.0, f32))
+  _ = assert_true(neq(z, z), "gamma_cdf(1;0,1) is NaN like SciPy, not 1.0")
+  assert_true(neq(n, n), "gamma_cdf(1;-2,1) is NaN")
+}
+def test_gamma_sf_rejects_the_same_parameters() -> unit ! { Test } = {
+  s = gamma_sf(cast(1.0, f32), cast(2.0, f32), cast(0.0, f32))
+  h = gamma_sf(cast(1.0, f32), cast(0.0, f32), cast(1.0, f32))
+  _ = assert_true(neq(s, s), "gamma_sf(1;2,0) is NaN")
+  assert_true(neq(h, h), "gamma_sf(1;0,1) is NaN")
+}
+def test_gamma_cdf_at_positive_infinity_is_one() -> unit ! { Test } = {
+  -- The limit, not a guard against a crash: F(+inf) = 1 and its survival
+  -- function is 0. A finite `x` with a tiny `scale` overflows `xs` to +inf and
+  -- has to land on the same answer, which is why the guard reads `xs`.
+  inf_x = div(cast(1.0, f32), cast(0.0, f32))
+  c = gamma_cdf(inf_x, cast(2.0, f32), cast(1.0, f32))
+  s = gamma_sf(inf_x, cast(2.0, f32), cast(1.0, f32))
+  o = gamma_cdf(cast(1e30, f32), cast(2.0, f32), cast(1e-30, f32))
+  _ = assert_close(c, cast(1.0, f32), cast(1e-7, f32), "gamma_cdf(+inf;2,1) = 1")
+  _ = assert_close(s, cast(0.0, f32), cast(1e-7, f32), "gamma_sf(+inf;2,1) = 0")
+  assert_close(o, cast(1.0, f32), cast(1e-7, f32), "gamma_cdf(1e30;2,1e-30) = 1 through an overflowing xs")
+}
+def test_gamma_cdf_at_negative_infinity_is_zero() -> unit ! { Test } = {
+  neg_inf_x = neg(div(cast(1.0, f32), cast(0.0, f32)))
+  c = gamma_cdf(neg_inf_x, cast(2.0, f32), cast(1.0, f32))
+  s = gamma_sf(neg_inf_x, cast(2.0, f32), cast(1.0, f32))
+  _ = assert_close(c, cast(0.0, f32), cast(1e-7, f32), "gamma_cdf(-inf;2,1) = 0")
+  assert_close(s, cast(1.0, f32), cast(1e-7, f32), "gamma_sf(-inf;2,1) = 1")
+}
+def test_gamma_cdf_propagates_a_nan_argument() -> unit ! { Test } = {
+  nan_x = div(cast(0.0, f32), cast(0.0, f32))
+  c = gamma_cdf(nan_x, cast(2.0, f32), cast(1.0, f32))
+  s = gamma_sf(nan_x, cast(2.0, f32), cast(1.0, f32))
+  _ = assert_true(neq(c, c), "gamma_cdf(NaN;2,1) is NaN")
+  assert_true(neq(s, s), "gamma_sf(NaN;2,1) is NaN")
+}
+def test_chi_squared_inherits_the_guards() -> unit ! { Test } = {
+  -- `chi_squared_cdf` standardises to `gamma_cdf(x, df/2, 2)`, so df <= 0
+  -- reaches the shape guard. `chi_squared_p_value` is `chi_squared_sf`, and it
+  -- returned 0.0 on df = 0 before this change.
+  inf_x = div(cast(1.0, f32), cast(0.0, f32))
+  ci = chi_squared_cdf(inf_x, cast(3.0, f32))
+  si = chi_squared_sf(inf_x, cast(3.0, f32))
+  zc = chi_squared_cdf(cast(5.0, f32), cast(0.0, f32))
+  zs = chi_squared_sf(cast(5.0, f32), cast(0.0, f32))
+  nc = chi_squared_cdf(cast(5.0, f32), cast(-1.0, f32))
+  _ = assert_close(ci, cast(1.0, f32), cast(1e-7, f32), "chi_squared_cdf(+inf,3) = 1")
+  _ = assert_close(si, cast(0.0, f32), cast(1e-7, f32), "chi_squared_sf(+inf,3) = 0")
+  _ = assert_true(neq(zc, zc), "chi_squared_cdf(5,0) is NaN like SciPy, not 1.0")
+  _ = assert_true(neq(zs, zs), "chi_squared_sf(5,0) is NaN, not 0.0")
+  assert_true(neq(nc, nc), "chi_squared_cdf(5,-1) is NaN")
+}
+-- nautilus#140, second half: the guards stop the *degenerate* inputs reaching
+-- the recursions, but an ordinary large `shape` reaches them too, needing more
+-- iterations than the eval lane has frames for. `gamma_cdf(2000;2000,1)` wants
+-- 187 series terms and aborted the `chelis eval` process before this change;
+-- the series and continued fraction now spend their 200-iteration budget in
+-- about 30 frames by running it in chunks of 16. References are the
+-- regularised incomplete gamma at 60 decimal digits, rounded once to f32; the
+-- f32 errors quoted in the messages are the series' own accumulation error,
+-- unchanged by this fix and documented in the book, not a loss introduced by
+-- chunking. Every value is bit-identical to what the flat recursion returned
+-- in a lane with enough stack to run it.
+--
+-- Read these as value pins, not as detectors. `chelis test` runs each file on a
+-- `chelis-test-worker` thread whose stack holds about 500 frames of this shape,
+-- so a 200-frame recursion fits and these pass against the unpatched module
+-- too. Six of the twelve tests added for nautilus#140 pass unpatched: these
+-- three, the partial-sum pin below, and the -inf and NaN-argument tests, whose
+-- answers the unpatched module already happened to get right. The abort is only observable in the `chelis eval`
+-- lane, which runs on `main` and holds about 135; the detector for it is
+-- `example_gamma_cdf_degenerate_arguments`, evaluated by the CI step that runs
+-- `chelis eval --file` over `src/example*.ch`, and pinned in the test lane by
+-- `test_example_degenerate_arguments_oracle_is_all_ones` below.
+def test_gamma_cdf_large_shape_returns_a_value_on_the_series_branch() -> unit ! { Test } = {
+  v = gamma_cdf(cast(2000.0, f32), cast(2000.0, f32), cast(1.0, f32))
+  _ = assert_true(not(neq(v, v)), "gamma_cdf(2000;2000,1) is a number")
+  assert_true(lt(dist_rel_err(v, cast(0.50297356, f32)), cast(0.001, f32)), "gamma_cdf(2000;2000,1) = 0.50297356 to 6.5e-4, the f32 series error")
+}
+def test_gamma_cdf_large_shape_returns_a_value_on_the_cf_branch() -> unit ! { Test } = {
+  v = gamma_cdf(cast(20001.0, f32), cast(20000.0, f32), cast(1.0, f32))
+  _ = assert_true(not(neq(v, v)), "gamma_cdf(20001;20000,1) is a number")
+  assert_true(lt(dist_rel_err(v, cast(0.5037612, f32)), cast(0.002, f32)), "gamma_cdf(20001;20000,1) = 0.5037612 to 1.5e-3, the f32 continued-fraction error")
+}
+def test_chi_squared_cdf_large_df_returns_a_value() -> unit ! { Test } = {
+  v = chi_squared_cdf(cast(4000.0, f32), cast(4000.0, f32))
+  _ = assert_true(not(neq(v, v)), "chi_squared_cdf(4000,4000) is a number")
+  assert_true(lt(dist_rel_err(v, cast(0.50297356, f32)), cast(0.001, f32)), "chi_squared_cdf(4000,4000) = 0.50297356 to 6.5e-4")
+}
+def test_gamma_cdf_past_the_budget_returns_the_partial_sum() -> unit ! { Test } = {
+  -- Past shape 2338 at x = shape the series needs more than its 200 terms, so
+  -- the budget runs out and the result is the unconverged partial sum. It is
+  -- deliberately not NaN. Both values below are exactly what the flat
+  -- recursion returned in any lane with enough stack to run 200 frames, so
+  -- this fix changes no value here, and converting them to NaN would have
+  -- discarded a 1.5e-4-accurate answer at shape 2339 while keeping the 1.6e-3
+  -- one at 2338. The accuracy limit itself is long-standing and documented in
+  -- `docs/book/src/distributions/gamma-family.md`.
+  a = gamma_cdf(cast(2339.0, f32), cast(2339.0, f32), cast(1.0, f32))
+  b = gamma_cdf(cast(30000.0, f32), cast(30000.0, f32), cast(1.0, f32))
+  _ = assert_close(a, cast(0.50282675, f32), cast(1e-7, f32), "gamma_cdf(2339;2339,1) = 0.50282675, the flat form's value")
+  assert_close(b, cast(0.37090707, f32), cast(1e-7, f32), "gamma_cdf(30000;30000,1) = 0.37090707, the flat form's value, 26% from the true 0.5007678")
+}
+-- The companion to the three pins above. `example_gamma_cdf_degenerate_arguments`
+-- encodes five of nautilus#140's cases as decimal digits so one f32 says which
+-- ones hold: 11111.0 is all five. This test pins that value in the test lane,
+-- where the unpatched module scores 10001.0 (only the NaN scale and the large
+-- df survive the missing guards). What this test cannot see is the abort
+-- itself: evaluating the same def through `chelis eval --file` on the
+-- unpatched module exits 134 with `fatal runtime error: stack overflow`, which
+-- is what the CI example-evaluation step catches.
+def test_example_degenerate_arguments_oracle_is_all_ones() -> unit ! { Test } = {
+  v = example_gamma_cdf_degenerate_arguments()
+  assert_close(v, cast(11111.0, f32), cast(1e-7, f32), "every nautilus#140 case holds, so the oracle digit sum is 11111")
 }

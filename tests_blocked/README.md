@@ -69,6 +69,18 @@ the current verdicts.
   Nautilus consumer matrix is still needed. `chelis test` does not exercise
   that C lane. Use the manual recipe below.
 
+- **`chelis#2471`** (narrowing `nautilus#140`): **cannot be probed here.** The limitation is that
+  `chelis eval --file` aborts the process at about 135 frames of a let-heavy
+  recursion. `chelis test` runs each file on a `chelis-test-worker` thread that
+  holds about 500 frames of the same shape, so the 200-frame recursion this
+  entry is about completes in the test lane and returns a value. A blocked
+  probe here would pass and prove nothing. The observing gate is the CI step
+  that runs `chelis eval --file` over `src/example*.ch`, where
+  `example_gamma_cdf_degenerate_arguments` prints `11111.0` with the chunked
+  recursions and exits 134 without them.
+  **Re-probe trigger:** every pin bump, and any release touching eval-lane
+  stack sizing or tail calls.
+
 ## Manual probe: `chelis#2152`
 
 The reproducer needs two packages: a library installed into a temporary

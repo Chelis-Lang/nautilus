@@ -192,6 +192,61 @@ release.
       Nautilus consumer builds, compiles, links, and runs at f32 and f64.
       The minimal reproducer passing does not establish that full result.
 
+- **`chelis eval --file` aborts the process after about 135 frames of a
+  let-heavy recursion** — `chelis#2471`
+  ([Chelis-Lang/chelis#2471](https://github.com/Chelis-Lang/chelis/issues/2471)).
+    - **Symptom:** `chelis eval --file` evaluates on the `main` thread, does no
+      tail-call elimination, and overflows its stack at a depth set by how many
+      bindings the recursive body holds: 136 frames for a sixteen-binding body,
+      past 1020 for a bare single-expression body with no bindings at all. The process dies with `fatal runtime
+      error: stack overflow` and exit 134, with no diagnostic a caller can
+      catch. Values do not matter: the same body at depth 135 returns whether
+      its arguments are finite or not. `chelis test` runs the same
+      sixteen-binding body to depth 500 on its `chelis-test-worker` thread and
+      reports an overflow there as a test failure rather than killing the
+      harness, so the two lanes disagree about whether a program runs. The
+      upstream issue's own round-1 comment also reports the absent tail-call
+      elimination, the inverse scaling with body size, and the lane difference,
+      though that comment states it is relaying one peer measurement rather
+      than offering independent corroboration.
+    - **Affected Nautilus surface, as narrowed here:** the two incomplete-gamma
+      recursions `gammainc_series` and `gammaq_cf_rec`, and so
+      `Nautilus.Distributions.gamma_cdf`, `gamma_sf`, `chi_squared_cdf`,
+      `chi_squared_sf`, `gamma_inv_cdf` and `poisson_cdf`, and through them
+      `Nautilus.Testing.chi_squared_p_value` and
+      `Nautilus.Stats.likelihood_ratio_p_value`. Each recursion carries a
+      200-iteration budget, which as a flat recursion cost 200 frames and so
+      could not be spent in that lane.
+    - **Not covered, and still aborting:** `betacf_rec` in the same module
+      carries the same 200-iteration budget with a fatter body, so it aborts
+      sooner, and it is **not** chunked. `chelis eval --file` on
+      `beta_cdf(0.5, 1e6, 1e6)`, `beta_cdf(0.5, 1e8, 1e8)`,
+      `f_cdf(1.0, 1e7, 1e7)` and `f_cdf(1.0, 1e8, 1e8)` each exit 134 at this
+      pin. `student_t_cdf`, `beta_cdf`, `f_cdf` and `binomial_cdf` all reach
+      it. This entry does not claim that surface is fixed.
+    - **Workaround:** `gammainc_series` and `gammaq_cf_rec` in
+      `src/distributions.ch` spend their budget in chunks of sixteen through an
+      outer driver, so 200 iterations cost about 30 frames. The chunking exists
+      only for the frame cost: the iteration sequence, the convergence test and
+      the returned value are the flat form's, bit for bit, on every converging
+      input, and the non-converged base case still returns the partial sum.
+    - **Reproducer:** the upstream issue's. The Nautilus-level form is
+      `chelis eval --file` over a module binding
+      `gamma_cdf(2000.0f32, 2000.0f32, 1.0f32)`, which wants 187 series terms.
+    - **Why `chelis test` cannot probe it:** the test lane holds about 500
+      frames of the same shape, so a 200-frame recursion fits and reports a
+      value. See [`tests_blocked/README.md`](../tests_blocked/README.md).
+    - **Pinned result:** at Chelis 0.19.0 and 0.19.1 the depth boundaries are
+      identical and deterministic over three repeats. With the chunked form,
+      `chelis eval --file src/exampledistributions.ch` prints
+      `example_gamma_cdf_degenerate_arguments = 11111.0`; against the flat form
+      the same command exits 134. That example is evaluated by the CI step that
+      runs `chelis eval --file` over `src/example*.ch`, which is the only gate
+      that observes the abort.
+    - **Re-probe trigger:** every pin bump, and any release touching eval-lane
+      stack sizing or tail calls. On a fix, restore the flat recursions and
+      confirm the example still prints `11111.0`.
+
 ## Tracking
 
 ## Archived

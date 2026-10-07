@@ -8,6 +8,45 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- `gamma_cdf` and `gamma_sf` no longer kill the process on a degenerate
+  parameter or a non-finite argument, and no longer kill it on an ordinary large
+  `shape` either. They validated neither parameter, so a zero `scale` made the
+  standardised argument `x / scale` non-finite, the continued fraction never
+  satisfied its convergence test, and the recursion spent its whole
+  200-iteration budget -- which `chelis eval --file` cannot afford, aborting at
+  about 135 frames of a body that size with no catchable diagnostic.
+  `chi_squared_cdf`, `chi_squared_sf`, `Nautilus.Testing.chi_squared_p_value`,
+  `gamma_inv_cdf` and `poisson_cdf` all inherited it, and so did inputs that are
+  not degenerate at all: `gamma_cdf(2000.0, 2000.0, 1.0)` wants 187 series terms
+  and `chi_squared_cdf(4000.0, 4000.0)` reaches the series through `df / 2`.
+  Two changes: the parameter and argument guards `gamma_pdf`, `gamma_inv_cdf`
+  and `weibull_cdf` already used in this module, which agree with SciPy on every
+  row checked; and both incomplete-gamma recursions now spend their budget in
+  chunks of sixteen through an outer driver, so 200 iterations cost about 30
+  frames rather than 200. The arithmetic is unchanged -- the converging path is
+  bit-identical to the flat form, and a non-converged budget still returns the
+  partial sum. **Values change exactly where the new guards fire, which is
+  three input classes rather than a list of cases.** Every call to
+  `gamma_cdf` or `gamma_sf` with `shape <= 0` or `scale <= 0` now returns `NaN`
+  whatever `x` is, while a caller with its own earlier domain guard
+  (`gamma_inv_cdf` at `q <= 0` or `q >= 1`, `poisson_cdf` at `k < 0`) keeps the
+  answer that guard already gave. So
+  `gamma_cdf(1.0, 0.0, 1.0)` was `1.0`, `gamma_cdf(1.0, 2.0, -1.0)` was `0.0`,
+  `chi_squared_p_value(5.0, 0.0)` was `0.0` and `chi_squared_cdf(5.0, -1.0)` was
+  a plausible-looking `0.99605733` — all `NaN` now, and all `nan` in SciPy.
+  Every call whose standardised argument `x / scale` is `+inf` now returns the
+  limit instead of `NaN`: `gamma_cdf(+inf, 2.0, 1.0)` and the overflowing finite
+  case `gamma_cdf(1e30, 2.0, 1e-30)` were `NaN` and are `1.0`, their survival
+  functions `0.0`. And a NaN standardised argument now returns `NaN` where some
+  shapes previously trapped in `cast_trunc`. Outside those three classes nothing
+  moves: the chunking itself is bit-identical to the flat recursion, verified
+  over 700 points in review. Note what that sweep does and does not bound — it
+  compares the two recursions, which both sit *inside* the guards, so it is
+  evidence about the chunking and not about the guards' reach. The eval-lane limitation is
+  upstream `chelis#2471`, recorded in `docs/UPSTREAM_BUGS.md`; the series'
+  long-standing accuracy limit at large `shape` is documented in the book rather
+  than changed. Addresses nautilus#140.
+
 - Right-tail p-values no longer cancel to exactly zero. Every upper-tail and
   two-sided p-value in `Nautilus.Testing`, and
   `Nautilus.Stats.likelihood_ratio_p_value`, computed `1 - cdf`, which carries
