@@ -18,26 +18,16 @@ import math
 import re
 import unittest
 
-from check_beta_accuracy import BOUND, CEILING, DOCUMENTED, FLOOR, PHI1, cases, f32
+from parity.check_beta_accuracy import BOUND, CEILING, DOCUMENTED, FLOOR, PHI1, cases, f32
 
 IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-# `cases()` builds its references with scipy, and the job that runs
-# `unittest discover -s scripts` uses a bare `python3` with no scipy. Skipping
-# alone would mean these never run anywhere, so the scipy-parity job runs this
-# file explicitly inside the locked parity environment.
-try:
-    import scipy.special  # noqa: F401
-
-    HAVE_SCIPY = True
-except ImportError:  # pragma: no cover
-    HAVE_SCIPY = False
-
-needs_scipy = unittest.skipUnless(
-    HAVE_SCIPY, "cases() needs scipy; the scipy-parity job runs these")
+# No scipy guard here on purpose. This file lives under `parity/`, where SciPy is
+# a declared, locked dependency, so an ImportError is a broken environment and
+# should fail loudly. A `skipUnless` would turn that into a silent pass, and a
+# test skipped everywhere is indistinguishable from a passing one.
 
 
-@needs_scipy
 class Names(unittest.TestCase):
     def setUp(self) -> None:
         self.spec = cases()
@@ -64,7 +54,6 @@ class Names(unittest.TestCase):
             self.assertTrue(name.startswith("acc_"), name)
 
 
-@needs_scipy
 class GoverningParameter(unittest.TestCase):
     """The range is indexed on the LARGE parameter. Indexing it on the small one
     is the defect a red-team round found: for `student_t_cdf` the small parameter
@@ -90,7 +79,6 @@ class GoverningParameter(unittest.TestCase):
             self.assertGreaterEqual(large, 1.0)
 
 
-@needs_scipy
 class Coverage(unittest.TestCase):
     def test_documented_covers_every_export_measured(self) -> None:
         measured = {export for _, export, _, _, _, _ in cases()}
@@ -148,7 +136,6 @@ class Coverage(unittest.TestCase):
         self.assertEqual((CEILING, FLOOR, BOUND), (1e8, 1.0, 2e-6))
 
 
-@needs_scipy
 class ThresholdLocusCoverage(unittest.TestCase):
     """The branch threshold `x = (a+1)/(a+b+2)` is where the continued fraction
     converges slowest and the error peaks. Leaving it out of the grid is what
@@ -263,7 +250,6 @@ class ThresholdLocusCoverage(unittest.TestCase):
             self.assertTrue(mid, f"{export} has no case with a mid-range value")
 
 
-@needs_scipy
 class ReferenceFreeAnchors(unittest.TestCase):
     def test_symmetric_beta_and_f_cases_use_the_exact_half(self) -> None:
         anchors = [s for s in cases()

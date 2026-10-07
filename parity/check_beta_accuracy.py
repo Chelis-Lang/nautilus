@@ -60,7 +60,12 @@ drift. `test_the_bound_is_not_silently_widened` pins the table so it cannot move
 without a deliberate edit; keeping the documents in step is still a reviewer's
 job.
 
-    python3 scripts/check_beta_accuracy.py
+    uv run --project parity --frozen python parity/check_beta_accuracy.py
+
+It lives under `parity/` because it imports SciPy, and this repository confines
+external-oracle libraries to that directory: `scripts/check_oracle_isolation.py`
+fails the build when an oracle import appears anywhere else. The C-lane oracle
+beside it in `scripts/` is stdlib-only and stays there.
 
 Success is exit 0 with a final `BETA ACCURACY: PASS` line. Set `CHELIS_BIN` to
 validate an explicit toolchain binary. Requires SciPy; the C-lane oracle beside
