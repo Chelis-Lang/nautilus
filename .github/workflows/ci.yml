@@ -277,6 +277,15 @@ jobs:
       # passing.
       - name: Beta-family oracle unit tests
         run: uv run --project parity --frozen python -m unittest discover -s . -t . -p 'test_check_beta_accuracy.py'
+
+      # The same treatment for the discrete PMFs' documented range (nautilus#146).
+      # Their error is one rounding of ln(k!), so it is governed by the size of
+      # the count parameter; the gate probes at and beyond the documented ceiling.
+      - name: Discrete-PMF accuracy range
+        run: uv run --project parity --frozen python parity/check_pmf_accuracy.py
+
+      - name: Discrete-PMF oracle unit tests
+        run: uv run --project parity --frozen python -m unittest discover -s . -t . -p 'test_check_pmf_accuracy.py'
   # The user-facing book: it must build, pass the writing-standard lint
   # (vendored from the chelis.ch website), and every complete ```chelis
   # example in it must check against the pinned compiler.

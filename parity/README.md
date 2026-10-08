@@ -21,6 +21,23 @@ uv run --project parity --frozen python parity/run_parity.py --strict
 Set `CHELIS_BIN=/path/to/chelis` to validate an explicit toolchain binary;
 otherwise the runner resolves `chelis` from `PATH`.
 
+## Accuracy gates
+
+Two scripts beside `run_parity.py` are gates on documented accuracy *ranges*
+rather than on golden values, so they take their references from SciPy live and
+keep no goldens:
+
+```sh
+uv run --project parity --frozen python parity/check_beta_accuracy.py
+uv run --project parity --frozen python parity/check_pmf_accuracy.py
+```
+
+Each has a `DOCUMENTED` table transcribed by hand from `docs/book` and
+`SKILL.md`, and a paired `test_check_*.py` that pins the table and the grid's
+coverage of its own boundary. The unit tests run under `unittest discover` from
+this directory, never from `scripts/`, because `scripts/check_oracle_isolation.py`
+confines SciPy to `parity/`.
+
 Strict mode fails on tolerance misses, missing or malformed goldens, recipe /
 golden metadata drift, and any case lacking at least two distinct configurations.
 
