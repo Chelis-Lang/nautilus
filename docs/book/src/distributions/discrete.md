@@ -25,7 +25,7 @@ bcdf = 0.6496107
 | Function | Signature | Returns |
 |---|---|---|
 | `poisson_pmf` | `(k: f32, lambda: f32) -> f32` | P(X = k) = exp(k*ln(lambda) - lambda - ln(Gamma(k+1))) |
-| `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | P(X <= k) = 1 - P(k+1, lambda), the regularized lower incomplete gamma complement |
+| `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | P(X <= k) = Q(k+1, lambda), the regularized upper incomplete gamma |
 
 Domain: `k` a non-negative integer value, `lambda >= 0` and finite.
 
@@ -41,6 +41,12 @@ The PMF works in log space, so large counts do not overflow a factorial. The
 CDF does not sum PMF terms; it evaluates the incomplete gamma function, which
 inherits the [large-shape limit](gamma-family.md#large-shapes)
 at shape `k + 1`.
+
+The CDF reads that function as the upper tail `Q` rather than as
+`1 - P`, so a left tail far below the mean keeps its digits:
+`poisson_cdf(10, 50)` is 6.450134e-12, five significant digits of a
+reference 6.4501529e-12. Subtracting `P` from 1 returned 0 for every value under about
+6e-8.
 
 ## Binomial
 

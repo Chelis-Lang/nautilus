@@ -38,11 +38,66 @@ def exponential_pdf(x: f32, rate: f32) -> f32 =
     e = exp(neg_rx)
     mul(rate, e)
   }
+-- `1 - exp(-t)` carries absolute error of about `0.5 * ulp(1)` however
+-- accurate `exp` is, so it returns exactly `0.0` once the true value falls
+-- below that. `exponential_cdf` and `weibull_cdf` are the two CDFs whose own
+-- small value sits there, so no survival function can help them the way
+-- `gamma_sf` helps a right tail: the quantity asked for IS the one that
+-- cancels. `expm1_neg_d` is the negated `expm1`, `-expm1(-t)`, and it gives
+-- `1 - exp(-t)` a relative error contract by summing the Maclaurin series
+-- where the subtraction would cancel and performing the subtraction where it
+-- would not.
+--
+-- Evaluating in f64 and returning f32 is not sufficient on its own. It moves
+-- the collapse rather than removing it: the absolute error becomes about
+-- `0.5 * ulp_f64(1)`, so `1.1e-16 / t` is the envelope on the relative
+-- error, which degrades without bound as `t` shrinks and reaches exactly
+-- `0.0` a little below `t = 1e-16`. `weibull_cdf(1e-8, 2, 1)` reaches
+-- `t = 1e-16` from ordinary arguments. The series has no such floor. Three
+-- tests pin points on that ladder, and the f64-only form fails all three;
+-- the figures are in those tests rather than here, so there is one place to
+-- correct if the lane's `exp` ever changes its last bit.
+--
+-- The cut is `1/16`. Below it the sum keeps terms through `t^10/10!`, so the
+-- first omitted term is `t^11/11!`, which at the cut is `2.3e-20` of the
+-- result; the nested factors are all near `1` and each deeper rounding is
+-- damped by its own `t/j`, so the series stands at about one f64 ulp. At and
+-- above the cut `exp(-t) <= 0.9394`, so the subtraction amplifies f64
+-- rounding by at most `0.9394/0.0606 = 15.5`, giving about `1.7e-15`. Both
+-- branches are therefore far inside the half f32 ulp the return rounds to.
+--
+-- The term count is set by that derivation and not by the smallest count an
+-- f32 return happens to accept. Four terms put the truncation at about
+-- `1.3e-7` of the result at the cut, which is two f32 ulps there, so a
+-- four-term form returns a different f32 and a test does reject it. Five
+-- terms and ten are indistinguishable at every argument in the accuracy
+-- grid; they part only at arguments whose exact answer sits within a percent
+-- or so of an f32 midpoint, where the five-term value is still within about
+-- half an ulp, so a test built on one would be a near-tie rather than a
+-- contract. Ten is what keeps `expm1_neg_d` correct as an f64 function, so a
+-- later f64 caller inherits a bound rather than a coincidence.
+--
+-- The series window is `[0, 1/16)` and not `(-inf, 1/16)` on purpose. A
+-- negative `t` is not a distribution, but `exponential_cdf` admits one for a
+-- negative rate and nothing here decides that case; sending it to the
+-- subtraction keeps it on the expression it has always been on.
+def expm1_cut() -> f64 = cast(0.0625, f64)
+def expm1_terms() -> i64 = cast(10, i64)
+def expm1_horner(t: f64, j: i64, m: i64) -> f64 =
+  if gt(j, m) then one_d64() else {
+    inner = expm1_horner(t, add(j, cast(1, i64)), m)
+    sub(one_d64(), div(mul(t, inner), cast(j, f64)))
+  }
+def expm1_neg_d(t: f64) -> f64 = if and(gte(t, zero_d64()), lt(t, expm1_cut())) then mul(t, expm1_horner(t, cast(2, i64), expm1_terms())) else sub(one_d64(), exp(neg(t)))
+-- `rate * x` is formed in f64 from the widened f32 arguments, so the product
+-- is exact: two 24-bit significands multiply inside f64's 53. Forming it in
+-- f32 first costs at most half an f32 ulp of `t`, which for a small `t`
+-- transfers whole to the answer, so what this buys is bounded by about one
+-- ulp of the return rather than by a decade of it.
 def exponential_cdf(x: f32, rate: f32) -> f32 =
   if lt(x, zero_f()) then zero_f() else {
-    neg_rx = neg(mul(rate, x))
-    e = exp(neg_rx)
-    sub(one_f(), e)
+    t = mul(cast(rate, f64), cast(x, f64))
+    expm1_neg_d(t) |> cast(f32)
   }
 def exponential_inv_cdf(q: f32, rate: f32) -> f32 =
   if or(lt(q, zero_f()), gt(q, one_f())) then nan_d() else if eq(q, one_f()) then pos_inf_d() else if eq(q, zero_f()) then zero_f() else {
@@ -377,11 +432,17 @@ def poisson_pmf(k: f32, lambda: f32) -> f32 =
     log_pmf = sub(sub(k_lk, lambda), lg_k1)
     exp(log_pmf)
   }
+-- `P(X <= k) = Q(k+1, lambda)`, the upper regularised incomplete gamma, which
+-- is what `gamma_sf` returns. The earlier spelling `1 - gamma_cdf(lambda,
+-- k+1, 1)` subtracted a value near `1.0` from `1.0`, so the whole left tail
+-- arrived as `0.0`: `poisson_cdf(10, 50)` returned zero against a true
+-- `6.4501529e-12`. `gamma_sf`'s branch point is the one this needs -- a small
+-- `P(X <= k)` means `lambda >> k + 1`, which is exactly where `gamma_sf`
+-- evaluates the continued fraction directly instead of complementing.
 def poisson_cdf(k: f32, lambda: f32) -> f32 =
   if lt(lambda, zero_f()) then nan_d() else if lt(k, zero_f()) then zero_f() else if eq(lambda, zero_f()) then one_f() else {
     k_plus_one = add(k, one_f())
-    gc = gamma_cdf(lambda, k_plus_one, one_f())
-    sub(one_f(), gc)
+    gamma_sf(lambda, k_plus_one, one_f())
   }
 def binomial_pmf(k: f32, n: f32, p: f32) -> f32 =
   if or(lt(k, zero_f()), gt(k, n)) then zero_f() else if not(is_integer_f32(k)) then zero_f() else if not(is_integer_f32(n)) then nan_d() else if or(lt(p, zero_f()), gt(p, one_f())) then nan_d() else if eq(p, zero_f()) then if eq(k, zero_f()) then one_f() else zero_f() else if eq(p, one_f()) then if eq(k, n) then one_f() else zero_f() else {
@@ -467,14 +528,16 @@ def weibull_pdf(x: f32, shape: f32, scale: f32) -> f32 =
     log_pdf = add(lkl, add(mul(km1, lxl), nxlk))
     exp(log_pdf)
   }
+-- `(x/scale)^shape` is formed in f64 as well as complemented there. The f32
+-- round trip through `exp(shape * log(x/scale))` carries relative error of
+-- half an f32 ulp of `log(x/scale)`, amplified by `exp`, which is `1.1e-6` at
+-- `x/scale = 1e-8` even for `shape = 1`, so an exact complement of an f32 `t`
+-- would still have lost the sixth digit before `expm1_neg_d` saw it.
 def weibull_cdf(x: f32, shape: f32, scale: f32) -> f32 =
   if lt(x, zero_f()) then zero_f() else if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else {
-    xl = div(x, scale)
-    lxl = log(xl)
-    xlk = exp(mul(shape, lxl))
-    nxlk = neg(xlk)
-    e = exp(nxlk)
-    sub(one_f(), e)
+    xl = div(cast(x, f64), cast(scale, f64))
+    t = exp(mul(cast(shape, f64), log(xl)))
+    expm1_neg_d(t) |> cast(f32)
   }
 def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
   if or(lt(q, zero_f()), gt(q, one_f())) then nan_d() else if eq(q, zero_f()) then zero_f() else if eq(q, one_f()) then pos_inf_d() else if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else {
