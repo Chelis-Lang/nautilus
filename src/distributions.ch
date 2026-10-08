@@ -424,13 +424,24 @@ def is_integer_f32(x: f32) -> bool = {
   xi = cast(cast_trunc(x, i64), f32)
   eq(x, xi)
 }
+-- The log-space body is evaluated in f64 and the result returned as f32.
+-- `log_gamma(k + 1)` is `log(k!)`, which reaches 1.05e6 at k = 1e5 and 8.7e8
+-- at k = 5e7. One f32 rounding at 1.05e6 is an absolute error of 0.0625 in
+-- an exponent, hence a multiplicative error in the result: `poisson_pmf(1e5,
+-- 1e5)` was 5.2% high. Above k = 2^24 the `+ 1` vanishes outright
+-- (`ulp(5e7)` is 4), so the normalising constant was `log(k!)` for the wrong
+-- factorial and `poisson_pmf(5e7, 5e7)` returned 1.0 against a true
+-- 5.6418952e-05. Forming `k + 1` in f64 fixes the second; evaluating the
+-- whole exponent there fixes the first, which is the larger term below 2^24.
 def poisson_pmf(k: f32, lambda: f32) -> f32 =
   if lt(lambda, zero_f()) then nan_d() else if lt(k, zero_f()) then zero_f() else if not(is_integer_f32(k)) then zero_f() else if eq(lambda, zero_f()) then if eq(k, zero_f()) then one_f() else zero_f() else {
-    lk = log(lambda)
-    k_lk = mul(k, lk)
-    lg_k1 = log_gamma(add(k, one_f()))
-    log_pmf = sub(sub(k_lk, lambda), lg_k1)
-    exp(log_pmf)
+    k64 = cast(k, f64)
+    lambda64 = cast(lambda, f64)
+    lk = log(lambda64)
+    k_lk = mul(k64, lk)
+    lg_k1 = log_gamma(add(k64, one_d64()))
+    log_pmf = sub(sub(k_lk, lambda64), lg_k1)
+    exp(log_pmf) |> cast(f32)
   }
 -- `P(X <= k) = Q(k+1, lambda)`, the upper regularised incomplete gamma, which
 -- is what `gamma_sf` returns. The earlier spelling `1 - gamma_cdf(lambda,
@@ -444,18 +455,33 @@ def poisson_cdf(k: f32, lambda: f32) -> f32 =
     k_plus_one = add(k, one_f())
     gamma_sf(lambda, k_plus_one, one_f())
   }
+-- The log-space body is evaluated in f64 and the result returned as f32, for
+-- the reason recorded above `poisson_pmf` and one more: `log_choose` is a
+-- difference of three log-factorials, so its f32 error is bounded by the
+-- *largest* of them rather than by the answer. At n = 1e8,
+-- `log_gamma(n + 1)` is 1.74e9, where one f32 rounding is an absolute error
+-- of 128 in the exponent -- a factor of e^128. `binomial_pmf(5e7, 1e8, 0.5)`
+-- returned `inf`, and `binomial_pmf(2e7, 4e7, 0.5)` returned 1.0; neither is
+-- a probability. The three log-gammas and the `(n - k) * log(1 - p)` term
+-- rounded independently, which is how the result left [0, 1] rather than
+-- merely drifting. The error is continuous in n, not a cliff at 2^24: it was
+-- already 15% at n = 2e5 and 59% at n = 2e6.
 def binomial_pmf(k: f32, n: f32, p: f32) -> f32 =
   if or(lt(k, zero_f()), gt(k, n)) then zero_f() else if not(is_integer_f32(k)) then zero_f() else if not(is_integer_f32(n)) then nan_d() else if or(lt(p, zero_f()), gt(p, one_f())) then nan_d() else if eq(p, zero_f()) then if eq(k, zero_f()) then one_f() else zero_f() else if eq(p, one_f()) then if eq(k, n) then one_f() else zero_f() else {
-    lg_n1 = log_gamma(add(n, one_f()))
-    lg_k1 = log_gamma(add(k, one_f()))
-    lg_nmk1 = log_gamma(add(sub(n, k), one_f()))
+    k64 = cast(k, f64)
+    n64 = cast(n, f64)
+    p64 = cast(p, f64)
+    n_minus_k = sub(n64, k64)
+    lg_n1 = log_gamma(add(n64, one_d64()))
+    lg_k1 = log_gamma(add(k64, one_d64()))
+    lg_nmk1 = log_gamma(add(n_minus_k, one_d64()))
     log_choose = sub(sub(lg_n1, lg_k1), lg_nmk1)
-    lp = log(p)
-    l1mp = log(sub(one_f(), p))
-    k_lp = mul(k, lp)
-    nmk_l1mp = mul(sub(n, k), l1mp)
+    lp = log(p64)
+    l1mp = log(sub(one_d64(), p64))
+    k_lp = mul(k64, lp)
+    nmk_l1mp = mul(n_minus_k, l1mp)
     log_pmf = add(add(log_choose, k_lp), nmk_l1mp)
-    exp(log_pmf)
+    exp(log_pmf) |> cast(f32)
   }
 -- `n - k` and `k + 1` are formed in f64, not in f32 and then widened. In
 -- f32 the `+ 1` vanishes for k >= 2^24 (ulp(5e7) is 4), which turned
