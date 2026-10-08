@@ -51,10 +51,12 @@ def exponential_pdf(x: f32, rate: f32) -> f32 =
 -- Evaluating in f64 and returning f32 is not sufficient on its own. It moves
 -- the collapse rather than removing it: the absolute error becomes about
 -- `0.5 * ulp_f64(1)`, so `1.1e-16 / t` is the envelope on the relative
--- error. Measured on that form, the f64 subtraction is 5e-9 relative at
--- `t = 1e-8`, 7e-8 at `1e-10`, 2.2e-5 at `1e-12`, 11% high at `1e-16`, and
--- exactly `0.0` from `t = 1e-17` down. `weibull_cdf(1e-8, 2, 1)` reaches
--- `t = 1e-16` from ordinary arguments. The series has no such floor.
+-- error, which degrades without bound as `t` shrinks and reaches exactly
+-- `0.0` a little below `t = 1e-16`. `weibull_cdf(1e-8, 2, 1)` reaches
+-- `t = 1e-16` from ordinary arguments. The series has no such floor. Three
+-- tests pin points on that ladder, and the f64-only form fails all three;
+-- the figures are in those tests rather than here, so there is one place to
+-- correct if the lane's `exp` ever changes its last bit.
 --
 -- The cut is `1/16`. Below it the sum keeps terms through `t^10/10!`, so the
 -- first omitted term is `t^11/11!`, which at the cut is `2.3e-20` of the
@@ -65,12 +67,14 @@ def exponential_pdf(x: f32, rate: f32) -> f32 =
 -- branches are therefore far inside the half f32 ulp the return rounds to.
 --
 -- The term count is set by that derivation and not by the smallest count an
--- f32 return happens to accept. Four terms put the truncation at `1.3e-7` of
--- the result at the cut, which f32 does resolve: one f32 ulp there is
--- `1.2e-7`, so a four-term form returns a different f32 and a test can see
--- it. Five, six and ten terms are bit-identical at every f32 argument
--- measured, so an f32 test pins the count at five or more and can go no
--- higher. Ten is what keeps `expm1_neg_d` correct as an f64 function, so a
+-- f32 return happens to accept. Four terms put the truncation at about
+-- `1.3e-7` of the result at the cut, which is two f32 ulps there, so a
+-- four-term form returns a different f32 and a test does reject it. Five
+-- terms and ten are indistinguishable at every argument in the accuracy
+-- grid; they part only at arguments whose exact answer sits within a percent
+-- or so of an f32 midpoint, where the five-term value is still within about
+-- half an ulp, so a test built on one would be a near-tie rather than a
+-- contract. Ten is what keeps `expm1_neg_d` correct as an f64 function, so a
 -- later f64 caller inherits a bound rather than a coincidence.
 --
 -- The series window is `[0, 1/16)` and not `(-inf, 1/16)` on purpose. A
@@ -526,9 +530,9 @@ def weibull_pdf(x: f32, shape: f32, scale: f32) -> f32 =
   }
 -- `(x/scale)^shape` is formed in f64 as well as complemented there. The f32
 -- round trip through `exp(shape * log(x/scale))` carries relative error of
--- about `eps_f32 * |log(x/scale)|`, which is `1.1e-6` at `x/scale = 1e-8`
--- even for `shape = 1`, so an exact complement of an f32 `t` would still have
--- lost the sixth digit before `expm1_neg_d` saw it.
+-- half an f32 ulp of `log(x/scale)`, amplified by `exp`, which is `1.1e-6` at
+-- `x/scale = 1e-8` even for `shape = 1`, so an exact complement of an f32 `t`
+-- would still have lost the sixth digit before `expm1_neg_d` saw it.
 def weibull_cdf(x: f32, shape: f32, scale: f32) -> f32 =
   if lt(x, zero_f()) then zero_f() else if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else {
     xl = div(cast(x, f64), cast(scale, f64))

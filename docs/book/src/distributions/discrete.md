@@ -44,8 +44,8 @@ at shape `k + 1`.
 
 The CDF reads that function as the upper tail `Q` rather than as
 `1 - P`, so a left tail far below the mean keeps its digits:
-`poisson_cdf(10, 50)` is 6.450134e-12, six digits of a reference
-6.4501529e-12. Subtracting `P` from 1 returned 0 for every value under about
+`poisson_cdf(10, 50)` is 6.450134e-12, five significant digits of a
+reference 6.4501529e-12. Subtracting `P` from 1 returned 0 for every value under about
 6e-8.
 
 ## Binomial

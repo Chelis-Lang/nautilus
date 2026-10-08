@@ -10,7 +10,7 @@ CDF's own small value, which no survival function can reach.
   `gamma_cdf` returns a value near `1.0` for `lambda >> k`, so the whole left
   tail arrived as `0.0`. It now returns `gamma_sf(lambda, k+1, 1)`, the same
   quantity `Q(k+1, lambda)` with no round trip through `1.0`.
-  `poisson_cdf(10, 50)` returns `6.450134e-12` where it returned `0.0`, six
+  `poisson_cdf(10, 50)` returns `6.450134e-12` where it returned `0.0`, five
   significant digits against a true `6.4501529e-12`. The remaining 2.9e-6 is
   `gamma_sf`'s, not the complement's, and the last paragraphs below say why.
   `gamma_sf`'s branch point is the one this needs: a small
@@ -23,9 +23,10 @@ CDF's own small value, which no survival function can reach.
   `t = 1/16` and subtracting above it. `exponential_cdf(1e-8, 1.0)` is `1e-8`
   and `exponential_cdf(1e-20, 1.0)` is `1e-20`, both previously `0.0`.
   `weibull_cdf` forms `(x/scale)^shape` in f64 too: in f32 the round trip
-  through `exp(shape * log(x/scale))` carries `eps_f32 * |log(x/scale)|`,
-  which is 1.1e-6 at `x/scale = 1e-8` even for `shape = 1`, so an exact
-  complement of an f32 `t` would still have lost the sixth digit.
+  through `exp(shape * log(x/scale))` carries half an f32 ulp of
+  `log(x/scale)`, amplified by `exp`, which is 1.1e-6 at `x/scale = 1e-8`
+  even for `shape = 1`, so an exact complement of an f32 `t` would still have
+  lost the sixth digit.
 
 **No new primitive was needed, and none was available.** The issue expected
 this half to block on an upstream `expm1`. Chelis has neither `expm1` nor
@@ -37,14 +38,14 @@ builtin.
 
 **Evaluating in f64 alone would not have been enough**, which is why the
 series exists. It moves the collapse rather than removing it: the absolute
-error becomes `0.5 * ulp_f64(1.0)`, so `1.1e-16 / t` is the envelope on the
-relative error. Measured on an f64-only build, through the same f32 return:
-indistinguishable from the series at `t = 1e-8` and `t = 1e-9`, 8.7e-8
-relative at `1e-10`, 2.2e-5 at `1e-12`, 8.0e-4 at `1e-15`, 11% high at
-`1e-16`, and exactly `0.0` from `t = 1e-17` down.
-`weibull_cdf(1e-8, 2, 1)` reaches `t = 1e-16` from ordinary arguments and
-`exponential_cdf(1e-20, 1.0)` is well inside the dead band; tests pin three
-points on that ladder, and the f64-only form fails all three.
+error becomes `0.5 * ulp_f64(1.0)`, so `1.1e-16 / t` bounds the relative
+error, which degrades without bound as `t` shrinks. Measured on an f64-only
+build through the same f32 return, it first leaves half an f32 ulp between
+`t = 1e-9` and `t = 1e-10`, is 2.2e-5 at `1e-12`, 11% high at `1e-16`, and
+exactly `0.0` at `1e-17`. `weibull_cdf(1e-8, 2, 1)` reaches `t = 1e-16` from
+ordinary arguments and `exponential_cdf(1e-20, 1.0)` is well inside the dead
+band; three tests pin points on that ladder, and the f64-only form fails all
+three.
 
 Measured against the f64 value of each defining expression, rounded once to
 f32, with every argument first rounded to f32 so the reference answers the
@@ -61,26 +62,29 @@ side of the `1/16` cut, and twelve ordinary values, each at rates
 | arguments with an answer that is a normal f32 | 70 | 141 | 130 |
 | of those, exactly `0.0` before | 20 | 70 | 36 |
 | of those, exactly `0.0` after | 0 | 0 | 0 |
-| worst relative error after | 7.2e-5 | 9.0e-8 | 9.5e-8 |
+| of those, the correctly rounded f32 after | 12 | **141** | **130** |
+| worst relative error after | 7.2e-5 | 5.5e-8 | 5.7e-8 |
 
-`exponential_cdf` and `weibull_cdf` are inside one f32 ulp across the whole
-grid. Rounding error oscillates and no finite sample locates its maximum, so
-read those two figures as the absence of anything above the ulp floor rather
-than as a located peak.
+**`exponential_cdf` and `weibull_cdf` return the correctly rounded f32 at
+every argument in the grid**, so neither is even half an f32 ulp out anywhere
+in it. That is a stronger claim than an error figure and the one to rely on;
+the two worst-error numbers are just the f32 rounding itself. Rounding error
+oscillates and no finite sample locates a maximum, so calibrate against a
+reference over the parameters your own calculation visits.
 
 `poisson_cdf` is a different case: its own complement is gone, and what is
 left is the gamma family's limit. `gammaq`'s front factor
 `exp(a*ln x - x - lgamma(a))` is still formed in f32, where one rounding of a
 term near 850 is an absolute 6e-5 in the exponent. That is 7.2e-5 relative at
 `poisson_cdf(160, 200)` here and 6.8e-5 on the previous spelling, so it is not
-this change's error. Seven of the 70 rows are relatively worse than before, by
+this change's error. Seven of its 70 rows are relatively worse than before, by
 at most 3.8e-6, all of them mid-range values the old double complement
-happened to round favourably; one `exponential_cdf` row is worse by 4.9e-8 and
-one `weibull_cdf` row by 2.7e-8, both under half an f32 ulp.
+happened to round favourably. **No `exponential_cdf` or `weibull_cdf` row is
+worse anywhere in the grid.**
 
 Two limits are f32's and remain. Two `poisson_cdf` arguments in the grid have
 a true value between `1.2e-38` and `1.4e-45`, which is subnormal and carries
-only a few bits; both were `0.0` before and are now within a third of one
+only a few bits; both were `0.0` before and are now within a quarter of one
 subnormal spacing. Four have a true value below half the smallest subnormal,
 where `0.0` is the correctly rounded f32 answer, and they return `0.0` both
 before and after.
@@ -98,11 +102,10 @@ arguments with a reference at or above 1e-3 move, and 16 of the 64 at or above
 `exponential_cdf(0.25, 1.5)` was `0.3127107` and is `0.31271073` against
 `0.312710721`.
 
-**Every one of those ordinary-range moves is toward the reference**, 70 of the
-72 at or above 1e-3 and all 16 at or above 0.1; the two exceptions are the
-4.9e-8 and 2.7e-8 rows named above. So the change is an accuracy improvement
-across the range and not only at the edge, but it is not a no-op anywhere, and
-"values change" above should be read literally.
+**Every one of those ordinary-range moves is toward the reference**, all 72 at
+or above 1e-3 and all 16 at or above 0.1. So the change is an accuracy
+improvement across the range and not only at the edge, but it is not a no-op
+anywhere, and "values change" above should be read literally.
 
 A negative rate is not a distribution and neither spelling rejects it, so
 those answers move as well, and by more than a last digit where they had

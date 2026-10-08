@@ -171,23 +171,24 @@ reach it. Both complement in f64 and sum a Maclaurin series for `1 - exp(-t)`
 below `t` of 1/16, so they keep relative precision rather than absolute.
 `exponential_cdf(1e-8, 1.0)` is 1e-8, and `weibull_cdf(1e-8, 2.0, 1.0)` is
 1e-16, which an f64 subtraction gets 11% high and which it returns as 0 once
-`t` falls below about 1e-17. Over a sweep of `t`
-from about 1e-30 to 30, three rates, five shapes and two scales, the largest
-relative error seen is 9.5e-8, under one f32 ulp. Rounding error oscillates
-and no finite sample locates its maximum, so read that as the absence of
-anything above the ulp floor and not as a measured peak.
+`t` falls below about 1e-17. Over a sweep of `t` from about 1e-30 to 30, three
+rates, five shapes and two scales, both functions return the correctly rounded
+f32 at every argument, so neither is half an f32 ulp out anywhere in it.
+Rounding is still rounding: calibrate against a reference over the parameters
+your own calculation visits rather than reading a guarantee out of a finite
+sweep.
 
 `weibull_cdf` forms `(x/scale)^shape` in f64 as well. In f32 that round trip
-through `exp(shape * log(x/scale))` carries about `eps_f32` times
-`|log(x/scale)|`, which is 1.1e-6 at an `x/scale` of 1e-8 even when `shape` is
-1, so an exact complement of an f32 argument would still have lost the sixth
-digit.
+through `exp(shape * log(x/scale))` carries half an f32 ulp of
+`log(x/scale)`, amplified by `exp`. That is 1.1e-6 at an `x/scale` of 1e-8
+even when `shape` is 1, so an exact complement of an f32 argument would still
+have lost the sixth digit.
 
 `poisson_cdf` lost its left tail the same way, spelled
 `1 - gamma_cdf(lambda, k+1, 1)`. It returns `gamma_sf(lambda, k+1, 1)`
 instead, the same quantity `Q(k+1, lambda)` with no round trip through 1.0, so
-`poisson_cdf(10, 50)` is 6.450134e-12 rather than 0, against a reference of
-6.4501529e-12. Its accuracy is the gamma
+`poisson_cdf(10, 50)` is 6.450134e-12 rather than 0, five significant digits
+of a reference 6.4501529e-12. Its accuracy is the gamma
 family's now: the complement is gone, but `gammaq`'s front factor is still
 formed in f32, where one rounding of a term near 850 is an absolute 6e-5 in an
 exponent, and that reaches 7.2e-5 relative at `poisson_cdf(160, 200)`. Below

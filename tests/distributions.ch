@@ -1001,11 +1001,11 @@ def test_binomial_cdf_forms_its_beta_parameters_in_f64() -> unit ! { Test } = {
 -- f32 so the reference answers the call that is actually made. Over a sweep
 -- of 141 `exponential_cdf` and 130 `weibull_cdf` points whose answer is a
 -- normal f32 -- `t` from 2.5e-31 to 30, three rates, five shapes, two scales
--- -- the largest relative error observed is 9.5e-8. That is under one f32
--- ulp, which is the floor a correctly rounded return would have anyway, so
--- the sweep is evidence that nothing above that floor is left rather than a
--- located maximum; rounding error oscillates and no finite sample finds its
--- peak. These tests use 2e-7, two f32 half ulps.
+-- -- every answer is the correctly rounded f32: all 141 and all 130 equal
+-- the reference rounded once to f32, so nothing in the grid is even half an
+-- f32 ulp out. These tests use 2e-7, which is a little under two f32 ulps,
+-- and the three mutation guards further down pick tighter bounds from the
+-- separations they measure.
 --
 -- `poisson_cdf` inherits `gamma_sf`'s accuracy instead: its own
 -- complement is gone, but `gammaq`'s front factor `exp(a*ln x - x -
@@ -1071,12 +1071,12 @@ def test_exponential_cdf_small_x_keeps_significant_digits() -> unit ! { Test } =
 def test_exponential_cdf_holds_below_the_f64_subtraction_floor() -> unit ! { Test } = {
   -- These two are the reason the series exists rather than an f64
   -- subtraction. `1 - exp(-t)` evaluated in f64 has absolute error about
-  -- `0.5 * ulp_f64(1.0)` = 1.1e-16. Measured on that form through this f32
-  -- return: indistinguishable from the series at `t = 1e-8` and `1e-9`,
-  -- 8.7e-8 relative at `1e-10`, 2.2e-5 at `1e-12`, 8.0e-4 at `1e-15`, 11%
-  -- high at `1e-16`, and exactly 0.0 from `t = 1e-17` down. Both arguments
-  -- below are inside that dead band, and the f64-only form fails this test
-  -- on the first of them.
+  -- `0.5 * ulp_f64(1.0)` = 1.1e-16, so its relative error grows without
+  -- bound as `t` shrinks: measured on an f64-only build through this f32
+  -- return, it first leaves half an f32 ulp between `t = 1e-9` and `1e-10`,
+  -- is 2.2e-5 at `1e-12`, 11% high at `1e-16`, and exactly 0.0 at `1e-17`.
+  -- Both arguments below are inside that last band, and the f64-only form
+  -- returns 0.0 for each.
   d0 = exponential_cdf(cast(1e-20, f32), cast(1.0, f32))
   d1 = exponential_cdf(cast(1e-30, f32), cast(1.0, f32))
   _ = assert_true(gt(d0, cast(0.0, f32)), "exponential_cdf(1e-20, 1) is strictly positive")
@@ -1091,9 +1091,8 @@ def test_exponential_cdf_is_seamless_across_the_series_cut() -> unit ! { Test } 
   -- with each other: three f32 neighbours of 0.0625 differ by 9.3e-8 in the
   -- answer, which a series short enough to be wrong at the cut cannot match.
   -- Measured against this test, a three-term series fails here and a
-  -- four-term one passes, so this point alone pins the count at four or more.
-  -- A four-term series is visible to f32: it is 1.1e-7 from the reference
-  -- here against this test's 2e-7 bound, and
+  -- four-term one passes, so this point alone pins the count at four or
+  -- more. A four-term series is visible to f32, just not at this bound:
   -- `test_exponential_cdf_series_runs_to_its_full_term_count` below picks an
   -- argument and a bound that reject it.
   c0 = exponential_cdf(cast(0.0624999, f32), cast(1.0, f32))
@@ -1126,10 +1125,11 @@ def test_exponential_cdf_negative_rate_stays_on_the_subtraction() -> unit ! { Te
 }
 def test_weibull_cdf_small_x_keeps_significant_digits() -> unit ! { Test } = {
   -- `weibull_cdf(1e-8, 2, 1)` reaches `t = 1e-16` from ordinary arguments,
-  -- which is where an f64 subtraction is itself exactly 0.0. `(x/scale)^shape`
-  -- is formed in f64 too: the f32 round trip through `exp(shape * log(x/scale))`
-  -- carries `eps_f32 * |log(x/scale)|`, which is 1.1e-6 at `x/scale = 1e-8`
-  -- even for `shape = 1`.
+  -- which is where an f64 subtraction is already 11% high and two decades
+  -- from returning 0.0. `(x/scale)^shape` is formed in f64 too: the f32
+  -- round trip through `exp(shape * log(x/scale))` carries half an f32 ulp
+  -- of `log(x/scale)`, amplified by `exp`, which is 1.1e-6 at
+  -- `x/scale = 1e-8` even for `shape = 1`.
   w0 = weibull_cdf(cast(1e-8, f32), cast(1.0, f32), cast(1.0, f32))
   w1 = weibull_cdf(cast(1e-8, f32), cast(2.0, f32), cast(1.0, f32))
   w2 = weibull_cdf(cast(0.00001, f32), cast(3.0, f32), cast(1.0, f32))
@@ -1153,11 +1153,11 @@ def test_weibull_cdf_ordinary_arguments_are_unmoved() -> unit ! { Test } = {
 }
 def test_exponential_cdf_series_runs_to_its_full_term_count() -> unit ! { Test } = {
   -- The seam test above is satisfied by a four-term series. This one is not.
-  -- At `t = 0.0624` the shipped ten-term form is 6.7e-9 from the reference
-  -- and a four-term form is 1.59e-7, so 5e-8 separates them by a factor of
-  -- seven on one side and three on the other. Five, six and ten terms are
-  -- bit-identical here, measured, so this pins the count at five or more and
-  -- no f32 test can pin it higher.
+  -- At this argument the shipped form returns the correctly rounded f32 and
+  -- a four-term form returns a value two ulps below it, so the bound admits
+  -- only the former. Five and six terms return the same f32 as ten here, so
+  -- this pins the count at five or more; see the note in
+  -- `Nautilus.Distributions` for why no robust f32 argument pins it higher.
   v = exponential_cdf(cast(0.0624, f32), cast(1.0, f32))
   assert_true(lt(dist_rel_err(v, cast(0.06049299, f32)), cast(5e-8, f32)), "exponential_cdf(0.0624, 1) = 0.06049299")
 }
@@ -1165,10 +1165,11 @@ def test_exponential_cdf_series_covers_the_whole_window_to_the_cut() -> unit ! {
   -- The cut is as unpinned as the term count was unless something measures
   -- inside the window but above the dead band. Lowering `expm1_cut` from
   -- 1/16 to 1e-10 disables the series across `[1e-10, 1/16)` and every other
-  -- test here stays green. At `t = 3e-10` the subtraction returns the f32
-  -- neighbour above the correctly rounded answer, 7.7e-8 from the reference,
-  -- where the series returns the correctly rounded value at 9.9e-9. One f32
-  -- ulp is 1.2e-7 relative here, so a 3e-8 bound admits only that value.
+  -- test here stays green. At this argument the series returns the correctly
+  -- rounded f32 and the subtraction returns its neighbour one ulp above, so
+  -- a bound below one ulp admits only the former. The exact answer sits
+  -- about half a percent from the f32 midpoint, so this is a property of the
+  -- argument and not a near-tie.
   v = exponential_cdf(cast(3e-10, f32), cast(1.0, f32))
   assert_true(lt(dist_rel_err(v, cast(3e-10, f32)), cast(3e-8, f32)), "exponential_cdf(3e-10, 1) = 3e-10")
 }
@@ -1176,12 +1177,12 @@ def test_exponential_cdf_forms_its_rate_product_in_f64() -> unit ! { Test } = {
   -- `rate * x` is formed in f64, where the product of two f32 significands
   -- is exact. Forming it in f32 first and widening afterwards costs at most
   -- half an f32 ulp of `t`, and for a small `t` that transfers whole to the
-  -- answer, so the most this can be is about one ulp of the return. These
-  -- two pairs are chosen for that: the f32 product rounds near a tie, and
-  -- the returned f32 changes. Measured, the shipped form is 9.2e-9 and
-  -- 7.0e-9 from the reference and the f32-product form is 5.6e-8 and 4.2e-8,
-  -- so 2e-8 separates them. The first `t` is 0.031, inside the series
-  -- window; the second is 0.063, on the subtraction.
+  -- answer, so what this buys is bounded by about one ulp of the return and
+  -- a test can pin it only one argument at a time. Both pairs are chosen for
+  -- that: the f32 product rounds near a tie, the shipped form returns the
+  -- correctly rounded f32, and the f32-product form returns the neighbour
+  -- one ulp away. The first `t` is 0.031, inside the series window; the
+  -- second is 0.063, on the subtraction.
   p0 = exponential_cdf(cast(0.017, f32), cast(1.84, f32))
   p1 = exponential_cdf(cast(0.0255, f32), cast(2.49, f32))
   _ = assert_true(lt(dist_rel_err(p0, cast(0.030795844, f32)), cast(2e-8, f32)), "exponential_cdf(0.017, 1.84) = 0.030795844")
