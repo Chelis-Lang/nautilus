@@ -43,6 +43,7 @@ Two cases need separate guidance:
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
+| `poisson_pmf`, `binomial_pmf` | below 2e-6 up to `lambda` of 1e8 and `n` of 2e8 | Log space in f64; past that, limited by f64's spacing at `ln(k!)`, see the note below |
 | Beta-family CDFs | below 2e-6 over a stated parameter range | `beta_cdf`, `f_cdf`, `student_t_cdf`, `binomial_cdf`; the range is part of the figure, see the note below |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
@@ -143,6 +144,49 @@ is usually the better answer.
 The error is driven by rounding, so it oscillates in every parameter and no
 finite set of sample points locates its maximum. Calibrate tolerances against a
 reference over the parameters your calculation actually uses.
+
+### The discrete PMFs are limited by the size of `ln(k!)`, not by the count
+
+`poisson_pmf` and `binomial_pmf` are exponentials of a log-space expression
+whose dominant term is `ln(Gamma(k + 1)) = ln(k!)`. An absolute error in that
+term is a *multiplicative* error in the answer, and `ln(k!)` grows without
+bound: 1.05e6 at `k = 1e5` and 1.74e9 at `k = 1e8`. The precision of the
+arithmetic that forms it therefore sets the accuracy of the result, and the
+count itself never overflows anything.
+
+Both evaluate that expression in f64 and return an f32. In f32 the error was
+5.2% at `poisson_pmf(1e5, 1e5)` and 15% at `binomial_pmf(1e5, 2e5, 0.5)`, and
+above `k = 16777216` the `+ 1` in `k + 1` vanished -- the spacing of f32
+values at 5e7 is 4 -- so `binomial_pmf(5e7, 1e8, 0.5)` returned `inf` and
+`poisson_pmf(5e7, 5e7)` returned 1.0. Neither is a probability, which is the
+cheapest way to notice the defect but not its boundary: the error was
+continuous in the parameter rather than a cliff at 2^24, already 0.13% at
+`binomial_pmf(1e3, 2e3, 0.5)` and 5.4e-6 at `binomial_pmf(100, 200, 0.5)`.
+
+The same bound now applies one dtype up, and it is a gate rather than a
+sentence:
+
+> Relative error stays below 2e-6 for `lambda` up to 1e8 and for `n` up to
+> 2e8, at every `p`.
+
+`parity/check_pmf_accuracy.py` measures both functions against SciPy on every
+CI run, at and beyond those ceilings, and fails if the bound is exceeded
+inside the range. One f64 ulp of `ln(k!)` is 3.8e-6 at `k = 1e9`, and the gate
+measures 3.8e-6 for `poisson_pmf` and 3.5e-6 for `binomial_pmf` there: the
+error *is* that rounding, so it is a property of the dtype rather than
+something a better algorithm would remove. Nothing in the result signals it,
+so outside the range calibrate against a reference over your own parameters.
+
+Seven rows are additionally pinned by name against SciPy references in
+`tests/distributions.ch`, from `k = 1e3` to `k = 5e7`. `p` is part of the
+claim, not an afterthought: the worst in-range case is at `p = 0.999999`, and
+a first version of the gate's grid admitted only exactly-representable
+arguments, which silently discarded every skewed `p` and left the large-`n`
+figure resting on `p = 0.5` alone.
+
+Note also that f32 cannot represent consecutive integers above 16777216, so a
+count passed as an f32 above that is already on a grid coarser than 1. If your
+counts are that large, the dtype is the first thing to fix.
 
 ### Cancellation in subtraction-heavy expressions
 
