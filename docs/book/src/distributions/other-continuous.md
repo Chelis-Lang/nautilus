@@ -49,7 +49,13 @@ Parameterized by `rate` (lambda), not scale: the mean is `1 / rate`.
 With `rate = 0` the PDF and CDF are 0 everywhere and `exponential_inv_cdf`
 returns +inf. A negative rate gives negative values:
 `exponential_pdf(1, -1)` is `-2.7182817` and `exponential_cdf(1, -1)` is
-`-1.7182817`.
+`-1.7182819`.
+
+The CDF complements in f64, and below a `rate * x` of 1/16 it sums a Maclaurin
+series for `1 - exp(-rate * x)` rather than subtracting. A small `x` therefore
+keeps its digits: `exponential_cdf(1e-8, 1.0)` is 1e-8 and
+`exponential_cdf(1e-20, 1.0)` is 1e-20, where the subtraction returned 0. The
+[precision guide](../appendix/precision.md) states the error over the range.
 
 ## LogNormal
 
@@ -102,6 +108,12 @@ before the parameters are read: x < 0 gives 0, and q = 0 or q = 1 gives 0 or
 +inf. At x = 0 the PDF is 0 for shape > 1, `1/scale` for shape = 1, and +inf
 for shape < 1.
 
+`weibull_cdf` forms both `(x/scale)^shape` and its complement in f64, and
+below a `(x/scale)^shape` of 1/16 it sums a Maclaurin series for `1 - exp(-t)`
+rather than subtracting. `weibull_cdf(1e-8, 2.0, 1.0)` is therefore 1e-16
+rather than 0. The [precision guide](../appendix/precision.md) states the
+error over the range.
+
 ## Beta
 
 Parameterized by shape parameters `a` and `b`, both positive.
@@ -144,8 +156,10 @@ this family.
 
 ## Pitfalls
 
-- `exponential_cdf` and `weibull_cdf` compute `1 - exp(..)`, which loses
-  small values: `exponential_cdf(1e-8, 1.0)` is exactly 0, though the true
-  value is 1e-8. See the [precision guide](../appendix/precision.md).
+- The tables above give each CDF as `1 - exp(..)`, which is its definition
+  and not how it is evaluated. Subtracting that way loses every small value,
+  so both functions complement in f64 through a series instead. Their own
+  small values are sound; what still loses everything below about 6e-8 is a
+  caller writing `1 - exponential_cdf(x, rate)` for the upper tail.
 - Only the gamma family has survival functions. For the upper tail of these
   families, subtracting the CDF from 1 loses everything below about 6e-8.

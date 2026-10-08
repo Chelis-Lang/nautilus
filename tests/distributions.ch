@@ -983,3 +983,167 @@ def test_binomial_cdf_forms_its_beta_parameters_in_f64() -> unit ! { Test } = {
   -- and it is not the 0.5 the f32 arithmetic produced, which is the whole point
   assert_true(gt(v, cast(0.5000199, f32)), "and it is not exactly 0.5, which is what losing the +1 gives")
 }
+-- nautilus#139: three CDFs computed a small probability as a difference of
+-- near-equal values, and so returned exactly `0.0` at ordinary inputs. This
+-- is #137's class on a different surface: there the lost quantity was a right
+-- tail a survival function could compute directly, here it is the CDF's own
+-- small value, which no survival function can reach.
+--
+-- `poisson_cdf` spelled `1 - gamma_cdf(lambda, k+1, 1)` and now returns
+-- `gamma_sf(lambda, k+1, 1)`, which is the same quantity `Q(k+1, lambda)`
+-- without the round trip through 1.0. `exponential_cdf` and `weibull_cdf`
+-- spelled `1 - exp(-t)` and now complement in f64 through a Maclaurin series
+-- below `t = 1/16`.
+--
+-- Every reference below is the f64 value of the defining expression, rounded
+-- once to f32: `scipy.special.gammaincc(k+1, lambda)` for `poisson_cdf` and
+-- `-math.expm1(-t)` for the other two, with every argument first rounded to
+-- f32 so the reference answers the call that is actually made. Over a sweep
+-- of 141 `exponential_cdf` and 130 `weibull_cdf` points whose answer is a
+-- normal f32 -- `t` from 2.5e-31 to 30, three rates, five shapes, two scales
+-- -- the largest relative error observed is 9.5e-8. That is under one f32
+-- ulp, which is the floor a correctly rounded return would have anyway, so
+-- the sweep is evidence that nothing above that floor is left rather than a
+-- located maximum; rounding error oscillates and no finite sample finds its
+-- peak. These tests use 2e-7, two f32 half ulps.
+--
+-- `poisson_cdf` inherits `gamma_sf`'s accuracy instead: its own
+-- complement is gone, but `gammaq`'s front factor `exp(a*ln x - x -
+-- lgamma(a))` is still formed in f32, where one rounding of a term near 850
+-- is an absolute 6e-5 in the exponent. That reaches 7.2e-5 relative at
+-- `poisson_cdf(160, 200)` on this branch and 6.8e-5 on the branch before it,
+-- so it is the gamma family's limit and not this change's.
+def test_poisson_cdf_left_tail_keeps_significant_digits() -> unit ! { Test } = {
+  -- `1 - gamma_cdf` returned exactly 0.0 at all three of these.
+  p10_50 = poisson_cdf(cast(10.0, f32), cast(50.0, f32))
+  p2_30 = poisson_cdf(cast(2.0, f32), cast(30.0, f32))
+  p0_50 = poisson_cdf(cast(0.0, f32), cast(50.0, f32))
+  _ = assert_true(gt(p10_50, cast(0.0, f32)), "poisson_cdf(10, 50) is strictly positive")
+  _ = assert_true(lt(dist_rel_err(p10_50, cast(6.450153e-12, f32)), cast(0.00001, f32)), "poisson_cdf(10, 50) = 6.450153e-12")
+  _ = assert_true(gt(p2_30, cast(0.0, f32)), "poisson_cdf(2, 30) is strictly positive")
+  _ = assert_true(lt(dist_rel_err(p2_30, cast(4.5010166e-11, f32)), cast(0.00001, f32)), "poisson_cdf(2, 30) = 4.5010166e-11")
+  _ = assert_true(gt(p0_50, cast(0.0, f32)), "poisson_cdf(0, 50) is strictly positive")
+  assert_true(lt(dist_rel_err(p0_50, cast(1.9287499e-22, f32)), cast(0.00001, f32)), "poisson_cdf(0, 50) = 1.9287499e-22")
+}
+def test_poisson_cdf_left_tail_at_a_large_shape_is_bounded_by_the_gamma_family() -> unit ! { Test } = {
+  -- `poisson_cdf(60, 120)` is a fourth collapse the issue did not list: it
+  -- returned exactly 0.0 against a true 1.0224334e-9, which is a normal f32.
+  -- It needs 1e-4 rather than 1e-5 because `gamma_sf` reaches it through
+  -- `gammaq(61, 120)`, whose f32 front factor loses 2.5e-5 here. The
+  -- collapse is gone; what is left is the gamma family's own limit.
+  v = poisson_cdf(cast(60.0, f32), cast(120.0, f32))
+  _ = assert_true(gt(v, cast(0.0, f32)), "poisson_cdf(60, 120) is strictly positive")
+  assert_true(lt(dist_rel_err(v, cast(1.0224334e-9, f32)), cast(0.0001, f32)), "poisson_cdf(60, 120) = 1.0224334e-9")
+}
+def test_poisson_cdf_left_tail_edge_that_was_already_degrading() -> unit ! { Test } = {
+  -- `poisson_cdf(5, 20)` did not collapse: it returned 7.18832e-5, which is
+  -- 0.036% low. A test that only asserted non-zero would have passed on the
+  -- old spelling here.
+  v = poisson_cdf(cast(5.0, f32), cast(20.0, f32))
+  _ = assert_true(lt(dist_rel_err(v, cast(0.00007190884, f32)), cast(0.00001, f32)), "poisson_cdf(5, 20) = 7.190884e-5")
+  assert_true(gt(v, cast(0.000071899, f32)), "and it is above the 7.18832e-5 the subtraction returned")
+}
+def test_poisson_cdf_ordinary_regime_is_unmoved() -> unit ! { Test } = {
+  -- Where `lambda < k + 2`, `gamma_sf` takes its own `1 - gammap` branch, so
+  -- this is the identical expression to the one the old spelling reduced to.
+  -- `poisson_cdf(64, 80)` is past that branch point and carries the gamma
+  -- family's f32 front-factor error, which is why it needs 1e-4.
+  v3 = poisson_cdf(cast(3.0, f32), cast(2.0, f32))
+  v20 = poisson_cdf(cast(20.0, f32), cast(5.0, f32))
+  v64 = poisson_cdf(cast(64.0, f32), cast(80.0, f32))
+  _ = assert_true(lt(dist_rel_err(v3, cast(0.85712343, f32)), cast(0.00001, f32)), "poisson_cdf(3, 2) = 0.85712343")
+  _ = assert_true(lt(dist_rel_err(v20, cast(0.99999994, f32)), cast(0.00001, f32)), "poisson_cdf(20, 5) = 0.99999994")
+  assert_true(lt(dist_rel_err(v64, cast(0.037977483, f32)), cast(0.0001, f32)), "poisson_cdf(64, 80) = 0.037977483")
+}
+def test_exponential_cdf_small_x_keeps_significant_digits() -> unit ! { Test } = {
+  -- All three returned exactly 0.0 before, except 1e-6 which returned a
+  -- value with no digits below `0.5 * ulp(1.0)` = 6e-8.
+  e0 = exponential_cdf(cast(1e-6, f32), cast(1.0, f32))
+  e1 = exponential_cdf(cast(1e-8, f32), cast(1.0, f32))
+  e2 = exponential_cdf(cast(1e-9, f32), cast(1.0, f32))
+  _ = assert_true(gt(e0, cast(0.0, f32)), "exponential_cdf(1e-06, 1) is strictly positive")
+  _ = assert_true(lt(dist_rel_err(e0, cast(9.999995e-7, f32)), cast(2e-7, f32)), "exponential_cdf(1e-06, 1) = 9.999995e-7")
+  _ = assert_true(gt(e1, cast(0.0, f32)), "exponential_cdf(1e-08, 1) is strictly positive")
+  _ = assert_true(lt(dist_rel_err(e1, cast(1e-8, f32)), cast(2e-7, f32)), "exponential_cdf(1e-08, 1) = 1e-8")
+  _ = assert_true(gt(e2, cast(0.0, f32)), "exponential_cdf(1e-09, 1) is strictly positive")
+  assert_true(lt(dist_rel_err(e2, cast(1e-9, f32)), cast(2e-7, f32)), "exponential_cdf(1e-09, 1) = 1e-9")
+}
+def test_exponential_cdf_holds_below_the_f64_subtraction_floor() -> unit ! { Test } = {
+  -- These two are the reason the series exists rather than an f64
+  -- subtraction. `1 - exp(-t)` evaluated in f64 has absolute error about
+  -- `0.5 * ulp_f64(1.0)` = 1.1e-16. Measured on that form it is 0.08% wrong
+  -- at `t = 1e-15`, 11% high at `t = 1e-16`, and exactly 0.0 from
+  -- `t = 1e-17` down. Both arguments below are inside that dead band, and
+  -- the f64-only form fails this test on the first of them.
+  d0 = exponential_cdf(cast(1e-20, f32), cast(1.0, f32))
+  d1 = exponential_cdf(cast(1e-30, f32), cast(1.0, f32))
+  _ = assert_true(gt(d0, cast(0.0, f32)), "exponential_cdf(1e-20, 1) is strictly positive")
+  _ = assert_true(lt(dist_rel_err(d0, cast(1e-20, f32)), cast(2e-7, f32)), "exponential_cdf(1e-20, 1) = 1e-20")
+  _ = assert_true(gt(d1, cast(0.0, f32)), "exponential_cdf(1e-30, 1) is strictly positive")
+  assert_true(lt(dist_rel_err(d1, cast(1e-30, f32)), cast(2e-7, f32)), "exponential_cdf(1e-30, 1) = 1e-30")
+}
+def test_exponential_cdf_is_seamless_across_the_series_cut() -> unit ! { Test } = {
+  -- The cut is `t = 1/16`. The point below it is the series at its worst,
+  -- where the first omitted term is largest; the point above it is the f64
+  -- subtraction at its most amplified. They must agree with the reference and
+  -- with each other: three f32 neighbours of 0.0625 differ by 9.3e-8 in the
+  -- answer, which a series short enough to be wrong at the cut cannot match.
+  -- Measured against this test, a three-term series fails here and a
+  -- four-term one passes, so this pins the count at four or more and not at
+  -- the ten the implementation keeps. Nothing an f32 return can see
+  -- distinguishes those; the count is argued from the truncation bound.
+  c0 = exponential_cdf(cast(0.0624999, f32), cast(1.0, f32))
+  c1 = exponential_cdf(cast(0.0625, f32), cast(1.0, f32))
+  c2 = exponential_cdf(cast(0.0625001, f32), cast(1.0, f32))
+  _ = assert_true(lt(dist_rel_err(c0, cast(0.060586844, f32)), cast(2e-7, f32)), "exponential_cdf(0.0624999, 1) = 0.060586844")
+  _ = assert_true(lt(dist_rel_err(c1, cast(0.060586937, f32)), cast(2e-7, f32)), "exponential_cdf(0.0625, 1) = 0.060586937")
+  _ = assert_true(lt(dist_rel_err(c2, cast(0.06058703, f32)), cast(2e-7, f32)), "exponential_cdf(0.0625001, 1) = 0.06058703")
+  assert_true(and(lt(c0, c1), lt(c1, c2)), "and the three stay strictly increasing across the cut")
+}
+def test_exponential_cdf_ordinary_arguments_are_unmoved() -> unit ! { Test } = {
+  a0 = exponential_cdf(cast(1.0, f32), cast(1.0, f32))
+  a1 = exponential_cdf(cast(2.0, f32), cast(1.0, f32))
+  a2 = exponential_cdf(cast(0.5, f32), cast(1.5, f32))
+  _ = assert_true(lt(dist_rel_err(a0, cast(0.63212055, f32)), cast(2e-7, f32)), "exponential_cdf(1, 1) = 0.63212055")
+  _ = assert_true(lt(dist_rel_err(a1, cast(0.86466473, f32)), cast(2e-7, f32)), "exponential_cdf(2, 1) = 0.86466473")
+  assert_true(lt(dist_rel_err(a2, cast(0.5276334, f32)), cast(2e-7, f32)), "exponential_cdf(0.5, 1.5) = 0.5276334")
+}
+def test_exponential_cdf_negative_rate_stays_on_the_subtraction() -> unit ! { Test } = {
+  -- A negative rate is not a distribution and nothing here decides it, but it
+  -- is admitted, so the series window is `[0, 1/16)` and not everything below
+  -- the cut. Widening it to `t < 1/16` sends `t = -50` to a truncated series
+  -- whose terms grow without bound, so this value pins the lower edge of the
+  -- window. `dist_rel_err` divides by its reference and cannot be used on a
+  -- negative one, so the check is on the ratio.
+  v = exponential_cdf(cast(50.0, f32), cast(-1.0, f32))
+  ratio = div(v, cast(-5.1847055e21, f32))
+  _ = assert_true(lt(v, cast(0.0, f32)), "exponential_cdf(50, -1) is still negative")
+  assert_true(lt(dist_rel_err(ratio, cast(1.0, f32)), cast(2e-7, f32)), "exponential_cdf(50, -1) = 1 - exp(50) = -5.1847055e21")
+}
+def test_weibull_cdf_small_x_keeps_significant_digits() -> unit ! { Test } = {
+  -- `weibull_cdf(1e-8, 2, 1)` reaches `t = 1e-16` from ordinary arguments,
+  -- which is where an f64 subtraction is itself exactly 0.0. `(x/scale)^shape`
+  -- is formed in f64 too: the f32 round trip through `exp(shape * log(x/scale))`
+  -- carries `eps_f32 * |log(x/scale)|`, which is 1.1e-6 at `x/scale = 1e-8`
+  -- even for `shape = 1`.
+  w0 = weibull_cdf(cast(1e-8, f32), cast(1.0, f32), cast(1.0, f32))
+  w1 = weibull_cdf(cast(1e-8, f32), cast(2.0, f32), cast(1.0, f32))
+  w2 = weibull_cdf(cast(0.00001, f32), cast(3.0, f32), cast(1.0, f32))
+  w3 = weibull_cdf(cast(0.001, f32), cast(1.5, f32), cast(2.0, f32))
+  _ = assert_true(gt(w0, cast(0.0, f32)), "weibull_cdf(1e-08, 1, 1) is strictly positive")
+  _ = assert_true(lt(dist_rel_err(w0, cast(1e-8, f32)), cast(2e-7, f32)), "weibull_cdf(1e-08, 1, 1) = 1e-8")
+  _ = assert_true(gt(w1, cast(0.0, f32)), "weibull_cdf(1e-08, 2, 1) is strictly positive")
+  _ = assert_true(lt(dist_rel_err(w1, cast(1e-16, f32)), cast(2e-7, f32)), "weibull_cdf(1e-08, 2, 1) = 1e-16")
+  _ = assert_true(gt(w2, cast(0.0, f32)), "weibull_cdf(1e-05, 3, 1) is strictly positive")
+  _ = assert_true(lt(dist_rel_err(w2, cast(9.999999e-16, f32)), cast(2e-7, f32)), "weibull_cdf(1e-05, 3, 1) = 9.999999e-16")
+  _ = assert_true(gt(w3, cast(0.0, f32)), "weibull_cdf(0.001, 1.5, 2) is strictly positive")
+  assert_true(lt(dist_rel_err(w3, cast(0.000011180278, f32)), cast(2e-7, f32)), "weibull_cdf(0.001, 1.5, 2) = 1.1180278e-5")
+}
+def test_weibull_cdf_ordinary_arguments_are_unmoved() -> unit ! { Test } = {
+  o0 = weibull_cdf(cast(0.5, f32), cast(2.0, f32), cast(1.0, f32))
+  o1 = weibull_cdf(cast(2.0, f32), cast(2.0, f32), cast(1.0, f32))
+  o2 = weibull_cdf(cast(2.5, f32), cast(1.0, f32), cast(2.5, f32))
+  _ = assert_true(lt(dist_rel_err(o0, cast(0.22119921, f32)), cast(2e-7, f32)), "weibull_cdf(0.5, 2, 1) = 0.22119921")
+  _ = assert_true(lt(dist_rel_err(o1, cast(0.9816844, f32)), cast(2e-7, f32)), "weibull_cdf(2, 2, 1) = 0.9816844")
+  assert_true(lt(dist_rel_err(o2, cast(0.63212055, f32)), cast(2e-7, f32)), "weibull_cdf(2.5, 1, 2.5) = 0.63212055")
+}
