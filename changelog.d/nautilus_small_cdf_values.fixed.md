@@ -10,8 +10,10 @@ CDF's own small value, which no survival function can reach.
   `gamma_cdf` returns a value near `1.0` for `lambda >> k`, so the whole left
   tail arrived as `0.0`. It now returns `gamma_sf(lambda, k+1, 1)`, the same
   quantity `Q(k+1, lambda)` with no round trip through `1.0`.
-  `poisson_cdf(10, 50)` is `6.450153e-12` against a true `6.4501529e-12`,
-  where it was `0.0`. `gamma_sf`'s branch point is the one this needs: a small
+  `poisson_cdf(10, 50)` returns `6.450134e-12` where it returned `0.0`, six
+  significant digits against a true `6.4501529e-12`. The remaining 2.9e-6 is
+  `gamma_sf`'s, not the complement's, and the last paragraphs below say why.
+  `gamma_sf`'s branch point is the one this needs: a small
   `P(X <= k)` means `lambda >> k + 1`, which is exactly where `gamma_sf`
   evaluates the continued fraction directly instead of complementing.
 - `exponential_cdf(x, rate)` and `weibull_cdf(x, shape, scale)` spelled
@@ -36,12 +38,13 @@ builtin.
 **Evaluating in f64 alone would not have been enough**, which is why the
 series exists. It moves the collapse rather than removing it: the absolute
 error becomes `0.5 * ulp_f64(1.0)`, so `1.1e-16 / t` is the envelope on the
-relative error. Measured on that form, the f64 subtraction is 5e-9 relative
-at `t = 1e-8`, 7e-8 at `1e-10`, 2.2e-5 at `1e-12`, 11% high at `1e-16`, and
-exactly `0.0` from `t = 1e-17` down. `weibull_cdf(1e-8, 2, 1)` reaches
-`t = 1e-16` from ordinary arguments and `exponential_cdf(1e-20, 1.0)` is well
-inside the dead band; a test pins both, and the f64-only form fails each of
-them.
+relative error. Measured on an f64-only build, through the same f32 return:
+indistinguishable from the series at `t = 1e-8` and `t = 1e-9`, 8.7e-8
+relative at `1e-10`, 2.2e-5 at `1e-12`, 8.0e-4 at `1e-15`, 11% high at
+`1e-16`, and exactly `0.0` from `t = 1e-17` down.
+`weibull_cdf(1e-8, 2, 1)` reaches `t = 1e-16` from ordinary arguments and
+`exponential_cdf(1e-20, 1.0)` is well inside the dead band; tests pin three
+points on that ladder, and the f64-only form fails all three.
 
 Measured against the f64 value of each defining expression, rounded once to
 f32, with every argument first rounded to f32 so the reference answers the
@@ -82,12 +85,34 @@ subnormal spacing. Four have a true value below half the smallest subnormal,
 where `0.0` is the correctly rounded f32 answer, and they return `0.0` both
 before and after.
 
-One value outside the small-probability regime moves by one ulp.
-`exponential_cdf(1, -1)`, a negative rate that is not a distribution and that
-neither spelling rejects, was `-1.7182817` and is now `-1.7182819`. The true
-`1 - e` is `-1.718281828`, so the new value is the correctly rounded one. The
-series window is `[0, 1/16)` rather than everything below the cut precisely so
-that a negative `t` keeps landing on the subtraction it always landed on, and
-a test pins that edge.
+**Ordinary answers move too, and a consumer holding pinned f32 expectations
+should plan to re-baseline them.** Moving the arithmetic to f64 changes the
+last digit wherever the f32 form was not already correctly rounded, which is
+most places. Of the 347 arguments in the grid, **264 return a different f32**:
+45 of 76 `poisson_cdf`, 119 of 141 `exponential_cdf`, 100 of 130
+`weibull_cdf`. Restricting to the ordinary range, where no small-value
+cancellation is in play, 72 of the 124 `exponential_cdf` and `weibull_cdf`
+arguments with a reference at or above 1e-3 move, and 16 of the 64 at or above
+0.1. For example `weibull_cdf(2, 2, 2.5)` was `0.47270763` and is
+`0.47270757` against a reference of `0.472707576`, and
+`exponential_cdf(0.25, 1.5)` was `0.3127107` and is `0.31271073` against
+`0.312710721`.
+
+**Every one of those ordinary-range moves is toward the reference**, 70 of the
+72 at or above 1e-3 and all 16 at or above 0.1; the two exceptions are the
+4.9e-8 and 2.7e-8 rows named above. So the change is an accuracy improvement
+across the range and not only at the edge, but it is not a no-op anywhere, and
+"values change" above should be read literally.
+
+A negative rate is not a distribution and neither spelling rejects it, so
+those answers move as well, and by more than a last digit where they had
+collapsed: `exponential_cdf(1, -1)` was `-1.7182817` and is `-1.7182819`
+against a true `1 - e` of `-1.718281828`, `exponential_cdf(0.01, -1)` was
+`-0.010050178` and is `-0.010050166` against `-0.0100501669`, and
+`exponential_cdf(1e-8, -1)` was `0.0` and is `-1e-8`. All three are the
+correctly rounded f32. What the `[0, 1/16)` window preserves is the branch,
+not the precision: a negative `t` keeps landing on the subtraction it always
+landed on rather than on a series that would diverge there, and a test pins
+that edge.
 
 Addresses nautilus#139.

@@ -186,12 +186,14 @@ digit.
 `poisson_cdf` lost its left tail the same way, spelled
 `1 - gamma_cdf(lambda, k+1, 1)`. It returns `gamma_sf(lambda, k+1, 1)`
 instead, the same quantity `Q(k+1, lambda)` with no round trip through 1.0, so
-`poisson_cdf(10, 50)` is 6.450153e-12 rather than 0. Its accuracy is the gamma
+`poisson_cdf(10, 50)` is 6.450134e-12 rather than 0, against a reference of
+6.4501529e-12. Its accuracy is the gamma
 family's now: the complement is gone, but `gammaq`'s front factor is still
 formed in f32, where one rounding of a term near 850 is an absolute 6e-5 in an
 exponent, and that reaches 7.2e-5 relative at `poisson_cdf(160, 200)`. Below
 f32's smallest normal value the answer is a subnormal and carries subnormal
-precision; below about 1.4e-45 it is 0 because f32 has nothing else to return.
+precision; below half the smallest subnormal, about 7.0e-46, it is 0 because
+f32 has nothing else to return.
 
 When f32 precision is insufficient in `Nautilus.Special`, call it at f64
 directly. Its functions have an explicit `{f32, f64}` dtype bound. Read the

@@ -51,8 +51,10 @@ returns +inf. A negative rate gives negative values:
 `exponential_pdf(1, -1)` is `-2.7182817` and `exponential_cdf(1, -1)` is
 `-1.7182819`.
 
-The CDF complements in f64, and below a `rate * x` of 1/16 it sums a Maclaurin
-series for `1 - exp(-rate * x)` rather than subtracting. A small `x` therefore
+The CDF complements in f64, and for a `rate * x` in the half-open interval
+from 0 up to 1/16 it sums a Maclaurin series for `1 - exp(-rate * x)` rather
+than subtracting. A negative `rate * x` stays on the subtraction, where the
+series would diverge. A small `x` therefore
 keeps its digits: `exponential_cdf(1e-8, 1.0)` is 1e-8 and
 `exponential_cdf(1e-20, 1.0)` is 1e-20, where the subtraction returned 0. The
 [precision guide](../appendix/precision.md) states the error over the range.
@@ -110,7 +112,8 @@ for shape < 1.
 
 `weibull_cdf` forms both `(x/scale)^shape` and its complement in f64, and
 below a `(x/scale)^shape` of 1/16 it sums a Maclaurin series for `1 - exp(-t)`
-rather than subtracting. `weibull_cdf(1e-8, 2.0, 1.0)` is therefore 1e-16
+rather than subtracting; `shape` and `scale` are positive here, so the
+argument is never negative. `weibull_cdf(1e-8, 2.0, 1.0)` is therefore 1e-16
 rather than 0. The [precision guide](../appendix/precision.md) states the
 error over the range.
 
@@ -156,7 +159,7 @@ this family.
 
 ## Pitfalls
 
-- The tables above give each CDF as `1 - exp(..)`, which is its definition
+- Where the text above gives a CDF as `1 - exp(..)`, that is its definition
   and not how it is evaluated. Subtracting that way loses every small value,
   so both functions complement in f64 through a series instead. Their own
   small values are sound; what still loses everything below about 6e-8 is a

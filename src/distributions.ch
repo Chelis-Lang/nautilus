@@ -64,12 +64,14 @@ def exponential_pdf(x: f32, rate: f32) -> f32 =
 -- rounding by at most `0.9394/0.0606 = 15.5`, giving about `1.7e-15`. Both
 -- branches are therefore far inside the half f32 ulp the return rounds to.
 --
--- The term count is set by that derivation and not by what the f32 return can
--- see. Four terms already put the truncation at `1.3e-7` of the result at the
--- cut, which f32 cannot resolve, so the tests covering this cannot pin the
--- count above four and do not claim to. Ten keeps `expm1_neg_d` correct as an
--- f64 function, so a later f64 caller inherits a bound rather than a
--- coincidence.
+-- The term count is set by that derivation and not by the smallest count an
+-- f32 return happens to accept. Four terms put the truncation at `1.3e-7` of
+-- the result at the cut, which f32 does resolve: one f32 ulp there is
+-- `1.2e-7`, so a four-term form returns a different f32 and a test can see
+-- it. Five, six and ten terms are bit-identical at every f32 argument
+-- measured, so an f32 test pins the count at five or more and can go no
+-- higher. Ten is what keeps `expm1_neg_d` correct as an f64 function, so a
+-- later f64 caller inherits a bound rather than a coincidence.
 --
 -- The series window is `[0, 1/16)` and not `(-inf, 1/16)` on purpose. A
 -- negative `t` is not a distribution, but `exponential_cdf` admits one for a
@@ -84,7 +86,10 @@ def expm1_horner(t: f64, j: i64, m: i64) -> f64 =
   }
 def expm1_neg_d(t: f64) -> f64 = if and(gte(t, zero_d64()), lt(t, expm1_cut())) then mul(t, expm1_horner(t, cast(2, i64), expm1_terms())) else sub(one_d64(), exp(neg(t)))
 -- `rate * x` is formed in f64 from the widened f32 arguments, so the product
--- is exact: two 24-bit significands multiply inside f64's 53.
+-- is exact: two 24-bit significands multiply inside f64's 53. Forming it in
+-- f32 first costs at most half an f32 ulp of `t`, which for a small `t`
+-- transfers whole to the answer, so what this buys is bounded by about one
+-- ulp of the return rather than by a decade of it.
 def exponential_cdf(x: f32, rate: f32) -> f32 =
   if lt(x, zero_f()) then zero_f() else {
     t = mul(cast(rate, f64), cast(x, f64))
