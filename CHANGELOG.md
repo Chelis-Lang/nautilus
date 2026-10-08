@@ -8,6 +8,47 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- `spline_fit` and `spline_eval` now require strictly increasing knots and
+  return NaN otherwise, instead of fitting a tridiagonal system from a mix of
+  real and substituted knot gaps. The gap was guarded in one of the five fit
+  legs and in neither direction consistently: `spline_fit_h` tested the
+  magnitude but passed the raw signed value on, `spline_fit_rhs` tested the
+  signed value and so substituted `1.0` for anything negative, and the diagonal,
+  lower and upper legs had no guard at all, so a reordered knot pair left one leg
+  seeing `1.0` where three saw the negative gap. On the same four points,
+  permuting two knots moved `spline_eval(.., 1.5)` from `2.2` to `4.3125` and a
+  repeated knot gave `2.0298913`, both at x = 1.5; and a gap of one f32 ulp
+  downward, -5.9604645e-8, was accepted and gave `0.6875` at x = 0.5, where the
+  sampled function is `0.25`. The check lives in both
+  exports, because the out-of-range arm of `spline_eval` returns an endpoint
+  value without reading the fitted derivatives and so returned `0.0` and `9.0`
+  for knots that have no spline. The five legs now share one treatment of the
+  gap -- the knot vector is validated once at entry and every leg uses it as
+  given -- which is what removes the asymmetry, rather than adding a fourth
+  guard. A gap of one ulp upward is still accepted: the requirement is on the
+  sign, not the magnitude.
+
+  Two consequences for knot vectors that are *accepted*. Deleting the per-leg
+  substitution also changed results for a strictly increasing gap below the old
+  `1e-30` test, where the fit used to replace the gap with `1.0` and return a
+  fabricated finite number: knots `[0, 1e-31, 1, 2]` with values `[0, 1, 2, 5]`
+  gave `1.35` at x = 0.5 and now give `1.607143e30`, and with a gap of `1e-38`
+  they gave `1.35` and now give NaN. At `1e-30` and above the result is
+  bit-identical. And because of that overflow, a NaN is no longer diagnostic of
+  refusal: it now means either a rejected knot vector or an accepted gap too
+  small for f32 to carry the divided difference. Nor is a finite result a
+  promise that the gap was large enough. Scaling `[0, 1, 2, 3]` / `[0, 1, 4, 9]`
+  and the query by `1e-31` returns `2.5e-31` where scale-equivariance requires
+  `2.2e-31`. That pathology is **not** introduced here and is mostly unchanged:
+  the same scaling returns `1.8999999e-24` against `2.2e-24` both before and
+  after, is NaN at `1e-26` and `1e-28` both before and after, and is accurate at
+  `1e-10` both before and after. Only the `1e-31` row moved, from `1e-31` to
+  `2.5e-31`, because that gap is under the deleted threshold -- closer to the
+  reference, still wrong. `la_tridiag_solve`'s sub-`1e-30` pivot substitution is
+  one known contributor but does not explain the `1e-24` row, whose pivot is
+  about `4e-24`. The book's knot requirements enumerate all three outcomes and
+  state that the governing quantity is the knot magnitude, non-monotonically. A NaN knot is also refused
+  now, where it previously returned a plausible endpoint. (nautilus#120)
 - `gamma_cdf` and `gamma_sf` no longer kill the process on a degenerate
   parameter or a non-finite argument, and no longer kill it on an ordinary large
   `shape` either. They validated neither parameter, so a zero `scale` made the

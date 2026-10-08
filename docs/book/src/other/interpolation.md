@@ -102,10 +102,10 @@ a full piecewise Hermite spline, call this function once per interval.
 
 ## spline_eval and spline_fit
 
-`spline_eval` fits a natural cubic spline through sorted knots and evaluates
-it at one query point. `spline_fit` returns the vector M of second
-derivatives at the knots that the spline uses; natural boundary conditions
-fix M[0] = M[m-1] = 0.
+`spline_eval` fits a natural cubic spline through strictly increasing knots
+and evaluates it at one query point. `spline_fit` returns the vector M of
+second derivatives at the knots that the spline uses; natural boundary
+conditions fix M[0] = M[m-1] = 0.
 
 **Signatures:**
 `spline_eval[m](xs: &tensor[m, f32], ys: &tensor[m, f32], x_query: f32) -> f32` and
@@ -128,7 +128,43 @@ spline_m = tensor(shape=[4], data=[0.0, -1.5, -1.5, 0.0])
 The linear interpolant is flat at 2 between x = 1 and x = 3; the spline
 bulges to 2.75 there because it keeps the second derivative continuous.
 
-Queries outside `[xs[0], xs[m-1]]` return the nearest endpoint value.
+Queries outside `[xs[0], xs[m-1]]` return the nearest endpoint value, for a
+knot vector that satisfies the requirement below.
+
+### Knots must be strictly increasing
+
+Both functions require every `xs[i+1] - xs[i]` to be greater than zero. A
+knot vector that repeats a value or steps backwards has no natural cubic
+spline through it, because a segment would have zero or negative width.
+Both refuse such input: `spline_eval` returns NaN, and `spline_fit` returns
+a vector of NaN.
+
+```chelis-fragment
+import Nautilus.Interpolation (spline_eval)
+
+def reordered() -> tensor[4, f32] = to_tensor([0.0f32, 2.0f32, 1.0f32, 3.0f32])
+def reordered_vals() -> tensor[4, f32] = to_tensor([0.0f32, 4.0f32, 1.0f32, 9.0f32])
+unsorted_mid = spline_eval(reordered(), reordered_vals(), 1.5f32)
+unsorted_low = spline_eval(reordered(), reordered_vals(), -1.0f32)
+```
+
+```text
+unsorted_mid = NaN
+unsorted_low = NaN
+```
+
+The requirement is on the sign of the gap, not its size: a gap of one f32
+ulp is accepted, and a gap of minus one ulp is refused. An ill-conditioned
+spline is still a spline, so these functions do not second-guess a knot
+vector that is merely tightly spaced. Accepted is not the same as accurate,
+and for a very small gap it is not even the same as finite, or as visibly
+wrong -- see the knot requirements below.
+
+`unsorted_low` is the reason the check sits in both exports rather than in
+the fit alone. The out-of-range arm returns `ys[0]` or `ys[m-1]` without
+consulting the fitted second derivatives, so a NaN reaching it from
+`spline_fit` would not have stopped it returning a plausible endpoint value
+for a knot vector that has no spline.
 
 Every `spline_eval` call refits the spline, an O(m^2) tridiagonal solve in
 this implementation. Nautilus has no evaluator that takes a stored fit. For
@@ -145,10 +181,35 @@ which is the formula `spline_eval` uses. On the knots above, segment 1
 
 Knot requirements:
 
-- `xs` strictly ascending, as for `linear_interp_sorted`.
+- `xs` strictly ascending, as for `linear_interp_sorted`, and here it is
+  enforced: a repeated or descending knot is refused, as described above.
+  Merge duplicate knots before fitting rather than relying on a result.
 - Two knots give the straight line through them; one knot gives its value
   everywhere.
-- Coincident knots are not rejected. An interval narrower than 1e-30 is
-  treated as width 1 inside the fit, so the result is a finite number with
-  no error: knots `[0, 1, 1, 2]` with values `[0, 1, 3, 2]` give
-  `2.8249998` at x = 1.5. Merge duplicate knots before fitting.
+- An accepted gap is used exactly as given, however small, so an
+  ill-conditioned knot vector gives an ill-conditioned answer. Three outcomes
+  are possible and the size of the gap alone does not tell you which:
+  - a very large value -- knots `[0, 1e-20, 1, 2]` with values
+    `[0, 1, 2, 5]` give `1.607143e19` at x = 0.5, and with a gap of 1e-31,
+    `1.607143e30`;
+  - a NaN -- the same knots with a gap of 1e-38;
+  - a plausible finite value that is simply wrong. This is the one you cannot
+    detect. Scaling the knots, the values and the query by one factor must
+    scale the result by that factor, so `[0, 1, 2, 3]` with `[0, 1, 4, 9]` at
+    x = 1.5, which gives `2.2`, should give `2.2` times the factor. Scaled by
+    1e-24 it gives `1.8999999e-24`, 14% low; scaled by 1e-31, `2.5e-31`, 14%
+    high.
+
+  What governs this is the magnitude of the knots, not the size of the gap
+  relative to them, and it is not monotone: the same scaling is accurate at
+  1e-10, wrong at 1e-24, NaN at 1e-26 and 1e-28, and finite but wrong again
+  at 1e-31. So no threshold is given here -- there is not one to give.
+  `la_tridiag_solve`'s substitution of 1 for a pivot below 1e-30, recorded on
+  its own page, is one known contributor and does not account for all of it;
+  the 1e-24 row above has a pivot of about 4e-24 and is wrong anyway. Apart
+  from gaps under 1e-30, where the fit used to substitute a unit gap, this
+  behaviour is the same before and after the ordering requirement: it is a
+  property of fitting at tiny coordinate scales, not of the knot check.
+- So a NaN does not by itself mean the knots were rejected. It means either
+  that, or an accepted gap too small for f32 to carry the result through.
+  Equally, a finite result is not a promise that the gap was large enough.
