@@ -366,6 +366,7 @@ def betacf64(a: f64, b: f64, x: f64) -> (f64, bool) = {
   betacf_drive(a, b, x, one, d0_inv, d0_inv, cast(1, i64), betacf_max_m())
 }
 def nan_d64() -> f64 = div(zero_d64(), zero_d64())
+def sqrt_2pi_d64() -> f64 = cast(2.5066282746310002, f64)
 -- A regularised incomplete beta lies in [0, 1] by definition, so a value
 -- outside that range is not an approximation of anything. Two different things
 -- produce one, though, and they want opposite answers.
@@ -389,10 +390,13 @@ def nan_d64() -> f64 = div(zero_d64(), zero_d64())
 def betai_finish(v: f64, converged: bool) -> f64 = if or(lt(v, zero_d64()), gt(v, one_d64())) then if converged then if lt(v, zero_d64()) then zero_d64() else one_d64() else nan_d64() else v
 -- `omx` is the caller's own value for `1 - x`, not a value recovered by
 -- subtraction here. Every call site can form it exactly from its own inputs,
--- and the two that could not would otherwise lose it: `x` saturates to 1.0
--- for `student_t_cdf` once df reaches 2^24 and for `f_cdf` once d2 is small
--- beside d1*x, and the guard below would then answer 1.0 for a distribution
--- whose true value is nowhere near 1.
+-- and the one that could not would otherwise lose it: `x` saturates to 1.0 for
+-- `f_cdf` once d2 is small beside d1*x, and the guard below would then answer
+-- 1.0 for a distribution whose true value is nowhere near 1. `student_t_cdf`
+-- saturated the same way once df reached 2^24 and no longer reaches this
+-- function at all above `student_t_normal_df`, which is below that; its `omx`
+-- is still exact rather than subtracted, because the two arguments share one
+-- denominator and there is no reason to spend the digits.
 def betai_core(a: f64, b: f64, x: f64, omx: f64) -> f64 =
   if lte(x, zero_d64()) then zero_d64() else if lte(omx, zero_d64()) then one_d64() else {
     one = one_d64()
@@ -576,8 +580,77 @@ def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
     factor = exp(exp_arg)
     mul(scale, factor)
   }
+-- Above `student_t_normal_df` the beta route is replaced by the t
+-- distribution's own large-`df` expansion, because no amount of precision
+-- rescues it there. `betai_core`'s front factor is
+-- `exp(lgamma(a+b) - lgamma(a) - lgamma(b) + ...)` with `a = df/2`, and the
+-- absolute error of that exponent is about one f64 ulp of the largest
+-- log-gamma: `lgamma(5e8)` is 9.5e9, where one ulp is 1.9e-6, so the result
+-- carries a multiplicative error of that order. The error is an absolute one
+-- in an *exponent*, so it grows without bound in `df` and widening the
+-- arithmetic only moves the onset. Measured on the beta route, worst over a
+-- `t` axis of -0.5 to -11 and +1: 1.1e-7 at `df = 1e7`, 1.2e-6 at 1e8,
+-- 9.1e-6 at 1e9, 1.9e-4 at 1e11, 2.3e-3 at 1e12, 2.6 at 1e14, 1.1e1 at 1e16
+-- and 2.6e27 at 1e20. The peak sits at `t = -sqrt(3)`, the continued
+-- fraction's branch boundary, where the upper branch returns `1 - val`: a
+-- relative error on `val` becomes `(1 - I)/I` times as large on `I = 2 F(t)`,
+-- which is 11.0 there. That figure is the algebra, not a measurement: the
+-- boundary is measurably worse than its neighbours in `t`, but the ratio you
+-- get depends on which neighbour and which `df` you pick, so no single
+-- measured multiple belongs here.
+-- At `t = 1` alone it reads 2.9e-7 at `df = 1e9`, 7.1e-5 at 1e12, 9.6e-2 at
+-- 1e14 and 41% from 1e16 up, because `student_t_cdf(1, 1e16)` returned exactly
+-- 0.5 -- the value the
+-- function also returns at `t = 0`, so the answer was indistinguishable from
+-- a real one. The left tail was worse than that 0.5 suggests:
+-- `student_t_cdf(-5, 1e18)` returned 0.49981025 against a true 2.8665157e-7,
+-- and `student_t_cdf(-8, 1e18)` returned 0.0. `df = inf` returned 0.5 too.
+-- Saturation of `x = df/(df+t*t)` to exactly 1.0 near `df = 2^53` is a second
+-- and much later cause; the cancellation above already dominates at `df = 1e14`,
+-- where `x` is not saturated for any `|t| > 0.09`.
+--
+-- The expansion is `F_df(t) = Phi(t) - phi(t)(t^3 + t)/(4 df) + O(df^-2)`.
+-- The `1/df` term is not a refinement that could be dropped: without it the
+-- limit's own relative error at `t = -11` is 3.7e-4 at `df = 1e7` and 3.7e-5
+-- at 1e8, falling only as `1/df`, so it first reaches 2e-6 around
+-- `df = 1.9e9`. The beta route's worst over the same `t` axis passes 2e-6
+-- between `df = 3e8` and 5e8. A plain `Phi(t)` branch therefore has no
+-- threshold that holds the documented bound anywhere.
+--
+-- The threshold is 1e7 because by there the expansion has reached the beta
+-- route's own noise floor. It is NOT a crossing: the beta
+-- route's worst is flat rounding noise through this region -- 1.3e-7 at
+-- `df = 1e6`, 1.2e-7 at 5e6, 1.5e-7 at 9e6, 1.1e-7 at 1e7, 2.0e-7 at 2e7,
+-- 1.5e-7 at 3e7 -- so no exact crossing point is identifiable, and a grid that
+-- claimed one would be reading its own spacing. The expansion is 8.6e-8 at
+-- `df = 1e7` and improves as `1/df^2` from there, so both forms sit about 20x
+-- inside the bound at the handover.
+--
+-- That handover is not free. Just above the threshold, at `|t|` of 11 and
+-- beyond, the expansion is less accurate than the beta route was, by about a
+-- factor of three at `(t = -11, df = 1e7)` and by more in the far tail. All
+-- of it stays well inside 2e-6, and the beta route's own error at those `df`
+-- is about to rise through it, but the figures above are worst cases over
+-- `|t| <= 11` and not a uniform improvement at every point.
+--
+-- `t*t < 1600` is a domain test, not a tolerance. `phi(t)` is exactly 0.0 in
+-- f64 for `|t| >= 38.7` and `Phi(t)` is 0.0 or 1.0 there, so the correction
+-- cannot change a finite answer above that; the test exists so that
+-- `t = +-inf` yields the correction's limit of 0 rather than the
+-- indeterminate `0 * inf`, which would make NaN of a CDF the beta route got
+-- right. A NaN `t` still reaches `standard_normal_cdf` and still returns NaN.
+def student_t_normal_df() -> f32 = cast(10000000.0, f32)
+def student_t_normal_limit(t: f32, df: f32) -> f32 = {
+  t64 = cast(t, f64)
+  t2 = mul(t64, t64)
+  phi = div(exp(mul(cast(-0.5, f64), t2)), sqrt_2pi_d64())
+  cubic = add(mul(t64, t2), t64)
+  scaled = div(cubic, mul(cast(4.0, f64), cast(df, f64)))
+  corr = if lt(t2, cast(1600.0, f64)) then mul(phi, scaled) else zero_d64()
+  sub(standard_normal_cdf(t64), corr) |> cast(f32)
+}
 def student_t_cdf(t: f32, df: f32) -> f32 =
-  if lte(df, zero_f()) then nan_d() else {
+  if lte(df, zero_f()) then nan_d() else if gte(df, student_t_normal_df()) then student_t_normal_limit(t, df) else {
     df64 = cast(df, f64)
     half_df = mul(cast(0.5, f64), df64)
     t64 = cast(t, f64)

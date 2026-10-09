@@ -44,7 +44,8 @@ Two cases need separate guidance:
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
 | `poisson_pmf`, `binomial_pmf` | below 2e-6 up to `lambda` of 1e8 and `n` of 2e8 | Log space in f64; past that, limited by f64's spacing at `ln(k!)`, see the note below |
-| Beta-family CDFs | below 2e-6 over a stated parameter range | `beta_cdf`, `f_cdf`, `student_t_cdf`, `binomial_cdf`; the range is part of the figure, see the note below |
+| Beta-family CDFs | below 2e-6 over a stated parameter range | `beta_cdf`, `f_cdf`, `binomial_cdf`; the range is part of the figure, see the note below |
+| `student_t_cdf` | below 2e-6 for every `df` | The incomplete beta below `df` of 1e7, the large-`df` expansion from 1e7 upward, see the note below |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
 
@@ -105,18 +106,21 @@ branch covers it.
 
 ### The beta family holds below 2e-6 over a stated parameter range
 
-`beta_cdf`, `f_cdf`, `student_t_cdf` and `binomial_cdf` all compute the
-regularized incomplete beta. Its normalizing factor is
+`beta_cdf`, `f_cdf` and `binomial_cdf` all compute the regularized incomplete
+beta, and `student_t_cdf` does too below `df` of 1e7. Its normalizing factor is
 `exp(lgamma(a+b) - lgamma(a) - lgamma(b) + a*ln x + b*ln(1-x))`, and that exponent
 is a difference of large quantities whose rounding error grows with the
 parameters. The incomplete beta is computed in f64 and returned as f32, which
 keeps that error small over a wide range but not an unlimited one.
 
 > Relative error stays below 2e-6 when every parameter you pass is at least 1 and
-> the largest is at most 1e8.
+> the largest is at most 1e8. `student_t_cdf` has no upper limit: it holds below
+> 2e-6 for every `df` from 1 upward, including an infinite one.
 
 The range applies to `a` and `b` for `beta_cdf`, to `d1` and `d2` for `f_cdf`, to
-`df` for `student_t_cdf`, and to `n` for `binomial_cdf`.
+`df` for `student_t_cdf`, and to `n` for `binomial_cdf`. The upper limit is the
+one the incomplete beta imposes, and `student_t_cdf` is the one member of the
+family that can leave it behind, for the reason below.
 
 Outside the range the error grows in both directions, and nothing in the result
 indicates it. Below 1, a small shape parameter amplifies the same cancellation:
@@ -127,11 +131,38 @@ runs out of iterations: on `beta_cdf(0.5, a, a)`, whose value is exactly 0.5 by
 symmetry, the relative error is about 8e-6 at `a = 1e9`, 1.2e-3 at 1e10 and 21%
 at 1e11, and `beta_cdf(0.5, 3e38, 3e38)` returns a confident 1.0.
 
-`student_t_cdf` leaves the range earliest, because its cancellation is driven by
-`df` alone: 1.7e-6 at `df = 1e9`, 4e-4 at 1e12, 51% at 1e14, and from
-`df = 1e16` it returns exactly 0.5, which is also its value at `t = 0`. **Above
-`df` of about 1e9, use `normal_cdf` instead.** The t distribution is within 1e-9
-of the standard normal there, so the substitution costs nothing f32 can measure.
+`student_t_cdf` would leave the range earliest, because its cancellation is
+driven by `df` alone, so above `df` of 1e7 it does not use the incomplete beta at
+all. It evaluates the t distribution's own large-`df` expansion instead, which is
+`Phi(t) - phi(t) * (t^3 + t) / (4 df)`, where `Phi` and `phi` are the standard
+normal CDF and density. Both terms are computed in f64 and the result is
+returned as f32.
+
+The `1/df` term is not a refinement you could drop. A plain `Phi(t)` is within
+1.4e-9 of the t distribution at `t = 1, df = 1e8`, but its error is governed by
+`t` as well, and in the left tail it falls only as `1/df`: at `t = -11` it is
+3.7e-4 at `df = 1e7` and 3.7e-5 at 1e8, first reaching 2e-6 around `df = 1.9e9`.
+The incomplete beta's own worst passes 2e-6 between `df = 3e8` and 5e8. So a
+bare `Phi` branch has no threshold that holds the bound anywhere, whatever `df`
+you pick.
+
+The threshold is 1e7 because by there the expansion has reached the incomplete
+beta's own noise floor, not because the two cross there.
+Through this region the beta form's worst error is flat rounding noise, about
+1.1e-7 to 2.0e-7 from `df = 1e6` to 3e7, so no exact crossing point exists to
+be found. The expansion is 8.6e-8 at `df = 1e7` and improves as `1/df^2`, so
+both forms sit roughly 20x inside the bound where one hands over to the other.
+
+Three things follow that are worth knowing if you read values near the
+threshold. The handover is not a uniform improvement: just above it, at `|t|` of
+11 and beyond, the expansion is the less accurate of the two, by about a
+factor of three at `t = -11`, and by more in the far tail, all of it still well
+inside the bound. The threshold also introduces a discontinuity, and it is
+small: across the two adjacent representable `df` either side, the two results
+are never more than two f32 ulps apart, one ulp at most of the `t` tested and
+two in the far tail. And `student_t_cdf(0, df)` is
+exactly 0.5 for every `df`, which is the right answer and not a symptom; the
+expansion's correction term vanishes at `t = 0`.
 
 A regularized incomplete beta lies in [0, 1]. A converged computation that
 overshoots that range by a rounding is clamped to the boundary, because the
