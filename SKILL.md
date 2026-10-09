@@ -311,21 +311,21 @@ package-version string, is the one export not listed here.
 | `lognormal_cdf` | `(x: f32, mu: f32, sigma: f32) -> f32` | `stable` | Via normal_cdf |
 | `lognormal_inv_cdf` | `(q: f32, mu: f32, sigma: f32) -> f32` | `stable` | Via normal_inv_cdf + exp |
 | `lognormal_sample` | `[n](k: key, template: tensor[n, f32], mu: f32, sigma: f32) -> tensor[n, f32]` | `alpha` | Explicit key |
-| `gamma_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | (shape, scale) -- not (shape, rate) |
-| `gamma_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Series (gammap) + continued fraction (gammaq); NaN for shape <= 0, scale <= 0 or NaN x; 1.0 at x = +inf; at and past shape 2339 at x = shape (2311 at the branch's worst x) the 200-iteration budget stops converging and the value is an unconverged partial sum (16% wrong at shape 20000) |
-| `gamma_sf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Survival function `1 - gamma_cdf`, computed without the cancelling subtraction; same parameter guards as `gamma_cdf`, 0.0 at x = +inf |
-| `gamma_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Wilson-Hilferty init + Newton refinement |
+| `gamma_pdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | (shape, scale) -- not (shape, rate); log-space body evaluated in f64, returned as f32 |
+| `gamma_cdf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Series + continued fraction, evaluated in f64 and returned as f32; NaN for shape <= 0, scale <= 0 or NaN x; 1.0 at x = +inf; relative error below 2e-6 for shape up to 5e7, growing past that with nothing in the result to signal it |
+| `gamma_sf` | `(x: f32, shape: f32, scale: f32) -> f32` | `stable` | Survival function `1 - gamma_cdf`, computed without the cancelling subtraction; same parameter guards and the same 2e-6 shape range as `gamma_cdf`, 0.0 at x = +inf |
+| `gamma_inv_cdf` | `(q: f32, shape: f32, scale: f32) -> f32` | `stable` | Wilson-Hilferty init + Newton refinement on the f64 CDF and density, at most 80 steps; relative error below 2e-6 for shape up to 1e7 |
 | `gamma_sample` | `[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]` | `alpha` | Explicit per-element and per-attempt keys; shape >= 1; NaN if 64 trials reject |
-| `chi_squared_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_pdf(x, df/2, 2) |
-| `chi_squared_cdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_cdf; NaN for df <= 0; inherits gamma_cdf's large-shape accuracy limit at df/2 |
-| `chi_squared_sf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_sf; keeps the right tail that `1 - chi_squared_cdf` loses; NaN for df <= 0 |
-| `chi_squared_inv_cdf` | `(q: f32, df: f32) -> f32` | `stable` | Via gamma_inv_cdf |
+| `chi_squared_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_pdf(x, df/2, 2); inherits its f64 body |
+| `chi_squared_cdf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_cdf; NaN for df <= 0; inherits gamma_cdf's large-shape accuracy limit at df/2, so below 2e-6 for df up to 1e8 |
+| `chi_squared_sf` | `(x: f32, df: f32) -> f32` | `stable` | Via gamma_sf; keeps the right tail that `1 - chi_squared_cdf` loses; NaN for df <= 0; below 2e-6 for df up to 1e8 |
+| `chi_squared_inv_cdf` | `(q: f32, df: f32) -> f32` | `stable` | Via gamma_inv_cdf; below 2e-6 for df up to 2e7 |
 | `chi_squared_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; gamma sample with shape df/2 and scale 2; df >= 2 |
 | `student_t_pdf` | `(x: f32, df: f32) -> f32` | `stable` | Via log_gamma |
 | `student_t_cdf` | `(t: f32, df: f32) -> f32` | `stable` | Via regularized incomplete beta (betai), evaluated in f64 internally; relative error below 2e-6 for `df` in [1, 1e8], enforced by `parity/check_beta_accuracy.py`; past that it degrades to 51% by 1e14 and returns 0.5 from 1e16, so use `normal_cdf` above `df` ~1e9 |
 | `student_t_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; independent normal and chi-squared tensors; df >= 2 |
 | `poisson_pmf` | `(k: f32, lambda: f32) -> f32` | `stable` | k as f32 (integer-valued), discrete PMF; log-space body evaluated in f64 internally; relative error below 2e-6 for `lambda` up to 1e8, enforced by `parity/check_pmf_accuracy.py`; past that it is bounded by one f64 ulp of ln(k!), 3.81e-6 at 1e9, where the gate measures 3.8e-6 |
-| `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | `stable` | Via gamma_cdf complement, which calls the series with shape k+1 at x = lambda; inherits its large-shape accuracy limit there |
+| `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | `stable` | `Q(k+1, lambda)` directly, with `k+1` formed in f64 so the increment survives above k = 2^24; inherits the gamma family's accuracy, below 2e-6 for lambda up to 5e7 |
 | `binomial_pmf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | k, n as f32 (integer-valued), discrete PMF; log-space body evaluated in f64 internally; relative error below 2e-6 for `n` up to 2e8 at every `p`, enforced by `parity/check_pmf_accuracy.py`; past that it is bounded by one f64 ulp of ln(n!), 3.81e-6 at 1e9, where the gate measures 3.5e-6 |
 | `binomial_cdf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | Via regularized incomplete beta (betai), evaluated in f64 internally; `n-k` and `k+1` formed in f64; relative error below 2e-6 for `n` up to 1e8 |
 | `beta_pdf` | `(x: f32, a: f32, b: f32) -> f32` | `stable` | a, b > 0 |
