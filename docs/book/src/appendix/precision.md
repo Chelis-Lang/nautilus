@@ -139,20 +139,30 @@ normal CDF and density. Both terms are computed in f64 and the result is
 returned as f32.
 
 The `1/df` term is not a refinement you could drop. A plain `Phi(t)` is within
-1e-9 of the t distribution at `t = 1`, but its error in the left tail is
-governed by `t` as well: 4.3e-5 at `df = 1e8` and 4.3e-4 at 1e7, measured at
-`t = -11`. The incomplete beta is already past 2e-6 before a bare `Phi` becomes
-accurate enough to replace it, so there is no `df` at which the two forms meet.
-With the term the expansion is within 8.6e-8 at `df = 1e7` and improves as
-`1/df^2`, which crosses the incomplete beta's own 1.1e-7 there. That
-crossing is where the threshold sits.
+1.4e-9 of the t distribution at `t = 1, df = 1e8`, but its error is governed by
+`t` as well, and in the left tail it falls only as `1/df`: at `t = -11` it is
+3.7e-4 at `df = 1e7` and 3.7e-5 at 1e8, first reaching 2e-6 around `df = 1.9e9`.
+The incomplete beta's own worst passes 2e-6 between `df = 3e8` and 5e8. So a
+bare `Phi` branch has no threshold that holds the bound anywhere, whatever `df`
+you pick.
 
-Two things follow that are worth knowing if you read values near it. The
-threshold introduces a discontinuity, and it is small: at the two adjacent
-representable `df` either side, the two forms agree to 1.0e-7 relative, under two
-f32 ulps. And `student_t_cdf(0, df)` is exactly 0.5 for every `df`, which is the
-right answer and not a symptom; the expansion's correction term vanishes at
-`t = 0`.
+The threshold is 1e7 because that is the lowest `df` at which the expansion has
+reached the incomplete beta's own noise floor, not because the two cross there.
+Through this region the beta form's worst error is flat rounding noise, about
+1.1e-7 to 2.0e-7 from `df = 1e6` to 3e7, so no exact crossing point exists to
+be found. The expansion is 8.6e-8 at `df = 1e7` and improves as `1/df^2`, so
+both forms sit roughly 20x inside the bound where one hands over to the other.
+
+Three things follow that are worth knowing if you read values near the
+threshold. The handover is not a uniform improvement: just above it, at `|t|` of
+11 and beyond, the expansion is the less accurate of the two, 8.6e-8 against
+3.4e-8 at `t = -11`, and up to 3.7e-7 at `t = -13`, all of it still at least 5x
+inside the bound. The threshold also introduces a discontinuity, and it is
+small: across the two adjacent representable `df` either side, the two forms
+agree to 9.6e-8 at `t = -sqrt(3)` and 1.0e-7 at `t = -10`, and to 3.3e-7 at
+`t = -13`, which is 1.4 ulps of an f32 subnormal. And `student_t_cdf(0, df)` is
+exactly 0.5 for every `df`, which is the right answer and not a symptom; the
+expansion's correction term vanishes at `t = 0`.
 
 A regularized incomplete beta lies in [0, 1]. A converged computation that
 overshoots that range by a rounding is clamped to the boundary, because the

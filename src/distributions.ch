@@ -592,10 +592,12 @@ def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
 -- `t` axis of -0.5 to -11 and +1: 1.1e-7 at `df = 1e7`, 1.2e-6 at 1e8,
 -- 9.1e-6 at 1e9, 1.9e-4 at 1e11, 2.3e-3 at 1e12, 2.6 at 1e14, 1.1e1 at 1e16
 -- and 2.6e27 at 1e20. The peak sits at `t = -sqrt(3)`, the continued
--- fraction's branch boundary, where the `1 - val` the upper branch returns
--- amplifies the front factor's error by `1/(2 F(t))`, which is 12.0 there;
--- measured 11x to 15x over `df` of 1e9 to 1e12, the spread being what a
--- rounding-driven error does.
+-- fraction's branch boundary, where the upper branch returns `1 - val`: a
+-- relative error on `val` becomes `(1 - I)/I` times as large on `I = 2 F(t)`,
+-- which is 11.0 there. Measured against the off-boundary error at the same
+-- `df`, the boundary is 5.4x to 6.2x worse at `t = -1` and 22x to 31x worse
+-- than the mirrored `t = +sqrt(3)`; neither ratio is the amplification itself,
+-- so the figure above is the algebra and not a measurement.
 -- At `t = 1` alone the same df values read 2.9e-7, 7.1e-5, 9.6e-2 and 41%,
 -- because `student_t_cdf(1, 1e16)` returned exactly 0.5 -- the value the
 -- function also returns at `t = 0`, so the answer was indistinguishable from
@@ -608,15 +610,27 @@ def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
 --
 -- The expansion is `F_df(t) = Phi(t) - phi(t)(t^3 + t)/(4 df) + O(df^-2)`.
 -- The `1/df` term is not a refinement that could be dropped: without it the
--- limit's own relative error reaches 4.3e-5 at `df = 1e8` and 4.3e-4 at 1e7 in
--- the left tail, so a plain `Phi(t)` branch has no threshold that holds the
--- documented bound -- the beta route is already past it before `Phi` alone
--- becomes good enough. With the term the limit is 8.6e-8 at `df = 1e7` and
--- falls as `1/df^2`, which crosses the beta route's own 1.1e-7 there. That
--- crossing is why the threshold is 1e7 and not a rounder-looking number
--- further out: it is where the two forms are equally accurate, and unlike the
--- beta route's rounding-driven error the limit's error is smooth in `df`, so
--- this crossing does not move when the grid does.
+-- limit's own relative error at `t = -11` is 3.7e-4 at `df = 1e7` and 3.7e-5
+-- at 1e8, falling only as `1/df`, so it first reaches 2e-6 around
+-- `df = 1.9e9`. The beta route's worst over the same `t` axis passes 2e-6
+-- between `df = 3e8` and 5e8. A plain `Phi(t)` branch therefore has no
+-- threshold that holds the documented bound anywhere.
+--
+-- The threshold is 1e7 because that is the lowest `df` at which the expansion
+-- has reached the beta route's own noise floor. It is NOT a crossing: the beta
+-- route's worst is flat rounding noise through this region -- 1.3e-7 at
+-- `df = 1e6`, 1.2e-7 at 5e6, 1.5e-7 at 9e6, 1.1e-7 at 1e7, 2.0e-7 at 2e7,
+-- 1.5e-7 at 3e7 -- so no exact crossing point is identifiable, and a grid that
+-- claimed one would be reading its own spacing. The expansion is 8.6e-8 at
+-- `df = 1e7` and improves as `1/df^2` from there, so both forms sit about 20x
+-- inside the bound at the handover.
+--
+-- That handover is not free. Just above the threshold, at `|t|` of 11 and
+-- beyond, the expansion is less accurate than the beta route was: 8.6e-8
+-- against 3.4e-8 at `(t = -11, df = 1e7)`, and up to 3.7e-7 at `t = -13`. All
+-- of it stays at least 5x inside 2e-6, and the beta route's own error at those
+-- `df` is about to rise through it, but the figures above are worst cases over
+-- `|t| <= 11` and not a uniform improvement at every point.
 --
 -- `t*t < 1600` is a domain test, not a tolerance. `phi(t)` is exactly 0.0 in
 -- f64 for `|t| >= 38.7` and `Phi(t)` is 0.0 or 1.0 there, so the correction

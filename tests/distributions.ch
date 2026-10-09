@@ -890,8 +890,9 @@ def test_student_t_cdf_does_not_saturate_at_large_df() -> unit ! { Test } = {
 }
 -- The beta route's front factor is `exp(lgamma(a+b) - lgamma(a) - lgamma(b)
 -- + ...)` with `a = df/2`, so its exponent carries an absolute error of about
--- one f64 ulp of the largest log-gamma. At df = 1e12 those are 2.7e13, where
--- the ulp is 3.9e-3; by df = 1e16 the exponent has lost everything and the
+-- one f64 ulp of the largest log-gamma. At df = 1e12 that is
+-- `log_gamma(5e11)` = 1.3e13, where the f64 ulp is 2.0e-3; by df = 1e16 the
+-- exponent has lost everything and the
 -- function returned exactly 0.5 -- which is also its value at t = 0, so the
 -- answer was indistinguishable from a real one. The reference is the standard
 -- normal CDF, which the t distribution is within O(1/df) of: at every df here
@@ -905,7 +906,7 @@ def test_student_t_cdf_does_not_collapse_to_half_at_huge_df() -> unit ! { Test }
   t20 = student_t_cdf(cast(1.0, f32), cast(1e20, f32))
   two16 = student_t_cdf(cast(2.0, f32), cast(1e16, f32))
   _ = assert_true(lt(dist_rel_err(t12, phi1), tol), "student_t_cdf(1,1e12) = 0.8413448 (was 0.8412847)")
-  _ = assert_true(lt(dist_rel_err(t14, phi1), tol), "student_t_cdf(1,1e14) = 0.8413448 (was 0.832373)")
+  _ = assert_true(lt(dist_rel_err(t14, phi1), tol), "student_t_cdf(1,1e14) = 0.8413448 (was 0.76028323)")
   _ = assert_true(lt(dist_rel_err(t16, phi1), tol), "student_t_cdf(1,1e16) = 0.8413448 (was the plausible 0.5)")
   _ = assert_true(lt(dist_rel_err(t20, phi1), tol), "student_t_cdf(1,1e20) = 0.8413448 (was 0.5)")
   assert_true(lt(dist_rel_err(two16, cast(0.97724986, f32)), tol), "student_t_cdf(2,1e16) = 0.97724986 (was 1.0)")
@@ -927,7 +928,7 @@ def test_student_t_cdf_keeps_its_left_tail_at_huge_df() -> unit ! { Test } = {
 }
 -- The `-phi(t)(t^3+t)/(4 df)` term is what makes the expansion usable at a
 -- threshold the beta route can still reach. Without it the limit is a plain
--- `Phi(t)`, whose own relative error in the left tail is 2.5e-4 at df = 1e7
+-- `Phi(t)`, whose own relative error at t = -10 is 2.5e-4 at df = 1e7
 -- and 2.5e-5 at 1e8 -- both outside the tolerance here, so these two cases
 -- are what separates the expansion from a bare normal branch. The sign
 -- matters as much as the magnitude: flipped, it doubles the miss.
@@ -942,10 +943,11 @@ def test_student_t_cdf_carries_the_first_order_df_term() -> unit ! { Test } = {
 -- ADJACENT representable df either side of the threshold rather than at round
 -- numbers a decade apart: a fixture spaced wider than the jump cannot see it.
 -- 9999999.0 and 1e7 are neighbouring f32 values (ulp(1e7) = 1), the first
--- taking the beta route and the second the expansion. Measured agreement is
--- 1.0e-7 relative, under two f32 ulps; the bound here leaves an order of
--- headroom and would still catch a dropped correction term, which opens the
--- gap at t = -10 to 2.5e-4.
+-- taking the beta route and the second the expansion. Measured agreement at
+-- the two t below is 9.6e-8 and 7.9e-8; over a wider t axis the worst is
+-- 3.3e-7 at t = -13, which is 1.4 ulps of an f32 subnormal. The bound here
+-- leaves an order of headroom over the two cases it asserts and would still
+-- catch a dropped correction term, which opens the gap at t = -10 to 2.5e-4.
 def test_student_t_cdf_is_continuous_across_the_normal_branch() -> unit ! { Test } = {
   tol = cast(1e-6, f32)
   below_b = student_t_cdf(cast(-1.7320508, f32), cast(9999999.0, f32))
@@ -960,6 +962,9 @@ def test_student_t_cdf_is_continuous_across_the_normal_branch() -> unit ! { Test
 -- close. It returned 0.5 before, for the same reason df = 1e16 did.
 -- An infinite t is the one input that makes the correction an indeterminate
 -- `0 * inf`; the domain test on t*t is what keeps it a CDF rather than a NaN.
+-- Both infinities at once was NaN before and is now 1.0 or 0.0: that is a
+-- value change the beta route did not get right either, so it is pinned here
+-- rather than left as incidental.
 def test_student_t_cdf_handles_infinite_df_and_t() -> unit ! { Test } = {
   tol = cast(0.00001, f32)
   inf = div(cast(1.0, f32), cast(0.0, f32))
@@ -968,7 +973,9 @@ def test_student_t_cdf_handles_infinite_df_and_t() -> unit ! { Test } = {
   at_pos_inf_t = student_t_cdf(inf, cast(1000000000.0, f32))
   _ = assert_true(lt(dist_rel_err(at_inf_df, cast(0.8413448, f32)), tol), "student_t_cdf(1,inf) = Phi(1) = 0.8413448 (was 0.5)")
   _ = assert_true(eq(at_neg_inf_t, cast(0.0, f32)), "student_t_cdf(-inf,1e9) = 0.0, not NaN")
-  assert_true(eq(at_pos_inf_t, cast(1.0, f32)), "student_t_cdf(inf,1e9) = 1.0, not NaN")
+  _ = assert_true(eq(at_pos_inf_t, cast(1.0, f32)), "student_t_cdf(inf,1e9) = 1.0, not NaN")
+  _ = assert_true(eq(student_t_cdf(inf, inf), cast(1.0, f32)), "student_t_cdf(inf,inf) = 1.0 (was NaN: both limits at once)")
+  assert_true(eq(student_t_cdf(neg(inf), inf), cast(0.0, f32)), "student_t_cdf(-inf,inf) = 0.0 (was NaN)")
 }
 -- The failure parity for the three tests above. 0.5 is the RIGHT answer at
 -- t = 0 for every df, so "never returns 0.5" would be the wrong invariant to

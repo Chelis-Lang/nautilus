@@ -31,13 +31,21 @@ to the standard normal CDF as `df` grows with an O(1/df) error -- so at
 **SciPy**, always at the **f32 value** of every argument rather than at its
 decimal spelling -- but NOT through `betainc` for `student_t_cdf`. `betainc` is
 subject to the same f64 `df + t*t` saturation Nautilus was, and to the same
-log-gamma cancellation before it: measured against a 50-digit mpmath reference
-it is 1.7e-5 wrong at `df = 1e12`, 2.1e-3 at 1e14 and 2.15 *relative* at 1e16,
-where it agrees with the answer Nautilus used to return. `stdtr`, SciPy's
-dedicated Student-t CDF, is a different algorithm and stays within 1e-13 of
-mpmath at every `df` up to 1e18 and every `|t|` up to 11, so it is what the
-`student_t_cdf` cases use. The reference-free anchors above are kept as
-independent evidence rather than because `stdtr` needs backing up.
+log-gamma cancellation before it. Measured against a 50-digit mpmath reference,
+worst over the `T_AXIS` below: 2.5e-5 at `df = 1e12`, 6.1e-3 at 1e14 and
+**2.15 relative** at 1e16, where it agrees with the answer Nautilus used to
+return -- so a gate referencing it would have passed the defect.
+
+`stdtr`, SciPy's dedicated Student-t CDF, is a different algorithm and is what
+the `student_t_cdf` cases use. It is within 1.3e-14 of mpmath over `df` from 1
+to 1e14, which is the range that discriminates. It is **not** exact further out:
+from about `df = 1e16` it saturates to `Phi(t)` and drops the O(1/df) term the
+true CDF still carries, so at `df = 1e16, t = -11` it is 3.7e-13 off. That is
+immaterial against a 2e-6 bound, but it has one consequence worth knowing: at
+`df >= 1e16` this gate cannot tell the expansion from a bare `Phi(t)` branch,
+because the reference has saturated too. The discrimination comes from `df`
+1e7 to 1e9. The reference-free anchors above are kept as independent evidence
+rather than because `stdtr` needs backing up.
 
 Values come from the shipped compiler through one batched `chelis eval --file`,
 the pattern `parity/run_parity.py` uses, so this measures the real lane and not a
@@ -116,11 +124,11 @@ CEILING, FLOOR, BOUND = 1e8, 1.0, 2e-6
 # Mirrors `student_t_normal_df` in `src/distributions.ch`. Transcribed by hand
 # for the same reason DOCUMENTED is: the point is that moving it takes a
 # deliberate edit here, in the source, and in the two documents that state it.
-# The value is where the two forms are equally accurate -- the expansion's own
-# relative error is 8.8e-8 at `df = 1e7` and falls as `1/df^2`, and the beta
-# route's is about 1e-7 there and rises. Unlike the beta route's
-# rounding-driven error the expansion's is smooth in `df`, so this crossing
-# does not move when the grid does.
+# The value is the lowest `df` at which the expansion has reached the beta
+# route's own noise floor: 8.6e-8 against a beta-route worst that is flat
+# rounding noise, 1.1e-7 to 2.0e-7 over `df` 1e6 to 3e7. It is not a crossing
+# point and the source comment says so; the expansion improves as `1/df^2`
+# from there while the beta route passes 2e-6 between `df = 3e8` and 5e8.
 NORMAL_DF = 1e7
 # The far end of the swept range. There is no ceiling to probe AT, so this is
 # the corner that replaces it, together with the two df either side of
@@ -269,10 +277,13 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
     # The df axis runs the whole documented range, which now has no upper edge.
     # It is dense around NORMAL_DF because that is the branch, and it reaches
     # LARGEST_DF because an unbounded range has a far corner instead of a
-    # ceiling. The negative `t` values carry the information: the
-    # implementation computes one tail and returns either it or `1 - it`, so a
-    # positive `t` buries the error under a subtraction from 1.0 whose
-    # reference rounds to exactly 1.0 and is then excluded.
+    # ceiling. The negative `t` values carry the information: below the branch
+    # the implementation computes one tail and returns either it or `1 - it`,
+    # so at a positive `t` the error is buried under a subtraction from a
+    # reference very close to 1.0. `|t|` stops at 11 so that no case is
+    # discarded by the `< 1e-30` rule -- as it stands none of these cases is
+    # excluded by either that rule or the `== 1.0` one, which is deliberate:
+    # an excluded case cannot fail the gate.
     T_AXIS = [-11.0, -8.0, -5.0, -3.0, -2.0, -1.0, -0.5, 0.5, 1.0, 1.5, 3.0]
     DF_AXIS = [1.0, 10.0, 1e3, 1e5, 1e6, 3e6, CEILING, 3e8, 1e9, 1e10, 1e12,
                1e14, 1e16, 1e18, LARGEST_DF]

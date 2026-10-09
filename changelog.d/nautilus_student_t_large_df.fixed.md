@@ -32,8 +32,9 @@ with this change and exits 1 on the previous code, where the same grid reaches
 2.6e27. `docs/book`'s advice to
 substitute `normal_cdf` by hand above `df` of about 1e9 is withdrawn, because
 a bare `Phi(t)` is not accurate enough to be that substitute in the left tail
-(4.3e-5 at `df = 1e8`, measured at `t = -11`); the `1/df` term is what makes
-the expansion usable at a threshold the incomplete beta can still reach.
+(3.7e-5 at `df = 1e8`, measured at `t = -11`, falling only as `1/df`); the
+`1/df` term is what makes the expansion usable at a threshold the incomplete
+beta can still reach.
 
 The accuracy gate's `student_t_cdf` reference moves from SciPy's `betainc` to
 its `stdtr`. `betainc` shares both the saturation and the cancellation, so it

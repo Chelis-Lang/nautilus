@@ -99,7 +99,8 @@ table.
 | `t_p_value_upper`, `t_p_value_two_sided` | 1.2e-7 | `student_t_cdf(-t, df)`, exact by Student-t symmetry |
 | `chi_squared_p_value` | 4.2e-6 | `chi_squared_sf`, which returns the upper regularized incomplete gamma `Q` directly |
 
-The Student-t bound comes from `betai`. It no longer grows with `df`: over a
+The Student-t bound comes from `betai` below `df` of 1e7 and from the large-`df`
+expansion above it. It no longer grows with `df`: over a
 406-point sweep the worst error is 1.15e-7 at `df = 1`, 9.1e-8 at `df = 2`,
 6.7e-8 at `df = 10` and 4.9e-8 at `df = 100`, with no result above 1e-6. It did
 grow with `df` while the incomplete beta was computed in f32, because the
