@@ -487,8 +487,8 @@ package-version string, is the one export not listed here.
 | `linear_interp_uniform` | `[n](ys: &tensor[n, f32], x_min: f32, x_max: f32, x_query: f32) -> f32` | `stable` | Uniformly-spaced knots, clamped extrapolation |
 | `linear_interp_sorted` | `[n](xs: &tensor[n, f32], ys: &tensor[n, f32], x_query: f32) -> f32` | `stable` | Arbitrary sorted knots, flat extrapolation outside range |
 | `cubic_hermite` | `(x0: f32, x1: f32, y0: f32, y1: f32, m0: f32, m1: f32, x_query: f32) -> f32` | `stable` | Single-interval cubic Hermite spline, caller supplies tangents m0/m1 |
-| `spline_eval` | `[m](xs: &tensor[m, f32], ys: &tensor[m, f32], x_query: f32) -> f32` | `alpha` | Natural cubic spline fit + eval in one call. Clamped extrapolation (returns ys[0] or ys[m-1] outside range). xs must be sorted ascending. Every call recomputes M; avoid in tight loops. |
-| `spline_fit` | `[m](xs: &tensor[m, f32], ys: &tensor[m, f32]) -> tensor[m, f32]` | `alpha` | Returns second-derivative vector M (length m). Natural BCs: M[0]=M[m-1]=0. Exposed for inspection; use spline_eval for evaluation. |
+| `spline_eval` | `[m](xs: &tensor[m, f32], ys: &tensor[m, f32], x_query: f32) -> f32` | `alpha` | Natural cubic spline fit + eval in one call. Requires strictly increasing xs and returns NaN otherwise, including outside the knot range. For an accepted knot vector, clamped extrapolation (returns ys[0] or ys[m-1] outside range). Every call recomputes M; avoid in tight loops. |
+| `spline_fit` | `[m](xs: &tensor[m, f32], ys: &tensor[m, f32]) -> tensor[m, f32]` | `alpha` | Returns second-derivative vector M (length m). Natural BCs: M[0]=M[m-1]=0. Requires strictly increasing xs and returns an all-NaN vector otherwise. Exposed for inspection; use spline_eval for evaluation. |
 
 ### Nautilus.Sde (2 exports)
 
