@@ -158,7 +158,7 @@ ulp is accepted, and a gap of minus one ulp is refused. An ill-conditioned
 spline is still a spline, so these functions do not second-guess a knot
 vector that is merely tightly spaced. Accepted is not the same as accurate,
 and for a very small gap it is not even the same as finite, or as visibly
-wrong -- see the knot requirements below.
+wrong. See the knot requirements below.
 
 `unsorted_low` is the reason the check sits in both exports rather than in
 the fit alone. The out-of-range arm returns `ys[0]` or `ys[m-1]` without
@@ -175,7 +175,19 @@ segment yourself: on `[xs[i], xs[i+1]]`, with `h = xs[i+1] - xs[i]` and
     y = ys[i] + b*t + (M[i]/2)*t^2 + ((M[i+1] - M[i]) / (6*h))*t^3
     b = (ys[i+1] - ys[i]) / h - h * (2*M[i] + M[i+1]) / 6
 
-which is the formula `spline_eval` uses. On the knots above, segment 1
+which is the formula `spline_eval` uses, though it evaluates it in f64 and
+returns f32. In f32 the two are not interchangeable at extreme knot
+magnitudes, because `t^2` and `t^3` leave the f32 exponent range while the
+coefficients they multiply are still in it, and the product can leave it even
+when both factors are inside. A hand-rolled f32 version of this
+formula drops the quadratic term for a gap near 1e-24, returning
+`a + b*t` rather than the curve, and returns NaN for a gap near 1e-26. It also
+breaks at the top of the range: `t^3` overflows f32 once `t` passes about
+7e12, and `t` is the distance from the left knot, so how large the knots may
+be depends on where the query sits in its segment. Compute it in f64 and
+return f32, as `spline_eval` does, or keep the knots and the values at
+ordinary magnitudes.
+On the knots above, segment 1
 (`h = 2`, `M = -1.5, -1.5`) gives `b = 1.5` and, at x = 2 (`t = 1`),
 `2 + 1.5 - 0.75 = 2.75`, the `spline_eval` result.
 
@@ -189,27 +201,47 @@ Knot requirements:
 - An accepted gap is used exactly as given, however small, so an
   ill-conditioned knot vector gives an ill-conditioned answer. Three outcomes
   are possible and the size of the gap alone does not tell you which:
-  - a very large value -- knots `[0, 1e-20, 1, 2]` with values
-    `[0, 1, 2, 5]` give `1.607143e19` at x = 0.5, and with a gap of 1e-31,
+  - a very large value: knots `[0, 1e-20, 1, 2]` with values
+    `[0, 1, 2, 5]` give `1.6071428e19` at x = 0.5, and with a gap of 1e-31,
     `1.607143e30`;
-  - a NaN -- the same knots with a gap of 1e-38;
+  - a NaN: the same knots with a gap of 1e-38;
   - a plausible finite value that is simply wrong. This is the one you cannot
     detect. Scaling the knots, the values and the query by one factor must
     scale the result by that factor, so `[0, 1, 2, 3]` with `[0, 1, 4, 9]` at
-    x = 1.5, which gives `2.2`, should give `2.2` times the factor. Scaled by
-    1e-24 it gives `1.8999999e-24`, 14% low; scaled by 1e-31, `2.5e-31`, 14%
-    high.
+    x = 1.5, which gives `2.2`, should give `2.2` times the factor. For a
+    uniform gap it does, down to a gap of `2.6795e-31`. Below that it does
+    not: scaled by 1e-31 the result is `2.5e-31`, 14% high.
 
-  What governs this is the magnitude of the knots, not the size of the gap
-  relative to them, and it is not monotone: the same scaling is accurate at
-  1e-10, wrong at 1e-24, NaN at 1e-26 and 1e-28, and finite but wrong again
-  at 1e-31. So no threshold is given here -- there is not one to give.
-  `la_tridiag_solve`'s substitution of 1 for a pivot below 1e-30, recorded on
-  its own page, is one known contributor and does not account for all of it;
-  the 1e-24 row above has a pivot of about 4e-24 and is wrong anyway. Apart
-  from gaps under 1e-30, where the fit used to substitute a unit gap, this
-  behaviour is the same before and after the ordering requirement: it is a
-  property of fitting at tiny coordinate scales, not of the knot check.
+  That threshold belongs to the solve rather than to the evaluation, and it
+  depends on how many knots you have. The fitted system carries
+  `2*(h[i-1] + h[i])` on its diagonal, and the solve's forward elimination
+  reduces each one to `d[k] = 4 - 1/d[k-1]` in units of the gap, starting at
+  4. The last interior pivot is therefore `3.75*h` for four knots, `3.7333*h`
+  for five, and tends to `(2 + sqrt 3)*h`, about `3.7320508*h`. A pivot below
+  1e-30 is replaced by 1.0, as `la_tridiag_solve` records on its own page, so
+  the second derivatives come back the wrong size as soon as that last pivot
+  falls under 1e-30.
+
+  The boundary thus rises with knot count, from `2.5e-31` at three knots,
+  where there is one interior pivot of `4*h`, through `2.6667e-31` at four,
+  toward `1e-30` over `(2 + sqrt 3)`, which is `2.6794919e-31`. A gap of
+  `2.6795e-31` is above that limit and is equivariant at every knot count
+  tried, up to a thousand; the exact quotient is not, because it leaves no
+  margin and nine knots there are already wrong.
+  At a gap of `2.667e-31`, four knots are still equivariant while five, six
+  and eight are not: all three collapse to the four-knot ratio `2.2` against
+  correct ratios of `2.232143`, `2.223684` and `2.2253523`. At `2.6795e-31`
+  all four counts are equivariant. For four knots specifically, `2.666e-31`
+  gives `2.3125` times the factor, where one of the two interior pivots has
+  been replaced, and below `2.5e-31`, where `4*h` crosses the same floor, both
+  are replaced and the ratio settles at `2.5`. A non-uniform gap has no single
+  threshold at all, because each interior knot carries its own diagonal.
+
+  So what governs this is the gap, through that diagonal, rather than the
+  magnitude of the knots. Apart from gaps under 1e-30, where the fit used to
+  substitute a unit gap, this behaviour is the same before and after the
+  ordering requirement: it is a property of fitting at tiny coordinate scales,
+  not of the knot check.
 - So a NaN does not by itself mean the knots were rejected. It means either
   that, or an accepted gap too small for f32 to carry the result through.
   Equally, a finite result is not a promise that the gap was large enough.

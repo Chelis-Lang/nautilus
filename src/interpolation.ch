@@ -179,6 +179,66 @@ def spline_fit[m](xs: &tensor[m, f32], ys: &tensor[m, f32]) -> tensor[m, f32] =
     rhs_v = spline_fit_rhs(copy(ys), h, spline_zeros(copy(xs)), n_len_m1)
     la_tridiag_solve(lower_v, diag_v, upper_v, rhs_v)
   }
+-- The segment polynomial is evaluated in f64 and returned as f32. The public
+-- signature does not change: this is an internal working precision, not an
+-- f64 surface. Values at ordinary knot magnitudes do move, so goldens there
+-- may need re-baselining. No bound on the movement is offered here: the
+-- absolute move scales with the data, and the relative move is unbounded
+-- wherever the result is small next to the values around it, which is exactly
+-- where a query landing on a knot now returns that knot's value instead of a
+-- near-miss. A sample maximum measured over one set of fixtures is a property
+-- of the sample, not of this change. The direction is usually toward the exact
+-- result and sometimes away from it.
+--
+-- The offset t is an absolute distance, not a position normalised into
+-- [0, 1], while c_c scales as 1/h and d_c as 1/h^2. In f32 both ends of those
+-- products leave the exponent range long before the product does. At knots
+-- scaled by 1e-24 the offset is 5e-25, and t*t falls below f32's 2^-150 flush
+-- threshold and becomes exactly 0, taking the whole quadratic term with it:
+-- the result was the segment polynomial's linear part a_c + b_c*t, 14% low,
+-- finite, and indistinguishable from a correct answer. That is not the chord
+-- through the bracketing knots, whose slope is 3 rather than b_c's 1.8: the
+-- chord gives 2.5e-24, which is 14% high, so comparing against
+-- linear_interp_sorted does not detect this. At 1e-26 and 1e-28 the
+-- rounding residue left in mi - prev_m, divided by 6h, overflows d_c to an
+-- infinity, and that infinity times the flushed t*t*t was a NaN.
+--
+-- The same powers saturate at the other end, which the issue did not cover.
+-- t*t*t leaves f32 above an offset near 7e12. The rule is on the offset, not
+-- on the knot scale, so which knot scale breaks depends on where the query
+-- sits in its segment: a query landing on a knot has t = h and failed from a
+-- knot scale bracketed by 6.98e12, which returned the correct 2.792e13, and
+-- 6.99e12, which returned an infinity; a midpoint query has t = h/2 and
+-- lasted to about twice that. Deriving a knot-scale boundary from one fixture
+-- understates it for the others, so only the offset rule is stated here. A
+-- nanosecond epoch timestamp is above 1e18, well inside the affected range.
+--
+-- The offset is not the only route out of range. c_c*t*t can overflow with
+-- both factors still inside it, so large values reach the same failure at
+-- ordinary knots: [0, 1000, 2000, 3000] with values to 3.4e38, queried at a
+-- knot, returned an infinity and now returns 3.4e38 exactly.
+--
+-- f64 carries both ends of those products across every scale measured here,
+-- which is what clears all of these rows: the same coefficients in f64 give
+-- 2.2e-26 whether the polynomial is written expanded or in Horner form, so
+-- Horner is used below because it forms no power of t on its own, not because
+-- any measured row needs it.
+--
+-- This does not rescue a fit that is already wrong. When the tridiagonal
+-- diagonal falls below 1e-30, la_tridiag_solve substitutes 1 for the pivot
+-- and the second derivatives come back the wrong size; evaluating that
+-- polynomial in f64 reproduces the wrong answer faithfully.
+def spline_seg_val(prev_y: f32, yi: f32, prev_m: f32, mi: f32, h: f32, t: f32) -> f32 = {
+  h_d = cast(h, f64)
+  t_d = cast(t, f64)
+  prev_m_d = cast(prev_m, f64)
+  mi_d = cast(mi, f64)
+  a_c = cast(prev_y, f64)
+  b_c = sub(div(sub(cast(yi, f64), a_c), h_d), div(mul(h_d, add(mul(cast(2.0, f64), prev_m_d), mi_d)), cast(6.0, f64)))
+  c_c = div(prev_m_d, cast(2.0, f64))
+  d_c = div(sub(mi_d, prev_m_d), mul(cast(6.0, f64), h_d))
+  add(a_c, mul(t_d, add(b_c, mul(t_d, add(c_c, mul(t_d, d_c)))))) |> cast(f32)
+}
 -- Evaluates the fitted spline on the segment bracketing x_query. The fold's
 -- i = 0 pass is a sentinel: prev_x is xs[0] itself, so its gap is 0 and
 -- bracket_hit discards its segment value. safe_h substitutes a unit gap there
@@ -218,13 +278,7 @@ def spline_eval[m](xs: &tensor[m, f32], ys: &tensor[m, f32], x_query: f32) -> f3
       h_seg = sub(xi, prev_x)
       safe_h = if is_first then interp_one_f() else h_seg
       t = sub(x_query, prev_x)
-      t2 = mul(t, t)
-      t3 = mul(t2, t)
-      a_c = prev_y
-      b_c = sub(div(sub(yi, prev_y), safe_h), div(mul(safe_h, add(mul(cast(2.0, f32), prev_m), mi_val)), cast(6.0, f32)))
-      c_c = div(prev_m, cast(2.0, f32))
-      d_c = div(sub(mi_val, prev_m), mul(cast(6.0, f32), safe_h))
-      seg_val = add(add(a_c, mul(b_c, t)), add(mul(c_c, t2), mul(d_c, t3)))
+      seg_val = spline_seg_val(prev_y, yi, prev_m, mi_val, safe_h, t)
       new_found = if bracket_hit then true else found
       new_result = if bracket_hit then seg_val else result_prev
       (new_found, new_result, xi, yi, mi_val)
