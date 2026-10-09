@@ -169,18 +169,26 @@ def lognormal_sample[n](k: key, template: tensor[n, f32], mu: f32, sigma: f32) -
   z = normal_sample(k, template, mu, sigma)
   exp(z)
 }
-def gamma_pdf(x: f32, shape: f32, scale: f32) -> f32 =
-  if lt(x, zero_f()) then zero_f() else if eq(x, zero_f()) then if gt(shape, one_f()) then zero_f() else if eq(shape, one_f()) then div(one_f(), scale) else pos_inf_d() else {
-    lx = log(x)
-    lscale = log(scale)
-    k_minus_one = sub(shape, one_f())
-    term1 = mul(k_minus_one, lx)
-    term2 = mul(shape, lscale)
-    xs = div(x, scale)
-    lgk = log_gamma(shape)
-    log_pdf = sub(sub(sub(term1, xs), term2), lgk)
-    exp(log_pdf)
-  }
+-- The density's log-space body has the same cancellation the incomplete gamma
+-- does, for the same reason: `(k - 1)*log(x)` and `log_gamma(k)` are each
+-- about 1.1e6 at `k = x = 1e5` and the exponent they leave is -6.67. In f32
+-- `gamma_pdf(1e5, 1e5, 1)` was 5.2e-2 relative and `gamma_pdf(5e7, 5e7, 1)`
+-- returned exactly 1.0 against a true 5.64e-5 -- a density above every value
+-- a Gamma(5e7, 1) density takes. It is evaluated in f64 and returned as f32.
+-- `gamma_inv_cdf`'s Newton step reads this as its derivative, so the quantile
+-- inherited the error from here as well as from `gamma_cdf`.
+def gamma_pdf_core(x: f64, shape: f64, scale: f64) -> f64 = {
+  lx = log(x)
+  lscale = log(scale)
+  k_minus_one = sub(shape, one_d64())
+  term1 = mul(k_minus_one, lx)
+  term2 = mul(shape, lscale)
+  xs = div(x, scale)
+  lgk = log_gamma(shape)
+  log_pdf = sub(sub(sub(term1, xs), term2), lgk)
+  exp(log_pdf)
+}
+def gamma_pdf(x: f32, shape: f32, scale: f32) -> f32 = if lt(x, zero_f()) then zero_f() else if eq(x, zero_f()) then if gt(shape, one_f()) then zero_f() else if eq(shape, one_f()) then div(one_f(), scale) else pos_inf_d() else cast(gamma_pdf_core(cast(x, f64), cast(shape, f64), cast(scale, f64)), f32)
 def chi_squared_pdf(x: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_pdf(x, half_df, two_f())
@@ -200,82 +208,183 @@ def student_t_pdf(x: f32, df: f32) -> f32 = {
   log_pdf = sub(sub(sub(add(lg_num, exponent_term), lg_den), half_log_df), half_log_pi)
   exp(log_pdf)
 }
--- The incomplete-gamma series and continued fraction below each carry a
--- 200-iteration budget, and each runs it in chunks of this many steps through
--- an outer driver so the budget costs about 30 stack frames instead of 200.
--- `chelis eval --file` evaluates on `main` and aborts the process at 136
--- frames of a body this size, so the flat recursion could not spend its budget:
--- see the eval-lane entry in `docs/UPSTREAM_BUGS.md`, which cites the
--- upstream issue by number.
--- The chunking changes no arithmetic: the iteration sequence, the convergence
--- test and the result are the flat form's, bit for bit, on every converging
--- input.
-def gammainc_chunk_i() -> i64 = cast(16, i64)
-def gammainc_series_chunk(x: f32, term: f32, acc: f32, ap: f32, iters: i64, steps: i64) -> (f32, f32, f32, i64, bool) = {
+-- The regularised incomplete gamma is evaluated in f64 and returned as f32.
+-- Both routes below share one front factor, `exp(a*log(x) - x - log_gamma(a))`,
+-- whose exponent is a difference of large quantities that very nearly cancel.
+-- At `a = x = 1e5` the three terms are each about 1.1e6 and the exponent they
+-- leave is 4.84, where one f32 rounding of the largest is 0.125. An absolute
+-- error in an exponent is a multiplicative error in the result, so in f32 that
+-- single rounding dominated everything this family returned at a large shape,
+-- whatever number of series or continued-fraction terms was spent:
+-- `gamma_sf(1e5, 1e5, 1)` returned 0.753 against a true 0.4996, and
+-- `gamma_pdf(5e7, 5e7, 1)` returned 1.0 against a true 5.64e-5. This is the
+-- same defect one function family over that `betai` had below; see the comment
+-- there and `docs/book/src/distributions/beta-family.md`.
+--
+-- f64 moves that cliff rather than removing it. The floor is one f64 ulp of
+-- `log_gamma(a)`, which is quantised and so steps at binade boundaries rather
+-- than growing smoothly: 2.3e-10 at `a = 1e5`, 3.0e-8 at 1e7, 1.19e-7 at 5e7
+-- and 4.8e-7 at 2e8. That crosses f32's own resolution -- one f32 ulp is about
+-- 1.2e-7 relative -- at about `a = 3.3e7`, so below that shape the return type
+-- hides it entirely.
+-- `gamma_pdf` is the clean probe for that floor, being one log-space
+-- expression with no iteration budget to confound it. At the single argument
+-- `x = a`: 7.2e-8 at 1e5, 1.5e-7 at 5e7, 3.4e-6 at 1e9, 2.1e-5 at 1e10 and
+-- 1.5e-4 at 1e11, which is 1248 times one f32 ulp. That settles that the error
+-- grows, since the return type's own rounding is constant in `a`.
+-- It does not bound it, and the two must not be confused: at `a = 2e8` that
+-- same single argument gives 5.9e-9 because two roundings cancelled, while the
+-- worst over a neighbourhood of 2e8 is 3.5e-7, fifty-nine times larger at the
+-- same shape. The envelope is estimated from neighbourhood worst cases, which
+-- sit at 1.2x and 0.7x of `ulp64(log_gamma(a))`; that is why the accuracy gate
+-- walks a neighbourhood rather than evaluating a point.
+-- `docs/book/src/appendix/precision.md` states the range this bounds and
+-- `parity/check_gamma_accuracy.py` is its gate.
+--
+-- Both budgets are far larger than the f32 lane's 200, because f32 could not
+-- have spent more usefully and f64 can. Measured iteration counts at the
+-- branch point `x = a`, where both routes are slowest: the series needs about
+-- `6.8*sqrt(a)` terms (2300 at `a = 1e5`, 48119 at `a = 5e7`) and the
+-- continued fraction about `0.45*sqrt(a)` (397 and 3167). The budget is 65536,
+-- which carries the series to about `a = 9e7`. It is spent through four levels
+-- of 16-way chunking, so peak recursion depth is about 64 frames rather than
+-- 65536: `chelis eval --file` evaluates on a bounded stack and aborts the
+-- process outright when a recursion outruns it (see the eval-lane entry in
+-- `docs/UPSTREAM_BUGS.md`, which cites the upstream issue by number).
+--
+-- The series tolerance is relative to the running sum, and the f32 lane's was
+-- not. It compared the term against `max(|sum|, 1.0)`, and that floor made the
+-- test absolute wherever the sum fell below 1. The sum is `P(a, x)` divided by
+-- the front factor, which is 1.8e-4 at `a = 5e7`, so a nominal 1e-7 bought a
+-- relative 5.6e-4 there. Near the branch point the tail is also about
+-- `sqrt(a)` times its last term rather than comparable to it, so a tolerance
+-- buys `tol*sqrt(a)` of relative accuracy and not `tol`: 1e-7 measured 1.8e-4
+-- at `a = 5e7` in f64 too. 1e-13 is what keeps the truncation inside one f32
+-- ulp across the documented range, and the two tolerances are deliberately
+-- separate numbers so the continued fraction's can move without the series'.
+def gammainc_series_tol() -> f64 = cast(1e-13, f64)
+def gammainc_cf_tol() -> f64 = cast(1e-13, f64)
+def gammainc_tiny() -> f64 = cast(1e-300, f64)
+def gammainc_fanout_i() -> i64 = cast(16, i64)
+def gammainc_max_i() -> i64 = cast(65536, i64)
+def gammainc_front(a: f64, x: f64) -> f64 = exp(sub(sub(mul(a, log(x)), x), log_gamma(a)))
+-- One term of the series for the lower regularised incomplete gamma, carrying
+-- the running (term, sum, denominator) and whether the step met the tolerance.
+def gammainc_series_chunk(x: f64, term: f64, acc: f64, ap: f64, i: i64, max_i: i64, steps: i64) -> (f64, f64, f64, i64, bool) = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
-  if or(lte(iters, zero_i), lte(steps, zero_i)) then (term, acc, ap, iters, false) else {
-    ap_next = add(ap, one_f())
+  if or(gt(i, max_i), lte(steps, zero_i)) then (term, acc, ap, i, false) else {
+    ap_next = add(ap, one_d64())
     term_next = mul(term, div(x, ap_next))
     acc_next = add(acc, term_next)
-    abs_term = abs_f32_inner(term_next)
-    abs_acc = abs_f32_inner(acc_next)
-    floor = cast(1.0, f32)
-    scale = if gt(abs_acc, floor) then abs_acc else floor
-    tol = cast(1e-7, f32)
-    converged = lt(abs_term, mul(tol, scale))
-    iters_next = sub(iters, one_i)
-    if converged then (term_next, acc_next, ap_next, iters_next, true) else gammainc_series_chunk(x, term_next, acc_next, ap_next, iters_next, sub(steps, one_i))
+    i_next = add(i, one_i)
+    converged = lt(fabs64_inner(term_next), mul(gammainc_series_tol(), fabs64_inner(acc_next)))
+    if converged then (term_next, acc_next, ap_next, i_next, true) else gammainc_series_chunk(x, term_next, acc_next, ap_next, i_next, max_i, sub(steps, one_i))
   }
 }
-def gammainc_series(x: f32, term: f32, acc: f32, ap: f32, iters: i64) -> f32 = {
-  zero_i = cast(0, i64)
-  if lte(iters, zero_i) then acc else {
-    st = gammainc_series_chunk(x, term, acc, ap, iters, gammainc_chunk_i())
-    if st.4 then st.1 else gammainc_series(x, st.0, st.1, st.2, st.3)
-  }
-}
-def gammap(a: f32, x: f32) -> f32 =
-  if lte(x, zero_f()) then zero_f() else {
-    la = log_gamma(a)
-    lx = log(x)
-    a_lx = mul(a, lx)
-    front_exp_arg = sub(sub(a_lx, x), la)
-    front = exp(front_exp_arg)
-    inv_a = div(one_f(), a)
-    series = gammainc_series(x, inv_a, inv_a, a, cast(200, i64))
-    mul(front, series)
-  }
-def gammaq_cf_chunk(a: f32, b: f32, c: f32, d: f32, h: f32, i: i64, steps: i64) -> (f32, f32, f32, f32, i64, bool) = {
+def gammainc_series_block(x: f64, term: f64, acc: f64, ap: f64, i: i64, max_i: i64, chunks: i64) -> (f64, f64, f64, i64, bool) = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
-  if or(lte(i, zero_i), lte(steps, zero_i)) then (b, c, d, h, i, false) else {
-    fi = cast(201, f32)
-    j = sub(fi, cast(i, f32))
+  if or(gt(i, max_i), lte(chunks, zero_i)) then (term, acc, ap, i, false) else {
+    st = gammainc_series_chunk(x, term, acc, ap, i, max_i, gammainc_fanout_i())
+    if st.4 then st else gammainc_series_block(x, st.0, st.1, st.2, st.3, max_i, sub(chunks, one_i))
+  }
+}
+def gammainc_series_super(x: f64, term: f64, acc: f64, ap: f64, i: i64, max_i: i64, blocks: i64) -> (f64, f64, f64, i64, bool) = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
+  if or(gt(i, max_i), lte(blocks, zero_i)) then (term, acc, ap, i, false) else {
+    st = gammainc_series_block(x, term, acc, ap, i, max_i, gammainc_fanout_i())
+    if st.4 then st else gammainc_series_super(x, st.0, st.1, st.2, st.3, max_i, sub(blocks, one_i))
+  }
+}
+def gammainc_series_drive(x: f64, term: f64, acc: f64, ap: f64, i: i64, max_i: i64) -> f64 =
+  if gt(i, max_i) then acc else {
+    st = gammainc_series_super(x, term, acc, ap, i, max_i, gammainc_fanout_i())
+    if st.4 then st.1 else gammainc_series_drive(x, st.0, st.1, st.2, st.3, max_i)
+  }
+-- One modified-Lentz step of the continued fraction for the upper regularised
+-- incomplete gamma. `i` counts up here where the f32 lane counted a budget
+-- down and recovered the forward index as `201 - i`; the arithmetic is the
+-- same sequence.
+def gammaq_cf_chunk(a: f64, b: f64, c: f64, d: f64, h: f64, i: i64, max_i: i64, steps: i64) -> (f64, f64, f64, f64, i64, bool) = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
+  if or(gt(i, max_i), lte(steps, zero_i)) then (b, c, d, h, i, false) else {
+    eps = gammainc_tiny()
+    j = cast(i, f64)
     an = mul(neg(j), sub(j, a))
-    b_next = add(b, two_f())
+    b_next = add(b, cast(2.0, f64))
     d_raw = add(mul(an, d), b_next)
-    d_guard = if lt(abs_f32_inner(d_raw), cast(1e-30, f32)) then cast(1e-30, f32) else d_raw
+    d_guard = if lt(fabs64_inner(d_raw), eps) then eps else d_raw
     c_raw = add(b_next, div(an, c))
-    c_guard = if lt(abs_f32_inner(c_raw), cast(1e-30, f32)) then cast(1e-30, f32) else c_raw
-    d_inv = div(one_f(), d_guard)
+    c_guard = if lt(fabs64_inner(c_raw), eps) then eps else c_raw
+    d_inv = div(one_d64(), d_guard)
     delta = mul(c_guard, d_inv)
     h_next = mul(h, delta)
-    cf_tol = cast(1e-7, f32)
-    delta_err = abs_f32_inner(sub(delta, one_f()))
-    converged = lt(delta_err, cf_tol)
-    i_next = sub(i, one_i)
-    if converged then (b_next, c_guard, d_inv, h_next, i_next, true) else gammaq_cf_chunk(a, b_next, c_guard, d_inv, h_next, i_next, sub(steps, one_i))
+    i_next = add(i, one_i)
+    converged = lt(fabs64_inner(sub(delta, one_d64())), gammainc_cf_tol())
+    if converged then (b_next, c_guard, d_inv, h_next, i_next, true) else gammaq_cf_chunk(a, b_next, c_guard, d_inv, h_next, i_next, max_i, sub(steps, one_i))
   }
 }
-def gammaq_cf_rec(a: f32, b: f32, c: f32, d: f32, h: f32, i: i64) -> f32 = {
+def gammaq_cf_block(a: f64, b: f64, c: f64, d: f64, h: f64, i: i64, max_i: i64, chunks: i64) -> (f64, f64, f64, f64, i64, bool) = {
   zero_i = cast(0, i64)
-  if lte(i, zero_i) then h else {
-    st = gammaq_cf_chunk(a, b, c, d, h, i, gammainc_chunk_i())
-    if st.5 then st.3 else gammaq_cf_rec(a, st.0, st.1, st.2, st.3, st.4)
+  one_i = cast(1, i64)
+  if or(gt(i, max_i), lte(chunks, zero_i)) then (b, c, d, h, i, false) else {
+    st = gammaq_cf_chunk(a, b, c, d, h, i, max_i, gammainc_fanout_i())
+    if st.5 then st else gammaq_cf_block(a, st.0, st.1, st.2, st.3, st.4, max_i, sub(chunks, one_i))
   }
 }
-def abs_f32_inner(x: f32) -> f32 = if lt(x, zero_f()) then neg(x) else x
+def gammaq_cf_super(a: f64, b: f64, c: f64, d: f64, h: f64, i: i64, max_i: i64, blocks: i64) -> (f64, f64, f64, f64, i64, bool) = {
+  zero_i = cast(0, i64)
+  one_i = cast(1, i64)
+  if or(gt(i, max_i), lte(blocks, zero_i)) then (b, c, d, h, i, false) else {
+    st = gammaq_cf_block(a, b, c, d, h, i, max_i, gammainc_fanout_i())
+    if st.5 then st else gammaq_cf_super(a, st.0, st.1, st.2, st.3, st.4, max_i, sub(blocks, one_i))
+  }
+}
+def gammaq_cf_drive(a: f64, b: f64, c: f64, d: f64, h: f64, i: i64, max_i: i64) -> f64 =
+  if gt(i, max_i) then h else {
+    st = gammaq_cf_super(a, b, c, d, h, i, max_i, gammainc_fanout_i())
+    if st.5 then st.3 else gammaq_cf_drive(a, st.0, st.1, st.2, st.3, st.4, max_i)
+  }
+-- The two cores guard a non-finite `x` before entering their recursions, and
+-- that guard is a cost control rather than a new answer. Neither the series'
+-- `|term| < tol*|sum|` nor the continued fraction's `|delta - 1| < tol` can be
+-- satisfied by a NaN, so a NaN argument spends the whole 65536-step budget and
+-- returns the NaN it would have returned anyway -- and `gamma_inv_cdf` pays
+-- that 80 times over. The f32 lane's budget was 200, so the same inputs were
+-- cheap there. `gamma_inv_cdf(0.5, 1, 0)` is the reachable case: its
+-- Wilson-Hilferty start is 0 when `scale` is 0, and `0 / 0` is the `x` that
+-- arrives here. The answers are the limits, which are what the lane already
+-- returned by propagation.
+def gammap_core(a: f64, x: f64) -> f64 =
+  if neq(x, x) then nan_d64() else if eq(x, div(one_d64(), zero_d64())) then one_d64() else if lte(x, zero_d64()) then zero_d64() else {
+    inv_a = div(one_d64(), a)
+    acc = gammainc_series_drive(x, inv_a, inv_a, a, cast(1, i64), gammainc_max_i())
+    mul(gammainc_front(a, x), acc)
+  }
+-- `b0` is `x - a + 1`, which is at least 1 on the route that reaches this
+-- function, since the callers send the continued fraction only `x >= a + 1`.
+-- The guard is there because this is an f64 entry point and nothing in its own
+-- signature says so.
+def gammaq_core(a: f64, x: f64) -> f64 =
+  if neq(x, x) then nan_d64() else if eq(x, div(one_d64(), zero_d64())) then zero_d64() else if lte(x, zero_d64()) then one_d64() else {
+    eps = gammainc_tiny()
+    b0_raw = add(sub(x, a), one_d64())
+    b0 = if lt(fabs64_inner(b0_raw), eps) then eps else b0_raw
+    c0 = div(one_d64(), eps)
+    d0 = div(one_d64(), b0)
+    h = gammaq_cf_drive(a, b0, c0, d0, d0, cast(1, i64), gammainc_max_i())
+    mul(gammainc_front(a, x), h)
+  }
+-- `x < a + 1` is the series' domain and the rest is the continued fraction's.
+-- Each route computes the tail it owns and the other is its complement, so the
+-- subtraction is never the one that cancels: a small `P` is reached through
+-- the series directly and a small `Q` through the continued fraction, which is
+-- the arrangement #137 and #139 settled for this family.
+def gammainc_p(a: f64, x: f64) -> f64 = if lt(x, add(a, one_d64())) then gammap_core(a, x) else sub(one_d64(), gammaq_core(a, x))
+def gammainc_q(a: f64, x: f64) -> f64 = if lt(x, add(a, one_d64())) then sub(one_d64(), gammap_core(a, x)) else gammaq_core(a, x)
 -- The regularised incomplete beta is evaluated in f64 and returned as f32.
 -- `betai`'s front factor is `exp(lgamma(a+b) - lgamma(a) - lgamma(b)
 -- + a*ln x + b*ln(1-x))`, whose exponent is a difference of large quantities:
@@ -450,10 +559,23 @@ def poisson_pmf(k: f32, lambda: f32) -> f32 =
 -- `6.4501529e-12`. `gamma_sf`'s branch point is the one this needs -- a small
 -- `P(X <= k)` means `lambda >> k + 1`, which is exactly where `gamma_sf`
 -- evaluates the continued fraction directly instead of complementing.
+-- `k + 1` is formed in f64 and the upper regularised incomplete gamma is
+-- entered directly, rather than going through `gamma_sf`'s f32 signature. In
+-- f32 the `+ 1` is lost outright above `k = 2^24`, which made
+-- `poisson_cdf(5e7, 5e7)` evaluate `Q(5e7, 5e7)` instead of `Q(5e7 + 1, 5e7)`:
+-- the difference between them is `poisson_pmf(5e7, 5e7) = 5.64e-5`, so the
+-- answer was short by 1.1e-4 of itself. That was invisible underneath the
+-- front-factor error this change removes -- the same call was 99.87% wrong
+-- before -- and it is the whole residual once the front factor is fixed. It is
+-- the site #146 named and then narrowed away from, so it is repaired here,
+-- where the export is already being moved.
+-- The three guards that remain are `gamma_sf`'s own, specialised to `scale =
+-- 1`: with that scale the standardised argument is `lambda` exactly, in f32
+-- and in f64 alike, so specialising them changes no boundary.
 def poisson_cdf(k: f32, lambda: f32) -> f32 =
-  if lt(lambda, zero_f()) then nan_d() else if lt(k, zero_f()) then zero_f() else if eq(lambda, zero_f()) then one_f() else {
-    k_plus_one = add(k, one_f())
-    gamma_sf(lambda, k_plus_one, one_f())
+  if lt(lambda, zero_f()) then nan_d() else if lt(k, zero_f()) then zero_f() else if eq(lambda, zero_f()) then one_f() else if neq(lambda, lambda) then nan_d() else if eq(lambda, pos_inf_d()) then zero_f() else {
+    k_plus_one = add(cast(k, f64), one_d64())
+    cast(gammainc_q(k_plus_one, cast(lambda, f64)), f32)
   }
 -- The log-space body is evaluated in f64 and the result returned as f32, for
 -- the reason recorded above `poisson_pmf` and one more: `log_choose` is a
@@ -589,36 +711,28 @@ def student_t_cdf(t: f32, df: f32) -> f32 =
     half_bi = mul(half_f(), bi)
     if gte(t, zero_f()) then sub(one_f(), half_bi) else half_bi
   }
-def gammaq(a: f32, x: f32) -> f32 =
-  if lte(x, zero_f()) then one_f() else {
-    la = log_gamma(a)
-    lx = log(x)
-    a_lx = mul(a, lx)
-    front_exp_arg = sub(sub(a_lx, x), la)
-    front = exp(front_exp_arg)
-    b0 = add(sub(x, a), one_f())
-    tiny = cast(1e-30, f32)
-    c0 = div(one_f(), tiny)
-    d0 = div(one_f(), b0)
-    h0 = d0
-    h = gammaq_cf_rec(a, b0, c0, d0, h0, cast(200, i64))
-    mul(front, h)
-  }
 -- A non-positive `shape` or `scale` is not a distribution, and a non-finite
 -- `x` is a limit rather than a point to integrate to, so both are decided
 -- before the standardised argument `xs` reaches either recursion.
 -- These are the guards `gamma_pdf`, `gamma_inv_cdf` and `weibull_cdf` already
 -- use, and they agree with SciPy. The guards read `xs`, not `x`, so a finite
 -- `x` whose `x / scale` overflows lands on the same answer as `x = +inf`.
+-- The three guards read the f32 `xs` and the body reads an f64 one. That is
+-- deliberate: the guards are the ones #140 settled, including the clause above
+-- that a finite `x` whose f32 `x / scale` overflows answers as `x = +inf`
+-- does, and widening the quotient would quietly move that boundary. The f64
+-- quotient the body uses carries the digits the recursion needs.
 def gamma_cdf(x: f32, shape: f32, scale: f32) -> f32 =
   if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else {
     xs = div(x, scale)
-    if neq(xs, xs) then nan_d() else if lte(xs, zero_f()) then zero_f() else if eq(xs, pos_inf_d()) then one_f() else if lt(xs, add(shape, one_f())) then gammap(shape, xs) else sub(one_f(), gammaq(shape, xs))
+    xs64 = div(cast(x, f64), cast(scale, f64))
+    if neq(xs, xs) then nan_d() else if lte(xs, zero_f()) then zero_f() else if eq(xs, pos_inf_d()) then one_f() else cast(gammainc_p(cast(shape, f64), xs64), f32)
   }
 def gamma_sf(x: f32, shape: f32, scale: f32) -> f32 =
   if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else {
     xs = div(x, scale)
-    if neq(xs, xs) then nan_d() else if lte(xs, zero_f()) then one_f() else if eq(xs, pos_inf_d()) then zero_f() else if lt(xs, add(shape, one_f())) then sub(one_f(), gammap(shape, xs)) else gammaq(shape, xs)
+    xs64 = div(cast(x, f64), cast(scale, f64))
+    if neq(xs, xs) then nan_d() else if lte(xs, zero_f()) then one_f() else if eq(xs, pos_inf_d()) then zero_f() else cast(gammainc_q(cast(shape, f64), xs64), f32)
   }
 def chi_squared_cdf(x: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
@@ -628,34 +742,89 @@ def chi_squared_sf(x: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_sf(x, half_df, two_f())
 }
-def gamma_inv_cdf_newton(target: f32, shape: f32, scale: f32, x: f32, iters: i64) -> f32 = {
+-- The quantile is a Wilson-Hilferty closed form refined by Newton's method on
+-- the CDF, and the refinement now runs in f64 on the f64 CDF and density.
+--
+-- The loop stays, and its own measurement is why. Against `gammaincinv`, with
+-- the f32 CDF underneath it, the refinement was worth 41856x at `shape = 1`
+-- and 754536x at `q = 0.05, shape = 1`, where the closed form alone is weak;
+-- above the bracket it was 1001x *worse* at `shape = 1e3` and returned 5e29 at
+-- `shape = 1e7`. Both of those are one defect: Newton converges on the root of
+-- the function it is given, so a biased CDF moves the root it finds, and the
+-- closed form happened to be nearer the true quantile than that moved root
+-- was. Removing the loop would have traded a large-shape error for a
+-- small-shape one five orders of magnitude bigger. Fixing the CDF fixes the
+-- loop, and no threshold is introduced, so there is no shape at which this
+-- function changes method and nothing here to be continuous across.
+--
+-- The crossover above is a bracket and not a located boundary: the sweep that
+-- found it stepped `shape` by decades, so what it establishes is that the flip
+-- happens somewhere between 100 and 1000 at the median and somewhere between
+-- 1e3 and 1e4 in the 0.1% tails.
+--
+-- The exit test is new and is a cost control rather than an accuracy one. 80
+-- unconditional steps each cost a full CDF evaluation, which near the branch
+-- point is tens of thousands of series terms; the loop reaches the f64 noise
+-- floor of the CDF it is reading in about five. `1e-10` relative is the
+-- stopping point because the floor itself is parameter-dependent -- the step
+-- settles at about 3.5e-11 of `x` at `shape = 5e7` and 2.3e-12 at `shape =
+-- 1e5` -- so a test tighter than the floor would never fire and would spend
+-- the whole budget. 1e-10 is still 170x finer than the f32 return resolves.
+-- The 80-step budget remains as the backstop for a non-converging case.
+def gamma_inv_newton_tol() -> f64 = cast(1e-10, f64)
+-- Not `gammainc_tiny()`, and the difference is 270 decades of consequence.
+-- That constant is the continued fraction's Lentz floor, where the only job is
+-- to be small enough never to be reached by a real denominator. These two are
+-- the smallest *starting point* and the smallest *derivative* the Newton loop
+-- can usefully be handed, and both are reached: Wilson-Hilferty's `s` goes
+-- negative for a small shape in the far lower tail -- `shape = 1.25, q = 0.001`
+-- is one -- so the cube is floored and becomes the start. At 1e-30 the density
+-- there is 1.8e-8 and the first step lands near the answer. At 1e-300 the
+-- density underflows to zero, the step is divided by the floor instead, and
+-- `gamma_inv_cdf(0.001, 1.25, 2)` diverges to +inf from a value that was
+-- correct to seven digits. The f32 lane used 1e-30 for both and this keeps it.
+def gamma_inv_floor() -> f64 = cast(1e-30, f64)
+def gamma_inv_newton_max_i() -> i64 = cast(80, i64)
+def gamma_inv_newton_step(target: f64, shape: f64, scale: f64, x: f64) -> (f64, bool) = {
+  cur = gammainc_p(shape, div(x, scale))
+  resid = sub(cur, target)
+  pdf_v = gamma_pdf_core(x, shape, scale)
+  floor_pdf = gamma_inv_floor()
+  pdf_safe = if lt(pdf_v, floor_pdf) then floor_pdf else pdf_v
+  step = div(resid, pdf_safe)
+  x_next_raw = sub(x, step)
+  x_next = if lte(x_next_raw, zero_d64()) then mul(cast(0.5, f64), x) else x_next_raw
+  settled = lt(fabs64_inner(sub(x_next, x)), mul(gamma_inv_newton_tol(), fabs64_inner(x)))
+  (x_next, settled)
+}
+def gamma_inv_newton_chunk(target: f64, shape: f64, scale: f64, x: f64, i: i64, max_i: i64, steps: i64) -> (f64, i64, bool) = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
-  if lte(iters, zero_i) then x else {
-    cur = gamma_cdf(x, shape, scale)
-    resid = sub(cur, target)
-    pdf_v = gamma_pdf(x, shape, scale)
-    floor_pdf = cast(1e-30, f32)
-    pdf_safe = if lt(pdf_v, floor_pdf) then floor_pdf else pdf_v
-    step = div(resid, pdf_safe)
-    x_next_raw = sub(x, step)
-    x_next = if lte(x_next_raw, zero_f()) then mul(half_f(), x) else x_next_raw
-    gamma_inv_cdf_newton(target, shape, scale, x_next, sub(iters, one_i))
+  if or(gt(i, max_i), lte(steps, zero_i)) then (x, i, false) else {
+    st = gamma_inv_newton_step(target, shape, scale, x)
+    i_next = add(i, one_i)
+    if st.1 then (st.0, i_next, true) else gamma_inv_newton_chunk(target, shape, scale, st.0, i_next, max_i, sub(steps, one_i))
   }
 }
+def gamma_inv_newton_drive(target: f64, shape: f64, scale: f64, x: f64, i: i64, max_i: i64) -> f64 =
+  if gt(i, max_i) then x else {
+    st = gamma_inv_newton_chunk(target, shape, scale, x, i, max_i, gammainc_fanout_i())
+    if st.2 then st.0 else gamma_inv_newton_drive(target, shape, scale, st.0, st.1, max_i)
+  }
 def gamma_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
   if or(lt(q, zero_f()), gt(q, one_f())) then nan_d() else if lte(q, zero_f()) then zero_f() else if gte(q, one_f()) then pos_inf_d() else {
-    z = normal_inv_cdf(q, zero_f(), one_f())
-    inv_9k = div(one_f(), mul(cast(9.0, f32), shape))
-    third = cast(0.3333333333, f32)
+    z = cast(normal_inv_cdf(q, zero_f(), one_f()), f64)
+    shape64 = cast(shape, f64)
+    scale64 = cast(scale, f64)
+    inv_9k = div(one_d64(), mul(cast(9.0, f64), shape64))
     sqrt_inv_9k = sqrt(inv_9k)
-    a = sub(one_f(), inv_9k)
+    a = sub(one_d64(), inv_9k)
     b = mul(z, sqrt_inv_9k)
     s = add(a, b)
     s_cubed = mul(s, mul(s, s))
-    wh_safe = if gt(s_cubed, cast(1e-30, f32)) then s_cubed else cast(1e-30, f32)
-    x0 = mul(shape, mul(scale, wh_safe))
-    gamma_inv_cdf_newton(q, shape, scale, x0, cast(80, i64))
+    wh_safe = if gt(s_cubed, gamma_inv_floor()) then s_cubed else gamma_inv_floor()
+    x0 = mul(shape64, mul(scale64, wh_safe))
+    cast(gamma_inv_newton_drive(cast(q, f64), shape64, scale64, x0, cast(1, i64), gamma_inv_newton_max_i()), f32)
   }
 def chi_squared_inv_cdf(q: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
