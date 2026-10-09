@@ -82,10 +82,12 @@ f32. On that same f32 CDF the refinement was also worth a factor of 1001
 function it is handed and a biased CDF moves that root. The CDF is the fix;
 the loop stays.
 
-What the loop does not do is converge for every argument. For `q` below 1e-4 at
-a shape near 2 its 80 steps are exhausted before the descent arrives; see
-[the precision appendix](../appendix/precision.md) for the excluded region and
-what to do instead.
+What the loop does not do is converge for every argument. Each of its steps
+divides by the density, floored at an absolute 1e-30, and there are two regions
+where that division is useless: `q` below 1e-4 at a shape near 2, where the
+start itself is floored, and a very large `scale`, where the density falls under
+the floor. In both the 80 steps are exhausted before the descent arrives. See
+[the precision appendix](../appendix/precision.md) for both regions.
 
 **`gamma_sample[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]`**
 
@@ -158,8 +160,9 @@ f64 moves this limit rather than removing it. The floor is one f64 ulp of
 reaches about 4.8e-7 by shape 2e8. The iteration budget is the other limit, and
 it is now 65536 rather than 200: at the branch point the series needs 2197
 terms at shape 1e5 and 45662 at 5e7, so the budget carries it past shape 1e8.
-[The precision appendix](../appendix/precision.md) states the range both limits
-leave and names the gate that measures it.
+[The precision appendix](../appendix/precision.md) states what is measured
+inside both limits, describes the grid that measures it, and names the regions
+outside it that are known wrong.
 
 ```chelis
 module Nautilus.BookGammaFamily

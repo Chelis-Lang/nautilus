@@ -342,25 +342,25 @@ class Coverage(unittest.TestCase):
             self.assertIn(export, declared,
                           f"{export} is measured but the probe does not import it")
 
-    def test_every_axis_the_claim_names_is_varied_here(self) -> None:
-        """The structural guard, and the reason it exists.
+    def test_the_grid_varies_every_parameter_of_every_export(self) -> None:
+        """A coverage property of the grid. It is NOT a check on the documents.
 
-        Two review rounds falsified the documented bound the same way: the
-        sentence quantified over a parameter this grid held fixed. Round 1 was
-        `q`, which stopped three decades above a failure region. Round 2 was
-        `scale`, which the quantile rows did not vary at all -- and
-        `gamma_inv_cdf(0.5, 2, 1e31)` is 3.0e-4, 152 times the bound, at a `q`
-        that was already in the set.
+        An earlier version of this test was called
+        `test_every_axis_the_claim_names_is_varied_here` and its docstring said
+        "if a later change adds a parameter to the claim, this test is what
+        should fail until the grid covers it". That was false and it mattered:
+        this file parses no document, the parameter list below is hard-coded,
+        and a third review round then falsified the documented bound on `shape`
+        below 0.5 while this test passed. A reviewer also froze seven of
+        fourteen grid axes without it firing, because the "extremes" assertions
+        take their bounds from the same tuples that build the grid.
 
-        Narrowing the sentence a third time would not address that. What both
-        rounds share is one fault: a quantifier with no axis. So this test
-        asserts the property instead of the instances. Every parameter the
-        documented claim ranges over -- `x`, `shape`, `df`, `lambda`, `k`, `q`
-        and `scale` -- must be varied by the grid, with at least two distinct
-        values, and the two extremes of each bounded axis must appear.
-
-        If a later change adds a parameter to the claim, this test is what
-        should fail until the grid covers it.
+        So the claim in docs/book no longer states a parameter range at all --
+        it states the measured set, which is what this gate actually enforces.
+        This test keeps its narrower, true job: every parameter of every export
+        is varied rather than held fixed, so no export is measured at a single
+        point on any of its axes. Treat a pass as "the grid moves on every
+        axis", not as "the documents are accurate".
         """
         def argument(case, index):
             return arguments(case[2])[index]

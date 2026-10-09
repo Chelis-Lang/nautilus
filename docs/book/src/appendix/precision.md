@@ -44,7 +44,7 @@ Two cases need separate guidance:
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions; the two families below are stated rather than estimated |
 | `poisson_pmf`, `binomial_pmf` | below 2e-6 up to `lambda` of 1e8 and `n` of 2e8 | Log space in f64; past that, limited by f64's spacing at `ln(k!)`, see the note below |
-| the gamma family, nine exports | below 2e-6 up to `shape` of 5e7, `df` of 1e8, `lambda` of 5e7; the two quantiles to `shape` 1e7 and `df` 2e7 at `q` >= 1e-4 and `scale` in [1e-20, 1e20] | Incomplete gamma in f64; see the note below for both limits past that and for the two excluded quantile regions |
+| the gamma family, nine exports | below 2e-6 at every one of the 1626 cases the accuracy gate enforces | Incomplete gamma in f64; the note below describes what that grid covers, and the three regions outside it that are known wrong |
 | Beta-family CDFs | below 2e-6 over a stated parameter range | `beta_cdf`, `f_cdf`, `binomial_cdf`; the range is part of the figure, see the note below |
 | `student_t_cdf` | below 2e-6 for every `df` | The incomplete beta below `df` of 1e7, the large-`df` expansion from 1e7 upward, see the note below |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
@@ -193,21 +193,40 @@ returned as f32. In f32 the error was 51% at `gamma_sf(1e5, 1e5, 1)` and 100%
 at shape 1e7, `gamma_pdf(5e7, 5e7, 1)` returned 1.0 against a true 5.6418958e-5,
 and `gamma_inv_cdf(0.5, 1e7, 1)` returned 5e29 against a true 1e7.
 
-> Relative error stays below 2e-6 for `shape` up to 5e7, for `df` up to 1e8 and
-> for `lambda` up to 5e7, at every `x` and `k`, for any result f32 can hold as a
-> normal number. The two quantiles hold the same bound for `shape` up to 1e7 and
-> `df` up to 2e7, **for `q` at or above 1e-4 and `scale` between 1e-20 and
-> 1e20**.
+> Relative error is below 2e-6 at **every one of the 1626 cases**
+> `parity/check_gamma_accuracy.py` enforces, on every CI run.
 
-Every parameter named in that statement is one the gate varies and probes at
-its boundary, and that is deliberate rather than tidy. Two review rounds
-falsified an earlier version of this sentence the same way: it quantified over
-a parameter the gate held fixed. First `q`, where the grid stopped three
-decades above a failure region; then `scale`, which the quantile rows did not
-vary at all. A third caveat was not the repair -- the repair was to stop
-writing quantifiers with no axis behind them, and
-`test_every_axis_the_claim_names_is_varied_here` is what now fails if one
-appears.
+That is a statement about a measured set, not about a parameter range, and the
+difference is the whole point of how it is worded. Three review rounds
+falsified three earlier versions of this sentence, every one of them in the
+same way: each stated a range, and each range quantified over a parameter the
+gate did not actually walk. First `q`, where the grid stopped three decades
+above a failure region. Then `scale`, which the quantile rows did not vary at
+all. Then `shape` *downward*, because the range bounded it only from above
+while the grid's ladder starts at 0.5 -- `gamma_inv_cdf(1e-4, 0.0706, 1e20)` is
+41x out, with every parameter inside the range as written.
+
+So the claim no longer asserts a region. It asserts what was measured, which
+cannot be falsified by a point nobody measured, and it leaves the region to the
+grid rather than to a sentence that drifts from it.
+
+**What the grid covers**, as a description of the instrument and not a
+guarantee beyond it: `shape` on a ladder from 0.5 to each export's ceiling
+(5e7 for the gamma trio, `df` 1e8 for the chi-squared trio, `lambda` 5e7 for
+`poisson_cdf`, `shape` 1e7 and `df` 2e7 for the quantiles) and one rung past
+it; `x` and `k` walked across `shape*scale` in units of the distribution's own
+standard deviation, from -20 to +20, plus both sides of the branch point
+exactly; `scale` over 1, 2.5 and 0.0078125 for the densities and CDFs, and
+1e-20, 1, 2.5 and 1e20 for the quantiles; `q` over ten values from 1e-4 to
+0.999. References come from an arbitrary-precision oracle and any whose value
+f32 cannot hold as a normal number is excluded.
+
+**Outside that set, three regions are known to be wrong** and are tracked
+separately rather than bounded here. Two are in the quantiles and are described
+below. The third is the CDF: the parameter guards read the **f32** quotient
+`x / scale`, so when that quotient underflows, `gamma_cdf` returns exactly 0.0
+for an answer f32 can hold -- `gamma_cdf(1e-30, 0.25, 1e20)` is 0.0 against a
+true 3.49e-13, while the same call at `scale = 1` returns the correct 3.49e-8.
 
 Those two limits on the quantiles are one defect seen twice, and it is worth
 knowing which, because it tells you when to distrust a value. `gamma_inv_cdf`
@@ -239,13 +258,9 @@ neither causes nor repairs them.
 **Do not reach for the CDF as a substitute without checking the same
 parameters.** An earlier version of this note recommended solving
 `gamma_cdf(x, shape, scale) = q` instead, on the grounds that the CDF is
-accurate over fifty decades of `scale`. It is not accurate everywhere there:
-the parameter guards read the **f32** quotient `x / scale`, so when that
-quotient underflows the CDF returns exactly 0.0 even though the answer is an
-ordinary f32. `gamma_cdf(1e-30, 0.25, 1e20)` is 0.0 against a true 3.49e-13,
-while the same call at `scale = 1` returns the correct 3.49e-8. The guard's
-overflow side is deliberate and documented above; its underflow side is not,
-and it is tracked separately.
+accurate over fifty decades of `scale`. That was false, for the underflow
+reason given above. The CDF is accurate over the grid's own scale range; it is
+not a general escape from the quantile's limits.
 
 `parity/check_gamma_accuracy.py` measures all nine exports on every CI run, at
 and beyond those ceilings and at the `q` floor, and fails if the bound is exceeded inside the range.

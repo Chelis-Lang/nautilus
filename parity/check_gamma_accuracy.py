@@ -218,10 +218,13 @@ QUANTILE_FLOOR_SHAPES = (1.1, 1.25, 1.5, 1.9, 2.0, 2.5)
 # true density falls under the floor, the Newton step divides by the floor
 # instead, and each step then removes only a fraction `pdf/floor` of the error.
 #
-# The repair is not a third caveat. What produced both rounds is one structural
-# fault -- a documented bound that quantified over a parameter the enforcing
-# grid held fixed -- so every axis the claim names now has an axis here, probed
-# at both ends. `test_every_axis_the_claim_names_is_varied_here` is the guard.
+# A third round then falsified the narrowed bound a third time, on `shape`
+# downward: the range bounded shape only from above while this ladder starts at
+# 0.5, and `gamma_inv_cdf(1e-4, 0.0706, 1e20)` is 41x out with every parameter
+# inside the range as written. So adding axes to chase a range-shaped claim did
+# not work either, and the documents no longer state a range -- they state this
+# grid's measured result. This axis stays because it is the one that found the
+# round-2 error, not because a sentence quantifies over it.
 # The quantiles are clean from 1e-20 to 1e25 at every shape and `q` probed and
 # first exceed the bound at 1e27 (`gamma_inv_cdf(1e-4, 1e2, 1e27)` is 7.1e-6),
 # so the upper endpoint of 1e20 is seven decades inside the measured failure.

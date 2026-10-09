@@ -88,17 +88,24 @@ C-lane coverage.
 The documented range and its two limits are in
 [the precision appendix](docs/book/src/appendix/precision.md).
 
-**The documented quantile range excludes `q` below 1e-4 and `scale` outside
-[1e-20, 1e20].** For a shape in
+**The documented accuracy claim states a measured set, not a parameter
+range.** For a shape in
 roughly [1.9, 2.6] below that quantile, `gamma_inv_cdf`'s Wilson-Hilferty start
 is floored, the first Newton step overshoots by about 27 decades, and the
 80-step budget is spent halving back: `gamma_inv_cdf(1e-5, 2, 1)` returns
 8.271806 against a true 0.0044788163, which is the 99.8th percentile rather than
 the 0.001st. That is pre-existing -- the values move about eleven f32 ulps
 across this change while the relative errors agree to three digits -- so it is
-tracked separately rather than fixed here; what this change does is keep the new
-bound from claiming it. The gate probes the floor at its stated value and
-generates no case below it.
+tracked separately rather than fixed here.
+
+Three review rounds falsified three successive range-shaped versions of the
+documented bound, each on a different parameter the grid did not walk: `q`,
+then `scale`, then `shape` downward. The claim now reads "relative error is
+below 2e-6 at every one of the 1626 cases `parity/check_gamma_accuracy.py`
+enforces", which is what the gate checks on every CI run and cannot be
+falsified by a point nobody measured. The appendix describes what that grid
+covers as a property of the instrument, and names the three regions outside it
+that are known wrong.
 
 The same floor fails from the other side at a large `scale`: it is absolute at
 1e-30 while a Gamma density is about `1/(scale*sqrt(2*pi*shape))`, so
