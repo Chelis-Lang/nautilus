@@ -1,6 +1,6 @@
 The regularized incomplete gamma behind `gamma_cdf`, `gamma_sf`, `gamma_pdf`,
-`chi_squared_cdf`, `chi_squared_sf`, `poisson_cdf`, `gamma_inv_cdf` and
-`chi_squared_inv_cdf` is now evaluated in f64 and returned as f32. **Values
+`chi_squared_cdf`, `chi_squared_sf`, `chi_squared_pdf`, `poisson_cdf`,
+`gamma_inv_cdf` and `chi_squared_inv_cdf` is now evaluated in f64 and returned as f32. **Values
 change.** The public signatures do not: this is an internal working precision,
 not an f64 surface.
 
@@ -90,19 +90,23 @@ The documented range and its two limits are in
 
 **The documented quantile range excludes `q` below 1e-4 and `scale` outside
 [1e-20, 1e20].** For a shape in
-roughly [1.9, 2.5] below that quantile, `gamma_inv_cdf`'s Wilson-Hilferty start
+roughly [1.9, 2.6] below that quantile, `gamma_inv_cdf`'s Wilson-Hilferty start
 is floored, the first Newton step overshoots by about 27 decades, and the
 80-step budget is spent halving back: `gamma_inv_cdf(1e-5, 2, 1)` returns
 8.271806 against a true 0.0044788163, which is the 99.8th percentile rather than
-the 0.001st. That is pre-existing and bit-identical on the base commit, so it is
+the 0.001st. That is pre-existing -- the values move about eleven f32 ulps
+across this change while the relative errors agree to three digits -- so it is
 tracked separately rather than fixed here; what this change does is keep the new
 bound from claiming it. The gate probes the floor at its stated value and
 generates no case below it.
 
 The same floor fails from the other side at a large `scale`: it is absolute at
 1e-30 while a Gamma density is about `1/(scale*sqrt(2*pi*shape))`, so
-`gamma_inv_cdf(0.5, 2, 1e31)` is 3.0e-4 relative at a median. Also pre-existing
-and bit-identical on the base commit. Both are convergence limits rather than
+`gamma_inv_cdf(0.5, 2, 1e31)` is 3.0e-4 relative at a median. Also pre-existing:
+the returned values move by about eleven f32 ulps across this change
+(`gamma_inv_cdf(1e-5, 2, 1)` is 8.271817 before and 8.271806 after) while the
+relative errors agree to three digits, so this change neither causes it nor
+repairs it. "Bit-identical" was too strong and is not what was measured. Both are convergence limits rather than
 precision ones -- raising the budget from 80 to 4000 returns the correctly
 rounded answer at both witnesses -- and the quantile rows now vary `scale` so
 the bound cannot be stated over an axis the gate holds fixed.

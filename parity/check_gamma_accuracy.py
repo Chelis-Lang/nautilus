@@ -150,7 +150,8 @@ DOCUMENTED = {
 # growth actually is instead of leaving the documents' claim about it
 # unmeasured. These rows exercise budget exhaustion and not only the rounding.
 # Each is past its ceiling and past the point where the subject's own
-# 65536-term budget is exhausted, which is about shape 9e7: the series needs
+# 65536-term budget is exhausted, which crosses just past shape 1e8 -- 64035
+# terms at 1e8 and 65576 at 1.05e8. The series needs
 # a square-root number of terms at the branch point. A decade past would not
 # demonstrate anything more and the reference's cost is linear in those terms.
 BEYOND = {
@@ -185,7 +186,7 @@ SCALES_THIN = (1.0,)
 # The quantiles' documented lower bound on `q`, and the reason it exists.
 #
 # Below it `gamma_inv_cdf` is not accurate to 2e-6 for a shape in roughly
-# [1.9, 2.5]: Wilson-Hilferty's `s` goes negative there, the start is floored
+# [1.9, 2.6]: Wilson-Hilferty's `s` goes negative there, the start is floored
 # to `gamma_inv_floor()`, the first Newton step overshoots by about 27 decades
 # and the 80-step budget is exhausted halving back. `gamma_inv_cdf(1e-5, 2, 1)`
 # returns 8.271806 against a true 0.00447881626 -- the wrong tail, and nothing
@@ -221,9 +222,11 @@ QUANTILE_FLOOR_SHAPES = (1.1, 1.25, 1.5, 1.9, 2.0, 2.5)
 # fault -- a documented bound that quantified over a parameter the enforcing
 # grid held fixed -- so every axis the claim names now has an axis here, probed
 # at both ends. `test_every_axis_the_claim_names_is_varied_here` is the guard.
-# The endpoints are two decades inside the measured failure: the quantiles are
-# clean from 1e-20 to 1e25 at every shape and `q` probed, and first exceed the
-# bound at 1e28.
+# The quantiles are clean from 1e-20 to 1e25 at every shape and `q` probed and
+# first exceed the bound at 1e27 (`gamma_inv_cdf(1e-4, 1e2, 1e27)` is 7.1e-6),
+# so the upper endpoint of 1e20 is seven decades inside the measured failure.
+# No failure exists at the small-scale end at all, so 1e-20 is a probing choice
+# rather than a margin.
 QUANTILE_SCALES = (1e-20, 1.0, 2.5, 1e20)
 QUANTILE_SCALES_THIN = (1.0, 1e20)
 

@@ -223,7 +223,7 @@ overshoots the root by about 27 decades and the budget is spent halving back.
 at neighbouring parameters are 1, 2 and 3 times 8.271806, which is the signature:
 the answer is a function of how many halvings fitted in the budget, not of `q`.
 
-Above `scale` of about 1e25 the same division fails from the other side. The
+Above `scale` of about 1e27 the same division fails from the other side. The
 floor on the density is absolute at 1e-30 while a Gamma density is about
 `1/(scale*sqrt(2*pi*shape))`, so past a large enough scale the true density
 falls under the floor and each step removes only a fraction of the error.
@@ -232,10 +232,20 @@ tail, and nothing about the start is degenerate.
 
 Both are convergence limits and not precision limits: raising the budget from 80
 to 4000 returns the correctly rounded answer at both witnesses. Neither is
-affected by the f64 work described here, and both are measured identically
-before it. For a quantile in either region, solve
-`gamma_cdf(x, shape, scale) = q` yourself -- the CDF is accurate across all of
-it, including 50 decades of `scale`.
+affected by the f64 work described here. Their values move by about eleven f32
+ulps across it and their relative errors agree to three digits, so the f64 work
+neither causes nor repairs them.
+
+**Do not reach for the CDF as a substitute without checking the same
+parameters.** An earlier version of this note recommended solving
+`gamma_cdf(x, shape, scale) = q` instead, on the grounds that the CDF is
+accurate over fifty decades of `scale`. It is not accurate everywhere there:
+the parameter guards read the **f32** quotient `x / scale`, so when that
+quotient underflows the CDF returns exactly 0.0 even though the answer is an
+ordinary f32. `gamma_cdf(1e-30, 0.25, 1e20)` is 0.0 against a true 3.49e-13,
+while the same call at `scale = 1` returns the correct 3.49e-8. The guard's
+overflow side is deliberate and documented above; its underflow side is not,
+and it is tracked separately.
 
 `parity/check_gamma_accuracy.py` measures all nine exports on every CI run, at
 and beyond those ceilings and at the `q` floor, and fails if the bound is exceeded inside the range.
@@ -308,7 +318,7 @@ The second limit is the iteration budget, which is 65536. At the branch point
 the series needs 2197 terms at shape 1e5 and 45662 at 5e7, so it is a
 square-root scaling rather than a formula -- those are 6.9 and 6.5 times the
 square root of the shape. The budget carries the series past shape 1e8, with
-exhaustion measured just above 1.05e8, and beyond that it returns an
+exhaustion crossing at about 1.049e8, and beyond that it returns an
 unconverged partial sum. Past that point the budget dominates and the rounding floor can no
 longer be read off the result: at shape 2e8 the CDFs are 3.8e-6 out while the
 density, which spends no iterations, is 3.5e-7.

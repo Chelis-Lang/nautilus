@@ -263,8 +263,10 @@ release.
       65536-iteration budget, which as a flat recursion would cost 65536 frames
       and so could not be spent in that lane at all.
     - **Not covered, and still aborting:** `betacf_rec` in the same module
-      carries a 4096-iteration budget with a fatter body and is chunked through
-      three levels rather than four. `chelis eval --file` on
+      carries its own iteration budget with a fatter body. The rest of this
+      bullet predates the incomplete beta's move to f64 and its four named
+      probes no longer abort; it is corrected separately rather than here,
+      because nothing in this change touches that recursion. `chelis eval --file` on
       `beta_cdf(0.5, 1e6, 1e6)`, `beta_cdf(0.5, 1e8, 1e8)`,
       `f_cdf(1.0, 1e7, 1e7)` and `f_cdf(1.0, 1e8, 1e8)` each exit 134 at this
       pin. `student_t_cdf`, `beta_cdf`, `f_cdf` and `binomial_cdf` all reach
