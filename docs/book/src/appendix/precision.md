@@ -44,7 +44,7 @@ Two cases need separate guidance:
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions; the two families below are stated rather than estimated |
 | `poisson_pmf`, `binomial_pmf` | below 2e-6 up to `lambda` of 1e8 and `n` of 2e8 | Log space in f64; past that, limited by f64's spacing at `ln(k!)`, see the note below |
-| the gamma family, nine exports | below 2e-6 at every one of the 1626 cases the accuracy gate enforces | Incomplete gamma in f64; the note below describes what that grid covers, and the three regions outside it that are known wrong |
+| the gamma family, nine exports | below 2e-6 at every one of the 1847 cases the accuracy gate enforces | Incomplete gamma in f64; the note below describes what that grid covers, and the one region outside it that is known wrong |
 | Beta-family CDFs | below 2e-6 over a stated parameter range | `beta_cdf`, `f_cdf`, `binomial_cdf`; the range is part of the figure, see the note below |
 | `student_t_cdf` | below 2e-6 for every `df` | The incomplete beta below `df` of 1e7, the large-`df` expansion from 1e7 upward, see the note below |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
@@ -193,7 +193,7 @@ returned as f32. In f32 the error was 51% at `gamma_sf(1e5, 1e5, 1)` and 100%
 at shape 1e7, `gamma_pdf(5e7, 5e7, 1)` returned 1.0 against a true 5.6418958e-5,
 and `gamma_inv_cdf(0.5, 1e7, 1)` returned 5e29 against a true 1e7.
 
-> Relative error is below 2e-6 at **every one of the 1626 cases**
+> Relative error is below 2e-6 at **every one of the 1847 cases**
 > `parity/check_gamma_accuracy.py` enforces, on every CI run.
 
 That is a statement about a measured set, not about a parameter range, and the
