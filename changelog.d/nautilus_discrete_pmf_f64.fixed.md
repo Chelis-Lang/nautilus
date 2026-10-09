@@ -59,4 +59,5 @@ widened `k + 1` to go. That is a much larger effect than the lost `+ 1` --
 `+ 1` can account for only 0.011% of it -- and it is the
 large-shape limit `docs/book/src/distributions/gamma-family.md` already
 documents for `gamma_cdf`, `gamma_sf` and the chi-squared pair. It needs
-the f64 treatment nautilus#144 gave the incomplete beta, as separate work.
+the f64 treatment nautilus#144 gave the incomplete beta, tracked as
+nautilus#152.
