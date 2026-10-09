@@ -118,9 +118,17 @@ incomplete gamma:
 Every value in the fourth column is within two f32 ulps of the fifth, so what
 remains is the rounding of the return type rather than of the computation.
 
-Away from `x = shape` the f32 lane was already accurate, which is why this was
-easy to miss: `gamma_cdf(10500, 10000, 1)` was 2.8e-8 relative while the same
-shape at `x = shape` was 4.4e-2. The failure is specifically at `x` near
+The second column stays inside [0, 1] at every one of those shapes, which made
+the error hard to notice, but that was a property of `x = shape` and not of the
+f32 lane. A little above the branch point at a large shape the continued
+fraction diverged outright: `gamma_cdf(50007070, 50000000, 1)` returned
+**-5.7809985e23** against a true 0.8413766, and `gamma_pdf(50035356, 50000000,
+1)` returned 6.235149e27 against a true 2.1e-10. A negative probability of that
+magnitude is not a value a caller can mistake for an answer.
+
+Away from the branch point in the other direction the f32 lane was accurate,
+which is the rest of why this was easy to miss: `gamma_cdf(10500, 10000, 1)`
+was 2.8e-8 relative while the same shape at `x = shape` was 4.4e-2. The failure is specifically at `x` near
 `shape*scale`, which is where `poisson_cdf(k, k)` and a chi-squared statistic at
 its own expectation both land.
 
