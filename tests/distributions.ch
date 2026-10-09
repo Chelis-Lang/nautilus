@@ -943,11 +943,14 @@ def test_student_t_cdf_carries_the_first_order_df_term() -> unit ! { Test } = {
 -- ADJACENT representable df either side of the threshold rather than at round
 -- numbers a decade apart: a fixture spaced wider than the jump cannot see it.
 -- 9999999.0 and 1e7 are neighbouring f32 values (ulp(1e7) = 1), the first
--- taking the beta route and the second the expansion. Measured agreement at
--- the two t below is 9.6e-8 and 7.9e-8; over a wider t axis the worst is
--- 3.3e-7 at t = -13, which is 1.4 ulps of an f32 subnormal. The bound here
--- leaves an order of headroom over the two cases it asserts and would still
--- catch a dropped correction term, which opens the gap at t = -10 to 2.5e-4.
+-- taking the beta route and the second the expansion. The two results are
+-- never more than TWO f32 ulps apart: one ulp at t = -sqrt(3), -10 and -12,
+-- two at -11 and -13. An ulp count is the right unit here and a decimal is
+-- not, because a relative gap of 1e-7 is the same size as the error made by
+-- reading a printed f32 back as a double, so the digits depend on which of
+-- the two you measured. The bound below is an order of magnitude above the
+-- gap and would still catch a dropped correction term, which opens it at
+-- t = -10 to 2.5e-4.
 def test_student_t_cdf_is_continuous_across_the_normal_branch() -> unit ! { Test } = {
   tol = cast(1e-6, f32)
   below_b = student_t_cdf(cast(-1.7320508, f32), cast(9999999.0, f32))

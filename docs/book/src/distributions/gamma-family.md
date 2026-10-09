@@ -2,8 +2,7 @@
 
 Three related distributions built on the gamma function: the gamma
 distribution itself, chi-squared (a special case of gamma), and
-Student's t (which uses the regularized incomplete beta function
-internally).
+Student's t.
 
 ## Gamma distribution
 

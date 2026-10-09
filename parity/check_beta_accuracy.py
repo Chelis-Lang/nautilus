@@ -289,7 +289,7 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
                1e14, 1e16, 1e18, LARGEST_DF]
     # the two ADJACENT representable df either side of the branch, and the
     # decade either side of it. A fixture spaced wider than the discontinuity
-    # cannot see it; measured agreement across the branch is 1.0e-7 relative.
+    # cannot see it; the two forms agree to within two f32 ulps across it.
     bits = struct.unpack("<I", struct.pack("<f", f32(NORMAL_DF)))[0]
     DF_AXIS += [struct.unpack("<f", struct.pack("<I", bits + d))[0]
                 for d in (-2, -1, 0, 1, 2)]

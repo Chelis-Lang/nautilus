@@ -9,7 +9,8 @@ exponent carries an absolute error of about one f64 ulp of the largest
 log-gamma, and that error grows without bound in `df`. Measured on the old
 path, worst over a `t` axis of -0.5 to -11 and +1: 1.2e-6 at `df = 1e8`,
 9.1e-6 at 1e9, 2.3e-3 at 1e12, 2.6 at 1e14 and 2.6e27 at 1e20. At `t = 1`
-alone those read 5.3e-8, 2.9e-7, 7.1e-5 and 41%, because `student_t_cdf(1, df)`
+alone, at the first four of those `df`, it reads 5.3e-8, 2.9e-7, 7.1e-5 and
+9.6e-2, and 41% from 1e16 upward, because `student_t_cdf(1, df)`
 returned exactly 0.5 from `df = 1e16` upward. 0.5 is also the function's value
 at `t = 0`, so the wrong answer was indistinguishable from a right one, and
 `student_t_cdf(0, df)` returning 0.5 remains correct.
@@ -39,5 +40,8 @@ beta can still reach.
 The accuracy gate's `student_t_cdf` reference moves from SciPy's `betainc` to
 its `stdtr`. `betainc` shares both the saturation and the cancellation, so it
 was 2.15 relative wrong at `df = 1e16` and agreed with the value under test;
-`stdtr` is a different algorithm and stays within 1e-13 of a 50-digit mpmath
-reference to `df = 1e18`. Part of nautilus#145.
+`stdtr` is a different algorithm and is within 1.3e-14 of a 60-digit mpmath
+reference over `df` 1 to 1e14, which is the range that discriminates. It is not
+exact further out: from about `df = 1e16` it saturates to `Phi(t)` too, so above
+that the gate cannot separate the expansion from a bare normal branch. Part of
+nautilus#145.

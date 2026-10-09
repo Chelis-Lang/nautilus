@@ -73,8 +73,9 @@ sizes 30 and 25) and returns a two-sided p-value of `0.0068913926`.
 | `welch_t_df(2.0, 1.0, 3.0, 25.0)` | `0.0`: `n1 - 1 = 0` makes a term infinite |
 
 - The p-value functions use the standard-normal or Student-t CDF
-  internally. Accuracy depends on the underlying CDF approximation
-  (erf-based for normal, betai-based for Student-t).
+  internally. Accuracy depends on the underlying CDF approximation: erf-based
+  for normal, and for Student-t the regularized incomplete beta below `df` of
+  1e7 and the large-`df` expansion above it.
 - `chi_squared_p_value` returns the upper-tail probability (the
   conventional test p-value for goodness-of-fit tests).
 

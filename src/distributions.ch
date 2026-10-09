@@ -594,12 +594,13 @@ def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
 -- and 2.6e27 at 1e20. The peak sits at `t = -sqrt(3)`, the continued
 -- fraction's branch boundary, where the upper branch returns `1 - val`: a
 -- relative error on `val` becomes `(1 - I)/I` times as large on `I = 2 F(t)`,
--- which is 11.0 there. Measured against the off-boundary error at the same
--- `df`, the boundary is 5.4x to 6.2x worse at `t = -1` and 22x to 31x worse
--- than the mirrored `t = +sqrt(3)`; neither ratio is the amplification itself,
--- so the figure above is the algebra and not a measurement.
--- At `t = 1` alone the same df values read 2.9e-7, 7.1e-5, 9.6e-2 and 41%,
--- because `student_t_cdf(1, 1e16)` returned exactly 0.5 -- the value the
+-- which is 11.0 there. That figure is the algebra, not a measurement: the
+-- boundary is measurably worse than its neighbours in `t`, but the ratio you
+-- get depends on which neighbour and which `df` you pick, so no single
+-- measured multiple belongs here.
+-- At `t = 1` alone it reads 2.9e-7 at `df = 1e9`, 7.1e-5 at 1e12, 9.6e-2 at
+-- 1e14 and 41% from 1e16 up, because `student_t_cdf(1, 1e16)` returned exactly
+-- 0.5 -- the value the
 -- function also returns at `t = 0`, so the answer was indistinguishable from
 -- a real one. The left tail was worse than that 0.5 suggests:
 -- `student_t_cdf(-5, 1e18)` returned 0.49981025 against a true 2.8665157e-7,
@@ -616,8 +617,8 @@ def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
 -- between `df = 3e8` and 5e8. A plain `Phi(t)` branch therefore has no
 -- threshold that holds the documented bound anywhere.
 --
--- The threshold is 1e7 because that is the lowest `df` at which the expansion
--- has reached the beta route's own noise floor. It is NOT a crossing: the beta
+-- The threshold is 1e7 because by there the expansion has reached the beta
+-- route's own noise floor. It is NOT a crossing: the beta
 -- route's worst is flat rounding noise through this region -- 1.3e-7 at
 -- `df = 1e6`, 1.2e-7 at 5e6, 1.5e-7 at 9e6, 1.1e-7 at 1e7, 2.0e-7 at 2e7,
 -- 1.5e-7 at 3e7 -- so no exact crossing point is identifiable, and a grid that
@@ -626,10 +627,10 @@ def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
 -- inside the bound at the handover.
 --
 -- That handover is not free. Just above the threshold, at `|t|` of 11 and
--- beyond, the expansion is less accurate than the beta route was: 8.6e-8
--- against 3.4e-8 at `(t = -11, df = 1e7)`, and up to 3.7e-7 at `t = -13`. All
--- of it stays at least 5x inside 2e-6, and the beta route's own error at those
--- `df` is about to rise through it, but the figures above are worst cases over
+-- beyond, the expansion is less accurate than the beta route was, by about a
+-- factor of three at `(t = -11, df = 1e7)` and by more in the far tail. All
+-- of it stays well inside 2e-6, and the beta route's own error at those `df`
+-- is about to rise through it, but the figures above are worst cases over
 -- `|t| <= 11` and not a uniform improvement at every point.
 --
 -- `t*t < 1600` is a domain test, not a tolerance. `phi(t)` is exactly 0.0 in

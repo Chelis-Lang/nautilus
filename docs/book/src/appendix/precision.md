@@ -45,7 +45,7 @@ Two cases need separate guidance:
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
 | `poisson_pmf`, `binomial_pmf` | below 2e-6 up to `lambda` of 1e8 and `n` of 2e8 | Log space in f64; past that, limited by f64's spacing at `ln(k!)`, see the note below |
 | Beta-family CDFs | below 2e-6 over a stated parameter range | `beta_cdf`, `f_cdf`, `binomial_cdf`; the range is part of the figure, see the note below |
-| `student_t_cdf` | below 2e-6 for every `df` | The incomplete beta up to `df` of 1e7, the large-`df` expansion above it, see the note below |
+| `student_t_cdf` | below 2e-6 for every `df` | The incomplete beta below `df` of 1e7, the large-`df` expansion from 1e7 upward, see the note below |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
 
@@ -106,8 +106,8 @@ branch covers it.
 
 ### The beta family holds below 2e-6 over a stated parameter range
 
-`beta_cdf`, `f_cdf`, `student_t_cdf` and `binomial_cdf` all compute the
-regularized incomplete beta. Its normalizing factor is
+`beta_cdf`, `f_cdf` and `binomial_cdf` all compute the regularized incomplete
+beta, and `student_t_cdf` does too below `df` of 1e7. Its normalizing factor is
 `exp(lgamma(a+b) - lgamma(a) - lgamma(b) + a*ln x + b*ln(1-x))`, and that exponent
 is a difference of large quantities whose rounding error grows with the
 parameters. The incomplete beta is computed in f64 and returned as f32, which
@@ -146,8 +146,8 @@ The incomplete beta's own worst passes 2e-6 between `df = 3e8` and 5e8. So a
 bare `Phi` branch has no threshold that holds the bound anywhere, whatever `df`
 you pick.
 
-The threshold is 1e7 because that is the lowest `df` at which the expansion has
-reached the incomplete beta's own noise floor, not because the two cross there.
+The threshold is 1e7 because by there the expansion has reached the incomplete
+beta's own noise floor, not because the two cross there.
 Through this region the beta form's worst error is flat rounding noise, about
 1.1e-7 to 2.0e-7 from `df = 1e6` to 3e7, so no exact crossing point exists to
 be found. The expansion is 8.6e-8 at `df = 1e7` and improves as `1/df^2`, so
@@ -155,12 +155,12 @@ both forms sit roughly 20x inside the bound where one hands over to the other.
 
 Three things follow that are worth knowing if you read values near the
 threshold. The handover is not a uniform improvement: just above it, at `|t|` of
-11 and beyond, the expansion is the less accurate of the two, 8.6e-8 against
-3.4e-8 at `t = -11`, and up to 3.7e-7 at `t = -13`, all of it still at least 5x
+11 and beyond, the expansion is the less accurate of the two, by about a
+factor of three at `t = -11`, and by more in the far tail, all of it still well
 inside the bound. The threshold also introduces a discontinuity, and it is
-small: across the two adjacent representable `df` either side, the two forms
-agree to 9.6e-8 at `t = -sqrt(3)` and 1.0e-7 at `t = -10`, and to 3.3e-7 at
-`t = -13`, which is 1.4 ulps of an f32 subnormal. And `student_t_cdf(0, df)` is
+small: across the two adjacent representable `df` either side, the two results
+are never more than two f32 ulps apart, one ulp at most of the `t` tested and
+two in the far tail. And `student_t_cdf(0, df)` is
 exactly 0.5 for every `df`, which is the right answer and not a symptom; the
 expansion's correction term vanishes at `t = 0`.
 
