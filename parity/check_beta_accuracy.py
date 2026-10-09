@@ -26,13 +26,26 @@ Two kinds of reference, deliberately:
 **Reference-free anchors**, which cannot themselves be wrong. `beta_cdf(0.5,a,a)`
 and `f_cdf(1,d,d)` are 0.5 exactly by symmetry, and `student_t_cdf(t, df)` tends
 to the standard normal CDF as `df` grows with an O(1/df) error -- so at
-`df >= 1e10`, `Phi(1) = 0.8413447460685429` is good to 1e-10. These matter because
-past `df = 1e15` SciPy's own `betainc` saturates exactly as Nautilus does (f64
-`df + t*t` rounds back to `df`), so SciPy agrees with a wrong answer and cannot
-adjudicate it.
+`df >= 1e10`, `Phi(1) = 0.8413447460685429` is good to 1e-10.
 
-**SciPy `betainc`** elsewhere, always at the **f32 value** of every argument
-rather than at its decimal spelling.
+**SciPy**, always at the **f32 value** of every argument rather than at its
+decimal spelling -- but NOT through `betainc` for `student_t_cdf`. `betainc` is
+subject to the same f64 `df + t*t` saturation Nautilus was, and to the same
+log-gamma cancellation before it. Measured against a 50-digit mpmath reference,
+worst over the `T_AXIS` below: 2.5e-5 at `df = 1e12`, 6.1e-3 at 1e14 and
+**2.15 relative** at 1e16, where it agrees with the answer Nautilus used to
+return -- so a gate referencing it would have passed the defect.
+
+`stdtr`, SciPy's dedicated Student-t CDF, is a different algorithm and is what
+the `student_t_cdf` cases use. It is within 1.3e-14 of mpmath over `df` from 1
+to 1e14, which is the range that discriminates. It is **not** exact further out:
+from about `df = 1e16` it saturates to `Phi(t)` and drops the O(1/df) term the
+true CDF still carries, so at `df = 1e16, t = -11` it is 3.7e-13 off. That is
+immaterial against a 2e-6 bound, but it has one consequence worth knowing: at
+`df >= 1e16` this gate cannot tell the expansion from a bare `Phi(t)` branch,
+because the reference has saturated too. The discrimination comes from `df`
+1e7 to 1e9. The reference-free anchors above are kept as independent evidence
+rather than because `stdtr` needs backing up.
 
 Values come from the shipped compiler through one batched `chelis eval --file`,
 the pattern `parity/run_parity.py` uses, so this measures the real lane and not a
@@ -94,13 +107,33 @@ PHI1 = 0.8413447460685429          # the standard normal CDF at 1
 # Just outside the range: `f_cdf(0.5, 2e8, 0.5)` is 1.7e-6,
 # `binomial_cdf(1.5e8, 3e8, 0.5)` is 1.3e-6, and `beta_cdf(0.9, 0.5, 1e-4)` is
 # 1.9e-6 with a large parameter of only 0.5.
+# `student_t_cdf` carries no ceiling: above `NORMAL_DF` it evaluates the t
+# distribution's own large-df expansion instead of the incomplete beta, so the
+# log-gamma cancellation that forced a ceiling on the other three never arises.
+# UNBOUNDED is a sentinel, not a large number, so that an edit which reinstates
+# a finite ceiling is visible rather than a changed digit.
+UNBOUNDED = float("inf")
 DOCUMENTED = {
     "beta_cdf": (1e8, 1.0, 2e-6),
     "f_cdf": (1e8, 1.0, 2e-6),
-    "student_t_cdf": (1e8, 1.0, 2e-6),
+    "student_t_cdf": (UNBOUNDED, 1.0, 2e-6),
     "binomial_cdf": (1e8, 1.0, 2e-6),
 }
 CEILING, FLOOR, BOUND = 1e8, 1.0, 2e-6
+
+# Mirrors `student_t_normal_df` in `src/distributions.ch`. Transcribed by hand
+# for the same reason DOCUMENTED is: the point is that moving it takes a
+# deliberate edit here, in the source, and in the two documents that state it.
+# The value is the lowest `df` at which the expansion has reached the beta
+# route's own noise floor: 8.6e-8 against a beta-route worst that is flat
+# rounding noise, 1.1e-7 to 2.0e-7 over `df` 1e6 to 3e7. It is not a crossing
+# point and the source comment says so; the expansion improves as `1/df^2`
+# from there while the beta route passes 2e-6 between `df = 3e8` and 5e8.
+NORMAL_DF = 1e7
+# The far end of the swept range. There is no ceiling to probe AT, so this is
+# the corner that replaces it, together with the two df either side of
+# NORMAL_DF. `t_test_the_range_is_not_silently_widened` pins all three.
+LARGEST_DF = 1e20
 
 # The floor is on the parameters a CALLER passes -- `a` and `b`, `d1` and `d2` --
 # not on the beta parameters `betai` receives. `student_t_cdf` and `binomial_cdf`
@@ -121,7 +154,7 @@ def f32(value: float) -> float:
 
 def cases() -> list[tuple[str, str, str, float, float, float]]:
     """(name, export, expression, large parameter, reference, small parameter)."""
-    from scipy.special import betainc, betaincinv
+    from scipy.special import betainc, betaincinv, stdtr
 
     out: list[tuple[str, str, str, float, float, float]] = []
 
@@ -236,19 +269,46 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
                     min(D1, D2))
 
     # ---- student_t_cdf: df is the large parameter; the small one is always 0.5
-    for df in [1.0, 10.0, 1e3, 1e5, 1e7, CEILING]:
-        for t in [-2.0, -1.0, 0.5, 1.0, 1.5, 3.0]:
+    # `stdtr`, not `betainc`: see the module docstring. `betainc` reproduces the
+    # exact defect being measured above df = 1e9 and would agree with it.
+    def t_ref(df, t):
+        return float(stdtr(df, t))
+
+    # The df axis runs the whole documented range, which now has no upper edge.
+    # It is dense around NORMAL_DF because that is the branch, and it reaches
+    # LARGEST_DF because an unbounded range has a far corner instead of a
+    # ceiling. The negative `t` values carry the information: below the branch
+    # the implementation computes one tail and returns either it or `1 - it`,
+    # so at a positive `t` the error is buried under a subtraction from a
+    # reference very close to 1.0. `|t|` stops at 11 so that no case is
+    # discarded by the `< 1e-30` rule -- as it stands none of these cases is
+    # excluded by either that rule or the `== 1.0` one, which is deliberate:
+    # an excluded case cannot fail the gate.
+    T_AXIS = [-11.0, -8.0, -5.0, -3.0, -2.0, -1.0, -0.5, 0.5, 1.0, 1.5, 3.0]
+    DF_AXIS = [1.0, 10.0, 1e3, 1e5, 1e6, 3e6, CEILING, 3e8, 1e9, 1e10, 1e12,
+               1e14, 1e16, 1e18, LARGEST_DF]
+    # the two ADJACENT representable df either side of the branch, and the
+    # decade either side of it. A fixture spaced wider than the discontinuity
+    # cannot see it; the two forms agree to within two f32 ulps across it.
+    bits = struct.unpack("<I", struct.pack("<f", f32(NORMAL_DF)))[0]
+    DF_AXIS += [struct.unpack("<f", struct.pack("<I", bits + d))[0]
+                for d in (-2, -1, 0, 1, 2)]
+    DF_AXIS += [NORMAL_DF / 10.0, NORMAL_DF * 10.0]
+    for df in dict.fromkeys(DF_AXIS):
+        for t in T_AXIS:
             T, D = f32(t), f32(df)
-            x = D / (D + T * T)
-            upper = float(betainc(D / 2, 0.5, x)) / 2
             add("student_t_cdf", f"student_t_cdf({lit(t)}, {lit(df)})",
-                D, upper if T < 0 else 1 - upper)
+                D, t_ref(D, T))
     # t ON the branch boundary, both tails. This is the locus that made the
-    # previous ceiling false: at df = 1e8 and t = -sqrt(3) the error is 1.2e-6.
+    # previous ceiling false: at df = 1e8 and t = -sqrt(3) the error was 1.2e-6.
     # The neighbourhood here is in `t`, not in `x`, so it is relative plus a few
-    # true f32 ulps rather than sd-scaled. The 1.2e-6 case sits at the boundary
+    # true f32 ulps rather than sd-scaled. That case sits at the boundary
     # exactly, which is why the ulp steps matter more than the percentage band.
-    for df in [1.0, 10.0, 1e3, 1e5, 1e6, 1e7, 3e7, CEILING]:
+    # Kept at every df, including above the branch where the beta route's
+    # boundary no longer governs: the locus is still a legitimate `t`, and
+    # `test_student_t_cases_reach_the_branch_boundary` counts df values that
+    # have one.
+    for df in dict.fromkeys([1.0, 10.0, 1e3, 1e5, 1e6, 1e7, 3e7, CEILING] + DF_AXIS):
         D = f32(df)
         base = t_at_boundary(D)
         ts = [f32(base * m) for m in (0.99, 0.999, 1.0, 1.001, 1.01)]
@@ -258,12 +318,15 @@ def cases() -> list[tuple[str, str, str, float, float, float]]:
         for mag in dict.fromkeys(ts):
             for sign in (1.0, -1.0):
                 t = f32(sign * mag)
-                x = D / (D + t * t)
-                upper = float(betainc(D / 2, 0.5, x)) / 2
                 add("student_t_cdf", f"student_t_cdf({lit(t)}, {lit(df)})",
-                    D, upper if t < 0 else 1 - upper)
+                    D, t_ref(D, t))
 
-    for df in [1e10, 1e11, 1e12]:          # past where SciPy can adjudicate
+    # Reference-free, and independent of `stdtr`: the t distribution is within
+    # O(1/df) of the standard normal, so at these df `Phi(1)` is the answer to
+    # better than 1e-10. The infinite df, which is the normal distribution
+    # exactly, is covered in `tests/distributions.ch`: an expression with a
+    # third `cast(..., f32)` in it would not parse for the unit tests here.
+    for df in [1e10, 1e11, 1e12]:
         add("student_t_cdf", f"student_t_cdf({lit(1.0)}, {lit(df)})", f32(df), PHI1)
 
     # ---- binomial_cdf: n is the large parameter -------------------------

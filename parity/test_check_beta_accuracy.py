@@ -18,7 +18,9 @@ import math
 import re
 import unittest
 
-from parity.check_beta_accuracy import BOUND, CEILING, DOCUMENTED, FLOOR, PHI1, cases, f32
+from parity.check_beta_accuracy import (BOUND, CEILING, DOCUMENTED, FLOOR,
+                                       LARGEST_DF, NORMAL_DF, PHI1, UNBOUNDED,
+                                       cases, f32)
 
 IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -96,9 +98,43 @@ class Coverage(unittest.TestCase):
         # the documented ceiling was 3e8 -- and the ceiling was false at 3e8 for
         # two exports. A guard that cannot fail at its own boundary is the defect.
         for export, (ceiling, _, _) in DOCUMENTED.items():
+            if ceiling == UNBOUNDED:
+                continue            # no edge to probe AT; see the two tests below
             at = [large for _, e, _, large, _, _ in cases()
                   if e == export and large == ceiling]
             self.assertTrue(at, f"{export} is never evaluated AT {ceiling:g}")
+
+    def test_an_unbounded_range_is_exercised_at_its_far_corner(self) -> None:
+        """The replacement for the ceiling guard above. An unbounded range has no
+        edge, so what has to be probed is the far end of the sweep -- otherwise
+        `UNBOUNDED` would make every large-df case in-range while the grid
+        quietly stopped a decade short, which is the shape of the defect the
+        ceiling guard was written for in the first place."""
+        unbounded = [e for e, (c, _, _) in DOCUMENTED.items() if c == UNBOUNDED]
+        self.assertTrue(unbounded, "no export is unbounded; is this test stale?")
+        for export in unbounded:
+            at = [large for _, e, _, large, _, _ in cases()
+                  if e == export and large == f32(LARGEST_DF)]
+            self.assertTrue(at, f"{export} is never evaluated AT {LARGEST_DF:g}")
+
+    def test_the_normal_branch_is_probed_at_adjacent_representable_df(self) -> None:
+        """A branch on `df` introduces a discontinuity, and a grid spaced wider
+        than the jump cannot see it. These are the two neighbouring f32 values
+        either side of the threshold, so the pair straddles the branch with
+        nothing between them."""
+        import struct as _s
+        bits = _s.unpack("<I", _s.pack("<f", f32(NORMAL_DF)))[0]
+        below = _s.unpack("<f", _s.pack("<I", bits - 1))[0]
+        above = f32(NORMAL_DF)
+        seen = {large for _, e, _, large, _, _ in cases() if e == "student_t_cdf"}
+        self.assertIn(below, seen, "no case one f32 ulp below the branch")
+        self.assertIn(above, seen, "no case AT the branch")
+        # and the branch is where the source says it is
+        source = (__import__("pathlib").Path(__file__).resolve().parent.parent
+                  / "src" / "distributions.ch").read_text()
+        self.assertIn(f"def student_t_normal_df() -> f32 = cast({NORMAL_DF:.1f}, f32)",
+                      source,
+                      "NORMAL_DF here and student_t_normal_df in the source disagree")
 
     # `student_t_cdf` and `binomial_cdf` have no user-facing small parameter: the
     # former's beta `b` is structurally 0.5 and the latter's are `n - k` and
@@ -130,10 +166,19 @@ class Coverage(unittest.TestCase):
         # A future edit that relaxes either edge has to change docs/book and
         # SKILL.md too; this pins what those documents currently state.
         for export, (ceiling, floor, bound) in DOCUMENTED.items():
-            self.assertEqual(ceiling, 1e8, export)
+            expected = UNBOUNDED if export == "student_t_cdf" else 1e8
+            self.assertEqual(ceiling, expected, export)
             self.assertEqual(floor, 1.0, export)
             self.assertEqual(bound, 2e-6, export)
         self.assertEqual((CEILING, FLOOR, BOUND), (1e8, 1.0, 2e-6))
+        self.assertEqual((NORMAL_DF, LARGEST_DF), (1e7, 1e20))
+
+    def test_exactly_one_export_is_unbounded(self) -> None:
+        # Only `student_t_cdf` has a route that escapes the log-gamma
+        # cancellation. If a second export gains one, the documents and this
+        # table have to say so together rather than one of them drifting.
+        unbounded = {e for e, (c, _, _) in DOCUMENTED.items() if c == UNBOUNDED}
+        self.assertEqual(unbounded, {"student_t_cdf"})
 
 
 class ThresholdLocusCoverage(unittest.TestCase):
