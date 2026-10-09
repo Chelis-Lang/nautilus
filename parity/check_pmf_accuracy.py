@@ -25,10 +25,18 @@ are on record from building it:
 1. A first version required every argument to be exactly representable in f32.
    `0.2` and `0.01` are not f32 values, so that filter silently discarded
    *every* skewed `p` and left the large-`n` claim resting on `p = 0.5` alone.
-   The worst in-range case is in fact at `p = 0.999999`, and the worst anywhere
-   is at `p = 0.001`. Arguments are now emitted as the shortest decimal that
-   round-trips to the intended f32, and every reference is computed at that f32
-   value rather than at the decimal spelling.
+   A skewed `p` can be worse than `p = 0.5`, so the grid has to carry them.
+   Arguments are now emitted as the shortest decimal that round-trips to the
+   intended f32, and every reference is computed at that f32 value rather than
+   at the decimal spelling.
+
+   **The location of the worst case is as grid-dependent as its value, and
+   neither this file nor any document may claim either.** A review round built
+   an independent 3352-case grid and found `binomial_pmf(6.5e7, 1.3e8, 0.5)` at
+   1.04e-06 -- 1.9x the `p = 0.999999` row this grid's ceiling produces, and at
+   `p = 0.5` after all. That case is in the grid below now, as a known-hard case
+   rather than as a maximum. Both rows are far inside the bound; what moved was
+   the superlative, which has been removed from the documents.
 2. An error bound indexed on a parameter the grid never reaches at its stated
    value cannot fail at its own boundary. `cases()` probes `n` and `lambda`
    *at* the documented ceiling, and `test_check_pmf_accuracy.py` fails if it
@@ -178,6 +186,13 @@ def cases() -> list[tuple[str, str, str, float, float]]:
             counts += [0.0, N]
             for k in dict.fromkeys(counts):
                 add("binomial_pmf", (k, N, P), float(binom.pmf(k, N, P)))
+    # A known-hard case a review round found with an independent 3352-case grid:
+    # 1.04e-06, 1.9x the worst this grid's own ceiling rows produce, and at
+    # `p = 0.5`. A known worst case belongs in the grid whether or not it is the
+    # maximum -- the same reason the sibling beta gate carries round 4's case.
+    for k, n in [(6.5e7, 1.3e8)]:
+        K, N = f32(k), f32(n)
+        add("binomial_pmf", (K, N, f32(0.5)), float(binom.pmf(K, N, f32(0.5))))
     # The 2^24 neighbourhood, where the f32 `k + 1` lost its `+ 1` outright.
     # Kept as named rows whether or not they are the worst case.
     for n in [2.0 ** 25, 2.0 ** 26]:

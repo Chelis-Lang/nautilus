@@ -28,21 +28,24 @@ for the wrong factorial.
 but not its boundary. **The error was continuous in the parameter, not a cliff
 at 2^24** -- 15% at `binomial_pmf(1e5, 2e5, 0.5)` and 59% at
 `binomial_pmf(1e6, 2e6, 0.5)`, both well below it -- so widening only `k + 1`
-and `n - k`, which is what the issue first proposed, would have left 10% and
-7.2% errors at `k = 1e5` behind. Two tests in `tests/distributions.ch` sit below
-2^24 specifically to kill that repair.
+and `n - k`, which is what the issue first proposed, would have left errors of
+10.3% and 7.2% at `k = 1e5` behind, both on the low side. Two tests in
+`tests/distributions.ch` sit below 2^24 specifically to kill that repair, and a
+third pins `n - k` at 16777217, the first odd integer above 2^24 and so not an
+f32 value at all.
 
-Over the 581 cases of `parity/check_pmf_accuracy.py`, which span the count
+Over the 582 cases of `parity/check_pmf_accuracy.py`, which span the count
 parameter from 0.5 to 1e9 and thirteen values of `p`, the new form is at least
-as accurate as the old at every case and strictly better at 576 of them. The
+as accurate as the old at every case and strictly better at 577 of them. The
 documented range --
 
 > relative error below 2e-6 for `lambda` up to 1e8 and `n` up to 2e8, at every
-> `p`
+> `p`, for any result f32 can hold as a normal number
 
 -- is now gated by `parity/check_pmf_accuracy.py` on every CI run rather than
-asserted in prose. Past the ceiling the error is one f64 ulp of `ln(k!)`:
-3.8e-6 at `lambda = 1e9`.
+asserted in prose. Past the ceiling the error is bounded by one f64 ulp of
+`ln(k!)`, 3.81e-6 at a count of 1e9, where the gate measures 3.8e-6 for
+`poisson_pmf` and 3.5e-6 for `binomial_pmf`.
 
 The captured `ppmf` and `bpmf` values in
 `docs/book/src/distributions/discrete.md` move with the change, and

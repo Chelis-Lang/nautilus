@@ -11,9 +11,13 @@ Two of these pin a defect that actually happened while the oracle was written.
 filtered the grid down to arguments exactly representable in f32 -- and `0.2`
 and `0.01` are not f32 values, so it silently discarded every skewed `p` and
 left the large-`n` claim resting on `p = 0.5` alone. The worst in-range case is
-at `p = 0.999999`. `test_every_export_is_exercised_AT_its_ceiling` exists
-because a bound indexed on a parameter the grid never reaches at its stated
-value cannot fail at its own boundary.
+at `p = 0.999999` among the skewed ones, though a review round's independent
+grid found a `p = 0.5` case 1.9x worse again -- which is why neither this file
+nor the documents claim a location. `test_every_export_is_exercised_AT_its_ceiling`
+exists because a bound indexed on a parameter the grid never reaches at its
+stated value cannot fail at its own boundary, and
+`test_the_probability_set_is_not_silently_narrowed` exists because the two
+coverage tests are indexed on `PROBABILITIES` and so cannot see it shrink.
 """
 
 from __future__ import annotations
@@ -155,6 +159,17 @@ class Coverage(unittest.TestCase):
         for _, export, expression, _, reference in self.spec:
             self.assertGreaterEqual(reference, F32_MIN_NORMAL, expression)
             self.assertLess(reference, 1.0, expression)
+
+    def test_the_probability_set_is_not_silently_narrowed(self) -> None:
+        # Both coverage tests above are indexed on `PROBABILITIES` itself, so
+        # shrinking the tuple shrinks the expectation and they stay green. A
+        # review round proved it: `PROBABILITIES = (0.5,)` drops the binomial
+        # grid from 446 cases to 56, and all seventeen tests here passed and
+        # the gate exited 0 -- reaching, in one line, exactly the outcome this
+        # file's docstring says it prevents. `DOCUMENTED` got an explicit pin
+        # for this reason and this did not.
+        self.assertEqual(PROBABILITIES, (1e-7, 1e-5, 1e-3, 0.01, 0.1, 0.2, 0.3,
+                                         0.5, 0.7, 0.8, 0.9, 0.99, 0.999999))
 
     def test_the_bound_is_not_silently_widened(self) -> None:
         # Pins the table so widening it is a deliberate edit that a reviewer

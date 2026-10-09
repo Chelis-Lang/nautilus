@@ -425,9 +425,9 @@ def is_integer_f32(x: f32) -> bool = {
   eq(x, xi)
 }
 -- The log-space body is evaluated in f64 and the result returned as f32.
--- `log_gamma(k + 1)` is `log(k!)`, which reaches 1.05e6 at k = 1e5 and 8.7e8
--- at k = 5e7. One f32 rounding at 1.05e6 is an absolute error of 0.0625 in
--- an exponent, hence a multiplicative error in the result: `poisson_pmf(1e5,
+-- `log_gamma(k + 1)` is `log(k!)`, which reaches 1.05e6 at k = 1e5 and 8.36e8
+-- at k = 5e7. One f32 ulp at 1.05e6 is 0.125, an absolute error in an
+-- exponent and hence a multiplicative error in the result: `poisson_pmf(1e5,
 -- 1e5)` was 5.2% high. Above k = 2^24 the `+ 1` vanishes outright
 -- (`ulp(5e7)` is 4), so the normalising constant was `log(k!)` for the wrong
 -- factorial and `poisson_pmf(5e7, 5e7)` returned 1.0 against a true

@@ -46,7 +46,13 @@ high at `k = 1e5`, and above `k = 16777216` the `+ 1` vanished outright --
 the spacing of f32 values at 5e7 is 4 -- which left the normalising constant
 computed for the wrong factorial and `poisson_pmf(5e7, 5e7)` returning 1.0.
 
-> Relative error stays below 2e-6 for `lambda` up to 1e8.
+> Relative error stays below 2e-6 for `lambda` up to 1e8, for any result f32
+> can hold as a normal number.
+
+The qualifier is not a hedge: below f32's smallest normal, 1.18e-38, the
+return type cannot carry the value and a relative bound measures f32's
+quantisation rather than this function. `poisson_pmf(42, 0.7)` returns 0
+against a true 1.1e-58.
 
 That range is a gate, not a sentence: `parity/check_pmf_accuracy.py` measures
 both PMFs against SciPy at and beyond the stated ceiling on every CI run.
@@ -105,12 +111,16 @@ rounding is an absolute error of 128 in an exponent. `binomial_pmf(5e7, 1e8,
 is a probability. The error was continuous in `n` rather than a cliff at
 16777216: 15% at `n = 2e5` and 59% at `n = 2e6`.
 
-> Relative error stays below 2e-6 for `n` up to 2e8, at every `p`.
+> Relative error stays below 2e-6 for `n` up to 2e8, at every `p`, for any
+> result f32 can hold as a normal number.
 
 `p` is part of that claim because it is where the range was first measured
-wrongly: the worst in-range case is at `p = 0.999999`, not at `p = 0.5`.
-Above the ceiling the error grows with no signal in the result, as it does
-for `poisson_pmf`: at `n = 1e9` the gate measures 3.5e-6, at `p = 0.1`.
+wrongly: a grid that admitted only exactly-representable arguments dropped
+every skewed `p`, and a skewed `p` can be worse than `p = 0.5`. Which `p`
+is *worst* is a property of the grid rather than of the function, so no
+figure here names one. Above the ceiling the error grows with no signal in
+the result, as it does for `poisson_pmf`: at `n = 1e9` the gate measures
+3.5e-6.
 
 ## Pitfalls
 

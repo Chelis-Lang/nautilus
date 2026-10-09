@@ -167,22 +167,28 @@ The same bound now applies one dtype up, and it is a gate rather than a
 sentence:
 
 > Relative error stays below 2e-6 for `lambda` up to 1e8 and for `n` up to
-> 2e8, at every `p`.
+> 2e8, at every `p`, for any result f32 can hold as a normal number.
 
 `parity/check_pmf_accuracy.py` measures both functions against SciPy on every
 CI run, at and beyond those ceilings, and fails if the bound is exceeded
-inside the range. One f64 ulp of `ln(k!)` is 3.8e-6 at `k = 1e9`, and the gate
-measures 3.8e-6 for `poisson_pmf` and 3.5e-6 for `binomial_pmf` there: the
-error *is* that rounding, so it is a property of the dtype rather than
+inside the range. The last clause matters: below f32's smallest normal the
+return type cannot carry the value at all, and a relative bound there would
+measure f32's quantisation rather than this function.
+
+One f64 ulp of `ln(k!)` is 3.81e-6 at `k = 1e9`, and the gate measures 3.8e-6
+for `poisson_pmf` and 3.5e-6 for `binomial_pmf` there -- within that one
+rounding, so the remaining error is a property of the dtype rather than
 something a better algorithm would remove. Nothing in the result signals it,
 so outside the range calibrate against a reference over your own parameters.
 
-Seven rows are additionally pinned by name against SciPy references in
+Eight rows are additionally pinned by name against SciPy references in
 `tests/distributions.ch`, from `k = 1e3` to `k = 5e7`. `p` is part of the
-claim, not an afterthought: the worst in-range case is at `p = 0.999999`, and
-a first version of the gate's grid admitted only exactly-representable
-arguments, which silently discarded every skewed `p` and left the large-`n`
-figure resting on `p = 0.5` alone.
+claim, not an afterthought: a first version of the gate's grid admitted only
+exactly-representable arguments, which silently discarded every skewed `p`
+and left the large-`n` figure resting on `p = 0.5` alone. **Which parameters
+are worst is a property of the grid, not of the function**, so no figure here
+names one -- the error is rounding-driven and its maximum over a continuum is
+not findable by evaluating finitely many points.
 
 Note also that f32 cannot represent consecutive integers above 16777216, so a
 count passed as an f32 above that is already on a grid coarser than 1. If your
