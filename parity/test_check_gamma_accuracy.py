@@ -450,10 +450,22 @@ class Oracle(unittest.TestCase):
                             REF_AGREE, f"pdf(x; 1, 1) = exp(-x)")
 
     def test_the_reference_quantile_inverts_the_reference_cdf(self) -> None:
+        """Includes the documented `q` floor and the floored-start shapes.
+
+        `inv()` starts from `scipy.special.gammaincinv`, which is itself up to
+        2.35e-6 from the true root at `(1e7, 1e-6)` -- above this gate's own
+        bound. It is only a start, and the result is verified against the
+        reference `P` with a bisection fallback, so a bad start costs
+        iterations rather than accuracy. Extending the gate's quantile set
+        downward to the floor makes that worth asserting rather than reasoning
+        about: the shapes below are the ones where Wilson-Hilferty degenerates,
+        which is where a start is most likely to be poor.
+        """
         from mpmath import mp, mpf
         mp.dps = MP_DPS
-        for shape in (0.5, 1.0, 10.0, 1e3, 1e5):
-            for quantile in (0.001, 0.5, 0.999):
+        shapes = (0.5, 1.0, 10.0, 1e3, 1e5) + QUANTILE_FLOOR_SHAPES
+        for shape in shapes:
+            for quantile in (QUANTILE_FLOOR, 0.001, 0.5, 0.999):
                 root = self.inv(shape, quantile)
                 back = self.p(shape, float(root))
                 error = abs(back - mpf(quantile)) / mpf(quantile)
