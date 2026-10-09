@@ -44,7 +44,8 @@ Two cases need separate guidance:
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
 | `poisson_pmf`, `binomial_pmf` | below 2e-6 up to `lambda` of 1e8 and `n` of 2e8 | Log space in f64; past that, limited by f64's spacing at `ln(k!)`, see the note below |
-| Beta-family CDFs | below 2e-6 over a stated parameter range | `beta_cdf`, `f_cdf`, `student_t_cdf`, `binomial_cdf`; the range is part of the figure, see the note below |
+| Beta-family CDFs | below 2e-6 over a stated parameter range | `beta_cdf`, `f_cdf`, `binomial_cdf`; the range is part of the figure, see the note below |
+| `student_t_cdf` | below 2e-6 for every `df` | The incomplete beta up to `df` of 1e7, the large-`df` expansion above it, see the note below |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
 
@@ -113,10 +114,13 @@ parameters. The incomplete beta is computed in f64 and returned as f32, which
 keeps that error small over a wide range but not an unlimited one.
 
 > Relative error stays below 2e-6 when every parameter you pass is at least 1 and
-> the largest is at most 1e8.
+> the largest is at most 1e8. `student_t_cdf` has no upper limit: it holds below
+> 2e-6 for every `df` from 1 upward, including an infinite one.
 
 The range applies to `a` and `b` for `beta_cdf`, to `d1` and `d2` for `f_cdf`, to
-`df` for `student_t_cdf`, and to `n` for `binomial_cdf`.
+`df` for `student_t_cdf`, and to `n` for `binomial_cdf`. The upper limit is the
+one the incomplete beta imposes, and `student_t_cdf` is the one member of the
+family that can leave it behind, for the reason below.
 
 Outside the range the error grows in both directions, and nothing in the result
 indicates it. Below 1, a small shape parameter amplifies the same cancellation:
@@ -127,11 +131,28 @@ runs out of iterations: on `beta_cdf(0.5, a, a)`, whose value is exactly 0.5 by
 symmetry, the relative error is about 8e-6 at `a = 1e9`, 1.2e-3 at 1e10 and 21%
 at 1e11, and `beta_cdf(0.5, 3e38, 3e38)` returns a confident 1.0.
 
-`student_t_cdf` leaves the range earliest, because its cancellation is driven by
-`df` alone: 1.7e-6 at `df = 1e9`, 4e-4 at 1e12, 51% at 1e14, and from
-`df = 1e16` it returns exactly 0.5, which is also its value at `t = 0`. **Above
-`df` of about 1e9, use `normal_cdf` instead.** The t distribution is within 1e-9
-of the standard normal there, so the substitution costs nothing f32 can measure.
+`student_t_cdf` would leave the range earliest, because its cancellation is
+driven by `df` alone, so above `df` of 1e7 it does not use the incomplete beta at
+all. It evaluates the t distribution's own large-`df` expansion instead, which is
+`Phi(t) - phi(t) * (t^3 + t) / (4 df)`, where `Phi` and `phi` are the standard
+normal CDF and density. Both terms are computed in f64 and the result is
+returned as f32.
+
+The `1/df` term is not a refinement you could drop. A plain `Phi(t)` is within
+1e-9 of the t distribution at `t = 1`, but its error in the left tail is
+governed by `t` as well: 4.3e-5 at `df = 1e8` and 4.3e-4 at 1e7, measured at
+`t = -11`. The incomplete beta is already past 2e-6 before a bare `Phi` becomes
+accurate enough to replace it, so there is no `df` at which the two forms meet.
+With the term the expansion is within 8.6e-8 at `df = 1e7` and improves as
+`1/df^2`, which crosses the incomplete beta's own 1.1e-7 there. That
+crossing is where the threshold sits.
+
+Two things follow that are worth knowing if you read values near it. The
+threshold introduces a discontinuity, and it is small: at the two adjacent
+representable `df` either side, the two forms agree to 1.0e-7 relative, under two
+f32 ulps. And `student_t_cdf(0, df)` is exactly 0.5 for every `df`, which is the
+right answer and not a symptom; the expansion's correction term vanishes at
+`t = 0`.
 
 A regularized incomplete beta lies in [0, 1]. A converged computation that
 overshoots that range by a rounding is clamped to the boundary, because the
