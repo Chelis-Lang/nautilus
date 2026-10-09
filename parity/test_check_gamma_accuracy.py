@@ -50,6 +50,23 @@ from parity.check_gamma_accuracy import (
     shape_ladder,
 )
 
+# Every file that publishes a claim about this family's accuracy. The guard
+# `test_the_published_claim_matches_what_the_gate_enforces` reads exactly these.
+CLAIM_SITES = (
+    "docs/book/src/appendix/precision.md",
+    "docs/book/src/distributions/gamma-family.md",
+    "docs/book/src/distributions/discrete.md",
+    "SKILL.md",
+    "src/distributions.ch",
+    "changelog.d/nautilus_gamma_family_f64.fixed.md",
+    # Not this family's own fragment, but it published a claim about
+    # `poisson_cdf`'s accuracy that #152 falsified. The completeness test below
+    # is what found it, after four review rounds had not.
+    "changelog.d/nautilus_discrete_pmf_f64.fixed.md",
+    "changelog.d/nautilus_right_tail_p_values.fixed.md",
+    "docs/book/src/stats/testing.md",
+)
+
 IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 CALL = re.compile(r"^(\w+)\((.*)\)$")
 
@@ -453,30 +470,76 @@ class Coverage(unittest.TestCase):
         """
         enforced = sum(1 for case in self.spec
                        if case[3] <= DOCUMENTED[case[1]][0])
-        appendix = (REPO / "docs/book/src/appendix/precision.md").read_text()
-        skill = (REPO / "SKILL.md").read_text()
+        # Every site that carries a claim about this family's accuracy. Round 4
+        # found a stale reference in `src/distributions.ch`, a fifth site an
+        # earlier version of this test did not read, so the list is explicit
+        # and `test_the_claim_site_list_is_complete` below pins it.
+        sites = {name: (REPO / name).read_text() for name in CLAIM_SITES}
 
-        # (1) the published count is the enforced count
-        self.assertIn(f"{enforced} cases", appendix,
-                      f"the appendix does not publish the enforced count "
-                      f"({enforced}); it has gone stale against the grid")
+        # (1) the published count is the enforced count, wherever it is published
+        published = [n for n, t in sites.items() if "cases `parity" in t
+                     or "cases the accuracy gate" in t]
+        self.assertTrue(published, "no site publishes a case count at all")
+        for name in published:
+            self.assertIn(f"{enforced} cases", sites[name],
+                          f"{name} publishes a case count that is not the "
+                          f"{enforced} the gate enforces; it has gone stale "
+                          f"against the grid")
 
-        # (2) nothing claims a bound over what is merely measured
-        for name, text in (("precision.md", appendix), ("SKILL.md", skill)):
+        # (2) nothing claims a bound over what is merely MEASURED
+        for name, text in sites.items():
             for bad in ("everywhere the gate measures",
                         "everywhere the accuracy gate measures",
-                        "everywhere `parity/check_gamma_accuracy.py` measures"):
+                        "everywhere `parity/check_gamma_accuracy.py` measures",
+                        "every case the gate measures",
+                        "every case the accuracy gate measures"):
                 self.assertNotIn(bad, text,
                                  f"{name} claims a bound over what the gate "
                                  f"MEASURES; it enforces {enforced} of "
                                  f"{len(self.spec)} and exceeds 2e-6 beyond "
-                                 f"the ceilings by design")
+                                 f"the ceilings by design -- 3.79e-6 at "
+                                 f"gamma_cdf(2e8, 2e8, 1), which the gate "
+                                 f"prints on every run")
 
-        # (3) no range-shaped claim for this family
-        self.assertNotIn("The gamma family holds below 2e-6 over a stated",
-                         appendix,
-                         "the gamma section heading states a parameter range "
-                         "again; three rounds falsified that form")
+        # (3) no range-shaped claim for this family, in any site
+        for name, text in sites.items():
+            self.assertNotIn("The gamma family holds below 2e-6 over a stated",
+                             text,
+                             f"{name} states a parameter range again; three "
+                             f"rounds falsified three successive versions of "
+                             f"that form")
+
+    def test_the_claim_site_list_is_complete(self) -> None:
+        """`CLAIM_SITES` must name every file that publishes a bound.
+
+        The guard above can only check sites it is pointed at, so the list is
+        the guard's own weak point: round 4 found a stale claim in
+        `src/distributions.ch` precisely because an earlier version read only
+        two files. This searches the tree for the bound's own number next to
+        this family's name and requires every hit to be a listed site, a test
+        file, or the gate itself.
+        """
+        import subprocess
+        found = subprocess.run(
+            ["git", "grep", "-l", "2e-6"], cwd=REPO,
+            capture_output=True, text=True).stdout.split()
+        # Matched on this family's EXPORT NAMES, not on the substring "gamma".
+        # The looser form flagged the beta family's own changelog, whose 2e-6 is
+        # its own bound and whose only "gamma" is `lgamma` inside the beta front
+        # factor -- a false positive that would have trained a reader to ignore
+        # this test.
+        exports = tuple(DOCUMENTED)
+        for path in found:
+            if path in CLAIM_SITES:
+                continue
+            if path.startswith("parity/") or path.startswith("scripts/"):
+                continue          # the gates and their own tests
+            text = (REPO / path).read_text()
+            hit = [e for e in exports if e in text]
+            if hit:
+                self.fail(f"{path} mentions 2e-6 and {', '.join(hit)} but is "
+                          f"not in CLAIM_SITES, so the claim guard never reads "
+                          f"it")
 
     def test_the_bound_is_not_silently_widened(self) -> None:
         # Pins the table so widening it is a deliberate edit that a reviewer

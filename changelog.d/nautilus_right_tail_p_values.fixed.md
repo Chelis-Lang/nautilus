@@ -41,7 +41,10 @@ can represent and 265 have one that is a normal f32.
 
 Of those 274, the previous spelling returned exactly `0.0` for **77** and the
 current one for **none**. Over the 265 normal-range rows the worst relative
-error is **8.9e-8** for the z family, **4.2e-6** for chi-squared, and
+error is **8.9e-8** for the z family, **4.2e-6** for chi-squared (measured on
+the f32 incomplete-gamma lane, which nautilus#152 has since moved to f64 -- that
+figure is this entry's own measurement and is not re-stated for the new lane
+here), and
 **4.4e-5** for Student-t -- the last being `betai`'s bound, worst at mid-range
 arguments (4.4e-5) rather than in the tail (2.0e-5). Sixteen rows, all of them
 mid-range, are relatively worse than before by at most 2.4e-5.

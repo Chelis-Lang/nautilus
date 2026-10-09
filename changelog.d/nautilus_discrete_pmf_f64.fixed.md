@@ -52,12 +52,12 @@ The captured `ppmf` and `bpmf` values in
 `poisson_pmf(3, 2.5)` and `binomial_pmf(3, 10, 0.3)` now return the correctly
 rounded f32 where they previously did not.
 
-**`poisson_cdf` is not fixed by this and is not meant to be.** It routes through
-`gamma_sf`, whose entire incomplete-gamma lane is f32, so there is nowhere for a
-widened `k + 1` to go. That is a much larger effect than the lost `+ 1` --
-`poisson_cdf(5e7, 5e7)` returns 6.731102e-4 against a true 0.50003761, where the
-`+ 1` can account for only 0.011% of it -- and it is the
-large-shape limit `docs/book/src/distributions/gamma-family.md` already
-documents for `gamma_cdf`, `gamma_sf` and the chi-squared pair. It needs
-the f64 treatment nautilus#144 gave the incomplete beta, tracked as
-nautilus#152.
+**`poisson_cdf` was not fixed by this and was not meant to be.** It routes
+through `gamma_sf`, whose incomplete-gamma lane was f32 when this entry was
+written, so there was nowhere for a widened `k + 1` to go. That was a much
+larger effect than the lost `+ 1`: `poisson_cdf(5e7, 5e7)` returned 6.731102e-4
+against a true 0.50003761, where the `+ 1` accounted for only 0.011% of it.
+nautilus#152 has since moved that lane to f64 and formed `k + 1` there, so the
+call now returns 0.50003755 and both effects are gone. This paragraph is kept
+rather than deleted because the reasoning it records -- that fixing the PMFs
+could not reach the CDF -- is why the two were separate changes.
