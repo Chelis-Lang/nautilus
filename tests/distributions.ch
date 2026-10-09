@@ -869,6 +869,10 @@ def test_f_cdf_is_half_at_the_symmetric_point_for_large_df() -> unit ! { Test } 
 -- the value the function also returns at t = 0, so nothing about it looked
 -- wrong. Both the argument and its complement are now formed in f64, and the
 -- complement is passed rather than recovered by subtraction.
+-- The two cases here above 1e7 no longer reach the beta route at all: they
+-- take the large-df expansion, which is what the test below pins. They are
+-- kept because the value they assert is the same either way, so a regression
+-- that reinstated the f32 argument would still be caught at df = 1e5 and 1e6.
 def test_student_t_cdf_does_not_saturate_at_large_df() -> unit ! { Test } = {
   tol = cast(0.00001, f32)
   one = cast(1.0, f32)
@@ -883,6 +887,101 @@ def test_student_t_cdf_does_not_saturate_at_large_df() -> unit ! { Test } = {
   -- 0.5 is student_t_cdf's value at t = 0, so the saturated answer was
   -- indistinguishable from a real one. Pin that it is gone, not merely closer.
   assert_true(gt(sub(t8, cast(0.5, f32)), cast(0.3, f32)), "student_t_cdf(1,1e8) is not the plausible-looking 0.5")
+}
+-- The beta route's front factor is `exp(lgamma(a+b) - lgamma(a) - lgamma(b)
+-- + ...)` with `a = df/2`, so its exponent carries an absolute error of about
+-- one f64 ulp of the largest log-gamma. At df = 1e12 those are 2.7e13, where
+-- the ulp is 3.9e-3; by df = 1e16 the exponent has lost everything and the
+-- function returned exactly 0.5 -- which is also its value at t = 0, so the
+-- answer was indistinguishable from a real one. The reference is the standard
+-- normal CDF, which the t distribution is within O(1/df) of: at every df here
+-- that gap is below 1e-12, so no library is needed to adjudicate it.
+def test_student_t_cdf_does_not_collapse_to_half_at_huge_df() -> unit ! { Test } = {
+  tol = cast(0.00001, f32)
+  phi1 = cast(0.8413448, f32)
+  t12 = student_t_cdf(cast(1.0, f32), cast(1000000000000.0, f32))
+  t14 = student_t_cdf(cast(1.0, f32), cast(100000000000000.0, f32))
+  t16 = student_t_cdf(cast(1.0, f32), cast(1e16, f32))
+  t20 = student_t_cdf(cast(1.0, f32), cast(1e20, f32))
+  two16 = student_t_cdf(cast(2.0, f32), cast(1e16, f32))
+  _ = assert_true(lt(dist_rel_err(t12, phi1), tol), "student_t_cdf(1,1e12) = 0.8413448 (was 0.8412847)")
+  _ = assert_true(lt(dist_rel_err(t14, phi1), tol), "student_t_cdf(1,1e14) = 0.8413448 (was 0.832373)")
+  _ = assert_true(lt(dist_rel_err(t16, phi1), tol), "student_t_cdf(1,1e16) = 0.8413448 (was the plausible 0.5)")
+  _ = assert_true(lt(dist_rel_err(t20, phi1), tol), "student_t_cdf(1,1e20) = 0.8413448 (was 0.5)")
+  assert_true(lt(dist_rel_err(two16, cast(0.97724986, f32)), tol), "student_t_cdf(2,1e16) = 0.97724986 (was 1.0)")
+}
+-- The left tail was further wrong than the 0.5 at t = 1 suggests, and in a
+-- direction no range check catches: `student_t_cdf(-5, 1e18)` returned
+-- 0.49981025 against a true 2.8665158e-7, and at t = -8 it returned 0.0.
+-- These are the p-value route -- `t_p_value_upper(t, df)` is
+-- `student_t_cdf(-t, df)` -- so this is the tail a caller reads, not a corner.
+def test_student_t_cdf_keeps_its_left_tail_at_huge_df() -> unit ! { Test } = {
+  tol = cast(0.00001, f32)
+  m1 = student_t_cdf(cast(-1.0, f32), cast(100000000000000.0, f32))
+  m5 = student_t_cdf(cast(-5.0, f32), cast(1e18, f32))
+  m8 = student_t_cdf(cast(-8.0, f32), cast(1e18, f32))
+  _ = assert_true(lt(dist_rel_err(m1, cast(0.15865526, f32)), tol), "student_t_cdf(-1,1e14) = 0.15865526 (was 0.23971674)")
+  _ = assert_true(gt(m8, cast(0.0, f32)), "student_t_cdf(-8,1e18) is strictly positive (was exactly 0.0)")
+  _ = assert_true(lt(dist_rel_err(m5, cast(2.8665158e-7, f32)), tol), "student_t_cdf(-5,1e18) = 2.8665158e-7 (was 0.49981025)")
+  assert_true(lt(dist_rel_err(m8, cast(6.2209604e-16, f32)), tol), "student_t_cdf(-8,1e18) = 6.2209604e-16 (was 0.0)")
+}
+-- The `-phi(t)(t^3+t)/(4 df)` term is what makes the expansion usable at a
+-- threshold the beta route can still reach. Without it the limit is a plain
+-- `Phi(t)`, whose own relative error in the left tail is 2.5e-4 at df = 1e7
+-- and 2.5e-5 at 1e8 -- both outside the tolerance here, so these two cases
+-- are what separates the expansion from a bare normal branch. The sign
+-- matters as much as the magnitude: flipped, it doubles the miss.
+def test_student_t_cdf_carries_the_first_order_df_term() -> unit ! { Test } = {
+  tol = cast(0.00001, f32)
+  d7 = student_t_cdf(cast(-10.0, f32), cast(10000000.0, f32))
+  d8 = student_t_cdf(cast(-10.0, f32), cast(100000000.0, f32))
+  _ = assert_true(lt(dist_rel_err(d7, cast(7.621796e-24, f32)), tol), "student_t_cdf(-10,1e7) = 7.621796e-24, not Phi(-10) = 7.619853e-24")
+  assert_true(lt(dist_rel_err(d8, cast(7.620048e-24, f32)), tol), "student_t_cdf(-10,1e8) = 7.620048e-24, not Phi(-10)")
+}
+-- A branch on df introduces a discontinuity, so pin its size at the two
+-- ADJACENT representable df either side of the threshold rather than at round
+-- numbers a decade apart: a fixture spaced wider than the jump cannot see it.
+-- 9999999.0 and 1e7 are neighbouring f32 values (ulp(1e7) = 1), the first
+-- taking the beta route and the second the expansion. Measured agreement is
+-- 1.0e-7 relative, under two f32 ulps; the bound here leaves an order of
+-- headroom and would still catch a dropped correction term, which opens the
+-- gap at t = -10 to 2.5e-4.
+def test_student_t_cdf_is_continuous_across_the_normal_branch() -> unit ! { Test } = {
+  tol = cast(1e-6, f32)
+  below_b = student_t_cdf(cast(-1.7320508, f32), cast(9999999.0, f32))
+  above_b = student_t_cdf(cast(-1.7320508, f32), cast(10000000.0, f32))
+  below_t = student_t_cdf(cast(-10.0, f32), cast(9999999.0, f32))
+  above_t = student_t_cdf(cast(-10.0, f32), cast(10000000.0, f32))
+  _ = assert_true(lt(dist_rel_err(above_b, below_b), tol), "the branch is continuous at t = -sqrt(3), where the beta route is least accurate")
+  assert_true(lt(dist_rel_err(above_t, below_t), tol), "the branch is continuous at t = -10, where the normal limit is least accurate")
+}
+-- An infinite df is the normal distribution itself, and the expansion's
+-- correction term vanishes there, so the limit is exact rather than merely
+-- close. It returned 0.5 before, for the same reason df = 1e16 did.
+-- An infinite t is the one input that makes the correction an indeterminate
+-- `0 * inf`; the domain test on t*t is what keeps it a CDF rather than a NaN.
+def test_student_t_cdf_handles_infinite_df_and_t() -> unit ! { Test } = {
+  tol = cast(0.00001, f32)
+  inf = div(cast(1.0, f32), cast(0.0, f32))
+  at_inf_df = student_t_cdf(cast(1.0, f32), inf)
+  at_neg_inf_t = student_t_cdf(neg(inf), cast(1000000000.0, f32))
+  at_pos_inf_t = student_t_cdf(inf, cast(1000000000.0, f32))
+  _ = assert_true(lt(dist_rel_err(at_inf_df, cast(0.8413448, f32)), tol), "student_t_cdf(1,inf) = Phi(1) = 0.8413448 (was 0.5)")
+  _ = assert_true(eq(at_neg_inf_t, cast(0.0, f32)), "student_t_cdf(-inf,1e9) = 0.0, not NaN")
+  assert_true(eq(at_pos_inf_t, cast(1.0, f32)), "student_t_cdf(inf,1e9) = 1.0, not NaN")
+}
+-- The failure parity for the three tests above. 0.5 is the RIGHT answer at
+-- t = 0 for every df, so "never returns 0.5" would be the wrong invariant to
+-- read out of this issue; the large-df branch must keep it. A non-positive df
+-- is not a distribution and still returns NaN through the new branch's own
+-- guard, which sits ahead of it.
+def test_student_t_cdf_large_df_keeps_the_legitimate_half_and_rejects_bad_df() -> unit ! { Test } = {
+  at_zero = student_t_cdf(cast(0.0, f32), cast(1000000000000.0, f32))
+  df_zero = student_t_cdf(cast(-1.0, f32), cast(0.0, f32))
+  df_neg = student_t_cdf(cast(-1.0, f32), cast(-5.0, f32))
+  _ = assert_true(eq(at_zero, cast(0.5, f32)), "student_t_cdf(0,1e12) = 0.5 exactly, which is correct and must survive the branch")
+  _ = assert_true(neq(df_zero, df_zero), "student_t_cdf(-1,0) is NaN")
+  assert_true(neq(df_neg, df_neg), "student_t_cdf(-1,-5) is NaN")
 }
 def test_f_cdf_does_not_saturate_when_the_denominator_df_is_small() -> unit ! { Test } = {
   tol = cast(0.00001, f32)
