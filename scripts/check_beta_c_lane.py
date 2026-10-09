@@ -78,8 +78,14 @@ CASES = [
     ("lane_f", "f_cdf(cast(3.0, f32), cast(5.0, f32), cast(10.0, f32))"),
     ("lane_t", "student_t_cdf(cast(1.0, f32), cast(5.0, f32))"),
     ("lane_binom", "binomial_cdf(cast(3.0, f32), cast(10.0, f32), cast(0.3, f32))"),
-    # the three argument-saturation cases nautilus#143 repaired
+    # the three argument-saturation cases nautilus#143 repaired. `lane_t_sat`
+    # now takes `student_t_cdf`'s large-df expansion rather than the incomplete
+    # beta, so it covers the branch as well as the saturation it was written
+    # for; the two `lane_t_big` cases below sit deep inside that regime, where
+    # the beta route returned 0.5 and 0.49981025 respectively.
     ("lane_t_sat", "student_t_cdf(cast(1.0, f32), cast(1e8, f32))"),
+    ("lane_t_big", "student_t_cdf(cast(1.0, f32), cast(1e16, f32))"),
+    ("lane_t_big_tail", "student_t_cdf(cast(-5.0, f32), cast(1e18, f32))"),
     ("lane_f_sat", "f_cdf(cast(1.0, f32), cast(1e8, f32), cast(1.0, f32))"),
     ("lane_binom_sat", "binomial_cdf(cast(0.0, f32), cast(1000000.0, f32), cast(1e-8, f32))"),
     # the [0, 1] range guard
