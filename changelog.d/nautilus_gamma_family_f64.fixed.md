@@ -85,12 +85,12 @@ f32 `k + 1` had collapsed to zero. The sampling C-lane check that already
 existed covers keyed gamma-family *sampling*; none of these nine exports had
 C-lane coverage.
 
-The documented range and its two limits are in
-[the precision appendix](docs/book/src/appendix/precision.md).
+The measured set, the two limits outside it, and the three regions known to be
+wrong are in [the precision appendix](docs/book/src/appendix/precision.md).
 
 **The documented accuracy claim states a measured set, not a parameter
-range.** For a shape in
-roughly [1.9, 2.6] below that quantile, `gamma_inv_cdf`'s Wilson-Hilferty start
+range.** Two regions are excluded from it, both the Newton step dividing by a
+floored density. For a shape in roughly [1.9, 2.6] at a quantile below 1e-4, `gamma_inv_cdf`'s Wilson-Hilferty start
 is floored, the first Newton step overshoots by about 27 decades, and the
 80-step budget is spent halving back: `gamma_inv_cdf(1e-5, 2, 1)` returns
 8.271806 against a true 0.0044788163, which is the 99.8th percentile rather than

@@ -29,6 +29,7 @@ import re
 import unittest
 
 from parity.check_gamma_accuracy import (
+    REPO,
     BEYOND,
     MP_DPS,
     QUANTILE_FLOOR,
@@ -379,11 +380,19 @@ class Coverage(unittest.TestCase):
         self.assertIn(f32(max(QUANTILE_SCALES)), quantile_scales)
         self.assertIn(f32(max(QUANTILE_SCALES_THIN)), quantile_scales)
 
-        # `q`, the round-1 axis: varied and probed at its floor.
-        quantile_qs = {argument(c, 0) for c in self.spec
-                       if c[1] in QUANTILE_EXPORTS}
-        self.assertGreaterEqual(len(quantile_qs), len(QUANTILES))
-        self.assertIn(f32(QUANTILE_FLOOR), quantile_qs)
+        # `q`, the round-1 axis: varied PER EXPORT and probed at its floor.
+        # This was a union over both quantile exports, which meant either one's
+        # `q` axis could collapse to a single point while the other carried the
+        # assertion -- a reviewer froze `chi_squared_inv_cdf` to one `q` and
+        # this test passed. The docstring claimed "no export is measured at a
+        # single point on any of its axes", so the union made that sentence
+        # false; per-export makes it true.
+        for export in QUANTILE_EXPORTS:
+            qs = {argument(c, 0) for c in self.spec if c[1] == export}
+            self.assertGreaterEqual(len(qs), len(QUANTILES),
+                                    f"{export} varies `q` over only {len(qs)} "
+                                    f"values")
+            self.assertIn(f32(QUANTILE_FLOOR), qs, export)
 
         # The CORNER: the `q` floor at the shape ceiling, and the `q` floor at
         # the extreme scales. A claim with several boundaries can be false
@@ -416,6 +425,58 @@ class Coverage(unittest.TestCase):
             self.assertIn(ceiling, params, f"{export} not probed at its ceiling")
             self.assertTrue(any(p > ceiling for p in params),
                             f"{export} not probed beyond its ceiling")
+
+    def test_the_published_claim_matches_what_the_gate_enforces(self) -> None:
+        """The guard four review rounds asked for, closing the class.
+
+        Each of those rounds found a defect in the WORDING of this family's
+        accuracy claim rather than in the arithmetic, and each found a new one
+        by hand, because nothing in the repository compared a published
+        sentence against the gate. The gate's own docstring says it does not
+        read the documents -- correct for the gate, which must not be able to
+        make itself pass. A test may, and this is it.
+
+        Three properties, each the direct form of a finding:
+
+        1. The published case count equals the number of cases the gate
+           actually enforces. Round 4 noted nothing pinned 1626, so the figure
+           would go stale the first time anyone added a grid rung.
+        2. No row claims a bound over what the gate MEASURES. It measures 1673
+           cases and enforces 1626; the 47 beyond-ceiling rows exist to measure
+           out-of-range growth, and five exports exceed 2e-6 there -- 3.79e-6 at
+           `gamma_cdf(2e8, 2e8, 1)`, which the gate prints on every run. Five
+           SKILL.md rows said "everywhere the gate measures" and were false
+           against their own gate's stdout.
+        3. No claim site states a parameter range for this family. Three rounds
+           falsified three successive range-shaped versions; the form is banned
+           here rather than re-narrowed.
+        """
+        enforced = sum(1 for case in self.spec
+                       if case[3] <= DOCUMENTED[case[1]][0])
+        appendix = (REPO / "docs/book/src/appendix/precision.md").read_text()
+        skill = (REPO / "SKILL.md").read_text()
+
+        # (1) the published count is the enforced count
+        self.assertIn(f"{enforced} cases", appendix,
+                      f"the appendix does not publish the enforced count "
+                      f"({enforced}); it has gone stale against the grid")
+
+        # (2) nothing claims a bound over what is merely measured
+        for name, text in (("precision.md", appendix), ("SKILL.md", skill)):
+            for bad in ("everywhere the gate measures",
+                        "everywhere the accuracy gate measures",
+                        "everywhere `parity/check_gamma_accuracy.py` measures"):
+                self.assertNotIn(bad, text,
+                                 f"{name} claims a bound over what the gate "
+                                 f"MEASURES; it enforces {enforced} of "
+                                 f"{len(self.spec)} and exceeds 2e-6 beyond "
+                                 f"the ceilings by design")
+
+        # (3) no range-shaped claim for this family
+        self.assertNotIn("The gamma family holds below 2e-6 over a stated",
+                         appendix,
+                         "the gamma section heading states a parameter range "
+                         "again; three rounds falsified that form")
 
     def test_the_bound_is_not_silently_widened(self) -> None:
         # Pins the table so widening it is a deliberate edit that a reviewer

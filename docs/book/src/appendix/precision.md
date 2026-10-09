@@ -177,7 +177,7 @@ The error is driven by rounding, so it oscillates in every parameter and no
 finite set of sample points locates its maximum. Calibrate tolerances against a
 reference over the parameters your calculation actually uses.
 
-### The gamma family holds below 2e-6 over a stated shape range
+### The gamma family holds below 2e-6 over a measured set of cases
 
 `gamma_cdf`, `gamma_sf`, `gamma_pdf`, `chi_squared_cdf`, `chi_squared_sf`,
 `chi_squared_pdf`, `poisson_cdf`, `gamma_inv_cdf` and `chi_squared_inv_cdf` all
@@ -204,7 +204,7 @@ gate did not actually walk. First `q`, where the grid stopped three decades
 above a failure region. Then `scale`, which the quantile rows did not vary at
 all. Then `shape` *downward*, because the range bounded it only from above
 while the grid's ladder starts at 0.5 -- `gamma_inv_cdf(1e-4, 0.0706, 1e20)` is
-41x out, with every parameter inside the range as written.
+45x out, with every parameter inside the range as written.
 
 So the claim no longer asserts a region. It asserts what was measured, which
 cannot be falsified by a point nobody measured, and it leaves the region to the
@@ -263,7 +263,7 @@ reason given above. The CDF is accurate over the grid's own scale range; it is
 not a general escape from the quantile's limits.
 
 `parity/check_gamma_accuracy.py` measures all nine exports on every CI run, at
-and beyond those ceilings and at the `q` floor, and fails if the bound is exceeded inside the range.
+and beyond those ceilings and at the `q` floor, and fails if the bound is exceeded at any case it enforces.
 Its grid walks `x` across `shape*scale` in units of the distribution's own
 standard deviation, because that is the only place the cancellation is total:
 the broken f32 lane was 2.8e-8 relative at `gamma_cdf(10500, 10000, 1)` while
@@ -282,7 +282,7 @@ evaluations rather than one, so its grid reaches one decade lower inside a
 tolerable run time. Neither ceiling is where the answer becomes wrong; it is
 where this bound stops being measured.
 
-Outside the range two separate limits take over and nothing in the result
+Outside the grid two separate limits take over and nothing in the result
 indicates either.
 
 The first is the f64 rounding itself. The floor is one f64 ulp of
@@ -435,7 +435,7 @@ have lost the sixth digit.
 `1 - gamma_cdf(lambda, k+1, 1)`. It computes `Q(k+1, lambda)` directly instead,
 with no round trip through 1.0, so `poisson_cdf(10, 50)` is 6.450153e-12 rather
 than 0, seven significant digits of a reference 6.4501529e-12. Its accuracy is
-the gamma family's, which is now the f64 range stated above rather than the f32
+the gamma family's, which is now the measured set stated above rather than the f32
 front factor. `k + 1` is formed in f64 as well: in f32 the increment vanished
 above `k = 16777216`, since the spacing of f32 values at 5e7 is 4, so
 `poisson_cdf(5e7, 5e7)` evaluated `Q(5e7, 5e7)` and came out short by

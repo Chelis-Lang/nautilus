@@ -238,8 +238,8 @@ def student_t_pdf(x: f32, df: f32) -> f32 = {
 -- same shape. The envelope is estimated from neighbourhood worst cases, which
 -- sit at 1.2x and 0.7x of `ulp64(log_gamma(a))`; that is why the accuracy gate
 -- walks a neighbourhood rather than evaluating a point.
--- `docs/book/src/appendix/precision.md` states the range this bounds and
--- `parity/check_gamma_accuracy.py` is its gate.
+-- `docs/book/src/appendix/precision.md` states the measured set this bounds
+-- and `parity/check_gamma_accuracy.py` is its gate.
 --
 -- Both budgets are far larger than the f32 lane's 200, because f32 could not
 -- have spent more usefully and f64 can. Measured iteration counts at the
