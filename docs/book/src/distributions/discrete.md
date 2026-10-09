@@ -14,9 +14,9 @@ bcdf = binomial_cdf(3.0f32, 10.0f32, 0.3f32)
 ```
 
 ```text
-ppmf = 0.21376282
+ppmf = 0.21376301
 pcdf = 0.75757635
-bpmf = 0.26682863
+bpmf = 0.26682794
 bcdf = 0.6496107
 ```
 
@@ -37,10 +37,36 @@ Domain: `k` a non-negative integer value, `lambda >= 0` and finite.
 | `k < 0` | 0 | 0 |
 | non-integer `k` | 0 | not rounded: interpolates between the neighboring counts |
 
-The PMF works in log space, so large counts do not overflow a factorial. The
-CDF does not sum PMF terms; it evaluates the incomplete gamma function, which
-inherits the [large-shape limit](gamma-family.md#large-shapes)
-at shape `k + 1`.
+The PMF works in log space, so large counts do not overflow a factorial, and
+it evaluates that log-space expression in f64 before returning an f32. The
+dominant term is `ln(Gamma(k + 1)) = ln(k!)`, which reaches 1.05e6 at
+`k = 1e5`; one f32 rounding of a quantity that size is an absolute error in
+an *exponent*, so it reaches the answer multiplied. In f32 the PMF was 5.2%
+high at `k = 1e5`, and above `k = 16777216` the `+ 1` vanished outright --
+the spacing of f32 values at 5e7 is 4 -- which left the normalising constant
+computed for the wrong factorial and `poisson_pmf(5e7, 5e7)` returning 1.0.
+
+> Relative error stays below 2e-6 for `lambda` up to 1e8, for any result f32
+> can hold as a normal number.
+
+The qualifier is not a hedge: below f32's smallest normal, 1.18e-38, the
+return type cannot carry the value and a relative bound measures f32's
+quantisation rather than this function. `poisson_pmf(42, 0.7)` returns 0
+against a true 1.1e-58.
+
+That range is a gate, not a sentence: `parity/check_pmf_accuracy.py` measures
+both PMFs against SciPy at and beyond the stated ceiling on every CI run.
+Above it the same mechanism keeps going and nothing in the result indicates
+it -- at `lambda = 1e9` the gate measures 3.8e-6, which is one f64 ulp of
+`ln(k!)` at that count. Note also that f32 cannot represent consecutive
+integers above 16777216 at all, so a count passed as an f32 above that is
+already on a grid coarser than 1.
+
+The CDF does not sum PMF terms; it evaluates the incomplete gamma function,
+which inherits the [large-shape limit](gamma-family.md#large-shapes)
+at shape `k + 1`. **That limit is the f32 incomplete-gamma lane's, not the
+PMF's, and it is much the larger effect**: `poisson_cdf(5e7, 5e7)` returns
+6.731102e-4 against a true 0.50003761. Fixing the PMF does not touch it.
 
 The CDF reads that function as the upper tail `Q` rather than as
 `1 - P`, so a left tail far below the mean keeps its digits:
@@ -75,6 +101,26 @@ before reading `n` again, so a bad `n` does not produce NaN there.
 incomplete beta. In f32 the `+ 1` is lost once `k` reaches 16777216, because the
 spacing of f32 values there exceeds 1, and the result then describes a different
 distribution. Relative error stays below 2e-6 for `n` up to 1e8.
+
+`binomial_pmf` evaluates its whole log-space body in f64 for the reason given
+under `poisson_pmf`, and for one more: `ln C(n, k)` is a difference of three
+log-factorials, so its f32 error was bounded by the largest of them rather
+than by the answer. At `n = 1e8`, `ln(Gamma(n + 1))` is 1.74e9, where one f32
+rounding is an absolute error of 128 in an exponent. `binomial_pmf(5e7, 1e8,
+0.5)` returned `inf` and `binomial_pmf(2e7, 4e7, 0.5)` returned 1.0; neither
+is a probability. The error was continuous in `n` rather than a cliff at
+16777216: 15% at `n = 2e5` and 59% at `n = 2e6`.
+
+> Relative error stays below 2e-6 for `n` up to 2e8, at every `p`, for any
+> result f32 can hold as a normal number.
+
+`p` is part of that claim because it is where the range was first measured
+wrongly: a grid that admitted only exactly-representable arguments dropped
+every skewed `p`, and a skewed `p` can be worse than `p = 0.5`. Which `p`
+is *worst* is a property of the grid rather than of the function, so no
+figure here names one. Above the ceiling the error grows with no signal in
+the result, as it does for `poisson_pmf`: at `n = 1e9` the gate measures
+3.5e-6.
 
 ## Pitfalls
 

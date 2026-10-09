@@ -1188,3 +1188,93 @@ def test_exponential_cdf_forms_its_rate_product_in_f64() -> unit ! { Test } = {
   _ = assert_true(lt(dist_rel_err(p0, cast(0.030795844, f32)), cast(2e-8, f32)), "exponential_cdf(0.017, 1.84) = 0.030795844")
   assert_true(lt(dist_rel_err(p1, cast(0.061521187, f32)), cast(2e-8, f32)), "exponential_cdf(0.0255, 2.49) = 0.061521187")
 }
+-- nautilus#146. `poisson_pmf` and `binomial_pmf` evaluate their log-space
+-- bodies in f64. The dominant term is `log_gamma(k + 1) = log(k!)`, and one
+-- f32 rounding of a quantity that size is an absolute error in an
+-- *exponent*, so it reaches the answer multiplied. Two mutants have to die
+-- here, and they fail at different parameter sizes:
+--   * the whole f32 body, which returned `inf` and 1.0 above 2^24, and
+--   * widening only `k + 1` and `n - k` while leaving the log-gammas in
+--     f32, which is what the issue first proposed. Above 2^24 that one
+--     returns 1.2664166e-14 and 1.6038109e-28 where the shipped form
+--     returns 7.978849e-05 and 5.6418965e-05, and 1.0 at
+--     `binomial_pmf(2e7, 4e7, 0.5)`. Note that only the 1.0 is caught by a
+--     range check: the two tiny values are in [0, 1], so the references
+--     below are what kill them. Below 2^24 it is 10.3% low at n = 2e5,
+--     7.2% low at lambda = 1e5, 0.037% low at n = 2e3 and 0.015% low at
+--     lambda = 1e3, so the small-parameter rows are the ones that kill it
+--     there.
+-- Every reference is scipy's f64 value rounded once to f32. The bound is
+-- 1e-5. The shipped error at these points is at most 5 ulps from the
+-- correctly rounded f32, which at n = 1e8 is a relative error of 4.3e-7
+-- against the f64 reference -- two denominators, and the ulp one is the
+-- one an f32 return can be held to. The tightest mutant separation is the
+-- 1.5e-4 of `poisson_pmf(1e3, 1e3)` under the second mutant. So the bound
+-- sits about 20x above the shipped error and 15x below the nearest mutant.
+def test_binomial_pmf_is_a_probability_above_two_to_the_24() -> unit ! { Test } = {
+  -- The f32 body returned `inf` here, and `inf` is not a probability. The
+  -- three log-gammas and the `(n - k) * log(1 - p)` term rounded
+  -- independently, which is how the result left [0, 1] rather than drifting.
+  v = binomial_pmf(cast(50000000.0, f32), cast(100000000.0, f32), cast(0.5, f32))
+  _ = assert_true(gt(v, cast(0.0, f32)), "binomial_pmf(5e7,1e8,0.5) is strictly positive")
+  _ = assert_true(lte(v, cast(1.0, f32)), "binomial_pmf(5e7,1e8,0.5) is at most 1, not inf")
+  assert_true(lt(dist_rel_err(v, cast(0.00007978846, f32)), cast(0.00001, f32)), "binomial_pmf(5e7,1e8,0.5) = 0.00007978846")
+}
+def test_binomial_pmf_does_not_saturate_at_one_above_two_to_the_24() -> unit ! { Test } = {
+  -- This one returned exactly 1.0, which is a probability and so survives a
+  -- range check; only the reference catches it.
+  v = binomial_pmf(cast(20000000.0, f32), cast(40000000.0, f32), cast(0.5, f32))
+  _ = assert_true(lt(v, cast(0.001, f32)), "binomial_pmf(2e7,4e7,0.5) is not the 1.0 the f32 body returned")
+  assert_true(lt(dist_rel_err(v, cast(0.00012615662, f32)), cast(0.00001, f32)), "binomial_pmf(2e7,4e7,0.5) = 0.00012615662")
+}
+def test_binomial_pmf_is_accurate_well_below_two_to_the_24() -> unit ! { Test } = {
+  -- 2^24 is where the `+ 1` vanishes, not where the defect starts. The f32
+  -- body was 15% HIGH at n = 2e5 and 0.13% LOW at n = 2e3 -- the sign turns
+  -- over, so neither figure predicts the other -- from the log-gamma
+  -- magnitude alone. A repair that only widens `k + 1` and `n - k` leaves
+  -- both of these wrong.
+  big = binomial_pmf(cast(100000.0, f32), cast(200000.0, f32), cast(0.5, f32))
+  small = binomial_pmf(cast(1000.0, f32), cast(2000.0, f32), cast(0.5, f32))
+  _ = assert_true(lt(dist_rel_err(big, cast(0.0017841219, f32)), cast(0.00001, f32)), "binomial_pmf(1e5,2e5,0.5) = 0.0017841219, not 0.0020549577")
+  assert_true(lt(dist_rel_err(small, cast(0.01783901, f32)), cast(0.00001, f32)), "binomial_pmf(1e3,2e3,0.5) = 0.01783901, not 0.017815081")
+}
+def test_poisson_pmf_is_a_probability_above_two_to_the_24() -> unit ! { Test } = {
+  -- 1.0 here is the normalising constant computed for `log(k!)` at the
+  -- wrong `k`: `ulp(5e7)` is 4, so `k + 1` in f32 is `k`.
+  v = poisson_pmf(cast(50000000.0, f32), cast(50000000.0, f32))
+  _ = assert_true(gt(v, cast(0.0, f32)), "poisson_pmf(5e7,5e7) is strictly positive")
+  _ = assert_true(lt(v, cast(0.001, f32)), "poisson_pmf(5e7,5e7) is not the 1.0 the f32 body returned")
+  assert_true(lt(dist_rel_err(v, cast(0.00005641895, f32)), cast(0.00001, f32)), "poisson_pmf(5e7,5e7) = 0.00005641895")
+}
+def test_poisson_pmf_is_accurate_well_below_two_to_the_24() -> unit ! { Test } = {
+  -- 5.2% HIGH at k = 1e5 and 0.015% LOW at k = 1e3 under the f32 body; the
+  -- sign turns over here too. The second is the tightest separation in this
+  -- group and sets the bound.
+  big = poisson_pmf(cast(100000.0, f32), cast(100000.0, f32))
+  small = poisson_pmf(cast(1000.0, f32), cast(1000.0, f32))
+  _ = assert_true(lt(dist_rel_err(big, cast(0.0012615653, f32)), cast(0.00001, f32)), "poisson_pmf(1e5,1e5) = 0.0012615653, not 0.0013267804")
+  assert_true(lt(dist_rel_err(small, cast(0.012614612, f32)), cast(0.00001, f32)), "poisson_pmf(1e3,1e3) = 0.012614612, not 0.012612753")
+}
+def test_binomial_pmf_forms_n_minus_k_in_f64() -> unit ! { Test } = {
+  -- `n - k` is the other operand nautilus#146 names, and every other row
+  -- here has an exactly-representable difference, so forming it in f32 and
+  -- widening afterwards passed all of them. Here `n - k` is 16777217, the
+  -- first odd integer above 2^24 and so NOT an f32 value: the f32 form
+  -- rounds it to 16777216 and computes a different distribution.
+  v = binomial_pmf(cast(16777215.0, f32), cast(33554432.0, f32), cast(0.5, f32))
+  _ = assert_true(lte(v, cast(1.0, f32)), "binomial_pmf(2^24-1, 2^25, 0.5) is at most 1")
+  assert_true(lt(dist_rel_err(v, cast(0.00013774159, f32)), cast(0.00001, f32)), "binomial_pmf(2^24-1, 2^25, 0.5) = 0.00013774159")
+}
+def test_pmf_guards_still_decide_before_the_f64_body() -> unit ! { Test } = {
+  -- The guards stayed f32 and stayed in front of the widened body. Each of
+  -- these must be answered by a guard, not by evaluating a log-space
+  -- expression at a large parameter.
+  out_of_range_p = binomial_pmf(cast(50000000.0, f32), cast(100000000.0, f32), cast(-0.1, f32))
+  k_above_n = binomial_pmf(cast(100000000.0, f32), cast(50000000.0, f32), cast(0.5, f32))
+  fractional_k = binomial_pmf(cast(2.5, f32), cast(100000000.0, f32), cast(0.5, f32))
+  fractional_poisson_k = poisson_pmf(cast(2.5, f32), cast(50000000.0, f32))
+  _ = assert_true(neq(out_of_range_p, out_of_range_p), "binomial_pmf with p < 0 is NaN")
+  _ = assert_close(k_above_n, cast(0.0, f32), cast(1e-7, f32), "binomial_pmf with k > n is 0")
+  _ = assert_close(fractional_k, cast(0.0, f32), cast(1e-7, f32), "binomial_pmf at fractional k is 0")
+  assert_close(fractional_poisson_k, cast(0.0, f32), cast(1e-7, f32), "poisson_pmf at fractional k is 0")
+}
