@@ -5,6 +5,9 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
   "numpy>=1.26",
   "scipy>=1.14",
+  # The incomplete-gamma accuracy gate's reference. SciPy's `gammainc` is not
+  # usable as one: see that gate's docstring for the measurement.
+  "mpmath>=1.3",
 ]
 
 [tool.uv]
