@@ -1634,3 +1634,119 @@ def test_gamma_inv_cdf_at_the_shape_where_the_start_is_floored() -> unit ! { Tes
   _ = assert_true(lt(dist_rel_err(a, cast(0.008815875, f32)), cast(0.00001, f32)), "gamma_inv_cdf(0.001;1.25,2) = 0.008815875")
   assert_true(lt(dist_rel_err(b, cast(0.0013949206, f32)), cast(0.00001, f32)), "gamma_inv_cdf(1e-4;1.25,2) = 0.0013949206")
 }
+def test_gamma_inv_cdf_arrives_in_the_deep_lower_tail() -> unit ! { Test } = {
+  -- nautilus#162's own witnesses. Each of these was the WRONG TAIL: at a
+  -- shape near 2 and `q` below 1e-4 Wilson-Hilferty's `s` goes negative, the
+  -- start was floored to an absolute 1e-30, the first Newton step overshot the
+  -- root by about 27 decades and 75 to 79 of the 80 steps went on halving back
+  -- down, so the answer was a function of the step count. `(1e-5, 2, 1)`
+  -- returned 8.271806 -- `gamma_cdf(8.271806, 2, 1)` is 0.9976, the 99.8th
+  -- percentile where the 0.001st was asked for -- and `(3e-5, 2, 1)` returned
+  -- 24.815418, exactly three times it, which is the halving signature.
+  --
+  -- Each row therefore carries its old wrong value as a separate assertion.
+  -- A relative-error test alone would pass a return that is merely closer.
+  a = gamma_inv_cdf(cast(0.00001, f32), cast(2.0, f32), cast(1.0, f32))
+  b = gamma_inv_cdf(cast(0.00003, f32), cast(2.0, f32), cast(1.0, f32))
+  c = gamma_inv_cdf(cast(0.00001, f32), cast(2.1, f32), cast(1.0, f32))
+  d = gamma_inv_cdf(cast(1e-6, f32), cast(2.5, f32), cast(1.0, f32))
+  e = chi_squared_inv_cdf(cast(0.00001, f32), cast(4.0, f32))
+  _ = assert_true(lt(a, cast(1.0, f32)), "gamma_inv_cdf(1e-5;2,1) is in the lower tail, not the 8.271806 the halving descent returned")
+  _ = assert_true(lt(b, cast(1.0, f32)), "gamma_inv_cdf(3e-5;2,1) is not the 24.815418 that was 3x the same step count")
+  _ = assert_true(lt(dist_rel_err(a, cast(0.0044788164, f32)), cast(1e-6, f32)), "gamma_inv_cdf(1e-5;2,1) = 0.0044788164")
+  _ = assert_true(lt(dist_rel_err(b, cast(0.0077660377, f32)), cast(1e-6, f32)), "gamma_inv_cdf(3e-5;2,1) = 0.0077660377")
+  _ = assert_true(lt(dist_rel_err(c, cast(0.0060636117, f32)), cast(1e-6, f32)), "gamma_inv_cdf(1e-5;2.1,1) = 0.0060636117")
+  _ = assert_true(lt(dist_rel_err(d, cast(0.0064480803, f32)), cast(1e-6, f32)), "gamma_inv_cdf(1e-6;2.5,1) = 0.0064480803")
+  assert_true(lt(dist_rel_err(e, cast(0.008957633, f32)), cast(1e-6, f32)), "chi_squared_inv_cdf(1e-5, 4) = 0.008957633, twice the gamma quantile at df/2")
+}
+def test_gamma_inv_cdf_is_monotone_across_the_repaired_band() -> unit ! { Test } = {
+  -- The structural test, and the one that needs no reference value at all. A
+  -- quantile is non-decreasing in `q` by definition, and a loop that ends
+  -- wherever its budget leaves it on a halving descent cannot be: at shape 2
+  -- the old lane returned 8.271806 at `q = 1e-5`, 24.815418 at `3e-5` and
+  -- 0.014209238 at `1e-4` -- up by 3x, then down by three decades.
+  --
+  -- This is what the maintained bracket buys. Every returned value now lies
+  -- inside an interval whose endpoints straddle the root, so monotonicity
+  -- follows from the bracket rather than from the step count, and no reference
+  -- is needed to see it broken.
+  q1 = gamma_inv_cdf(cast(1e-7, f32), cast(2.0, f32), cast(1.0, f32))
+  q2 = gamma_inv_cdf(cast(1e-6, f32), cast(2.0, f32), cast(1.0, f32))
+  q3 = gamma_inv_cdf(cast(0.00001, f32), cast(2.0, f32), cast(1.0, f32))
+  q4 = gamma_inv_cdf(cast(0.00003, f32), cast(2.0, f32), cast(1.0, f32))
+  q5 = gamma_inv_cdf(cast(0.0001, f32), cast(2.0, f32), cast(1.0, f32))
+  q6 = gamma_inv_cdf(cast(0.001, f32), cast(2.0, f32), cast(1.0, f32))
+  _ = assert_true(lt(q1, q2), "the quantile rises from q = 1e-7 to 1e-6")
+  _ = assert_true(lt(q2, q3), "the quantile rises from q = 1e-6 to 1e-5")
+  _ = assert_true(lt(q3, q4), "the quantile rises from q = 1e-5 to 3e-5")
+  _ = assert_true(lt(q4, q5), "the quantile rises from q = 3e-5 to 1e-4")
+  assert_true(lt(q5, q6), "the quantile rises from q = 1e-4 to 1e-3")
+}
+def test_gamma_inv_cdf_dilates_exactly_with_its_scale() -> unit ! { Test } = {
+  -- The invariant the repair rests on, stated as a test rather than left in a
+  -- comment. `scale` is a pure dilation of this family, so the quantile must
+  -- satisfy `gamma_inv_cdf(q, k, s) = s * gamma_inv_cdf(q, k, 1)` to the
+  -- resolution of the return type -- and the loop now divides `scale` out
+  -- before iterating, which is what makes that exact rather than approximate.
+  --
+  -- It was not. The old step divided by an ABSOLUTE 1e-30 floor applied to a
+  -- DENSITY, whose magnitude is about `1/(scale*sqrt(2*pi*shape))`: past a
+  -- large enough scale the true density fell under the floor, the step divided
+  -- by the floor instead, and each step removed only the fraction `pdf/floor`
+  -- of the error. At `q = 0.5, shape = 2` the identity broke by 3.0e-4 at
+  -- scale 1e31 -- 152 times the documented bound, at the MEDIAN, where
+  -- Wilson-Hilferty's start is perfectly good.
+  unit_median = gamma_inv_cdf(cast(0.5, f32), cast(2.0, f32), cast(1.0, f32))
+  far_median = gamma_inv_cdf(cast(0.5, f32), cast(2.0, f32), cast(1e31, f32))
+  unit_tail = gamma_inv_cdf(cast(0.0001, f32), cast(1.25, f32), cast(1.0, f32))
+  far_tail = gamma_inv_cdf(cast(0.0001, f32), cast(1.25, f32), cast(1e35, f32))
+  _ = assert_true(lt(dist_rel_err(far_median, mul(cast(1e31, f32), unit_median)), cast(1e-6, f32)), "gamma_inv_cdf(0.5;2,1e31) is 1e31 times the unit-scale median")
+  _ = assert_true(lt(dist_rel_err(far_tail, mul(cast(1e35, f32), unit_tail)), cast(1e-6, f32)), "gamma_inv_cdf(1e-4;1.25,1e35) is 1e35 times its unit-scale value")
+  _ = assert_true(lt(dist_rel_err(far_median, cast(1.678347e31, f32)), cast(1e-6, f32)), "gamma_inv_cdf(0.5;2,1e31) = 1.678347e31, not the 1.6788564e31 the floored step returned")
+  assert_true(lt(dist_rel_err(far_tail, cast(6.974603e31, f32)), cast(1e-6, f32)), "gamma_inv_cdf(1e-4;1.25,1e35) = 6.974603e31, not the 7.999958e27 four decades below it")
+}
+def test_gamma_inv_cdf_keeps_a_subnormal_unit_root_through_the_dilation() -> unit ! { Test } = {
+  -- The dilation has to happen in f64 and be cast ONCE. At shape 0.0706 and
+  -- `q = 1e-4` the unit-scale root is 1.3e-57, which is not an f32 at all; a
+  -- scale of 1e20 brings the answer back to 1.3e-37, which is. Casting the
+  -- unit root to f32 first and multiplying in f32 returns exactly 0, and 0 is
+  -- a plausible-looking answer for a quantile this small.
+  --
+  -- This row also closes round 3 of nautilus#152's review, which found this
+  -- exact call 41x out: the shape ladder started at 0.5, so nothing probed a
+  -- shape below it.
+  v = gamma_inv_cdf(cast(0.0001, f32), cast(0.0706, f32), cast(1e20, f32))
+  _ = assert_true(gt(v, cast(0.0, f32)), "gamma_inv_cdf(1e-4;0.0706,1e20) is not the 0 an f32 intermediate gives")
+  assert_true(lt(dist_rel_err(v, cast(1.3076351e-37, f32)), cast(0.00001, f32)), "gamma_inv_cdf(1e-4;0.0706,1e20) = 1.3076351e-37")
+}
+def test_gamma_inv_cdf_round_trips_through_its_own_cdf_in_the_tail() -> unit ! { Test } = {
+  -- A round trip is a weaker oracle than a reference -- it cannot see an error
+  -- the CDF and the quantile share -- but it is the one a caller actually
+  -- depends on, and the old lane failed it by five orders of magnitude:
+  -- `gamma_cdf(gamma_inv_cdf(1e-5, 2, 1), 2, 1)` was 0.9976 rather than 1e-5.
+  -- Scale stays 1 here deliberately: `gamma_cdf` reads an f32 `x / scale`,
+  -- which underflows at a large scale for its own separate reason, and a round
+  -- trip through two defects cannot attribute either.
+  back_tail = gamma_cdf(gamma_inv_cdf(cast(0.00001, f32), cast(2.0, f32), cast(1.0, f32)), cast(2.0, f32), cast(1.0, f32))
+  back_deep = gamma_cdf(gamma_inv_cdf(cast(1e-7, f32), cast(2.0, f32), cast(1.0, f32)), cast(2.0, f32), cast(1.0, f32))
+  _ = assert_true(lt(dist_rel_err(back_tail, cast(0.00001, f32)), cast(0.001, f32)), "gamma_cdf undoes gamma_inv_cdf at q = 1e-5")
+  assert_true(lt(dist_rel_err(back_deep, cast(1e-7, f32)), cast(0.001, f32)), "gamma_cdf undoes gamma_inv_cdf at q = 1e-7")
+}
+def test_gamma_inv_cdf_returns_nan_for_a_nan_parameter() -> unit ! { Test } = {
+  -- A NaN shape ABORTED THE PROCESS before this change --
+  -- `numeric trap: domain in cast_trunc at i64` -- and a NaN return was never
+  -- reachable to assert. It is reachable because the five domain conditions
+  -- are now stated at the entry rather than left to whichever arithmetic a NaN
+  -- happened to reach first: the asymptotic start takes
+  -- `log_gamma(shape + 1)`, which traps on a NaN rather than propagating it.
+  nan_shape = gamma_inv_cdf(cast(0.5, f32), div(cast(0.0, f32), cast(0.0, f32)), cast(1.0, f32))
+  nan_scale = gamma_inv_cdf(cast(0.5, f32), cast(2.0, f32), div(cast(0.0, f32), cast(0.0, f32)))
+  nan_q = gamma_inv_cdf(div(cast(0.0, f32), cast(0.0, f32)), cast(2.0, f32), cast(1.0, f32))
+  negative_shape = gamma_inv_cdf(cast(0.5, f32), cast(-2.0, f32), cast(1.0, f32))
+  negative_scale = gamma_inv_cdf(cast(0.5, f32), cast(2.0, f32), cast(-1.0, f32))
+  _ = assert_true(neq(nan_shape, nan_shape), "gamma_inv_cdf with a NaN shape is NaN and does not trap")
+  _ = assert_true(neq(nan_scale, nan_scale), "gamma_inv_cdf with a NaN scale is NaN")
+  _ = assert_true(neq(nan_q, nan_q), "gamma_inv_cdf with a NaN q is NaN")
+  _ = assert_true(neq(negative_shape, negative_shape), "gamma_inv_cdf with a negative shape is NaN")
+  assert_true(neq(negative_scale, negative_scale), "gamma_inv_cdf with a negative scale is NaN")
+}

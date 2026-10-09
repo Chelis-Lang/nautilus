@@ -34,6 +34,7 @@ from parity.check_gamma_accuracy import (
     MP_DPS,
     QUANTILE_FLOOR,
     QUANTILE_FLOOR_SHAPES,
+    QUANTILE_PATCHY,
     QUANTILE_SCALES,
     QUANTILE_SCALES_THIN,
     DOCUMENTED,
@@ -339,21 +340,44 @@ class Coverage(unittest.TestCase):
         self.assertEqual(SCALES, (1.0, 2.5, 0.0078125))
 
     def test_the_quantile_set_is_not_silently_narrowed(self) -> None:
-        self.assertEqual(QUANTILES, (QUANTILE_FLOOR, 0.001, 0.01, 0.1, 0.25,
-                                     0.5, 0.75, 0.9, 0.99, 0.999))
-        self.assertEqual(QUANTILE_FLOOR, 1e-4)
-        self.assertEqual(QUANTILE_FLOOR_SHAPES, (1.1, 1.25, 1.5, 1.9, 2.0, 2.5))
-        self.assertEqual(QUANTILE_SCALES, (1e-20, 1.0, 2.5, 1e20))
-        self.assertEqual(QUANTILE_SCALES_THIN, (1.0, 1e20))
+        self.assertEqual(QUANTILES, (QUANTILE_FLOOR, 1e-5, 1e-4, 0.001, 0.01,
+                                     0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 0.999))
+        self.assertEqual(QUANTILE_FLOOR, 1e-7)
+        self.assertEqual(QUANTILE_FLOOR_SHAPES,
+                         (0.0706, 1.1, 1.25, 1.5, 1.9, 2.0, 2.1, 2.5))
+        self.assertEqual(QUANTILE_PATCHY,
+                         ((2.1, 1e-5), (2.1, 3e-5), (2.0, 1e-5), (2.6, 1e-5)))
+        self.assertEqual(QUANTILE_SCALES, (1e-20, 1.0, 2.5, 1e20, 1e30))
+        self.assertEqual(QUANTILE_SCALES_THIN, (1.0, 1e30))
+
+    def test_the_q_axis_still_reaches_the_repaired_region(self) -> None:
+        """nautilus#162's region, as a membership test rather than a constant.
+
+        Pinning the tuple above stops it being narrowed by edit. This stops it
+        being narrowed by refactor: whatever the tuple's spelling, the grid has
+        to keep probing inside the band the repair opened -- the three decades
+        from 1e-7 to 1e-4 where the floored start used to put the answer in the
+        wrong tail -- at the shapes where that start was taken.
+        """
+        probed = {(arguments(c[2])[1], arguments(c[2])[0]) for c in self.spec
+                  if c[1] == "gamma_inv_cdf"}
+        for shape in (1.9, 2.0, 2.1, 2.5):
+            band = [q for s, q in probed
+                    if s == f32(shape) and f32(1e-7) <= q <= f32(1e-4)]
+            self.assertGreaterEqual(
+                len(band), 3,
+                f"shape {shape} is probed at only {len(band)} q in "
+                f"[1e-7, 1e-4]; nautilus#162's region needs the depth")
 
     def test_the_documented_q_floor_is_probed_AT_its_value(self) -> None:
         """The same rule as the ceilings, on the other axis.
 
-        The documents exclude `q` below `QUANTILE_FLOOR` because the quantile's
-        Newton descent does not converge there for a shape near 2. An excluded
-        boundary still has to be measured AT the boundary, or the claim cannot
-        fail at its own edge -- which is how the first version of this gate came
-        to assert a bound that was false three decades below its smallest `q`.
+        `QUANTILE_FLOOR` is the lowest `q` the grid probes. It is no longer an
+        exclusion -- nautilus#162 removed the start floor and the step budget
+        that made the quantile wrong below it -- but a grid's lowest value still
+        has to be measured AT that value, or the measurement cannot fail at its
+        own edge. That is how the first version of this gate came to assert a
+        bound which was false three decades below its smallest `q`.
         """
         for export in QUANTILE_EXPORTS:
             at = [case for case in self.spec
@@ -363,8 +387,11 @@ class Coverage(unittest.TestCase):
                                 f"{QUANTILE_FLOOR:.0e}, its documented floor")
 
     def test_no_case_is_generated_below_the_documented_q_floor(self) -> None:
-        # The documents make no claim below the floor, so a row there would be
-        # the gate asserting something nothing stands behind.
+        # Not because a claim stops there -- the documents state this grid's
+        # measured result, not a range -- but because below about 1e-20 at a
+        # small shape the quantile itself falls under f32's smallest normal, so
+        # a deeper row would measure f32's quantisation. The floor is where the
+        # MEASUREMENT runs out, and a row outside it is a row nothing adjudicates.
         for export in QUANTILE_EXPORTS:
             below = [case[2] for case in self.spec
                      if case[1] == export
@@ -372,10 +399,11 @@ class Coverage(unittest.TestCase):
             self.assertEqual(below, [], f"{export} probes below its floor")
 
     def test_the_floored_wilson_hilferty_shapes_are_probed(self) -> None:
-        # Shapes where `s**3` goes negative and the start is floored. Without a
-        # row here, raising `gamma_inv_floor()` to the continued fraction's
-        # Lentz tiny passed the whole test suite, the C lane and this gate
-        # while sending `gamma_inv_cdf(0.001, 1.25, 2)` to +inf.
+        # Shapes where `s**3` goes non-positive, so the asymptotic start is the
+        # one taken rather than the closed form. Without a row here, raising the
+        # old start floor to the continued fraction's Lentz tiny passed the
+        # whole test suite, the C lane and this gate while sending
+        # `gamma_inv_cdf(0.001, 1.25, 2)` to +inf.
         probed = {arguments(case[2])[1] for case in self.spec
                   if case[1] == "gamma_inv_cdf"}
         for shape in QUANTILE_FLOOR_SHAPES:
