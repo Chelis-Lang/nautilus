@@ -203,11 +203,16 @@ same way: each stated a range, and each range quantified over a parameter the
 gate did not actually walk. First `q`, where the grid stopped three decades
 above a failure region. Then `scale`, which the quantile rows did not vary at
 all. Then `shape` *downward*, because the range bounded it only from above
-while the grid's ladder starts at 0.5 -- `gamma_inv_cdf(1e-4, 0.0706, 1e20)` is
-41.5x out, with every parameter inside the range as written. (That figure is
-the reference taken at the f32 of every argument, which is what the
-implementation receives and what the gate's own oracle uses. Evaluating it at
-the exact decimals instead moves the reference by 5% and the ratio to 44.7x.)
+while the grid's ladder starts at 0.5 -- `gamma_inv_cdf(1e-4, 0.07062688, 1e20)`
+is 41.5x out, with every parameter inside the range as written.
+
+The shape in that witness is written out in full on purpose. `0.0706` is a
+*different* f32 from `0.07062688`, so abbreviating it changes the quantity: the
+same call at `0.0706` returns 5.8398956e-36 against a reference of
+1.3076e-37, which is 44.7x rather than 41.5x. A figure and the arguments it was
+measured at have to travel together. Neither shape is on this grid's ladder,
+whose smallest quantile rung is 0.5, which is why the witness is a historical
+note here and not a gate row.
 
 So the claim no longer asserts a region. It asserts what was measured, which
 cannot be falsified by a point nobody measured, and it leaves the region to the
