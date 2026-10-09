@@ -16,7 +16,7 @@ one of those values was inside [0, 1], so no range check could see it.
 
 **This was not primarily the 200-iteration budget**, which is what
 `docs/book/src/distributions/gamma-family.md` attributed it to: at shape 1e3 the
-error was already 2.9e-4 while the series needed 162 terms of its 200. The
+error was already 2.9e-4 while the series needed about 140 terms of its 200. The
 budget did explain the saturation plateau above shape ~4e4, where
 `gamma_cdf(1e5, 1e5, 1)` and `chi_squared_cdf(2e5, 2e5)` both returned exactly
 0.24656442. Both limits are addressed, and the budget is now 65536 spent through
@@ -55,17 +55,26 @@ step moves the estimate by less than 1e-10 of itself, which is a cost control
 rather than an accuracy one: 80 unconditional steps each cost a full CDF
 evaluation, tens of thousands of series terms near the branch point.
 
-**Guards and degenerate answers are unchanged.** The parameter guards still read
+**Guard decisions are unchanged.** The parameter guards still read
 the f32 `x / scale`, so a finite `x` whose f32 quotient overflows still answers
-as `x = +inf` does. A 44-case probe over the degenerate and non-finite inputs
-returns bit-identical values before and after, and the two pre-existing
+as `x = +inf` does. Across a 2990-case review sweep over degenerate and extreme
+inputs there is no NaN-to-value, zero-to-value, one-to-value or
+infinity-to-value transition at any input carrying a zero, negative, NaN or
+infinite argument, and the set of inputs that trap the process is identical on
+both lanes. Values at extreme *finite* arguments do move, mostly from nonsense
+to sense; two degenerate-argument results move in their last digit only
+(`chi_squared_pdf(1, -1)`, `poisson_cdf(0, 1)`), so "unchanged" holds of guard
+decisions rather than of every degenerate return. The two pre-existing
 `cast_trunc` process traps on a non-finite *shape* are unchanged and remain
 tracked elsewhere.
 
-Two new gates. `parity/check_gamma_accuracy.py` measures all eight exports
-against SciPy over a grid that walks `x` across `shape*scale` in units of the
-distribution's own standard deviation, at and beyond each documented ceiling,
-and is wired into the `scipy-parity` CI job with its own unit tests.
+Two new gates. `parity/check_gamma_accuracy.py` measures all nine exports
+against an arbitrary-precision reference over a grid that walks `x` across
+`shape*scale` in units of the distribution's own standard deviation, at and
+beyond each documented ceiling, and is wired into the `scipy-parity` CI job
+with its own unit tests. The references are mpmath's rather than SciPy's
+because `scipy.special.gammainc` is up to 22% wrong in the left tail at a large
+shape; the gate's docstring records the measurement and a unit test pins it.
 `scripts/check_gamma_c_lane.py` builds the eight through the C lane in-package
 and cross-package and requires bit-identical agreement with the eval lane, plus
 anchors that need no reference library: the elementary closed forms at shape 1
@@ -77,3 +86,13 @@ C-lane coverage.
 
 The documented range and its two limits are in
 [the precision appendix](docs/book/src/appendix/precision.md).
+
+**The documented quantile range excludes `q` below 1e-4.** For a shape in
+roughly [1.9, 2.5] below that quantile, `gamma_inv_cdf`'s Wilson-Hilferty start
+is floored, the first Newton step overshoots by about 27 decades, and the
+80-step budget is spent halving back: `gamma_inv_cdf(1e-5, 2, 1)` returns
+8.271806 against a true 0.0044788163, which is the 99.8th percentile rather than
+the 0.001st. That is pre-existing and bit-identical on the base commit, so it is
+tracked separately rather than fixed here; what this change does is keep the new
+bound from claiming it. The gate probes the floor at its stated value and
+generates no case below it.

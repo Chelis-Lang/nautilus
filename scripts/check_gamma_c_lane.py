@@ -43,8 +43,10 @@ Three kinds, and all three reject the f32 lane this change replaces:
    elementary: `gamma_cdf(2, 2, 1)` is `1 - 3/e^2`, `gamma_sf(2, 2, 1)` is
    `3/e^2`, `gamma_pdf(2, 2, 1)` is `2/e^2`, `poisson_cdf(0, 5)` is `1/e^5`,
    `chi_squared_cdf(4, 4)` is `1 - 3/e^2`, and `gamma_inv_cdf(0.5, 1, 1)` is
-   `ln 2`. Each is computed here from `math.exp` and `math.log`, which are not
-   an oracle for this family in any sense -- they are the definition.
+   `ln 2`, and `chi_squared_pdf(2, 2)` is `exp(-1)/2` because chi-squared with
+   two degrees of freedom is Gamma(1, 2). Each is computed here from
+   `math.exp` and `math.log`, which are not an oracle for this family in any
+   sense -- they are the definition.
 
    These do **not** reject the f32 lane this change replaces, and that is not
    a weakness in them. At shape 2 the f32 front factor had nothing to cancel:
@@ -112,7 +114,7 @@ SHARED_STORE = Path.home() / ".chelis" / "reef"
 VALUE_RE = re.compile(r"^\s*(lane_\w+)\s*=\s*(\S+)\s*$", re.M)
 
 IMPORTS = ("gamma_cdf, gamma_sf, gamma_pdf, gamma_inv_cdf, chi_squared_cdf, "
-           "chi_squared_sf, chi_squared_inv_cdf, poisson_cdf")
+           "chi_squared_sf, chi_squared_pdf, chi_squared_inv_cdf, poisson_cdf")
 
 # Each case is (name, expression). Ordinary rows exist to be compared ACROSS
 # lanes; the anchored rows below are additionally checked against a value this
@@ -124,6 +126,7 @@ CASES = [
     ("lane_pdf_two", "gamma_pdf(cast(2.0, f32), cast(2.0, f32), cast(1.0, f32))"),
     ("lane_pois_zero", "poisson_cdf(cast(0.0, f32), cast(5.0, f32))"),
     ("lane_chi_four", "chi_squared_cdf(cast(4.0, f32), cast(4.0, f32))"),
+    ("lane_chi_pdf_two", "chi_squared_pdf(cast(2.0, f32), cast(2.0, f32))"),
     ("lane_inv_ln2", "gamma_inv_cdf(cast(0.5, f32), cast(1.0, f32), cast(1.0, f32))"),
     # --- the median order anchors, at a shape the f32 lane got wrong --------
     ("lane_median_hi_6", "gamma_cdf(cast(1e6, f32), cast(1e6, f32), cast(1.0, f32))"),
@@ -153,6 +156,8 @@ CLOSED_FORMS = {
     "lane_pdf_two": 2.0 * math.exp(-2.0),
     "lane_pois_zero": math.exp(-5.0),
     "lane_chi_four": 1.0 - 3.0 * math.exp(-2.0),
+    # chi-squared with 2 df is Gamma(1, 2), whose density is exp(-x/2)/2.
+    "lane_chi_pdf_two": math.exp(-1.0) / 2.0,
     "lane_inv_ln2": math.log(2.0),
 }
 # (name above the median, name below it). Both are inequalities, not values.

@@ -133,6 +133,7 @@ DOCUMENTED = {
     "gamma_pdf": (5e7, 2e-6),
     "chi_squared_cdf": (1e8, 2e-6),
     "chi_squared_sf": (1e8, 2e-6),
+    "chi_squared_pdf": (1e8, 2e-6),
     "poisson_cdf": (5e7, 2e-6),
     "gamma_inv_cdf": (1e7, 2e-6),
     "chi_squared_inv_cdf": (2e7, 2e-6),
@@ -147,7 +148,7 @@ DOCUMENTED = {
 # demonstrate anything more and the reference's cost is linear in those terms.
 BEYOND = {
     "gamma_cdf": 2e8, "gamma_sf": 2e8, "gamma_pdf": 2e8,
-    "chi_squared_cdf": 4e8, "chi_squared_sf": 4e8,
+    "chi_squared_cdf": 4e8, "chi_squared_sf": 4e8, "chi_squared_pdf": 4e8,
     "poisson_cdf": 2e8,
     "gamma_inv_cdf": 5e7, "chi_squared_inv_cdf": 1e8,
 }
@@ -174,7 +175,30 @@ Z_THIN = (-3.0, -1.0, 0.0, 1.0, 5.0)
 # rather than a gap. `test_every_scale_is_actually_probed` holds either way.
 SCALES = (1.0, 2.5, 0.0078125)
 SCALES_THIN = (1.0,)
-QUANTILES = (0.001, 0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 0.999)
+# The quantiles' documented lower bound on `q`, and the reason it exists.
+#
+# Below it `gamma_inv_cdf` is not accurate to 2e-6 for a shape in roughly
+# [1.9, 2.5]: Wilson-Hilferty's `s` goes negative there, the start is floored
+# to `gamma_inv_floor()`, the first Newton step overshoots by about 27 decades
+# and the 80-step budget is exhausted halving back. `gamma_inv_cdf(1e-5, 2, 1)`
+# returns 8.271806 against a true 0.00447881626 -- the wrong tail, and nothing
+# about 8.27 looks wrong to a caller. Measured identical on `0be29bb`, so it is
+# pre-existing and tracked separately; what this constant does is stop the
+# documents claiming a bound over it.
+#
+# The region is patchy rather than a clean boundary -- shape 2.1 fails at
+# `q = 1e-5` and is correct at `3e-5` -- so the exclusion is stated on `q`,
+# which is checkable, and not on shape. At `q = 1e-4` twenty dense shapes from
+# 1.6 to 5.4 are all within 5.9e-8, and the upper tail is clean to
+# `q = 0.999999`.
+QUANTILE_FLOOR = 1e-4
+QUANTILES = (QUANTILE_FLOOR, 0.001, 0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 0.999)
+# Shapes where the floored Wilson-Hilferty start is reached, so the quantile
+# rows exercise that path rather than only the ordinary one. 1.25 is the shape
+# at which raising `gamma_inv_floor()` to the continued fraction's Lentz tiny
+# sent the result to +inf; without a row here the whole test suite, the C lane
+# and this gate all passed that mutation.
+QUANTILE_FLOOR_SHAPES = (1.1, 1.25, 1.5, 1.9, 2.0, 2.5)
 
 
 class AccuracyError(Exception):
@@ -183,6 +207,25 @@ class AccuracyError(Exception):
 
 def f32(value: float) -> float:
     return struct.unpack("f", struct.pack("f", value))[0]
+
+
+def returned(raw: str) -> float:
+    """The f32 the lane returned, recovered from the decimal it printed.
+
+    `float(raw)` is NOT that value. Chelis prints the shortest decimal that
+    round-trips, and round-tripping guarantees `f32(float(printed)) == the f32`
+    -- not `float(printed) == the f32`. Read as a double the decimal sits up to
+    about 3e-8 relatively away from the f32 it denotes: `0.8413448` parses to
+    0.8413448 where the f32 is 0.84134477376937866, a gap of 3.12e-08.
+
+    That gap is 1.5% of this gate's 2e-6 bound, so it cannot change a verdict,
+    but it is a large fraction of the figures the run REPORTS. Measured on this
+    gate's own worst cases, comparing `float(raw)` against recovering the f32:
+    `gamma_inv_cdf(0.25, 1, 1)` reads as 9.73e-08 one way and 4.95e-08 the
+    other, a factor of 1.97. Any figure quoted from this gate at the 1e-7 level
+    is otherwise half convention.
+    """
+    return f32(float(raw))
 
 
 def lit(value: float) -> str:
@@ -236,9 +279,11 @@ def references():
     above it.
 
     Sharing an algorithm with the subject would be a weak oracle on its own --
-    a reference cannot catch an error it makes identically. What separates them
-    is the arithmetic: at fifty digits the recursions are exact to about 1e-45,
-    while the subject's error is f64 rounding at 1e-16 and worse. The
+    a reference cannot catch an error it makes identically, and what it shares
+    is the whole composition and not just a kernel. What separates them is the
+    arithmetic: at MP_DPS digits these recursions agree with an independent
+    high-precision quadrature of the density to about 1e-22, while the
+    subject's error is f64 rounding at 1e-16 and worse. The
     independent checks in `test_check_gamma_accuracy.py` close the rest of that
     gap: `mpmath.gammainc` wherever it converges, a high-precision quadrature of
     the density, and the elementary closed forms at shape 1 and 2.
@@ -342,7 +387,8 @@ def references():
         The result is verified against `P` before it is returned, and a bisection
         over a widened bracket is the fallback. That ordering is the whole point:
         bisection is correct but needs about 170 `P` evaluations, and each `P`
-        near the branch point at the largest shapes here is 200000 series terms.
+        near the branch point at the largest shape these quantiles reach, 5e7,
+        is 69640 series terms.
         """
         from scipy.special import gammaincinv
 
@@ -404,7 +450,9 @@ def cases() -> list[tuple[str, str, str, float, float]]:
         shape = f32(0.5) * df
         if export == "chi_squared_cdf":
             return float(mp_p(shape, x / 2.0))
-        return float(mp_q(shape, x / 2.0))
+        if export == "chi_squared_sf":
+            return float(mp_q(shape, x / 2.0))
+        return float(mp_pdf(x, shape, 2.0))
 
     # Exports whose reference is a probability and must lie in [0, 1].
     probabilities = {"gamma_cdf", "gamma_sf", "chi_squared_cdf",
@@ -477,8 +525,12 @@ def cases() -> list[tuple[str, str, str, float, float]]:
                     add(export, (X, K, S), reference_for(export, X, K, S), shape,
                         allow_one=(export == "gamma_pdf"))
 
-    # ---- the two chi-squared CDFs of (x, df) -----------------------------
-    for export in ("chi_squared_cdf", "chi_squared_sf"):
+    # ---- the chi-squared trio of (x, df) ---------------------------------
+    # `chi_squared_pdf(x, df)` is `gamma_pdf(x, df/2, 2)`. It belongs here
+    # rather than being taken as covered by `gamma_pdf`, because scale 2 is the
+    # only scale it ever uses and `SCALES` does not contain 2.0 -- so without
+    # this arm its exact configuration was unprobed.
+    for export in ("chi_squared_cdf", "chi_squared_sf", "chi_squared_pdf"):
         ceiling, _ = DOCUMENTED[export]
         for df in shape_ladder(ceiling, BEYOND[export]):
             D = f32(df)
@@ -488,8 +540,11 @@ def cases() -> list[tuple[str, str, str, float, float]]:
                 X = f32(max(0.0, D + z * sd))
                 if X <= 0.0:
                     continue
-                add(export, (X, D), chi_reference(export, X, D), df)
-            add(export, (f32(D), D), chi_reference(export, f32(D), D), df)
+                # A density is not a probability and may exceed 1.
+                add(export, (X, D), chi_reference(export, X, D), df,
+                    allow_one=(export == "chi_squared_pdf"))
+            add(export, (f32(D), D), chi_reference(export, f32(D), D), df,
+                allow_one=(export == "chi_squared_pdf"))
 
     # ---- poisson_cdf of (k, lambda) --------------------------------------
     # `k` is walked in standard deviations of the Poisson itself. `k = lambda`
@@ -525,6 +580,27 @@ def cases() -> list[tuple[str, str, str, float, float]]:
                 S = f32(scale)
                 add("gamma_inv_cdf", (Q, K, S),
                     float(mp_inv(K, Q)) * S, shape, allow_one=True)
+    # The documented `q` floor, at the shapes where the floored Wilson-Hilferty
+    # start is actually reached. A bound has to be probed AT its stated value or
+    # it cannot fail at its own boundary -- the same rule the ceilings follow,
+    # and the rule this gate's docstring names as the reason it exists.
+    for shape in QUANTILE_FLOOR_SHAPES:
+        K, Q = f32(shape), f32(QUANTILE_FLOOR)
+        add("gamma_inv_cdf", (Q, K, f32(1.0)), float(mp_inv(K, Q)), shape,
+            allow_one=True)
+        # 0.001 as well, which is where raising `gamma_inv_floor()` to the
+        # Lentz tiny sent shape 1.25 to +inf.
+        Q3 = f32(0.001)
+        add("gamma_inv_cdf", (Q3, K, f32(1.0)), float(mp_inv(K, Q3)), shape,
+            allow_one=True)
+        add("gamma_inv_cdf", (Q3, K, f32(2.0)), float(mp_inv(K, Q3)) * 2.0, shape,
+            allow_one=True)
+        D = f32(2.0 * shape)
+        add("chi_squared_inv_cdf", (Q, D), float(mp_inv(f32(0.5) * D, Q)) * 2.0,
+            float(D), allow_one=True)
+        add("chi_squared_inv_cdf", (Q3, D), float(mp_inv(f32(0.5) * D, Q3)) * 2.0,
+            float(D), allow_one=True)
+
     ceiling, _ = DOCUMENTED["chi_squared_inv_cdf"]
     for df in shape_ladder(ceiling, BEYOND["chi_squared_inv_cdf"]):
         D = f32(df)
@@ -544,7 +620,8 @@ def evaluate(chelis: str, spec: list) -> dict[str, str]:
     PROBE.write_text(f"module {MODULE}\n"
                      "import Nautilus.Distributions (gamma_cdf, gamma_sf, "
                      "gamma_pdf, gamma_inv_cdf, chi_squared_cdf, "
-                     "chi_squared_sf, chi_squared_inv_cdf, poisson_cdf)\n"
+                     "chi_squared_sf, chi_squared_pdf, chi_squared_inv_cdf, "
+                     "poisson_cdf)\n"
                      f"export ({', '.join(names)})\n{body}\n")
     try:
         relative = str(PROBE.relative_to(REPO))
@@ -592,7 +669,7 @@ def main() -> int:
             violations.append(f"  {export}: {expr} returned {raw}, which is not "
                               f"a finite value (reference {reference:.9g})")
             continue
-        error = abs(float(raw) - reference) / reference
+        error = abs(returned(raw) - reference) / reference
         where = f"{expr} -> {raw}, reference {reference:.9g}"
         if error > worst_all.get(export, (0.0, ""))[0]:
             worst_all[export] = (error, where)

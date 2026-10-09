@@ -31,6 +31,8 @@ import unittest
 from parity.check_gamma_accuracy import (
     BEYOND,
     MP_DPS,
+    QUANTILE_FLOOR,
+    QUANTILE_FLOOR_SHAPES,
     DOCUMENTED,
     F32_MIN_NORMAL,
     QUANTILES,
@@ -57,9 +59,11 @@ _SPEC: list | None = None
 
 # Tolerances for the oracle checks below, derived from the reference's own
 # working precision rather than written as literals, so they cannot go stale if
-# that precision moves. Every one of them is at least fifteen orders of
-# magnitude below the 2e-6 the gate measures, so the reference's precision is
-# never the binding term in a gate result.
+# that precision moves. At MP_DPS = 30 they are 1e-22, 1e-18 and 1e-13 against
+# the 2e-6 the gate measures -- sixteen, twelve and seven orders of magnitude
+# below it. Seven is the smallest margin and it belongs to the root finder,
+# whose residual is bounded by its own step; none of the three is ever the
+# binding term in a gate result.
 #
 # They differ from each other because the routes differ. Two recursions that
 # both converge to MP_TOL agree to a few digits short of the working precision.
@@ -87,7 +91,7 @@ def spec_once() -> list:
 # test skipped everywhere is indistinguishable from a passing one.
 
 GAMMA_OF_X = ("gamma_cdf", "gamma_sf", "gamma_pdf")
-CHI_OF_X = ("chi_squared_cdf", "chi_squared_sf")
+CHI_OF_X = ("chi_squared_cdf", "chi_squared_sf", "chi_squared_pdf")
 QUANTILE_EXPORTS = ("gamma_inv_cdf", "chi_squared_inv_cdf")
 
 
@@ -157,7 +161,7 @@ class Coverage(unittest.TestCase):
         measured = {case[1] for case in self.spec}
         for export in ("gamma_cdf", "gamma_sf", "chi_squared_cdf",
                        "chi_squared_sf", "poisson_cdf", "gamma_inv_cdf",
-                       "chi_squared_inv_cdf", "gamma_pdf"):
+                       "chi_squared_inv_cdf", "gamma_pdf", "chi_squared_pdf"):
             self.assertIn(export, measured, export)
 
     def test_every_export_has_a_case_inside_its_documented_range(self) -> None:
@@ -266,8 +270,73 @@ class Coverage(unittest.TestCase):
         self.assertEqual(SCALES, (1.0, 2.5, 0.0078125))
 
     def test_the_quantile_set_is_not_silently_narrowed(self) -> None:
-        self.assertEqual(QUANTILES, (0.001, 0.01, 0.1, 0.25, 0.5, 0.75, 0.9,
-                                     0.99, 0.999))
+        self.assertEqual(QUANTILES, (QUANTILE_FLOOR, 0.001, 0.01, 0.1, 0.25,
+                                     0.5, 0.75, 0.9, 0.99, 0.999))
+        self.assertEqual(QUANTILE_FLOOR, 1e-4)
+        self.assertEqual(QUANTILE_FLOOR_SHAPES, (1.1, 1.25, 1.5, 1.9, 2.0, 2.5))
+
+    def test_the_documented_q_floor_is_probed_AT_its_value(self) -> None:
+        """The same rule as the ceilings, on the other axis.
+
+        The documents exclude `q` below `QUANTILE_FLOOR` because the quantile's
+        Newton descent does not converge there for a shape near 2. An excluded
+        boundary still has to be measured AT the boundary, or the claim cannot
+        fail at its own edge -- which is how the first version of this gate came
+        to assert a bound that was false three decades below its smallest `q`.
+        """
+        for export in QUANTILE_EXPORTS:
+            at = [case for case in self.spec
+                  if case[1] == export
+                  and arguments(case[2])[0] == f32(QUANTILE_FLOOR)]
+            self.assertTrue(at, f"{export} is never probed at q = "
+                                f"{QUANTILE_FLOOR:.0e}, its documented floor")
+
+    def test_no_case_is_generated_below_the_documented_q_floor(self) -> None:
+        # The documents make no claim below the floor, so a row there would be
+        # the gate asserting something nothing stands behind.
+        for export in QUANTILE_EXPORTS:
+            below = [case[2] for case in self.spec
+                     if case[1] == export
+                     and arguments(case[2])[0] < f32(QUANTILE_FLOOR)]
+            self.assertEqual(below, [], f"{export} probes below its floor")
+
+    def test_the_floored_wilson_hilferty_shapes_are_probed(self) -> None:
+        # Shapes where `s**3` goes negative and the start is floored. Without a
+        # row here, raising `gamma_inv_floor()` to the continued fraction's
+        # Lentz tiny passed the whole test suite, the C lane and this gate
+        # while sending `gamma_inv_cdf(0.001, 1.25, 2)` to +inf.
+        probed = {arguments(case[2])[1] for case in self.spec
+                  if case[1] == "gamma_inv_cdf"}
+        for shape in QUANTILE_FLOOR_SHAPES:
+            self.assertIn(f32(shape), probed,
+                          f"gamma_inv_cdf is never probed at shape {shape}")
+
+    def test_the_probe_imports_every_export_it_calls(self) -> None:
+        """Caught a real break: `chi_squared_pdf` was added to the grid and not
+        to the probe's import line, so every one of its rows failed to compile
+        and the whole run aborted with `unbound variable`. A loud failure, but
+        one a unit test is cheaper than an eight-minute gate run.
+        """
+        from parity.check_gamma_accuracy import MODULE, PROBE, evaluate
+        import unittest.mock as mock
+        captured = {}
+
+        def fake_run(command, **kwargs):
+            captured["source"] = PROBE.read_text()
+            raise RuntimeError("stop before invoking the compiler")
+
+        with mock.patch("subprocess.run", fake_run):
+            try:
+                evaluate("chelis", self.spec[:5])
+            except Exception:
+                pass
+        source = captured.get("source", "")
+        self.assertTrue(source, "the probe was never written")
+        imported = source.split("import Nautilus.Distributions (")[1].split(")")[0]
+        declared = {part.strip() for part in imported.split(",")}
+        for export in DOCUMENTED:
+            self.assertIn(export, declared,
+                          f"{export} is measured but the probe does not import it")
 
     def test_the_bound_is_not_silently_widened(self) -> None:
         # Pins the table so widening it is a deliberate edit that a reviewer
@@ -278,6 +347,7 @@ class Coverage(unittest.TestCase):
             "gamma_pdf": (5e7, 2e-6),
             "chi_squared_cdf": (1e8, 2e-6),
             "chi_squared_sf": (1e8, 2e-6),
+            "chi_squared_pdf": (1e8, 2e-6),
             "poisson_cdf": (5e7, 2e-6),
             "gamma_inv_cdf": (1e7, 2e-6),
             "chi_squared_inv_cdf": (2e7, 2e-6),
@@ -290,9 +360,6 @@ class Coverage(unittest.TestCase):
             self.assertIn(BEYOND[export], ladder, export)
             self.assertEqual(len(ladder), len(set(ladder)), export)
 
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class Oracle(unittest.TestCase):
@@ -428,3 +495,14 @@ class Oracle(unittest.TestCase):
                            f"recorded points is {worst:.2e}, no longer above the "
                            f"{bound:.0e} this gate enforces. Re-measure before "
                            f"concluding it has become usable.")
+
+
+# This has to stay at the END of the file. It sat above the `Oracle` class, so
+# `python parity/test_check_gamma_accuracy.py` ran 25 tests, printed OK, and
+# silently omitted all six oracle-validation tests -- including
+# `test_scipy_is_not_usable_as_this_gates_oracle`, the one that pins why mpmath
+# is a dependency at all. CI runs `unittest discover` and saw all 31, so this
+# was latent rather than live, and it is exactly the "a skipped test is
+# indistinguishable from a passing one" shape this file's docstring warns about.
+if __name__ == "__main__":
+    unittest.main()

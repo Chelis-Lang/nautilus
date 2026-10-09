@@ -42,8 +42,9 @@ Two cases need separate guidance:
 | `bessel_i0`, `i1` | f32 | Polynomial + asymptotic, crossover 3.75 |
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
-| Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions |
+| Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions; the two families below are stated rather than estimated |
 | `poisson_pmf`, `binomial_pmf` | below 2e-6 up to `lambda` of 1e8 and `n` of 2e8 | Log space in f64; past that, limited by f64's spacing at `ln(k!)`, see the note below |
+| the gamma family, nine exports | below 2e-6 up to `shape` of 5e7, `df` of 1e8, `lambda` of 5e7; the two quantiles to `shape` 1e7 and `df` 2e7 at `q` >= 1e-4 | Incomplete gamma in f64; see the note below for both limits past that and for the excluded quantile region |
 | Beta-family CDFs | below 2e-6 over a stated parameter range | `beta_cdf`, `f_cdf`, `student_t_cdf`, `binomial_cdf`; the range is part of the figure, see the note below |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
@@ -148,8 +149,8 @@ reference over the parameters your calculation actually uses.
 ### The gamma family holds below 2e-6 over a stated shape range
 
 `gamma_cdf`, `gamma_sf`, `gamma_pdf`, `chi_squared_cdf`, `chi_squared_sf`,
-`poisson_cdf`, `gamma_inv_cdf` and `chi_squared_inv_cdf` all reach the
-regularized incomplete gamma. Its front factor is
+`chi_squared_pdf`, `poisson_cdf`, `gamma_inv_cdf` and `chi_squared_inv_cdf` all
+reach the regularized incomplete gamma. Its front factor is
 `exp(shape*ln(x) - x - lgamma(shape))`, a difference of three quantities each
 about `shape*ln(shape)`. At `x = shape` they nearly cancel: three terms of 1.1e6
 leave 4.84 at shape 1e5. An absolute error in an exponent is a multiplicative
@@ -164,10 +165,27 @@ and `gamma_inv_cdf(0.5, 1e7, 1)` returned 5e29 against a true 1e7.
 > Relative error stays below 2e-6 for `shape` up to 5e7, for `df` up to 1e8 and
 > for `lambda` up to 5e7, at every `x` and `k`, for any result f32 can hold as a
 > normal number. The two quantiles hold the same bound for `shape` up to 1e7 and
-> `df` up to 2e7.
+> `df` up to 2e7, **for `q` at or above 1e-4**.
 
-`parity/check_gamma_accuracy.py` measures all eight exports on every CI run, at
-and beyond those ceilings, and fails if the bound is exceeded inside the range.
+That floor on `q` is not decoration. Below it `gamma_inv_cdf` is not accurate to
+2e-6 for a shape in roughly [1.9, 2.5]: `gamma_inv_cdf(1e-5, 2, 1)` returns
+8.271806 against a true 0.0044788163, which is the 99.8th percentile rather than
+the 0.001st, and nothing about 8.27 looks wrong to a caller.
+`chi_squared_inv_cdf(1e-5, 4)` is the same point at `df/2`. The cause is the
+Wilson-Hilferty start: its cube goes negative there, so the start is floored,
+the first Newton step overshoots by about 27 decades, and the 80-step budget is
+spent halving back. Raising the budget reaches the answer, so this is a
+convergence limit and not a precision one.
+
+The region is patchy rather than a clean edge -- shape 2.1 fails at `q = 1e-5`
+and is correct at `3e-5` -- so the exclusion is stated on `q`, which you can
+check, rather than on shape. At `q = 1e-4` twenty dense shapes from 1.6 to 5.4
+are all within 5.9e-8, and the upper tail is accurate to `q = 0.999999`. For a
+quantile below 1e-4 at a small shape, solve `gamma_cdf(x, shape, scale) = q`
+yourself; the CDF is accurate there.
+
+`parity/check_gamma_accuracy.py` measures all nine exports on every CI run, at
+and beyond those ceilings and at the `q` floor, and fails if the bound is exceeded inside the range.
 Its grid walks `x` across `shape*scale` in units of the distribution's own
 standard deviation, because that is the only place the cancellation is total:
 the broken f32 lane was 2.8e-8 relative at `gamma_cdf(10500, 10000, 1)` while
@@ -205,10 +223,10 @@ with two different instruments, and keeping them apart is the point.
 
 | shape | relative error at `x = shape` | as a multiple of one f32 ulp |
 |---|---|---|
-| 1e5 | 7.2e-8 | 0.6x |
-| 5e7 | 1.5e-7 | 1.2x |
+| 1e5 | 3.4e-8 | 0.3x |
+| 5e7 | 1.4e-7 | 1.2x |
 | 1e9 | 3.4e-6 | 28x |
-| 1e10 | 2.1e-5 | 174x |
+| 1e10 | 2.1e-5 | 175x |
 | 1e11 | 1.5e-4 | 1248x |
 
 One f32 ulp is about 1.2e-7 relative wherever the result lies, so a factor of
@@ -222,8 +240,16 @@ same shape. Only the second is a bound, which is why the accuracy gate measures
 a neighbourhood rather than a point. Its worst cases sit at 1.2x and 0.7x of
 one f64 ulp of `lgamma(shape)`, so that quantity is the envelope.
 
-Read neither table as a function of the shape. Calibrate against a reference
-over the parameters your own calculation visits.
+Read neither table as a function of the shape, and read both as measurements
+recorded once rather than as values anything enforces: the only gated claim here
+is the quotable bound above. Calibrate against a reference over the parameters
+your own calculation visits.
+
+One trap if you measure this yourself. A printed f32 read back as a double is
+not the f32 it denotes -- round-tripping guarantees that rounding the double to
+f32 recovers the value, not that the double equals it -- and the gap is about
+3e-8 relative. At the 1e-7 level that chooses the leading digit of your answer.
+Round the parsed value to f32 before comparing.
 
 The second limit is the iteration budget, which is 65536: the series needs about
 `6.8*sqrt(shape)` terms at the branch point, measured at 48119 for shape 5e7, so

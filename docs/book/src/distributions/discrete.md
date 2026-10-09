@@ -67,7 +67,7 @@ which inherits the [large-shape limit](gamma-family.md#large-shapes)
 at shape `k + 1`. That limit is the incomplete-gamma lane's rather than the
 PMF's, and it used to be much the larger effect: while that lane was computed
 in f32, `poisson_cdf(5e7, 5e7)` returned 6.731102e-4 against a true 0.50003761,
-and fixing the PMF did not touch it. It is now 0.5000376.
+and fixing the PMF did not touch it. It is now 0.50003755, which is one f32 ulp below the correctly rounded 0.5000376 and 1.3e-7 relative from exact.
 
 `k + 1` is formed in f64 as well. In f32 the increment vanished above
 `k = 16777216` -- the spacing of f32 values at 5e7 is 4 -- so the call

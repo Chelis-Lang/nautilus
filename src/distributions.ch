@@ -243,9 +243,13 @@ def student_t_pdf(x: f32, df: f32) -> f32 = {
 --
 -- Both budgets are far larger than the f32 lane's 200, because f32 could not
 -- have spent more usefully and f64 can. Measured iteration counts at the
--- branch point `x = a`, where both routes are slowest: the series needs about
--- `6.8*sqrt(a)` terms (2300 at `a = 1e5`, 48119 at `a = 5e7`) and the
--- continued fraction about `0.45*sqrt(a)` (397 and 3167). The budget is 65536,
+-- branch point `x = a`, where both routes are slowest. Measured with the
+-- constants below: the series needs 2300 terms at `a = 1e5` and 45662 at
+-- `a = 5e7`, which is about `6.5*sqrt(a)`; the continued fraction needs 380
+-- and 3021, which is about `0.43*sqrt(a)` at the upper end and 1.2 times that
+-- at the lower one. Neither pair is a law -- 380/sqrt(1e5) is 1.20 while
+-- 3021/sqrt(5e7) is 0.427 -- so the square-root form is a scaling for sizing
+-- the budget and not a formula to predict a count from. The budget is 65536,
 -- which carries the series to about `a = 9e7`. It is spent through four levels
 -- of 16-way chunking, so peak recursion depth is about 64 frames rather than
 -- 65536: `chelis eval --file` evaluates on a bounded stack and aborts the
@@ -358,11 +362,22 @@ def gammaq_cf_drive(a: f64, b: f64, c: f64, d: f64, h: f64, i: i64, max_i: i64) 
 -- Wilson-Hilferty start is 0 when `scale` is 0, and `0 / 0` is the `x` that
 -- arrives here. The answers are the limits, which are what the lane already
 -- returned by propagation.
+-- The front factor is formed BEFORE the recursion and a non-finite one
+-- short-circuits, which is a cost control and changes no value: the product of
+-- a NaN front factor with any sum is that NaN. Two paths reach it. A `+inf`
+-- shape makes `1/a` exactly zero, so the running sum stays exactly zero and
+-- the relative convergence test `|term| < tol*|sum|` can never fire -- the f32
+-- lane's absolute-floored test converged at step one, so this is a cost the
+-- f64 lane introduced, and `gamma_cdf(1, +inf, 1)` spent all 65536 terms to
+-- return the NaN it returns immediately now. A NaN shape traps inside
+-- `log_gamma`, and forming the front factor first means it traps before the
+-- budget is spent rather than after: the trap itself is unchanged and is
+-- tracked elsewhere.
 def gammap_core(a: f64, x: f64) -> f64 =
   if neq(x, x) then nan_d64() else if eq(x, div(one_d64(), zero_d64())) then one_d64() else if lte(x, zero_d64()) then zero_d64() else {
+    front = gammainc_front(a, x)
     inv_a = div(one_d64(), a)
-    acc = gammainc_series_drive(x, inv_a, inv_a, a, cast(1, i64), gammainc_max_i())
-    mul(gammainc_front(a, x), acc)
+    if neq(front, front) then front else mul(front, gammainc_series_drive(x, inv_a, inv_a, a, cast(1, i64), gammainc_max_i()))
   }
 -- `b0` is `x - a + 1`, which is at least 1 on the route that reaches this
 -- function, since the callers send the continued fraction only `x >= a + 1`.
@@ -371,12 +386,12 @@ def gammap_core(a: f64, x: f64) -> f64 =
 def gammaq_core(a: f64, x: f64) -> f64 =
   if neq(x, x) then nan_d64() else if eq(x, div(one_d64(), zero_d64())) then zero_d64() else if lte(x, zero_d64()) then one_d64() else {
     eps = gammainc_tiny()
+    front = gammainc_front(a, x)
     b0_raw = add(sub(x, a), one_d64())
     b0 = if lt(fabs64_inner(b0_raw), eps) then eps else b0_raw
     c0 = div(one_d64(), eps)
     d0 = div(one_d64(), b0)
-    h = gammaq_cf_drive(a, b0, c0, d0, d0, cast(1, i64), gammainc_max_i())
-    mul(gammainc_front(a, x), h)
+    if neq(front, front) then front else mul(front, gammaq_cf_drive(a, b0, c0, d0, d0, cast(1, i64), gammainc_max_i()))
   }
 -- `x < a + 1` is the series' domain and the rest is the continued fraction's.
 -- Each route computes the tail it owns and the other is its complement, so the
@@ -779,8 +794,10 @@ def gamma_inv_newton_tol() -> f64 = cast(1e-10, f64)
 -- can usefully be handed, and both are reached: Wilson-Hilferty's `s` goes
 -- negative for a small shape in the far lower tail -- `shape = 1.25, q = 0.001`
 -- is one -- so the cube is floored and becomes the start. At 1e-30 the density
--- there is 1.8e-8 and the first step lands near the answer. At 1e-300 the
--- density underflows to zero, the step is divided by the floor instead, and
+-- there is 1.8e-8, so the first Newton step overshoots the root by about six
+-- decades and roughly twenty-three halvings of the `x_next <= 0` fallback
+-- bring it back inside the 80-step budget. At 1e-300 the density underflows to
+-- zero, the step is divided by the floor instead, and
 -- `gamma_inv_cdf(0.001, 1.25, 2)` diverges to +inf from a value that was
 -- correct to seven digits. The f32 lane used 1e-30 for both and this keeps it.
 def gamma_inv_floor() -> f64 = cast(1e-30, f64)

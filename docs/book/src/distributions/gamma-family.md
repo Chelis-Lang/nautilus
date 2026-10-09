@@ -56,11 +56,12 @@ and returned as f32. Returns 0 for x <= 0. The parameter guards read the f32
 **`gamma_sf(x: f32, shape: f32, scale: f32) -> f32`**
 
 The survival function `1 - gamma_cdf(x, shape, scale)`, calculated without
-that subtraction. It uses the same branches as `gamma_cdf`: the series
-`1 - gammap` for x/scale < shape+1, and the continued fraction `gammaq`
-directly otherwise. The second branch is the reason for this function.
-`gamma_cdf` calculates its upper branch as `1 - gammaq(..)`. Thus a caller
-that subtracts the CDF from `1.0` loses the tail to `0.5 * ulp(1.0)`.
+that subtraction, in f64 and returned as f32. It uses the same two branches as
+`gamma_cdf` and takes the one that computes its own answer directly: the series
+complement for x/scale < shape+1, and the continued fraction itself otherwise.
+That second branch is the reason this function exists, because `gamma_cdf`
+reaches its upper branch as a complement, so a caller who subtracts the CDF
+from `1.0` loses the tail to `0.5 * ulp(1.0)`.
 
 That loss is about 6e-8, for any accuracy of the incomplete gamma. Use
 `gamma_sf` for an upper tail. Do not use
@@ -74,12 +75,18 @@ less than 1e-10 of itself. Returns 0 at q=0, +inf at q=1, NaN outside [0,1]. It
 inherits the large-shape limit below.
 
 The refinement is not optional at a small shape and is not harmful at a large
-one. Against the exact inverse it is worth a factor of 754536 at
-`gamma_inv_cdf(0.05, 1, 1)`, where the closed form alone is 23% out. While the
-CDF underneath it was computed in f32 it was also worth a factor of 1001
+one. The closed form alone is 23% out at `gamma_inv_cdf(0.05, 1, 1)`, and the
+refined value there is the correctly rounded f32 -- a factor of about 2.4e7 on
+the current lane, and it was 754536 while the CDF underneath was computed in
+f32. On that same f32 CDF the refinement was also worth a factor of 1001
 *against* you at shape 1000, because Newton converges on the root of the
 function it is handed and a biased CDF moves that root. The CDF is the fix;
 the loop stays.
+
+What the loop does not do is converge for every argument. For `q` below 1e-4 at
+a shape near 2 its 80 steps are exhausted before the descent arrives; see
+[the precision appendix](../appendix/precision.md) for the excluded region and
+what to do instead.
 
 **`gamma_sample[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]`**
 
@@ -126,6 +133,10 @@ fraction diverged outright: `gamma_cdf(50007070, 50000000, 1)` returned
 1)` returned 6.235149e27 against a true 2.1e-10. A negative probability of that
 magnitude is not a value a caller can mistake for an answer.
 
+Those two are one defect and not two. The same error in the exponent produces
+both: at the branch point the continued fraction converges to a wrong value,
+and a little above it the fraction stops converging at all.
+
 Away from the branch point in the other direction the f32 lane was accurate,
 which is the rest of why this was easy to miss: `gamma_cdf(10500, 10000, 1)`
 was 2.8e-8 relative while the same shape at `x = shape` was 4.4e-2. The failure is specifically at `x` near
@@ -162,8 +173,9 @@ Evaluated, the four functions return `pdf_at_2 = 0.27067056`,
 `cdf_at_2 = 0.48658288` (shape 1, scale 3, so 1 - e^(-2/3)),
 `median_shape_2 = 1.678347`, and `chi2_critical = 0.9499565`: 3.84 is the
 95% critical value of a chi-squared with one degree of freedom. All four are
-the correctly rounded f32 of their exact values; all four moved by one to two
-f32 ulps when the family's internals went to f64.
+the correctly rounded f32 of their exact values. They moved by 4, 6, 8 and 1
+f32 ulps respectively when the family's internals went to f64 -- measured as
+bit-pattern distance, not estimated.
 
 ## Chi-squared distribution
 

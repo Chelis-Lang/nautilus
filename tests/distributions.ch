@@ -1488,3 +1488,40 @@ def test_quantile_and_poisson_guards_still_decide_before_the_f64_body() -> unit 
   _ = assert_true(neq(nan_lambda, nan_lambda), "poisson_cdf with a NaN lambda is NaN")
   assert_close(infinite_lambda, cast(0.0, f32), cast(1e-7, f32), "poisson_cdf at an infinite lambda is 0")
 }
+def test_chi_squared_pdf_at_a_large_df() -> unit ! { Test } = {
+  -- `chi_squared_pdf(x, df)` is `gamma_pdf(x, df/2, 2)`, so it inherits the
+  -- front-factor cancellation and nothing covered it: the accuracy gate's
+  -- scale set did not contain 2.0, which is the only scale this export ever
+  -- uses, so its exact configuration was unprobed until a review said so.
+  a = chi_squared_pdf(cast(200000.0, f32), cast(200000.0, f32))
+  b = chi_squared_pdf(cast(100000000.0, f32), cast(100000000.0, f32))
+  _ = assert_true(lt(dist_rel_err(a, cast(0.0006307826, f32)), cast(0.00001, f32)), "chi_squared_pdf(2e5, 2e5) = 0.0006307826")
+  assert_true(lt(dist_rel_err(b, cast(0.000028209479, f32)), cast(0.00001, f32)), "chi_squared_pdf(1e8, 1e8) = 2.8209479e-5")
+}
+def test_gamma_inv_cdf_holds_at_the_documented_q_floor() -> unit ! { Test } = {
+  -- 1e-4 is the documented lower bound on `q` for both quantiles, and a bound
+  -- has to be tested AT its boundary. Shape 2 is where the excluded region
+  -- below this floor is worst: `gamma_inv_cdf(1e-5, 2, 1)` returns 8.271806
+  -- against a true 0.0044788163, the 99.8th percentile instead of the
+  -- 0.001st. That is pre-existing and tracked separately. At the floor itself
+  -- the same shape is correct to one f32 ulp, which is what makes the floor
+  -- the honest place to put the claim.
+  a = gamma_inv_cdf(cast(0.0001, f32), cast(2.0, f32), cast(1.0, f32))
+  b = chi_squared_inv_cdf(cast(0.0001, f32), cast(4.0, f32))
+  _ = assert_true(lt(dist_rel_err(a, cast(0.014209238, f32)), cast(0.00001, f32)), "gamma_inv_cdf(1e-4;2,1) = 0.014209238")
+  assert_true(lt(dist_rel_err(b, cast(0.028418476, f32)), cast(0.00001, f32)), "chi_squared_inv_cdf(1e-4, 4) = 0.028418476, twice the gamma quantile at df/2")
+}
+def test_gamma_inv_cdf_at_the_shape_where_the_start_is_floored() -> unit ! { Test } = {
+  -- Wilson-Hilferty's `s` goes negative for a small shape in the lower tail,
+  -- so `s^3` is floored and the floor becomes the Newton start. Shape 1.25 is
+  -- the case that caught a regression during this change: with the floor
+  -- raised from 1e-30 to the continued fraction's 1e-300 Lentz tiny, both of
+  -- these returned +inf, and the whole test suite, the C-lane harness and the
+  -- accuracy gate all passed it. These two rows are the guard that was
+  -- missing.
+  a = gamma_inv_cdf(cast(0.001, f32), cast(1.25, f32), cast(2.0, f32))
+  b = gamma_inv_cdf(cast(0.0001, f32), cast(1.25, f32), cast(2.0, f32))
+  _ = assert_true(lt(a, cast(1.0, f32)), "gamma_inv_cdf(0.001;1.25,2) is finite and small, not the +inf a raised floor gave")
+  _ = assert_true(lt(dist_rel_err(a, cast(0.008815875, f32)), cast(0.00001, f32)), "gamma_inv_cdf(0.001;1.25,2) = 0.008815875")
+  assert_true(lt(dist_rel_err(b, cast(0.0013949206, f32)), cast(0.00001, f32)), "gamma_inv_cdf(1e-4;1.25,2) = 0.0013949206")
+}
