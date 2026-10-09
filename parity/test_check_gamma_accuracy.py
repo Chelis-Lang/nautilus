@@ -33,6 +33,8 @@ from parity.check_gamma_accuracy import (
     MP_DPS,
     QUANTILE_FLOOR,
     QUANTILE_FLOOR_SHAPES,
+    QUANTILE_SCALES,
+    QUANTILE_SCALES_THIN,
     DOCUMENTED,
     F32_MIN_NORMAL,
     QUANTILES,
@@ -274,6 +276,8 @@ class Coverage(unittest.TestCase):
                                      0.5, 0.75, 0.9, 0.99, 0.999))
         self.assertEqual(QUANTILE_FLOOR, 1e-4)
         self.assertEqual(QUANTILE_FLOOR_SHAPES, (1.1, 1.25, 1.5, 1.9, 2.0, 2.5))
+        self.assertEqual(QUANTILE_SCALES, (1e-20, 1.0, 2.5, 1e20))
+        self.assertEqual(QUANTILE_SCALES_THIN, (1.0, 1e20))
 
     def test_the_documented_q_floor_is_probed_AT_its_value(self) -> None:
         """The same rule as the ceilings, on the other axis.
@@ -337,6 +341,81 @@ class Coverage(unittest.TestCase):
         for export in DOCUMENTED:
             self.assertIn(export, declared,
                           f"{export} is measured but the probe does not import it")
+
+    def test_every_axis_the_claim_names_is_varied_here(self) -> None:
+        """The structural guard, and the reason it exists.
+
+        Two review rounds falsified the documented bound the same way: the
+        sentence quantified over a parameter this grid held fixed. Round 1 was
+        `q`, which stopped three decades above a failure region. Round 2 was
+        `scale`, which the quantile rows did not vary at all -- and
+        `gamma_inv_cdf(0.5, 2, 1e31)` is 3.0e-4, 152 times the bound, at a `q`
+        that was already in the set.
+
+        Narrowing the sentence a third time would not address that. What both
+        rounds share is one fault: a quantifier with no axis. So this test
+        asserts the property instead of the instances. Every parameter the
+        documented claim ranges over -- `x`, `shape`, `df`, `lambda`, `k`, `q`
+        and `scale` -- must be varied by the grid, with at least two distinct
+        values, and the two extremes of each bounded axis must appear.
+
+        If a later change adds a parameter to the claim, this test is what
+        should fail until the grid covers it.
+        """
+        def argument(case, index):
+            return arguments(case[2])[index]
+
+        # `scale`, the round-2 axis: varied for the gamma trio and for both
+        # quantiles, and probed at both ends of its stated range.
+        for export in GAMMA_OF_X:
+            seen = {argument(c, 2) for c in self.spec if c[1] == export}
+            self.assertGreaterEqual(len(seen), 2, f"{export} holds scale fixed")
+        quantile_scales = {argument(c, 2) for c in self.spec
+                           if c[1] == "gamma_inv_cdf"}
+        self.assertGreaterEqual(len(quantile_scales), 2,
+                                "gamma_inv_cdf holds scale fixed, which is the "
+                                "round-2 defect")
+        self.assertIn(f32(min(QUANTILE_SCALES)), quantile_scales)
+        self.assertIn(f32(max(QUANTILE_SCALES)), quantile_scales)
+        self.assertIn(f32(max(QUANTILE_SCALES_THIN)), quantile_scales)
+
+        # `q`, the round-1 axis: varied and probed at its floor.
+        quantile_qs = {argument(c, 0) for c in self.spec
+                       if c[1] in QUANTILE_EXPORTS}
+        self.assertGreaterEqual(len(quantile_qs), len(QUANTILES))
+        self.assertIn(f32(QUANTILE_FLOOR), quantile_qs)
+
+        # The CORNER: the `q` floor at the shape ceiling, and the `q` floor at
+        # the extreme scales. A claim with several boundaries can be false
+        # where they meet while holding at each one alone.
+        for export, (ceiling, _) in DOCUMENTED.items():
+            if export not in QUANTILE_EXPORTS:
+                continue
+            corner = [c for c in self.spec
+                      if c[1] == export and c[3] == ceiling
+                      and argument(c, 0) == f32(QUANTILE_FLOOR)]
+            self.assertTrue(corner, f"{export} never probes q = "
+                                    f"{QUANTILE_FLOOR:.0e} at shape {ceiling:.0e}")
+        scale_corner = [c for c in self.spec
+                        if c[1] == "gamma_inv_cdf"
+                        and argument(c, 0) == f32(QUANTILE_FLOOR)
+                        and argument(c, 2) == f32(max(QUANTILE_SCALES))]
+        self.assertTrue(scale_corner,
+                        "gamma_inv_cdf never probes the q floor at the largest "
+                        "documented scale")
+
+        # `x` and `k`: varied for every export that takes one.
+        for export in GAMMA_OF_X + CHI_OF_X + ("poisson_cdf",):
+            seen = {argument(c, 0) for c in self.spec if c[1] == export}
+            self.assertGreaterEqual(len(seen), 2, f"{export} holds its first "
+                                                  f"argument fixed")
+
+        # the shape-like parameter of every export, at and beyond its ceiling.
+        for export, (ceiling, _) in DOCUMENTED.items():
+            params = {case[3] for case in self.spec if case[1] == export}
+            self.assertIn(ceiling, params, f"{export} not probed at its ceiling")
+            self.assertTrue(any(p > ceiling for p in params),
+                            f"{export} not probed beyond its ceiling")
 
     def test_the_bound_is_not_silently_widened(self) -> None:
         # Pins the table so widening it is a deliberate edit that a reviewer

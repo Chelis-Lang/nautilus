@@ -3,7 +3,7 @@
 
 `docs/book/src/appendix/precision.md` and
 `docs/book/src/distributions/gamma-family.md` state a relative-error bound for
-the seven exports that reach the regularised incomplete gamma, and the
+the nine exports that reach the regularised incomplete gamma, and the
 parameter range it holds over (nautilus#152). This script is the gate for both
 the implementation and those sentences. Its sibling
 `parity/check_beta_accuracy.py` exists because the same claim about the beta
@@ -77,6 +77,13 @@ relative resolution.
 
     uv run --project parity --frozen python parity/check_gamma_accuracy.py
 
+It runs about eleven minutes on a quiet workstation, over 1673 cases. Most of
+that is the compiler evaluating the series near the branch point at the top of
+the shape ladder, and about half of it arrived with the `scale` axis the quantile
+rows gained in review -- which is the axis that caught a 152x error, so the cost
+is bought. Running two copies at once makes both much slower than that; the
+grid is CPU-bound and the probe file is shared.
+
 It lives under `parity/` because it imports SciPy, and this repository confines
 external-oracle libraries to that directory: `scripts/check_oracle_isolation.py`
 fails the build when an oracle import appears anywhere else. The C-lane oracle
@@ -115,8 +122,8 @@ F32_MIN_NORMAL = 1.1754943508222875e-38
 # `poisson_cdf` (whose gamma shape is `k + 1`, so its `k` axis is uncapped).
 #
 # Two ceilings and not one, because the quantile costs about six times the CDF.
-# The series the CDF spends near the branch point needs about `6.8*sqrt(shape)`
-# terms -- 48119 measured at `shape = 5e7`, against a 65536 budget -- and
+# The series the CDF spends near the branch point costs 45662 terms at
+# `shape = 5e7`, against a 65536 budget, and
 # `gamma_inv_cdf` pays that once per Newton step. 1e7 is where the quantile's
 # grid stays inside a tolerable run time, so that is what its row claims; the
 # CDFs claim 5e7. Neither ceiling is the point at which the answer becomes
@@ -144,7 +151,7 @@ DOCUMENTED = {
 # unmeasured. These rows exercise budget exhaustion and not only the rounding.
 # Each is past its ceiling and past the point where the subject's own
 # 65536-term budget is exhausted, which is about shape 9e7: the series needs
-# roughly `6.8*sqrt(shape)` terms at the branch point. A decade past would not
+# a square-root number of terms at the branch point. A decade past would not
 # demonstrate anything more and the reference's cost is linear in those terms.
 BEYOND = {
     "gamma_cdf": 2e8, "gamma_sf": 2e8, "gamma_pdf": 2e8,
@@ -199,6 +206,26 @@ QUANTILES = (QUANTILE_FLOOR, 0.001, 0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 0.999
 # sent the result to +inf; without a row here the whole test suite, the C lane
 # and this gate all passed that mutation.
 QUANTILE_FLOOR_SHAPES = (1.1, 1.25, 1.5, 1.9, 2.0, 2.5)
+# Scales the quantile rows vary, and the reason this axis exists at all.
+#
+# Round 1 of review found the documented quantile bound false below `q = 1e-4`.
+# Round 2 found it false again at a large `scale`, by the same mechanism, on an
+# axis the grid did not vary: `gamma_inv_cdf(0.5, 2, 1e31)` is 3.0e-4 relative,
+# 152 times the bound, and `q = 0.5` was already in the set. The cause is that
+# `gamma_inv_floor()` is an ABSOLUTE 1e-30 floor applied to a DENSITY, whose
+# magnitude is about `1/(scale*sqrt(2*pi*shape))`; past a large enough scale the
+# true density falls under the floor, the Newton step divides by the floor
+# instead, and each step then removes only a fraction `pdf/floor` of the error.
+#
+# The repair is not a third caveat. What produced both rounds is one structural
+# fault -- a documented bound that quantified over a parameter the enforcing
+# grid held fixed -- so every axis the claim names now has an axis here, probed
+# at both ends. `test_every_axis_the_claim_names_is_varied_here` is the guard.
+# The endpoints are two decades inside the measured failure: the quantiles are
+# clean from 1e-20 to 1e25 at every shape and `q` probed, and first exceed the
+# bound at 1e28.
+QUANTILE_SCALES = (1e-20, 1.0, 2.5, 1e20)
+QUANTILE_SCALES_THIN = (1.0, 1e20)
 
 
 class AccuracyError(Exception):
@@ -253,8 +280,8 @@ def shape_ladder(ceiling: float, beyond: float) -> list[float]:
 # enters, and the cost of these recursions is linear in the precision.
 MP_DPS = 30
 # Terms the reference's own series or continued fraction may spend. At the
-# branch point the series needs about `6.8*sqrt(shape)`, which is 215000 at the
-# largest shape probed, so this is about a 20x margin. Exhausting it raises
+# branch point the series needs a square-root number of terms, which is wide
+# inside this budget at every shape any row reaches. Exhausting it raises
 # rather than returning a partial sum: an unconverged reference is not a
 # reference, and the sibling gates record what happens when a gate's oracle is
 # quietly wrong instead of loudly absent.
@@ -573,10 +600,17 @@ def cases() -> list[tuple[str, str, str, float, float]]:
     ceiling, _ = DOCUMENTED["gamma_inv_cdf"]
     for shape in shape_ladder(ceiling, BEYOND["gamma_inv_cdf"]):
         K = f32(shape)
-        quantiles = QUANTILES if shape <= THIN_ABOVE else (0.001, 0.5, 0.999)
+        # `QUANTILE_FLOOR` stays in the thin set, so the `q` floor and the
+        # shape ceiling are probed TOGETHER. A claim with two boundaries can be
+        # false where they meet while holding at each one alone, and a corner is
+        # the cheapest thing for a thinned grid to drop.
+        quantiles = (QUANTILES if shape <= THIN_ABOVE
+                     else (QUANTILE_FLOOR, 0.001, 0.5, 0.999))
         for q in quantiles:
             Q = f32(q)
-            for scale in ((1.0, 2.5) if shape <= THIN_ABOVE else (1.0,)):
+            scales = (QUANTILE_SCALES if shape <= THIN_ABOVE
+                      else QUANTILE_SCALES_THIN)
+            for scale in scales:
                 S = f32(scale)
                 add("gamma_inv_cdf", (Q, K, S),
                     float(mp_inv(K, Q)) * S, shape, allow_one=True)
@@ -604,7 +638,8 @@ def cases() -> list[tuple[str, str, str, float, float]]:
     ceiling, _ = DOCUMENTED["chi_squared_inv_cdf"]
     for df in shape_ladder(ceiling, BEYOND["chi_squared_inv_cdf"]):
         D = f32(df)
-        quantiles = QUANTILES if df <= 2.0 * THIN_ABOVE else (0.001, 0.5, 0.999)
+        quantiles = (QUANTILES if df <= 2.0 * THIN_ABOVE
+                     else (QUANTILE_FLOOR, 0.001, 0.5, 0.999))
         for q in quantiles:
             Q = f32(q)
             # chi-squared is Gamma(df/2, 2), so its quantile is twice the

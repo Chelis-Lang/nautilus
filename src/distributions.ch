@@ -233,8 +233,8 @@ def student_t_pdf(x: f32, df: f32) -> f32 = {
 -- 1.5e-4 at 1e11, which is 1248 times one f32 ulp. That settles that the error
 -- grows, since the return type's own rounding is constant in `a`.
 -- It does not bound it, and the two must not be confused: at `a = 2e8` that
--- same single argument gives 5.9e-9 because two roundings cancelled, while the
--- worst over a neighbourhood of 2e8 is 3.5e-7, fifty-nine times larger at the
+-- same single argument gives 1.1e-8 because two roundings cancelled, while the
+-- worst over a neighbourhood of 2e8 is 3.5e-7, thirty times larger at the
 -- same shape. The envelope is estimated from neighbourhood worst cases, which
 -- sit at 1.2x and 0.7x of `ulp64(log_gamma(a))`; that is why the accuracy gate
 -- walks a neighbourhood rather than evaluating a point.
@@ -244,7 +244,7 @@ def student_t_pdf(x: f32, df: f32) -> f32 = {
 -- Both budgets are far larger than the f32 lane's 200, because f32 could not
 -- have spent more usefully and f64 can. Measured iteration counts at the
 -- branch point `x = a`, where both routes are slowest. Measured with the
--- constants below: the series needs 2300 terms at `a = 1e5` and 45662 at
+-- constants below: the series needs 2197 terms at `a = 1e5` and 45662 at
 -- `a = 5e7`, which is about `6.5*sqrt(a)`; the continued fraction needs 380
 -- and 3021, which is about `0.43*sqrt(a)` at the upper end and 1.2 times that
 -- at the lower one. Neither pair is a law -- 380/sqrt(1e5) is 1.20 while
@@ -762,7 +762,7 @@ def chi_squared_sf(x: f32, df: f32) -> f32 = {
 --
 -- The loop stays, and its own measurement is why. Against `gammaincinv`, with
 -- the f32 CDF underneath it, the refinement was worth 41856x at `shape = 1`
--- and 754536x at `q = 0.05, shape = 1`, where the closed form alone is weak;
+-- and about 8.1e5 at `q = 0.05, shape = 1`, where the closed form is weak;
 -- above the bracket it was 1001x *worse* at `shape = 1e3` and returned 5e29 at
 -- `shape = 1e7`. Both of those are one defect: Newton converges on the root of
 -- the function it is given, so a biased CDF moves the root it finds, and the

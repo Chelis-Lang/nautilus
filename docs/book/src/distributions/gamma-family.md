@@ -76,8 +76,8 @@ inherits the large-shape limit below.
 
 The refinement is not optional at a small shape and is not harmful at a large
 one. The closed form alone is 23% out at `gamma_inv_cdf(0.05, 1, 1)`, and the
-refined value there is the correctly rounded f32 -- a factor of about 2.4e7 on
-the current lane, and it was 754536 while the CDF underneath was computed in
+refined value there is the correctly rounded f32 -- a factor of about 4.0e7 on
+the current lane, and about 8.1e5 while the CDF underneath was computed in
 f32. On that same f32 CDF the refinement was also worth a factor of 1001
 *against* you at shape 1000, because Newton converges on the root of the
 function it is handed and a biased CDF moves that root. The CDF is the fix;
@@ -133,9 +133,13 @@ fraction diverged outright: `gamma_cdf(50007070, 50000000, 1)` returned
 1)` returned 6.235149e27 against a true 2.1e-10. A negative probability of that
 magnitude is not a value a caller can mistake for an answer.
 
-Those two are one defect and not two. The same error in the exponent produces
-both: at the branch point the continued fraction converges to a wrong value,
-and a little above it the fraction stops converging at all.
+The divergence and the quiet wrong values in the table above are one defect
+and not two. One error in the same exponent produces both: where a recursion
+converges it converges to a wrong value, and a little above the branch point
+the continued fraction stops converging at all. The density is the exception
+that proves the point -- it evaluates neither recursion, so it shows only the
+first behaviour, and `gamma_pdf(50035356, 50000000, 1)` returning 6.235149e27
+is that one error with nothing iterative involved.
 
 Away from the branch point in the other direction the f32 lane was accurate,
 which is the rest of why this was easy to miss: `gamma_cdf(10500, 10000, 1)`
@@ -153,9 +157,8 @@ since that point is its maximum.
 f64 moves this limit rather than removing it. The floor is one f64 ulp of
 `lgamma(shape)`, which crosses f32's own resolution at around shape 3.3e7 and
 reaches about 4.8e-7 by shape 2e8. The iteration budget is the other limit, and
-it is now 65536 rather than 200: the series needs about `6.8*sqrt(shape)` terms
-at the branch point, measured at 48119 for shape 5e7, so the budget carries it
-to about shape 9e7.
+it is now 65536 rather than 200: at the branch point the series needs 2197
+terms at shape 1e5 and 45662 at 5e7, so the budget carries it past shape 1e8.
 [The precision appendix](../appendix/precision.md) states the range both limits
 leave and names the gate that measures it.
 

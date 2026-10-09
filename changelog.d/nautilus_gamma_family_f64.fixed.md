@@ -47,8 +47,9 @@ sum, at 1e-13.
 **`gamma_inv_cdf` keeps its Newton loop.** Its refinement was 1001x *worse* than
 its own Wilson-Hilferty start at shape 1e3 and returned 5e29 at shape 1e7,
 because Newton converges on the root of the function it is handed and a biased
-CDF moves that root. It is also worth a factor of 754536 at
-`gamma_inv_cdf(0.05, 1, 1)`, where the closed form alone is 23% out, so removing
+CDF moves that root. On that same f32 CDF it was also worth a factor of about
+8.1e5 at `gamma_inv_cdf(0.05, 1, 1)`, and about 4.0e7 on the f64 one, where the
+closed form alone is 23% out, so removing
 it would have traded a large-shape error for a small-shape one five orders of
 magnitude bigger. The loop now runs on the f64 CDF and density and stops once a
 step moves the estimate by less than 1e-10 of itself, which is a cost control
@@ -75,19 +76,20 @@ beyond each documented ceiling, and is wired into the `scipy-parity` CI job
 with its own unit tests. The references are mpmath's rather than SciPy's
 because `scipy.special.gammainc` is up to 22% wrong in the left tail at a large
 shape; the gate's docstring records the measurement and a unit test pins it.
-`scripts/check_gamma_c_lane.py` builds the eight through the C lane in-package
+`scripts/check_gamma_c_lane.py` builds the nine through the C lane in-package
 and cross-package and requires bit-identical agreement with the eval lane, plus
 anchors that need no reference library: the elementary closed forms at shape 1
 and 2, the strict median inequalities `P(a, a) > 0.5 > P(a - 1, a)`, and the
 strictly positive `poisson_cdf(k, lam) - gamma_sf(lam, k, 1)` gap that the lost
 f32 `k + 1` had collapsed to zero. The sampling C-lane check that already
-existed covers keyed gamma-family *sampling*; none of these eight exports had
+existed covers keyed gamma-family *sampling*; none of these nine exports had
 C-lane coverage.
 
 The documented range and its two limits are in
 [the precision appendix](docs/book/src/appendix/precision.md).
 
-**The documented quantile range excludes `q` below 1e-4.** For a shape in
+**The documented quantile range excludes `q` below 1e-4 and `scale` outside
+[1e-20, 1e20].** For a shape in
 roughly [1.9, 2.5] below that quantile, `gamma_inv_cdf`'s Wilson-Hilferty start
 is floored, the first Newton step overshoots by about 27 decades, and the
 80-step budget is spent halving back: `gamma_inv_cdf(1e-5, 2, 1)` returns
@@ -96,3 +98,11 @@ the 0.001st. That is pre-existing and bit-identical on the base commit, so it is
 tracked separately rather than fixed here; what this change does is keep the new
 bound from claiming it. The gate probes the floor at its stated value and
 generates no case below it.
+
+The same floor fails from the other side at a large `scale`: it is absolute at
+1e-30 while a Gamma density is about `1/(scale*sqrt(2*pi*shape))`, so
+`gamma_inv_cdf(0.5, 2, 1e31)` is 3.0e-4 relative at a median. Also pre-existing
+and bit-identical on the base commit. Both are convergence limits rather than
+precision ones -- raising the budget from 80 to 4000 returns the correctly
+rounded answer at both witnesses -- and the quantile rows now vary `scale` so
+the bound cannot be stated over an axis the gate holds fixed.
