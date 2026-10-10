@@ -87,8 +87,11 @@ degenerates. From there it is Newton on `ln P`, safeguarded by a straddling
 bracket: a candidate that leaves the bracket is replaced by a bisection, so the
 iteration cannot leave the root's basin and an exhausted budget still returns a
 point inside an interval containing the root. At most 80 steps, stopping once a
-step moves `ln y` by less than 1e-10; 13 is the most any measured argument
-needs.
+step moves `ln y` by less than 1e-10. Four steps is the most any argument on
+the accuracy gate's own quantile grid needs, and 35 the most found anywhere --
+at a small shape in a tail deeper than that grid probes, where the start clamps
+and the loop bisects a one-nat bracket down to the tolerance. Those are
+bisections rather than error, and the budget is never approached.
 
 Returns 0 at q=0, +inf at q=1, and NaN for a `q` outside [0,1], a NaN `q`, or a
 `shape` or `scale` that is NaN or not positive. It inherits the large-shape

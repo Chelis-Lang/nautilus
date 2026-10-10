@@ -554,10 +554,10 @@ class Coverage(unittest.TestCase):
         Four properties, each the direct form of a finding:
 
         1. The published case count equals the number of cases the gate
-           actually enforces. Round 4 noted nothing pinned 1626, so the figure
+           actually enforces. Round 4 noted nothing pinned the figure, so it
            would go stale the first time anyone added a grid rung.
-        2. No row claims a bound over what the gate MEASURES. It measures 1673
-           cases and enforces 1626; the 47 beyond-ceiling rows exist to measure
+        2. No row claims a bound over what the gate MEASURES. It measures 1894
+           cases and enforces 1847; the 47 beyond-ceiling rows exist to measure
            out-of-range growth, and five exports exceed 2e-6 there -- 3.79e-6 at
            `gamma_cdf(2e8, 2e8, 1)`, which the gate prints on every run. Five
            SKILL.md rows said "everywhere the gate measures" and were false

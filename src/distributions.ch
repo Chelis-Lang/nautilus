@@ -874,8 +874,17 @@ def chi_squared_sf(x: f32, df: f32) -> f32 = {
 -- `P` is near-exponential in `u`, so Newton on `P` takes near-constant steps
 -- and creeps: 53 of the 80 steps at `q = 1e-38, shape = 100`. On `log P` the
 -- same region is near-linear, since `d(log P)/du` is `a - y` to leading
--- order. Measured over 2875 (q, shape, scale) triples the maximum drops from
--- 53 steps to 13 and the mean from 3.43 to 2.88, at the same accuracy.
+-- order.
+--
+-- Step counts, measured in THIS lane by instrumenting the loop counter rather
+-- than in the prototype the algorithm was designed in: at most 4 steps over
+-- the accuracy gate's own quantile grid (118 arguments), and up to 35 outside
+-- it at a small shape in a deep tail -- `gamma_inv_cdf(1e-7, 0.0032, 1)` is
+-- the worst found over 252 arguments. Those deep rows are correct; they are
+-- bisections, not error. When the asymptotic start clamps to
+-- `gamma_inv_u_min()` the bracket is about one nat wide and the loop bisects
+-- it down to the 1e-10 tolerance, which is about 33 halvings. The budget is
+-- never approached: the most observed is 36 of 80.
 def gamma_inv_newton_tol() -> f64 = cast(1e-10, f64)
 def gamma_inv_newton_max_i() -> i64 = cast(80, i64)
 -- The window where `exp` is neither 0 nor +inf in f64. A start outside it is
@@ -971,19 +980,36 @@ def gamma_inv_drive(shape: f64, q: f64, log_q: f64, u: f64, lo: f64, hi: f64, i:
     if st.4 then st.0 else gamma_inv_drive(shape, q, log_q, st.0, st.1, st.2, st.3, max_i)
   }
 -- `shape` and `scale` are guarded here rather than left to produce a NaN
--- downstream. With `scale` divided out of the solve, a zero `scale` would
--- otherwise multiply a finite unit quantile and return 0 where the old lane
--- returned NaN; and the asymptotic start takes `log_gamma(shape + 1)`, which
--- traps on a NaN shape instead of propagating it. Stating all five domain
--- conditions in one place is cheaper than relying on which arithmetic a NaN
--- happens to reach.
+-- downstream, and the guard requires each to be FINITE and positive rather
+-- than merely positive. Both halves of that are load-bearing and both were
+-- found by measurement rather than by reasoning.
+--
+-- With `scale` divided out of the solve, a zero `scale` would otherwise
+-- multiply a finite unit quantile and return 0 where the old lane returned
+-- NaN. The asymptotic start takes `log_gamma(shape + 1)`, which traps on a
+-- NaN shape instead of propagating it.
+--
+-- And an INFINITE shape passes a positivity test. Without the finiteness
+-- leg `gamma_inv_cdf(0.5, +inf, 1)` returned 0.0: `1/(9*inf)` is 0, so
+-- Wilson-Hilferty's `s` is 1 and `u0` is `log(inf)`, clamped to the top of
+-- the window; `P(inf, y)` is not a usable probability there, both widenings
+-- run to their caps, and the bisection settles on the low end at
+-- `exp(-3386)`. That is a plausible-looking lower-tail number returned for
+-- a median, which is the exact failure class nautilus#162 exists to remove,
+-- so re-introducing it at a degenerate input would have been a poor trade.
+-- NaN is what the pre-#162 lane returned for all four non-finite parameter
+-- cases and is what these return. The limits a non-finite parameter arguably
+-- has -- `+inf` for an infinite shape at any interior `q` -- are deliberately
+-- NOT claimed here: that is a semantic decision about a degenerate input,
+-- and this change restores the previous answer rather than inventing a new
+-- one.
 -- Re-dilated in f64 and cast ONCE. Casting `exp(u)` to f32 first and
 -- multiplying in f32 loses a unit quantile smaller than f32's smallest
 -- normal before `scale` can bring it back into range:
 -- `gamma_inv_cdf(1e-4, 0.0706, 1e20)` has a unit root of 5.6e-57 and a
 -- true answer of 5.6e-37, and the premature cast returned 0.
 def gamma_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
-  if or(neq(q, q), or(lt(q, zero_f()), gt(q, one_f()))) then nan_d() else if lte(q, zero_f()) then zero_f() else if gte(q, one_f()) then pos_inf_d() else if or(neq(shape, shape), lte(shape, zero_f())) then nan_d() else if or(neq(scale, scale), lte(scale, zero_f())) then nan_d() else {
+  if or(neq(q, q), or(lt(q, zero_f()), gt(q, one_f()))) then nan_d() else if lte(q, zero_f()) then zero_f() else if gte(q, one_f()) then pos_inf_d() else if or(neq(shape, shape), or(lte(shape, zero_f()), eq(shape, pos_inf_d()))) then nan_d() else if or(neq(scale, scale), or(lte(scale, zero_f()), eq(scale, pos_inf_d()))) then nan_d() else {
     q64 = cast(q, f64)
     shape64 = cast(shape, f64)
     z = cast(normal_inv_cdf(q, zero_f(), one_f()), f64)

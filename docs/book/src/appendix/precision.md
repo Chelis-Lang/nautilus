@@ -271,7 +271,11 @@ a magnitude a scale can move. The start is the small-`q` asymptotic wherever
 Wilson-Hilferty's cube is non-positive. The halving is replaced by bisection
 inside a maintained bracket, so the iteration cannot leave the root's basin and
 an exhausted budget returns a point inside an interval that contains the root.
-The most steps any measured argument needs is 13.
+Four steps is the most any argument on the gate's own quantile grid needs. The
+most found anywhere is 35, at a small shape in a tail deeper than the grid
+probes, where the clamped start leaves a one-nat bracket for the loop to bisect
+down to its tolerance; those returns are correct, and the closest any argument
+came to the budget was 36 of 80.
 
 **The CDF is still not a general substitute for the quantile.** An earlier
 version of this note recommended solving `gamma_cdf(x, shape, scale) = q`

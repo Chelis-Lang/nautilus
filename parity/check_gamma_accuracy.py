@@ -77,7 +77,7 @@ relative resolution.
 
     uv run --project parity --frozen python parity/check_gamma_accuracy.py
 
-It runs about eleven minutes on a quiet workstation, over 1673 cases. Most of
+It runs twelve to seventeen minutes on a workstation, over 1894 cases. Most of
 that is the compiler evaluating the series near the branch point at the top of
 the shape ladder, and about half of it arrived with the `scale` axis the quantile
 rows gained in review -- which is the axis that caught a 152x error, so the cost

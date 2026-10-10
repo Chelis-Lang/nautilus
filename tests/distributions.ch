@@ -1739,11 +1739,28 @@ def test_gamma_inv_cdf_returns_nan_for_a_nan_parameter() -> unit ! { Test } = {
   -- are now stated at the entry rather than left to whichever arithmetic a NaN
   -- happened to reach first: the asymptotic start takes
   -- `log_gamma(shape + 1)`, which traps on a NaN rather than propagating it.
+  infinite_shape = gamma_inv_cdf(cast(0.5, f32), div(cast(1.0, f32), cast(0.0, f32)), cast(1.0, f32))
+  infinite_df = chi_squared_inv_cdf(cast(0.5, f32), div(cast(1.0, f32), cast(0.0, f32)))
+  infinite_scale = gamma_inv_cdf(cast(0.5, f32), cast(2.0, f32), div(cast(1.0, f32), cast(0.0, f32)))
+  largest_finite_shape = gamma_inv_cdf(cast(0.5, f32), cast(3.4e38, f32), cast(1.0, f32))
   nan_shape = gamma_inv_cdf(cast(0.5, f32), div(cast(0.0, f32), cast(0.0, f32)), cast(1.0, f32))
   nan_scale = gamma_inv_cdf(cast(0.5, f32), cast(2.0, f32), div(cast(0.0, f32), cast(0.0, f32)))
   nan_q = gamma_inv_cdf(div(cast(0.0, f32), cast(0.0, f32)), cast(2.0, f32), cast(1.0, f32))
   negative_shape = gamma_inv_cdf(cast(0.5, f32), cast(-2.0, f32), cast(1.0, f32))
   negative_scale = gamma_inv_cdf(cast(0.5, f32), cast(2.0, f32), cast(-1.0, f32))
+  -- An infinite shape passes a positivity test, and this returned 0.0 before
+  -- a red-team round measured it: `1/(9*inf)` is 0, so the start clamps to the
+  -- top of the window, `P(inf, y)` is not a usable probability, both widenings
+  -- run to their caps and the bisection settles on the low end. A
+  -- plausible-looking lower-tail number returned for a median is the exact
+  -- failure class this change exists to remove, so the guard requires FINITE
+  -- and positive rather than positive. The largest finite f32 shape is here
+  -- too, because a finiteness guard that rejects one decade too early would
+  -- pass every other row in this test.
+  _ = assert_true(neq(infinite_shape, infinite_shape), "gamma_inv_cdf with an infinite shape is NaN, not the 0.0 a clamped start gave")
+  _ = assert_true(neq(infinite_df, infinite_df), "chi_squared_inv_cdf with an infinite df is NaN")
+  _ = assert_true(neq(infinite_scale, infinite_scale), "gamma_inv_cdf with an infinite scale is NaN")
+  _ = assert_true(lt(dist_rel_err(largest_finite_shape, cast(3.4e38, f32)), cast(1e-6, f32)), "gamma_inv_cdf(0.5;3.4e38,1) is the shape itself, so the finiteness guard does not reject a finite one")
   _ = assert_true(neq(nan_shape, nan_shape), "gamma_inv_cdf with a NaN shape is NaN and does not trap")
   _ = assert_true(neq(nan_scale, nan_scale), "gamma_inv_cdf with a NaN scale is NaN")
   _ = assert_true(neq(nan_q, nan_q), "gamma_inv_cdf with a NaN q is NaN")
