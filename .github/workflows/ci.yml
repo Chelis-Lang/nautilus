@@ -236,6 +236,13 @@ jobs:
       - name: Beta-family C lane
         run: python3 scripts/check_beta_c_lane.py
 
+      # The incomplete gamma moved to f64 internals too (nautilus#152), and the
+      # sampling check above covers keyed gamma-family SAMPLING, not the CDF
+      # lane: nothing compiled gamma_cdf, gamma_sf, gamma_pdf, poisson_cdf, the
+      # two chi-squared CDFs or either quantile through a C consumer. Stdlib-only.
+      - name: Gamma-family C lane
+        run: python3 scripts/check_gamma_c_lane.py
+
 
       # Shell contract §5: blockers must keep failing with their pinned
       # diagnostic. A pass is FIX-DETECTED and fails until de-narrowed.
@@ -286,6 +293,16 @@ jobs:
 
       - name: Discrete-PMF oracle unit tests
         run: uv run --project parity --frozen python -m unittest discover -s . -t . -p 'test_check_pmf_accuracy.py'
+
+      # The same treatment for the incomplete-gamma family (nautilus#152). Its
+      # error is one rounding of a log-gamma front factor at x ~ shape, so the
+      # grid walks x across that branch point in units of the distribution's own
+      # standard deviation and probes at and beyond each documented ceiling.
+      - name: Gamma-family accuracy range
+        run: uv run --project parity --frozen python parity/check_gamma_accuracy.py
+
+      - name: Gamma-family oracle unit tests
+        run: uv run --project parity --frozen python -m unittest discover -s . -t . -p 'test_check_gamma_accuracy.py'
   # The user-facing book: it must build, pass the writing-standard lint
   # (vendored from the chelis.ch website), and every complete ```chelis
   # example in it must check against the pinned compiler.

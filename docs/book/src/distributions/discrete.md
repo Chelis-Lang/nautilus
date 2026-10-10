@@ -15,7 +15,7 @@ bcdf = binomial_cdf(3.0f32, 10.0f32, 0.3f32)
 
 ```text
 ppmf = 0.21376301
-pcdf = 0.75757635
+pcdf = 0.7575761
 bpmf = 0.26682794
 bcdf = 0.6496107
 ```
@@ -64,13 +64,19 @@ already on a grid coarser than 1.
 
 The CDF does not sum PMF terms; it evaluates the incomplete gamma function,
 which inherits the [large-shape limit](gamma-family.md#large-shapes)
-at shape `k + 1`. **That limit is the f32 incomplete-gamma lane's, not the
-PMF's, and it is much the larger effect**: `poisson_cdf(5e7, 5e7)` returns
-6.731102e-4 against a true 0.50003761. Fixing the PMF does not touch it.
+at shape `k + 1`. That limit is the incomplete-gamma lane's rather than the
+PMF's, and it used to be much the larger effect: while that lane was computed
+in f32, `poisson_cdf(5e7, 5e7)` returned 6.731102e-4 against a true 0.50003761,
+and fixing the PMF did not touch it. It is now 0.50003755, which is one f32 ulp below the correctly rounded 0.5000376 and 1.2e-7 relative from exact.
 
-The CDF reads that function as the upper tail `Q` rather than as
+`k + 1` is formed in f64 as well. In f32 the increment vanished above
+`k = 16777216` -- the spacing of f32 values at 5e7 is 4 -- so the call
+evaluated `Q(k, lambda)` rather than `Q(k + 1, lambda)` and came out short by
+exactly `poisson_pmf(k, lambda)`, which is 1.1e-4 of the answer at that count.
+
+The CDF reads the incomplete gamma as the upper tail `Q` rather than as
 `1 - P`, so a left tail far below the mean keeps its digits:
-`poisson_cdf(10, 50)` is 6.450134e-12, five significant digits of a
+`poisson_cdf(10, 50)` is 6.450153e-12, seven significant digits of a
 reference 6.4501529e-12. Subtracting `P` from 1 returned 0 for every value under about
 6e-8.
 

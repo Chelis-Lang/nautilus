@@ -117,7 +117,7 @@ pv = tensor(shape=[4], data=[0.01, 0.04, 0.03, 0.2])
 bonf = tensor(shape=[4], data=[0.04, 0.16, 0.12, 0.8])
 holm = tensor(shape=[4], data=[0.04, 0.089999996, 0.089999996, 0.2])
 bh = tensor(shape=[4], data=[0.04, 0.05333333, 0.05333333, 0.2])
-lr_p = 0.0067379437
+lr_p = 0.006737947
 ```
 
 Each adjusted value is capped at 1 and keeps the position of its input.

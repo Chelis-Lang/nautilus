@@ -1,0 +1,862 @@
+#!/usr/bin/env python3
+"""Unit tests for the incomplete-gamma accuracy oracle's bookkeeping.
+
+The measurement itself is the gate and needs the compiler, so it is not
+duplicated here. These cover the parts that silently decide what the gate sees:
+the generated identifiers, the argument spellings, and the coverage of the
+documented table.
+
+Several pin a defect that happened while the sibling oracles were written, and
+which would have been just as easy to make here.
+`test_every_export_is_exercised_AT_its_ceiling` exists because a bound indexed
+on a parameter the grid never reaches at its stated value cannot fail at its own
+boundary -- the sibling beta range was false at its own edge for exactly that
+reason. `test_the_branch_point_is_probed_for_every_shape` exists because this
+defect lives at `x ~ shape` and nowhere else: the broken f32 lane was 2.8e-8
+relative at `x = 1.05*shape` while being 4.4e-2 at `x = shape`, so a grid that
+drifted off the branch point would have measured a healthy lane.
+`test_the_walk_is_not_silently_narrowed` and
+`test_the_scale_set_is_not_silently_narrowed` exist because every coverage test
+below is indexed on the tuple it is checking, so shrinking the tuple shrinks the
+expectation and they all stay green -- a review round proved that on the PMF
+gate by reducing its probability set to one element and watching seventeen tests
+pass.
+"""
+
+from __future__ import annotations
+
+import re
+import unittest
+
+from parity.check_gamma_accuracy import (
+    REPO,
+    BEYOND,
+    MP_DPS,
+    QUANTILE_FLOOR,
+    QUANTILE_FLOOR_SHAPES,
+    QUANTILE_SCALES,
+    QUANTILE_SCALES_THIN,
+    DOCUMENTED,
+    F32_MIN_NORMAL,
+    QUANTILES,
+    SCALES,
+    THIN_ABOVE,
+    Z_THIN,
+    Z_WALK,
+    cases,
+    f32,
+    lit,
+    references,
+    shape_ladder,
+)
+
+# Every file that publishes a claim about this family's accuracy. The guard
+# `test_the_published_claim_matches_what_the_gate_enforces` reads exactly these.
+CLAIM_SITES = (
+    "docs/book/src/appendix/precision.md",
+    "docs/book/src/distributions/gamma-family.md",
+    "docs/book/src/distributions/discrete.md",
+    "SKILL.md",
+    "src/distributions.ch",
+    "changelog.d/nautilus_gamma_family_f64.fixed.md",
+    # Not this family's own fragment, but it published a claim about
+    # `poisson_cdf`'s accuracy that #152 falsified. The completeness test below
+    # is what found it, after four review rounds had not.
+    "changelog.d/nautilus_discrete_pmf_f64.fixed.md",
+    "changelog.d/nautilus_right_tail_p_values.fixed.md",
+    "docs/book/src/stats/testing.md",
+)
+
+# The nine covered exports plus `chi_squared_p_value`, which `src/testing.ch`
+# defines as an exact alias of `chi_squared_sf` and which therefore publishes
+# this family's bound without appearing in `DOCUMENTED`. Round 5 found a false
+# claim at exactly that name, invisible to a search keyed on `DOCUMENTED` alone.
+FAMILY_NAMES = tuple(DOCUMENTED) + ("chi_squared_p_value",)
+
+# The bound as a whole number, not as a substring. `git grep "2e-6"` matches
+# inside `7.2e-66` -- a real f32-underflow comment in `tests/testing.ch` that
+# also names `chi_squared_p_value`, so the looser form reported a claim site
+# that publishes no claim.
+BOUND = re.compile(r"(?<![\d.])2e-6(?![\d])")
+
+
+def blocks(text: str, prose: bool = True):
+    """Yield `(first line number, text)` for each claim-sized block.
+
+    A table row is its own block, because a markdown table is one paragraph and
+    windowing it as such would let a bare row pass on a sibling row's
+    qualifier. Everything else is windowed by paragraph, because a prose claim
+    splits across lines: `precision.md` puts the bound and the count on one
+    line of a blockquote and the gate that enforces them on the next, which a
+    line-based window could not see and a review round's mutant exploited.
+
+    `prose=False` is for source files, which have no blank-line paragraphs: a
+    `--` comment block runs for fifty lines, so paragraph windowing made
+    `src/distributions.ch` one block and reported its `student_t_cdf`
+    commentary as a bare gamma claim.
+    """
+    if not prose:
+        for i, line in enumerate(text.splitlines(), 1):
+            yield i, line
+        return
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        if not lines[i].strip():
+            i += 1
+            continue
+        if lines[i].lstrip().startswith("|"):
+            yield i + 1, lines[i]
+            i += 1
+            continue
+        j = i
+        while j < len(lines) and lines[j].strip() \
+                and not lines[j].lstrip().startswith("|"):
+            j += 1
+        yield i + 1, "\n".join(lines[i:j])
+        i = j
+
+IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+CALL = re.compile(r"^(\w+)\((.*)\)$")
+
+# `cases()` builds every reference at arbitrary precision, which costs about
+# twelve seconds for the whole grid. Building it once per test method instead of
+# once per run turned this file from under two seconds into over five minutes,
+# so the grid is built once and shared. Nothing here mutates it.
+_SPEC: list | None = None
+
+
+# Tolerances for the oracle checks below, derived from the reference's own
+# working precision rather than written as literals, so they cannot go stale if
+# that precision moves. At MP_DPS = 30 they are 1e-22, 1e-18 and 1e-13 against
+# the 2e-6 the gate measures -- sixteen, twelve and seven orders of magnitude
+# below it. Seven is the smallest margin and it belongs to the root finder,
+# whose residual is bounded by its own step; none of the three is ever the
+# binding term in a gate result.
+#
+# They differ from each other because the routes differ. Two recursions that
+# both converge to MP_TOL agree to a few digits short of the working precision.
+# `mpmath.quad` is numerical integration and is looser than either. And the
+# root finder stops once a Newton step moves its estimate by less than
+# 10**-(MP_DPS - 12) of itself, so the residual it leaves in `P` is that step
+# multiplied by `P`'s slope -- bounding the residual tighter than the step that
+# produced it is not a stricter test, it is an impossible one, and asserting
+# 1e-25 against a 1e-18 step is the mistake these three tests caught on their
+# first run.
+REF_AGREE = 10.0 ** -(MP_DPS - 8)
+REF_QUAD = 10.0 ** -(MP_DPS - 12)
+REF_ROOT = 10.0 ** -(MP_DPS - 17)
+
+
+def spec_once() -> list:
+    global _SPEC
+    if _SPEC is None:
+        _SPEC = cases()
+    return _SPEC
+
+# No scipy guard here on purpose. This file lives under `parity/`, where SciPy is
+# a declared, locked dependency, so an ImportError is a broken environment and
+# should fail loudly. A `skipUnless` would turn that into a silent pass, and a
+# test skipped everywhere is indistinguishable from a passing one.
+
+GAMMA_OF_X = ("gamma_cdf", "gamma_sf", "gamma_pdf")
+CHI_OF_X = ("chi_squared_cdf", "chi_squared_sf", "chi_squared_pdf")
+QUANTILE_EXPORTS = ("gamma_inv_cdf", "chi_squared_inv_cdf")
+
+
+def arguments(expression: str) -> list[float]:
+    """The f32 values the probe will hold, not the decimals that spell them.
+
+    `lit` emits the shortest decimal that round-trips, so `1e-07` reads back as
+    the f64 1e-07 while the probe holds f32(1e-7). Comparing the decimal is how
+    the sibling gate's parameter-coverage test first failed against its own grid.
+    """
+    body = CALL.match(expression).group(2)
+    return [f32(float(part)) for part in body.split(", ")]
+
+
+class Names(unittest.TestCase):
+    def setUp(self) -> None:
+        self.spec = spec_once()
+
+    def test_every_generated_name_is_a_valid_identifier(self) -> None:
+        for name, *_ in self.spec:
+            self.assertRegex(name, IDENTIFIER, f"{name!r} is not a usable def name")
+
+    def test_no_name_contains_a_character_the_lexer_reads_as_a_literal(self) -> None:
+        for name, *_ in self.spec:
+            for bad in "+-.":
+                self.assertNotIn(bad, name, f"{name!r} would not lex")
+
+    def test_names_are_unique(self) -> None:
+        names = [case[0] for case in self.spec]
+        self.assertEqual(len(names), len(set(names)))
+
+    def test_every_name_shares_the_module_domain_prefix(self) -> None:
+        for name, *_ in self.spec:
+            self.assertTrue(name.startswith("acc_"), name)
+
+
+class Spelling(unittest.TestCase):
+    def test_every_literal_round_trips_to_the_f32_it_names(self) -> None:
+        for value in (0.5, 2.5, 0.0078125, 0.001, 0.999, 1e-7, 5e7, 1e9,
+                      2.0 ** 24, 1.0, 0.0):
+            self.assertEqual(f32(float(lit(value))), f32(value), repr(value))
+
+    def test_an_integral_value_is_spelled_as_a_float(self) -> None:
+        # A digit string with no "." or "e" lexes as an integer literal, which
+        # is an i32 at these call sites and fails to type-check.
+        for value in (0.0, 1.0, 10.0, 100.0, 5e7, 2.0 ** 24):
+            text = lit(value)
+            self.assertTrue("." in text or "e" in text, f"{value!r} -> {text!r}")
+
+    def test_every_generated_expression_parses_as_a_call(self) -> None:
+        for _, export, expression, *_ in spec_once():
+            matched = CALL.match(expression)
+            self.assertIsNotNone(matched, expression)
+            self.assertEqual(matched.group(1), export, expression)
+
+
+class Coverage(unittest.TestCase):
+    def setUp(self) -> None:
+        self.spec = spec_once()
+
+    def test_documented_covers_every_export_measured(self) -> None:
+        self.assertEqual({case[1] for case in self.spec}, set(DOCUMENTED))
+
+    def test_every_export_named_in_the_issue_is_measured(self) -> None:
+        # nautilus#152's "Affected exports" list, plus `gamma_pdf`, which has
+        # the same front factor and which the issue body did not name.
+        measured = {case[1] for case in self.spec}
+        for export in ("gamma_cdf", "gamma_sf", "chi_squared_cdf",
+                       "chi_squared_sf", "poisson_cdf", "gamma_inv_cdf",
+                       "chi_squared_inv_cdf", "gamma_pdf", "chi_squared_pdf"):
+            self.assertIn(export, measured, export)
+
+    def test_every_export_has_a_case_inside_its_documented_range(self) -> None:
+        for export, (ceiling, _) in DOCUMENTED.items():
+            inside = [case for case in self.spec
+                      if case[1] == export and case[3] <= ceiling]
+            self.assertTrue(inside, f"{export} has no in-range case to fail on")
+
+    def test_every_export_is_exercised_AT_its_ceiling(self) -> None:
+        for export, (ceiling, _) in DOCUMENTED.items():
+            at = [case for case in self.spec
+                  if case[1] == export and case[3] == ceiling]
+            self.assertTrue(at, f"{export} is never probed at {ceiling:.0e}")
+
+    def test_every_export_is_exercised_BEYOND_its_ceiling(self) -> None:
+        # The documents claim the error grows past the ceiling. That claim is
+        # measured, not asserted, so the run has to carry out-of-range rows.
+        for export, (ceiling, _) in DOCUMENTED.items():
+            beyond = [case for case in self.spec
+                      if case[1] == export and case[3] > ceiling]
+            self.assertTrue(beyond, f"{export} is never probed above {ceiling:.0e}")
+            self.assertGreater(BEYOND[export], ceiling, export)
+
+    def test_the_branch_point_is_probed_for_every_shape(self) -> None:
+        # `x = shape*scale` is where the three terms of the front factor cancel
+        # and where both recursions are slowest. It is the whole defect: off it
+        # the broken lane measured 2.8e-8 and on it 4.4e-2.
+        for export in GAMMA_OF_X:
+            ceiling, _ = DOCUMENTED[export]
+            for shape in shape_ladder(ceiling, BEYOND[export]):
+                rows = [arguments(case[2]) for case in self.spec
+                        if case[1] == export and case[3] == shape]
+                if not rows:
+                    continue  # every reference at this shape was out of f32 range
+                self.assertTrue(
+                    any(x == f32(f32(k) * f32(s)) for x, k, s in rows),
+                    f"{export} at shape {shape:.3g} never reaches x = shape*scale")
+
+    def test_both_sides_of_the_branch_are_probed(self) -> None:
+        # The implementation runs a series below `shape*scale + scale` and a
+        # continued fraction at or above it. A grid on one side only would
+        # leave one of the two recursions unmeasured.
+        for export in GAMMA_OF_X:
+            rows = [arguments(case[2]) for case in self.spec if case[1] == export]
+            below = any(x < f32(k) * f32(s) for x, k, s in rows)
+            above = any(x > f32(k) * f32(s) for x, k, s in rows)
+            self.assertTrue(below, f"{export} never probes below the branch point")
+            self.assertTrue(above, f"{export} never probes above the branch point")
+
+    def test_every_scale_is_actually_probed(self) -> None:
+        probed = {arguments(case[2])[2] for case in self.spec
+                  if case[1] in GAMMA_OF_X}
+        for scale in SCALES:
+            self.assertIn(f32(scale), probed,
+                          f"scale = {scale!r} is in SCALES but reaches no case")
+
+    def test_every_quantile_is_actually_probed(self) -> None:
+        probed = {arguments(case[2])[0] for case in self.spec
+                  if case[1] in QUANTILE_EXPORTS}
+        for q in QUANTILES:
+            self.assertIn(f32(q), probed,
+                          f"q = {q!r} is in QUANTILES but reaches no case")
+
+    def test_both_quantile_tails_are_probed(self) -> None:
+        # The Wilson-Hilferty start is weakest in the far tails, which is where
+        # the Newton refinement had the most to undo.
+        for export in QUANTILE_EXPORTS:
+            probed = {arguments(case[2])[0] for case in self.spec
+                      if case[1] == export}
+            self.assertTrue(any(q <= f32(0.001) for q in probed), export)
+            self.assertTrue(any(q >= f32(0.999) for q in probed), export)
+
+    def test_the_two_to_the_24_neighbourhood_is_probed_for_poisson(self) -> None:
+        # Above k = 2^24 the f32 `k + 1` lost its increment, so `poisson_cdf`
+        # evaluated the wrong gamma shape.
+        counts = {arguments(case[2])[0] for case in self.spec
+                  if case[1] == "poisson_cdf"}
+        self.assertIn(f32(2.0 ** 24), counts)
+        self.assertTrue(any(count > 2.0 ** 24 for count in counts))
+
+    def test_no_case_carries_a_reference_f32_cannot_hold(self) -> None:
+        for _, export, expression, _, reference in self.spec:
+            self.assertGreaterEqual(reference, F32_MIN_NORMAL, expression)
+            if export in ("gamma_cdf", "gamma_sf", "chi_squared_cdf",
+                          "chi_squared_sf", "poisson_cdf"):
+                # A probability of exactly 1.0 has no relative resolution. A
+                # density and a quantile are not probabilities and are exempt.
+                self.assertLess(reference, 1.0, expression)
+
+    def test_the_grid_is_large_enough_to_be_a_grid(self) -> None:
+        # A guard against a filter silently emptying an export's rows, which is
+        # how the sibling gate lost every skewed probability.
+        for export in DOCUMENTED:
+            rows = [case for case in self.spec if case[1] == export]
+            self.assertGreaterEqual(len(rows), 12, f"{export} has {len(rows)} cases")
+
+    def test_the_walk_is_not_silently_narrowed(self) -> None:
+        self.assertEqual(Z_WALK, (-20.0, -8.0, -5.0, -3.0, -1.0, 0.0, 1.0, 3.0,
+                                  5.0, 8.0, 20.0))
+        self.assertEqual(Z_THIN, (-3.0, -1.0, 0.0, 1.0, 5.0))
+        self.assertIn(0.0, Z_WALK)
+        self.assertIn(0.0, Z_THIN)
+        self.assertEqual(THIN_ABOVE, 1e6)
+
+    def test_the_scale_set_is_not_silently_narrowed(self) -> None:
+        self.assertEqual(SCALES, (1.0, 2.5, 0.0078125))
+
+    def test_the_quantile_set_is_not_silently_narrowed(self) -> None:
+        self.assertEqual(QUANTILES, (QUANTILE_FLOOR, 0.001, 0.01, 0.1, 0.25,
+                                     0.5, 0.75, 0.9, 0.99, 0.999))
+        self.assertEqual(QUANTILE_FLOOR, 1e-4)
+        self.assertEqual(QUANTILE_FLOOR_SHAPES, (1.1, 1.25, 1.5, 1.9, 2.0, 2.5))
+        self.assertEqual(QUANTILE_SCALES, (1e-20, 1.0, 2.5, 1e20))
+        self.assertEqual(QUANTILE_SCALES_THIN, (1.0, 1e20))
+
+    def test_the_documented_q_floor_is_probed_AT_its_value(self) -> None:
+        """The same rule as the ceilings, on the other axis.
+
+        The documents exclude `q` below `QUANTILE_FLOOR` because the quantile's
+        Newton descent does not converge there for a shape near 2. An excluded
+        boundary still has to be measured AT the boundary, or the claim cannot
+        fail at its own edge -- which is how the first version of this gate came
+        to assert a bound that was false three decades below its smallest `q`.
+        """
+        for export in QUANTILE_EXPORTS:
+            at = [case for case in self.spec
+                  if case[1] == export
+                  and arguments(case[2])[0] == f32(QUANTILE_FLOOR)]
+            self.assertTrue(at, f"{export} is never probed at q = "
+                                f"{QUANTILE_FLOOR:.0e}, its documented floor")
+
+    def test_no_case_is_generated_below_the_documented_q_floor(self) -> None:
+        # The documents make no claim below the floor, so a row there would be
+        # the gate asserting something nothing stands behind.
+        for export in QUANTILE_EXPORTS:
+            below = [case[2] for case in self.spec
+                     if case[1] == export
+                     and arguments(case[2])[0] < f32(QUANTILE_FLOOR)]
+            self.assertEqual(below, [], f"{export} probes below its floor")
+
+    def test_the_floored_wilson_hilferty_shapes_are_probed(self) -> None:
+        # Shapes where `s**3` goes negative and the start is floored. Without a
+        # row here, raising `gamma_inv_floor()` to the continued fraction's
+        # Lentz tiny passed the whole test suite, the C lane and this gate
+        # while sending `gamma_inv_cdf(0.001, 1.25, 2)` to +inf.
+        probed = {arguments(case[2])[1] for case in self.spec
+                  if case[1] == "gamma_inv_cdf"}
+        for shape in QUANTILE_FLOOR_SHAPES:
+            self.assertIn(f32(shape), probed,
+                          f"gamma_inv_cdf is never probed at shape {shape}")
+
+    def test_the_probe_imports_every_export_it_calls(self) -> None:
+        """Caught a real break: `chi_squared_pdf` was added to the grid and not
+        to the probe's import line, so every one of its rows failed to compile
+        and the whole run aborted with `unbound variable`. A loud failure, but
+        one a unit test is cheaper than an eight-minute gate run.
+        """
+        from parity.check_gamma_accuracy import MODULE, PROBE, evaluate
+        import unittest.mock as mock
+        captured = {}
+
+        def fake_run(command, **kwargs):
+            captured["source"] = PROBE.read_text()
+            raise RuntimeError("stop before invoking the compiler")
+
+        with mock.patch("subprocess.run", fake_run):
+            try:
+                evaluate("chelis", self.spec[:5])
+            except Exception:
+                pass
+        source = captured.get("source", "")
+        self.assertTrue(source, "the probe was never written")
+        imported = source.split("import Nautilus.Distributions (")[1].split(")")[0]
+        declared = {part.strip() for part in imported.split(",")}
+        for export in DOCUMENTED:
+            self.assertIn(export, declared,
+                          f"{export} is measured but the probe does not import it")
+
+    def test_the_grid_varies_every_parameter_of_every_export(self) -> None:
+        """A coverage property of the grid. It is NOT a check on the documents.
+
+        An earlier version of this test was called
+        `test_every_axis_the_claim_names_is_varied_here` and its docstring said
+        "if a later change adds a parameter to the claim, this test is what
+        should fail until the grid covers it". That was false and it mattered:
+        this file parses no document, the parameter list below is hard-coded,
+        and a third review round then falsified the documented bound on `shape`
+        below 0.5 while this test passed. A reviewer also froze seven of
+        fourteen grid axes without it firing, because the "extremes" assertions
+        take their bounds from the same tuples that build the grid.
+
+        So the claim in docs/book no longer states a parameter range at all --
+        it states the measured set, which is what this gate actually enforces.
+        This test keeps its narrower, true job: every parameter of every export
+        is varied rather than held fixed, so no export is measured at a single
+        point on any of its axes. Treat a pass as "the grid moves on every
+        axis", not as "the documents are accurate".
+        """
+        def argument(case, index):
+            return arguments(case[2])[index]
+
+        # `scale`, the round-2 axis: varied for the gamma trio and for both
+        # quantiles, and probed at both ends of its stated range.
+        for export in GAMMA_OF_X:
+            seen = {argument(c, 2) for c in self.spec if c[1] == export}
+            self.assertGreaterEqual(len(seen), 2, f"{export} holds scale fixed")
+        quantile_scales = {argument(c, 2) for c in self.spec
+                           if c[1] == "gamma_inv_cdf"}
+        self.assertGreaterEqual(len(quantile_scales), 2,
+                                "gamma_inv_cdf holds scale fixed, which is the "
+                                "round-2 defect")
+        self.assertIn(f32(min(QUANTILE_SCALES)), quantile_scales)
+        self.assertIn(f32(max(QUANTILE_SCALES)), quantile_scales)
+        self.assertIn(f32(max(QUANTILE_SCALES_THIN)), quantile_scales)
+
+        # `q`, the round-1 axis: varied PER EXPORT and probed at its floor.
+        # This was a union over both quantile exports, which meant either one's
+        # `q` axis could collapse to a single point while the other carried the
+        # assertion -- a reviewer froze `chi_squared_inv_cdf` to one `q` and
+        # this test passed. The docstring claimed "no export is measured at a
+        # single point on any of its axes", so the union made that sentence
+        # false; per-export makes it true.
+        for export in QUANTILE_EXPORTS:
+            qs = {argument(c, 0) for c in self.spec if c[1] == export}
+            self.assertGreaterEqual(len(qs), len(QUANTILES),
+                                    f"{export} varies `q` over only {len(qs)} "
+                                    f"values")
+            self.assertIn(f32(QUANTILE_FLOOR), qs, export)
+
+        # The CORNER: the `q` floor at the shape ceiling, and the `q` floor at
+        # the extreme scales. A claim with several boundaries can be false
+        # where they meet while holding at each one alone.
+        for export, (ceiling, _) in DOCUMENTED.items():
+            if export not in QUANTILE_EXPORTS:
+                continue
+            corner = [c for c in self.spec
+                      if c[1] == export and c[3] == ceiling
+                      and argument(c, 0) == f32(QUANTILE_FLOOR)]
+            self.assertTrue(corner, f"{export} never probes q = "
+                                    f"{QUANTILE_FLOOR:.0e} at shape {ceiling:.0e}")
+        scale_corner = [c for c in self.spec
+                        if c[1] == "gamma_inv_cdf"
+                        and argument(c, 0) == f32(QUANTILE_FLOOR)
+                        and argument(c, 2) == f32(max(QUANTILE_SCALES))]
+        self.assertTrue(scale_corner,
+                        "gamma_inv_cdf never probes the q floor at the largest "
+                        "documented scale")
+
+        # `x` and `k`: varied for every export that takes one.
+        for export in GAMMA_OF_X + CHI_OF_X + ("poisson_cdf",):
+            seen = {argument(c, 0) for c in self.spec if c[1] == export}
+            self.assertGreaterEqual(len(seen), 2, f"{export} holds its first "
+                                                  f"argument fixed")
+
+        # the shape-like parameter of every export, at and beyond its ceiling.
+        for export, (ceiling, _) in DOCUMENTED.items():
+            params = {case[3] for case in self.spec if case[1] == export}
+            self.assertIn(ceiling, params, f"{export} not probed at its ceiling")
+            self.assertTrue(any(p > ceiling for p in params),
+                            f"{export} not probed beyond its ceiling")
+
+    def test_the_published_claim_matches_what_the_gate_enforces(self) -> None:
+        """Compare this family's published claims against the gate.
+
+        Five review rounds found a defect in the WORDING of this family's
+        accuracy claim rather than in the arithmetic, each by hand, because
+        nothing in the repository compared a published sentence against the
+        gate. The gate's own docstring says it does not read the documents --
+        correct for the gate, which must not be able to make itself pass. A
+        test may, and this is it.
+
+        Properties (2) and (3) are literal strings and close nothing: they are
+        a regression test against wordings that were actually published and
+        falsified, and a reworded claim with the same defect walks past them.
+        An earlier version of this docstring claimed to close the class, and
+        round 5 refuted it by hand -- a BARE "below 2e-6" for
+        `chi_squared_p_value`, in a file this test already read, a form none of
+        the banned sentences covers.
+
+        Property (4) is the answer to that round and the only leg here stated
+        as a property. It is proven on twelve mutants: the round-5 defect, a
+        novel bare wording, the qualifier deleted from the blockquote and from
+        the changelog, three single-site stale counts and one double, a grid
+        rung added, a ceiling raised, and the gate's own bound widened.
+
+        What (4) still cannot see, stated so nobody reads its green as more
+        than it is: a claim that spells the bound some other way (`BOUND`
+        matches the numeral), and one that names no export, no case count and
+        not "the gamma family" -- which is why the headline blockquote is
+        selected on its count rather than on the qualifier that a mutant can
+        delete.
+
+        Four properties, each the direct form of a finding:
+
+        1. The published case count equals the number of cases the gate
+           actually enforces. Round 4 noted nothing pinned 1626, so the figure
+           would go stale the first time anyone added a grid rung.
+        2. No row claims a bound over what the gate MEASURES. It measures 1673
+           cases and enforces 1626; the 47 beyond-ceiling rows exist to measure
+           out-of-range growth, and five exports exceed 2e-6 there -- 3.79e-6 at
+           `gamma_cdf(2e8, 2e8, 1)`, which the gate prints on every run. Five
+           SKILL.md rows said "everywhere the gate measures" and were false
+           against their own gate's stdout.
+        3. No claim site states a parameter range for this family. Three rounds
+           falsified three successive range-shaped versions; the form is banned
+           here rather than re-narrowed.
+        """
+        enforced = sum(1 for case in self.spec
+                       if case[3] <= DOCUMENTED[case[1]][0])
+        # Every site that carries a claim about this family's accuracy. Round 4
+        # found a stale reference in `src/distributions.ch`, a fifth site an
+        # earlier version of this test did not read, so the list is explicit
+        # and `test_the_claim_site_list_is_complete` below pins it.
+        sites = {name: (REPO / name).read_text() for name in CLAIM_SITES}
+
+        # (1) EVERY published count is the enforced count. Checked per
+        # occurrence, not per file: an earlier version asserted that the right
+        # number appeared somewhere in the text, so a file with one correct and
+        # one stale occurrence passed -- `precision.md` publishes the count
+        # twice, in a table row and a blockquote. A sibling gate's count is
+        # skipped by the gate it names, which is why the discrete fragment's
+        # own 582 does not fail here.
+        published = 0
+        for name, text in sites.items():
+            for i, line in blocks(text, name.endswith(".md")):
+                for m in re.finditer(r"(\d[\d,]*)\s+cases", line):
+                    if "check_pmf_accuracy" in line or "check_beta_accuracy" in line:
+                        continue
+                    if not ("check_gamma_accuracy.py" in line
+                            or "accuracy gate" in line
+                            or any(f in line for f in FAMILY_NAMES)
+                            or "the gamma family" in line):
+                        continue
+                    published += 1
+                    self.assertEqual(
+                        int(m.group(1).replace(",", "")), enforced,
+                        f"{name}:{i} publishes a case count that is not the "
+                        f"{enforced} the gate enforces; it has gone stale "
+                        f"against the grid")
+        self.assertTrue(published, "no site publishes a case count at all")
+
+        # (2) nothing claims a bound over what is merely MEASURED
+        for name, text in sites.items():
+            for bad in ("everywhere the gate measures",
+                        "everywhere the accuracy gate measures",
+                        "everywhere `parity/check_gamma_accuracy.py` measures",
+                        "every case the gate measures",
+                        "every case the accuracy gate measures"):
+                self.assertNotIn(bad, text,
+                                 f"{name} claims a bound over what the gate "
+                                 f"MEASURES; it enforces {enforced} of "
+                                 f"{len(self.spec)} and exceeds 2e-6 beyond "
+                                 f"the ceilings by design -- 3.79e-6 at "
+                                 f"gamma_cdf(2e8, 2e8, 1), which the gate "
+                                 f"prints on every run")
+
+        # (3) no range-shaped claim for this family, in any site
+        for name, text in sites.items():
+            self.assertNotIn("The gamma family holds below 2e-6 over a stated",
+                             text,
+                             f"{name} states a parameter range again; three "
+                             f"rounds falsified three successive versions of "
+                             f"that form")
+
+        # (4) the one leg that is a property rather than a denylist: a claim
+        # line that names this family beside the bound must say whose
+        # enforcement it means. Round 5's P1 was a bound with NO qualifier at
+        # all -- `chi_squared_p_value`, an exact alias of `chi_squared_sf`,
+        # published a flat "below 2e-6" in a site already listed above, where
+        # the gate's own stdout reads 3.79e-6 at df 4e8 and 3.4e-3 at 1e9. The
+        # denylist legs cannot see a sentence nobody has written yet; this one
+        # can. `blocks()` windows a table row by itself and prose by paragraph,
+        # so a claim whose bound and qualifier sit on different lines is read
+        # whole.
+        for name, text in sites.items():
+            for i, block in blocks(text, name.endswith(".md")):
+                # Collapsed, because a prose claim wraps: this family's own
+                # changelog fragment breaks the line between
+                # `parity/check_gamma_accuracy.py` and `enforces`, and matching
+                # the raw text called its qualifier missing.
+                line = re.sub(r"\s+", " ", block)
+                if not BOUND.search(line):
+                    continue
+                if "check_pmf_accuracy" in line or "check_beta_accuracy" in line:
+                    continue          # a sibling gate's own bound
+                named = [f for f in FAMILY_NAMES + ("the gamma family",)
+                         if f in line]
+                # A block publishing a case count is this family's claim even
+                # when it names no export: the headline blockquote does not.
+                # Selecting on the family name ALONE let a mutant escape by
+                # deleting the qualifier, because the qualifier was also what
+                # put the block in scope. A count cannot be deleted without
+                # deleting the claim.
+                if not named and not re.search(r"(\d[\d,]*)\s+cases", line):
+                    continue
+                named = named or ["this family's case count"]
+                self.assertTrue(
+                    any(q in line for q in ("gate enforces",
+                                            "check_gamma_accuracy.py` enforces")),
+                    f"{name}:{i} states this family's 2e-6 bound beside "
+                    f"{named[0]} without saying it is what the gate ENFORCES. "
+                    f"A bare bound reads as universal and is false outside the "
+                    f"ceilings: 3.79e-6 at gamma_cdf(2e8, 2e8, 1), and 3.4e-3 "
+                    f"at chi_squared_p_value(1e9, 1e9)")
+
+    def test_the_claim_site_list_is_complete(self) -> None:
+        """`CLAIM_SITES` must name every file that publishes a bound.
+
+        The guard above can only check sites it is pointed at, so the list is
+        the guard's own weak point: round 4 found a stale claim in
+        `src/distributions.ch` precisely because an earlier version read only
+        two files. This searches the tree for the bound's own number next to
+        this family's name and requires every hit to be a listed site, a test
+        file, or the gate itself.
+        """
+        import subprocess
+        # `--untracked` is load-bearing. Plain `git grep` searches tracked files
+        # only, so a NEW claim site is invisible to this test until it is
+        # staged -- which is exactly when a reviewer would be reading it. A peer
+        # reported the guard not firing on their new changelog fragment, and a
+        # planted untracked site naming both quantiles beside the bound passed
+        # cleanly. `--untracked` still honours .gitignore, so the parity venv
+        # and build artifacts stay out.
+        found = subprocess.run(
+            ["git", "grep", "-l", "--untracked", "2e-6"], cwd=REPO,
+            capture_output=True, text=True).stdout.split()
+        # Matched on this family's EXPORT NAMES, not on the substring "gamma".
+        # The looser form flagged the beta family's own changelog, whose 2e-6 is
+        # its own bound and whose only "gamma" is `lgamma` inside the beta front
+        # factor -- a false positive that would have trained a reader to ignore
+        # this test.
+        # A scratch probe left in `src/` would be read here too, since
+        # `--untracked` honours only .gitignore: delete probe files rather than
+        # letting one decide this test.
+        exports = FAMILY_NAMES
+        for path in found:
+            if path in CLAIM_SITES:
+                continue
+            if path.startswith("parity/") or path.startswith("scripts/"):
+                continue          # the gates and their own tests
+            text = (REPO / path).read_text()
+            if not BOUND.search(text):
+                continue          # matched only inside a longer number
+            hit = [e for e in exports if e in text]
+            if hit:
+                self.fail(f"{path} mentions 2e-6 and {', '.join(hit)} but is "
+                          f"not in CLAIM_SITES, so the claim guard never reads "
+                          f"it")
+
+    def test_the_bound_is_not_silently_widened(self) -> None:
+        # Pins the table so widening it is a deliberate edit that a reviewer
+        # sees, with the documents in the same commit.
+        self.assertEqual(DOCUMENTED, {
+            "gamma_cdf": (5e7, 2e-6),
+            "gamma_sf": (5e7, 2e-6),
+            "gamma_pdf": (5e7, 2e-6),
+            "chi_squared_cdf": (1e8, 2e-6),
+            "chi_squared_sf": (1e8, 2e-6),
+            "chi_squared_pdf": (1e8, 2e-6),
+            "poisson_cdf": (5e7, 2e-6),
+            "gamma_inv_cdf": (1e7, 2e-6),
+            "chi_squared_inv_cdf": (2e7, 2e-6),
+        })
+
+    def test_the_shape_ladder_reaches_its_ceiling_exactly(self) -> None:
+        for export, (ceiling, _) in DOCUMENTED.items():
+            ladder = shape_ladder(ceiling, BEYOND[export])
+            self.assertIn(ceiling, ladder, export)
+            self.assertIn(BEYOND[export], ladder, export)
+            self.assertEqual(len(ladder), len(set(ladder)), export)
+
+
+
+class Oracle(unittest.TestCase):
+    """The reference itself, checked two ways that do not share its algorithm.
+
+    `check_gamma_accuracy.py` spells out the series and the continued fraction
+    rather than calling `mpmath.gammainc`, so those recursions are code this
+    repository owns and they need their own tests. A reference cannot catch an
+    error it makes identically to its subject, and the arithmetic precision is
+    only half the argument -- the other half is agreeing with something that
+    computes the same quantity a different way.
+
+    Route one is `mpmath.gammainc`, wherever it converges at this working
+    precision. Route two is a high-precision quadrature of the density, which
+    shares no series with either. Route three is the elementary closed forms at
+    shape 1 and 2, which share nothing with anything.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        # `staticmethod`, because a plain function assigned to a class attribute
+        # becomes a bound method and would be handed `self` as its first
+        # argument. Without it every test here fails with a TypeError about
+        # argument counts, which reads like a signature change in the gate.
+        p, q, pdf, inv = references()
+        cls.p = staticmethod(p)
+        cls.q = staticmethod(q)
+        cls.pdf = staticmethod(pdf)
+        cls.inv = staticmethod(inv)
+
+    def test_the_reference_agrees_with_mpmaths_own_incomplete_gamma(self) -> None:
+        from mpmath import gammainc, inf, mp, mpf
+        mp.dps = MP_DPS
+        checked = 0
+        for a in (0.5, 2.5, 100.0, 1e4, 1e6):
+            for ratio in (0.5, 0.9, 1.0, 1.1, 2.0):
+                x = a * ratio
+                try:
+                    theirs = gammainc(mpf(a), mpf(x), inf, regularized=True)
+                except Exception:
+                    continue  # their term budget, not our disagreement
+                mine = self.q(a, x)
+                if theirs <= 0 or theirs >= 1:
+                    continue  # no relative resolution to compare at
+                error = abs(mine - theirs) / theirs
+                self.assertLess(float(error), REF_AGREE,
+                                f"Q({a}, {x}): ours {mine} vs mpmath {theirs}")
+                checked += 1
+        self.assertGreaterEqual(checked, 10, "too few points actually compared")
+
+    def test_the_reference_agrees_with_a_quadrature_of_the_density(self) -> None:
+        # Q(a, x) is the integral of the density from x to infinity, which
+        # shares no series with the continued fraction or with mpmath's own
+        # incomplete gamma. The upper cut is far enough out that the tail
+        # beyond it is below the tolerance compared against.
+        from mpmath import mp, mpf, quad, sqrt
+        mp.dps = MP_DPS
+        checked = 0
+        for a in (2.5, 100.0, 1e4):
+            for ratio in (0.9, 1.0, 1.1):
+                A, X = mpf(a), mpf(a * ratio)
+                hi = X + 60 * sqrt(A) + 120
+                points = [X, hi]
+                if X < A - 1 < hi:
+                    points = [X, A - 1, hi]
+                theirs = quad(lambda t: self.pdf(t, A, 1), points)
+                mine = self.q(a, float(X))
+                error = abs(mine - theirs) / theirs
+                self.assertLess(float(error), REF_QUAD,
+                                f"Q({a}, {X}): series {mine} vs quadrature {theirs}")
+                checked += 1
+        self.assertGreaterEqual(checked, 9)
+
+    def test_the_reference_matches_the_elementary_closed_forms(self) -> None:
+        # At shape 1 and 2 the incomplete gamma is elementary and shares
+        # nothing at all with the recursions under test.
+        from mpmath import exp, mp, mpf
+        mp.dps = MP_DPS
+        for x in (0.25, 1.0, 2.0, 7.5, 40.0):
+            X = mpf(x)
+            self.assertLess(float(abs(self.q(1.0, x) - exp(-X)) / exp(-X)),
+                            REF_AGREE, f"Q(1, {x}) = exp(-x)")
+            two = (1 + X) * exp(-X)
+            self.assertLess(float(abs(self.q(2.0, x) - two) / two), REF_AGREE,
+                            f"Q(2, {x}) = (1 + x)exp(-x)")
+            dens = exp(-X)
+            self.assertLess(float(abs(self.pdf(x, 1.0, 1.0) - dens) / dens),
+                            REF_AGREE, f"pdf(x; 1, 1) = exp(-x)")
+
+    def test_the_reference_quantile_inverts_the_reference_cdf(self) -> None:
+        """Includes the documented `q` floor and the floored-start shapes.
+
+        `inv()` starts from `scipy.special.gammaincinv`, which is itself up to
+        2.35e-6 from the true root at `(1e7, 1e-6)` -- above this gate's own
+        bound. It is only a start, and the result is verified against the
+        reference `P` with a bisection fallback, so a bad start costs
+        iterations rather than accuracy. Extending the gate's quantile set
+        downward to the floor makes that worth asserting rather than reasoning
+        about: the shapes below are the ones where Wilson-Hilferty degenerates,
+        which is where a start is most likely to be poor.
+        """
+        from mpmath import mp, mpf
+        mp.dps = MP_DPS
+        shapes = (0.5, 1.0, 10.0, 1e3, 1e5) + QUANTILE_FLOOR_SHAPES
+        for shape in shapes:
+            for quantile in (QUANTILE_FLOOR, 0.001, 0.5, 0.999):
+                root = self.inv(shape, quantile)
+                back = self.p(shape, float(root))
+                error = abs(back - mpf(quantile)) / mpf(quantile)
+                self.assertLess(float(error), REF_ROOT,
+                                f"inv({shape}, {quantile}) = {root}, P of it is {back}")
+
+    def test_the_reference_quantile_matches_the_closed_form_at_shape_one(self) -> None:
+        # At shape 1 the quantile is -log(1 - q), so this pins the root finder
+        # against something that is not a root finder.
+        from mpmath import log, mp, mpf
+        mp.dps = MP_DPS
+        for quantile in (0.001, 0.05, 0.5, 0.9, 0.999):
+            exact = -log(1 - mpf(quantile))
+            root = self.inv(1.0, quantile)
+            self.assertLess(float(abs(root - exact) / exact), REF_ROOT,
+                            f"inv(1, {quantile}) = {root}, closed form {exact}")
+
+    def test_scipy_is_not_usable_as_this_gates_oracle(self) -> None:
+        """Why mpmath is a dependency, as a measurement rather than a sentence.
+
+        If a later change proposes dropping mpmath and referencing SciPy again,
+        this is the test that has to be confronted. It asserts the divergence is
+        still there and still larger than the bound the gate enforces -- not
+        that SciPy is bad, but that `gammainc`'s left tail at a large shape
+        cannot adjudicate a 2e-6 claim.
+        """
+        from scipy.special import gammainc as scipy_lower
+        worst = 0.0
+        for a, x in ((1e6, 995000.0), (5e7, 5e7 - 5 * 5e7 ** 0.5),
+                     (5e7, 5e7 - 8 * 5e7 ** 0.5)):
+            mine = self.p(a, x)
+            if float(mine) <= F32_MIN_NORMAL:
+                continue
+            theirs = float(scipy_lower(a, x))
+            worst = max(worst, float(abs(theirs - mine) / mine))
+        bound = max(b for _, b in DOCUMENTED.values())
+        self.assertGreater(worst, bound,
+                           f"scipy.special.gammainc's worst error over the three "
+                           f"recorded points is {worst:.2e}, no longer above the "
+                           f"{bound:.0e} this gate enforces. Re-measure before "
+                           f"concluding it has become usable.")
+
+
+# This has to stay at the END of the file. It sat above the `Oracle` class, so
+# `python parity/test_check_gamma_accuracy.py` ran 25 tests, printed OK, and
+# silently omitted all six oracle-validation tests -- including
+# `test_scipy_is_not_usable_as_this_gates_oracle`, the one that pins why mpmath
+# is a dependency at all. CI runs `unittest discover` and saw all 31, so this
+# was latent rather than live, and it is exactly the "a skipped test is
+# indistinguishable from a passing one" shape this file's docstring warns about.
+if __name__ == "__main__":
+    unittest.main()

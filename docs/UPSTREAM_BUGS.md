@@ -254,32 +254,42 @@ release.
       though that comment states it is relaying one peer measurement rather
       than offering independent corroboration.
     - **Affected Nautilus surface, as narrowed here:** the two incomplete-gamma
-      recursions `gammainc_series` and `gammaq_cf_rec`, and so
-      `Nautilus.Distributions.gamma_cdf`, `gamma_sf`, `chi_squared_cdf`,
-      `chi_squared_sf`, `gamma_inv_cdf` and `poisson_cdf`, and through them
-      `Nautilus.Testing.chi_squared_p_value` and
-      `Nautilus.Stats.likelihood_ratio_p_value`. Each recursion carries a
-      200-iteration budget, which as a flat recursion cost 200 frames and so
-      could not be spent in that lane.
+      recursions, now `gammainc_series_*` and `gammaq_cf_*` in
+      `src/distributions.ch`, and so `Nautilus.Distributions.gamma_cdf`,
+      `gamma_sf`, `gamma_pdf`, `chi_squared_cdf`, `chi_squared_sf`,
+      `chi_squared_pdf`, `gamma_inv_cdf`, `chi_squared_inv_cdf` and
+      `poisson_cdf`, and through them `Nautilus.Testing.chi_squared_p_value`
+      and `Nautilus.Stats.likelihood_ratio_p_value`. Each recursion carries a
+      65536-iteration budget, which as a flat recursion would cost 65536 frames
+      and so could not be spent in that lane at all.
     - **Not covered, and still aborting:** `betacf_rec` in the same module
-      carries the same 200-iteration budget with a fatter body, so it aborts
-      sooner, and it is **not** chunked. `chelis eval --file` on
+      carries its own iteration budget with a fatter body. The rest of this
+      bullet predates the incomplete beta's move to f64 and its four named
+      probes no longer abort; it is corrected separately rather than here,
+      because nothing in this change touches that recursion. `chelis eval --file` on
       `beta_cdf(0.5, 1e6, 1e6)`, `beta_cdf(0.5, 1e8, 1e8)`,
       `f_cdf(1.0, 1e7, 1e7)` and `f_cdf(1.0, 1e8, 1e8)` each exit 134 at this
       pin. `student_t_cdf`, `beta_cdf`, `f_cdf` and `binomial_cdf` all reach
       it. This entry does not claim that surface is fixed.
-    - **Workaround:** `gammainc_series` and `gammaq_cf_rec` in
-      `src/distributions.ch` spend their budget in chunks of sixteen through an
-      outer driver, so 200 iterations cost about 30 frames. The chunking exists
-      only for the frame cost: the iteration sequence, the convergence test and
-      the returned value are the flat form's, bit for bit, on every converging
-      input, and the non-converged base case still returns the partial sum.
+    - **Workaround:** both recursions spend their budget through four levels of
+      16-way chunking, so 65536 iterations cost about 64 frames. The chunking
+      exists only for the frame cost: it changes no arithmetic, and the
+      iteration sequence, the convergence test and the returned value are the
+      flat form's bit for bit at the same precision and tolerance. It is no
+      longer true that those match the ORIGINAL flat form -- the arithmetic
+      moved to f64 and the series' convergence test changed from a 1e-7 test
+      floored against 1.0 to a relative 1e-13, so the values differ from the
+      pre-f64 lane by design. The non-converged base case still returns the
+      partial sum.
     - **Reproducer:** the upstream issue's. The Nautilus-level form is
       `chelis eval --file` over a module binding
-      `gamma_cdf(2000.0f32, 2000.0f32, 1.0f32)`, which wants 187 series terms.
+      `gamma_cdf(2000.0f32, 2000.0f32, 1.0f32)`, which wants 330 series terms
+      at the current f64 tolerance. It wanted 187 under the former f32 lane, so
+      a reader comparing against an older copy of this entry should expect the
+      count to have risen rather than suspect a miscount.
     - **Why `chelis test` cannot probe it:** the test lane holds about 500
-      frames of the same shape, so a 200-frame recursion fits and reports a
-      value. See [`tests_blocked/README.md`](../tests_blocked/README.md).
+      frames of the same shape, so the chunked form's ~64 frames fit in either
+      lane and report a value. See [`tests_blocked/README.md`](../tests_blocked/README.md).
     - **Pinned result:** at Chelis 0.19.0 and 0.19.1 the depth boundaries are
       identical and deterministic over three repeats. With the chunked form,
       `chelis eval --file src/exampledistributions.ch` prints
@@ -288,8 +298,12 @@ release.
       runs `chelis eval --file` over `src/example*.ch`, which is the only gate
       that observes the abort.
     - **Re-probe trigger:** every pin bump, and any release touching eval-lane
-      stack sizing or tail calls. On a fix, restore the flat recursions and
-      confirm the example still prints `11111.0`.
+      stack sizing or tail calls. On a fix, the de-narrowing step is to replace
+      the four chunk levels with a single flat recursion over the same
+      arithmetic and confirm the example still prints `11111.0`. Note that a
+      flat form now needs 65536 frames rather than the 200 this entry was
+      written against, so a fix that merely raises the eval stack a little is
+      not enough to de-narrow it.
 
 ## Tracking
 

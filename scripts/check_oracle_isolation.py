@@ -10,11 +10,17 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+# `mpmath` is an oracle like the rest and is confined with them. It arrived
+# with the incomplete-gamma accuracy gate, which needs an arbitrary-precision
+# reference because SciPy's own `gammainc` is up to 22% wrong in the left tail
+# at a large shape. Adding the dependency without adding it here would have
+# left it the one oracle this guard could not see.
 ORACLE_MODULES = frozenset(
-    {"jax", "numpy", "pandas", "quantlib", "scipy", "sklearn", "sympy", "torch"}
+    {"jax", "mpmath", "numpy", "pandas", "quantlib", "scipy", "sklearn",
+     "sympy", "torch"}
 )
 ORACLE_CALL_RE = re.compile(
-    r"\b(?:jax|numpy|pandas|quantlib|scipy|sklearn|sympy|torch)"
+    r"\b(?:jax|mpmath|numpy|pandas|quantlib|scipy|sklearn|sympy|torch)"
     r"\.[A-Za-z_][A-Za-z0-9_.]*\s*\("
 )
 
