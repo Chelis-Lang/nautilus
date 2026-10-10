@@ -140,6 +140,18 @@ CASES = [
     ("lane_cdf_transition_outside", "gamma_cdf(cast(98418.859375, f32), cast(100000.0, f32), cast(1.0, f32))"),
     ("lane_sf_transition_inside", "gamma_sf(cast(101573.140625, f32), cast(100000.0, f32), cast(1.0, f32))"),
     ("lane_sf_transition_outside", "gamma_sf(cast(101581.140625, f32), cast(100000.0, f32), cast(1.0, f32))"),
+    # --- the underflowing standardised argument (nautilus#165) -------------
+    # `x / scale` is exactly zero in f32 and exact in f64 at both of these, and
+    # both returned 0.0 before the guards that read the f32 quotient were
+    # removed. They are anchored rather than merely compared, because a
+    # cross-lane comparison could not have caught this: the defect was in the
+    # Chelis source, so the eval lane and the C lane agreed on 0.0.
+    #
+    # `P(0.5, t)` is `erf(sqrt(t))`, which `math` evaluates directly, so the
+    # anchor needs no reference library. The chi-squared row is the same
+    # closed form at the smallest f32 subnormal, whose half is exactly zero.
+    ("lane_cdf_underflow", "gamma_cdf(cast(1e-30, f32), cast(0.5, f32), cast(1e20, f32))"),
+    ("lane_chi_subnormal", "chi_squared_cdf(cast(1.4e-45, f32), cast(1.0, f32))"),
     # --- ordinary cross-lane rows, including both quantiles and both tails --
     ("lane_cdf_small", "gamma_cdf(cast(0.5, f32), cast(0.5, f32), cast(2.5, f32))"),
     ("lane_sf_tail", "gamma_sf(cast(120000.0, f32), cast(100000.0, f32), cast(1.0, f32))"),
@@ -163,6 +175,13 @@ CLOSED_FORMS = {
     # chi-squared with 2 df is Gamma(1, 2), whose density is exp(-x/2)/2.
     "lane_chi_pdf_two": math.exp(-1.0) / 2.0,
     "lane_inv_ln2": math.log(2.0),
+    # P(0.5, 1e-30 / 1e20) = erf(sqrt(1e-50)) = 1.1283791670955126e-25.
+    "lane_cdf_underflow": math.erf(math.sqrt(1e-30 / 1e20)),
+    # The smallest f32 subnormal, spelled as the exact value `cast(1.4e-45,
+    # f32)` holds, over the chi-squared scale of 2. In f32 that quotient is 0.0
+    # -- it is the midpoint between zero and the subnormal and the tie rounds
+    # to even -- which is the whole reason this row exists.
+    "lane_chi_subnormal": math.erf(math.sqrt(1.4012984643248171e-45 / 2.0)),
 }
 # (name above the median, name below it). Both are inequalities, not values.
 MEDIAN_PAIRS = (("lane_median_hi_6", "lane_median_lo_6"),

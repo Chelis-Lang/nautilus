@@ -41,7 +41,7 @@ Two cases need separate guidance:
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions; the two families below are stated rather than estimated |
 | `poisson_pmf`, `binomial_pmf` | below 2e-6 at measured cases through `lambda` of 1e8 and `n` of 2e8 | Log space in f64; the note below states the sampled axes and limits |
-| the gamma family, nine exports | below 2e-6 at 1626 measured cases | Incomplete gamma in f64; the note below describes the sampled axes and three known failure regions outside them |
+| the gamma family, nine exports | below 2e-6 at 1626 measured cases | Incomplete gamma in f64; the note below describes the sampled axes and two known failure regions outside them |
 | Beta-family CDFs | below 2e-6 at measured cases through parameter 1e8 | `beta_cdf`, `f_cdf`, `binomial_cdf`; the note below states the sampled axes |
 | `student_t_cdf` | below 2e-6 at measured cases through `df` 1e20 | The incomplete beta below `df` of 1e7 and a large-`df` expansion above it |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
@@ -180,11 +180,17 @@ exactly; `scale` over 1, 2.5 and 0.0078125 for the densities and CDFs, and
 0.999. References come from an arbitrary-precision oracle and any whose value
 f32 cannot hold as a normal number is excluded.
 
-**Outside that set, three regions are known to be wrong.** Two are in the quantiles and are described
-below. The third is the CDF: the parameter guards read the **f32** quotient
-`x / scale`, so when that quotient underflows, `gamma_cdf` returns exactly 0.0
-for an answer f32 can hold. `gamma_cdf(1e-30, 0.25, 1e20)` is 0.0 against a
-true 3.49e-13, while the same call at `scale = 1` returns the correct 3.49e-8.
+The four CDFs and survival functions carry one rung off that walk: a far lower
+tail at a shape below 1, where the standardised argument `x / scale` is zero in
+f32 and exact in f64 -- `gamma_cdf(1e-30, 0.5, 1e20)` and
+`chi_squared_cdf(1.4e-45, 1)` among them. The walk cannot reach it at any
+scale, because it places `x` within twenty standard deviations of
+`shape*scale`, where the quotient is about `shape`. Two of the rung's shapes
+are small enough that the *upper* tails resolve there as well, since `1 - P` is
+visible in f32 only once `P` passes `2^-25`, about 3.0e-8.
+
+**Outside that set, two regions are known to be wrong.** Both are in the
+quantiles and are described below.
 
 Those two limits on the quantiles are one defect seen twice, and it is worth
 knowing which, because it tells you when to distrust a value. `gamma_inv_cdf`
@@ -211,9 +217,9 @@ Both are convergence limits of the 80-step Newton refinement. A wider
 working precision alone does not extend that iteration budget.
 
 **Do not reach for the CDF as a substitute without checking the same
-parameters.** Solving `gamma_cdf(x, shape, scale) = q` can fail for the
-underflow reason given above. The CDF is accurate over the measured scale
-values; it is not a general escape from the quantile's limits.
+parameters.** The CDF is accurate over the measured scale values, which is not
+the same as accurate over the quantile's range; it is not a general escape from
+the quantile's limits.
 
 For your own calibration, check the reference in the tails and at the
 parameters you use. A match near the mean does not establish tail accuracy.

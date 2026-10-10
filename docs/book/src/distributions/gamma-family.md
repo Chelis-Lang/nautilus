@@ -32,14 +32,17 @@ shape < 1.
 
 Uses the regularized lower incomplete gamma function (series expansion for
 x/scale < shape+1, continued-fraction complement otherwise), evaluated in f64
-and returned as f32. Returns 0 for x <= 0. The parameter guards read the f32
-`x / scale`, so a finite `x` whose f32 quotient overflows still answers as
-`x = +inf` does. The underflowing end of that guard is worse:
-`gamma_cdf(1e-30, 0.5, 1e20)` returns `0.0` where the answer
-is `1.128379e-25`, because the f32 quotient is zero while the f64 quotient
-the body uses is exact. It needs a shape below 1, where `P(a, x)` is much
-larger than `x`; at shape 1 and above the true answer underflows too and
-`0.0` is correct.
+and returned as f32. Returns 0 for x <= 0 and NaN for a non-positive `shape` or
+`scale`.
+
+The standardised argument `x / scale` is formed and tested in f64, so a far
+lower tail survives a quotient f32 cannot hold: `gamma_cdf(1e-30, 0.5, 1e20)`
+is `1.1283791e-25` against a true `1.128379158e-25`, where the f32 quotient is
+exactly zero. That needs a shape
+below 1, where `P(a, x)` is much larger than `x`; at shape 1 and above the true
+answer underflows f32 as well and `0.0` is the correct return. A finite `x`
+whose f32 quotient overflows still answers as `x = +inf` does, because `1e38 /
+1e-10` is a finite 1e48 in f64 and the continued fraction returns 1.0 there.
 
 **`gamma_sf(x: f32, shape: f32, scale: f32) -> f32`**
 

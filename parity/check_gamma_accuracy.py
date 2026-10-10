@@ -215,6 +215,39 @@ QUANTILE_FLOOR_SHAPES = (1.1, 1.25, 1.5, 1.9, 2.0, 2.5)
 # rather than a margin.
 QUANTILE_SCALES = (1e-20, 1.0, 2.5, 1e20)
 QUANTILE_SCALES_THIN = (1.0, 1e20)
+# The CDF rung where the standardised argument `x / scale` is zero in f32 and
+# exact in f64, and the reason it is a separate block rather than a `SCALES`
+# entry.
+#
+# `gamma_cdf` and `gamma_sf` used to test that quotient in f32 in front of a
+# body that evaluates it in f64, so an underflowing quotient took the
+# `xs <= 0` clause and returned exactly 0.0 -- for an answer f32 holds
+# comfortably. `gamma_cdf(1e-30, 0.5, 1e20)` returned 0.0 against a true
+# 1.128379e-25 (nautilus#165).
+#
+# **A shape below 1 is what makes the discarded answer representable**, and
+# that is why these shapes and not the ladder's: `P(a, x) ~ x^a / Gamma(a+1)`
+# as `x -> 0`, so at `a = 0.5` the answer is the square root of a quantity 50
+# decades under f32's floor and lands 20 decades over it. At `a >= 1` the true
+# answer underflows as well and 0.0 is correct, so no shape on the main ladder
+# -- which starts at 0.5 and is otherwise integral or larger -- can exhibit
+# this at all.
+#
+# A new `SCALES` entry would have been the wrong shape of fix twice over. It
+# multiplies the whole eleven-shape, eleven-z grid for three exports to reach a
+# region that is one corner, and the corner is not reachable from `Z_WALK` at
+# any scale: that walk places `x` within twenty standard deviations of
+# `shape*scale`, where the quotient is about `shape`, never near zero.
+UNDERFLOW_SCALE = 1e20
+UNDERFLOW_SHAPES = (0.25, 0.5, 0.75)
+UNDERFLOW_X = (1e-30, 1e-38)
+# `chi_squared_cdf` fixes `scale = 2`, which reads as immune and is not. The
+# smallest f32 subnormal halves to exactly 0.0 -- the quotient is the midpoint
+# between 0 and that subnormal, and the tie rounds to even -- so the defect
+# reached a function whose scale no caller chooses, at exactly one `x`. Its
+# `df` must be below 2 for the shape `df/2` to be below 1.
+UNDERFLOW_SUBNORMAL_X = 1.4012984643248171e-45
+UNDERFLOW_DF = (1.0, 0.5)
 
 
 class AccuracyError(Exception):
@@ -537,6 +570,53 @@ def cases() -> list[tuple[str, str, str, float, float]]:
                         continue
                     add(export, (X, K, S), reference_for(export, X, K, S), shape,
                         allow_one=(export == "gamma_pdf"))
+
+    # ---- the underflow rung on the standardised argument -----------------
+    # Every row here is a case the subject returned 0.0 at before
+    # nautilus#165, so this block is a detector and not only coverage. The
+    # `assert_quotient_underflows` call is what keeps it one: the rows are
+    # chosen for a property of f32 arithmetic, and a later edit to a constant
+    # above could leave them looking the same while probing nothing. A rung
+    # that no longer underflows is a broken rung, not a passing one.
+    def assert_quotient_underflows(args: tuple, x: float, scale: float) -> None:
+        if f32(f32(x) / f32(scale)) != 0.0:
+            raise AccuracyError(
+                f"the underflow rung's {args} has an f32 quotient of "
+                f"{f32(f32(x) / f32(scale))!r}, not 0.0, so it does not probe "
+                f"the region it exists for")
+
+    # The two survival functions are deliberately absent, and the reason is a
+    # measurement rather than an oversight. Their reference here is `1 - P`
+    # with a `P` of at most 3.5e-13, which is strictly below 1.0 as a double
+    # -- so `add` would keep it -- and is exactly 1.0 once f32 holds it. Such a
+    # row cannot fail: its relative error is the 3.5e-13 the return type
+    # quantises away, nine decades inside the bound. Carrying four cases that
+    # cannot fail would misreport the rung's size, and the defect is one-sided
+    # for the same arithmetic reason. `gamma_sf`'s behaviour here is pinned in
+    # `tests/distributions.ch` instead, where an exact comparison against 1.0
+    # is the assertion that means something.
+    before = len(out)
+    S = f32(UNDERFLOW_SCALE)
+    for shape in UNDERFLOW_SHAPES:
+        K = f32(shape)
+        for x in UNDERFLOW_X + (UNDERFLOW_SUBNORMAL_X,):
+            X = f32(x)
+            assert_quotient_underflows((X, K, S), X, S)
+            add("gamma_cdf", (X, K, S), reference_for("gamma_cdf", X, K, S), shape)
+    gamma_rows = len(out) - before
+    for df in UNDERFLOW_DF:
+        D = f32(df)
+        X = f32(UNDERFLOW_SUBNORMAL_X)
+        assert_quotient_underflows((X, D), X, 2.0)
+        add("chi_squared_cdf", (X, D), chi_reference("chi_squared_cdf", X, D), df)
+    chi_rows = len(out) - before - gamma_rows
+    if gamma_rows < len(UNDERFLOW_SHAPES) or chi_rows < 1:
+        raise AccuracyError(
+            f"the underflow rung contributed {gamma_rows} gamma and {chi_rows} "
+            f"chi-squared usable cases; it is meant to contribute at least "
+            f"{len(UNDERFLOW_SHAPES)} and 1. Every row whose reference is "
+            f"under f32's smallest normal is dropped, so a shape raised to 1 "
+            f"or above empties this block")
 
     # ---- the chi-squared trio of (x, df) ---------------------------------
     # `chi_squared_pdf(x, df)` is `gamma_pdf(x, df/2, 2)`. It belongs here
