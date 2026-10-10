@@ -67,6 +67,55 @@ CLAIM_SITES = (
     "docs/book/src/stats/testing.md",
 )
 
+# The nine covered exports plus `chi_squared_p_value`, which `src/testing.ch`
+# defines as an exact alias of `chi_squared_sf` and which therefore publishes
+# this family's bound without appearing in `DOCUMENTED`. Round 5 found a false
+# claim at exactly that name, invisible to a search keyed on `DOCUMENTED` alone.
+FAMILY_NAMES = tuple(DOCUMENTED) + ("chi_squared_p_value",)
+
+# The bound as a whole number, not as a substring. `git grep "2e-6"` matches
+# inside `7.2e-66` -- a real f32-underflow comment in `tests/testing.ch` that
+# also names `chi_squared_p_value`, so the looser form reported a claim site
+# that publishes no claim.
+BOUND = re.compile(r"(?<![\d.])2e-6(?![\d])")
+
+
+def blocks(text: str, prose: bool = True):
+    """Yield `(first line number, text)` for each claim-sized block.
+
+    A table row is its own block, because a markdown table is one paragraph and
+    windowing it as such would let a bare row pass on a sibling row's
+    qualifier. Everything else is windowed by paragraph, because a prose claim
+    splits across lines: `precision.md` puts the bound and the count on one
+    line of a blockquote and the gate that enforces them on the next, which a
+    line-based window could not see and a review round's mutant exploited.
+
+    `prose=False` is for source files, which have no blank-line paragraphs: a
+    `--` comment block runs for fifty lines, so paragraph windowing made
+    `src/distributions.ch` one block and reported its `student_t_cdf`
+    commentary as a bare gamma claim.
+    """
+    if not prose:
+        for i, line in enumerate(text.splitlines(), 1):
+            yield i, line
+        return
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        if not lines[i].strip():
+            i += 1
+            continue
+        if lines[i].lstrip().startswith("|"):
+            yield i + 1, lines[i]
+            i += 1
+            continue
+        j = i
+        while j < len(lines) and lines[j].strip() \
+                and not lines[j].lstrip().startswith("|"):
+            j += 1
+        yield i + 1, "\n".join(lines[i:j])
+        i = j
+
 IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 CALL = re.compile(r"^(\w+)\((.*)\)$")
 
@@ -444,16 +493,37 @@ class Coverage(unittest.TestCase):
                             f"{export} not probed beyond its ceiling")
 
     def test_the_published_claim_matches_what_the_gate_enforces(self) -> None:
-        """The guard four review rounds asked for, closing the class.
+        """Compare this family's published claims against the gate.
 
-        Each of those rounds found a defect in the WORDING of this family's
-        accuracy claim rather than in the arithmetic, and each found a new one
-        by hand, because nothing in the repository compared a published
-        sentence against the gate. The gate's own docstring says it does not
-        read the documents -- correct for the gate, which must not be able to
-        make itself pass. A test may, and this is it.
+        Five review rounds found a defect in the WORDING of this family's
+        accuracy claim rather than in the arithmetic, each by hand, because
+        nothing in the repository compared a published sentence against the
+        gate. The gate's own docstring says it does not read the documents --
+        correct for the gate, which must not be able to make itself pass. A
+        test may, and this is it.
 
-        Three properties, each the direct form of a finding:
+        Properties (2) and (3) are literal strings and close nothing: they are
+        a regression test against wordings that were actually published and
+        falsified, and a reworded claim with the same defect walks past them.
+        An earlier version of this docstring claimed to close the class, and
+        round 5 refuted it by hand -- a BARE "below 2e-6" for
+        `chi_squared_p_value`, in a file this test already read, a form none of
+        the banned sentences covers.
+
+        Property (4) is the answer to that round and the only leg here stated
+        as a property. It is proven on twelve mutants: the round-5 defect, a
+        novel bare wording, the qualifier deleted from the blockquote and from
+        the changelog, three single-site stale counts and one double, a grid
+        rung added, a ceiling raised, and the gate's own bound widened.
+
+        What (4) still cannot see, stated so nobody reads its green as more
+        than it is: a claim that spells the bound some other way (`BOUND`
+        matches the numeral), and one that names no export, no case count and
+        not "the gamma family" -- which is why the headline blockquote is
+        selected on its count rather than on the qualifier that a mutant can
+        delete.
+
+        Four properties, each the direct form of a finding:
 
         1. The published case count equals the number of cases the gate
            actually enforces. Round 4 noted nothing pinned 1626, so the figure
@@ -476,15 +546,31 @@ class Coverage(unittest.TestCase):
         # and `test_the_claim_site_list_is_complete` below pins it.
         sites = {name: (REPO / name).read_text() for name in CLAIM_SITES}
 
-        # (1) the published count is the enforced count, wherever it is published
-        published = [n for n, t in sites.items() if "cases `parity" in t
-                     or "cases the accuracy gate" in t]
+        # (1) EVERY published count is the enforced count. Checked per
+        # occurrence, not per file: an earlier version asserted that the right
+        # number appeared somewhere in the text, so a file with one correct and
+        # one stale occurrence passed -- `precision.md` publishes the count
+        # twice, in a table row and a blockquote. A sibling gate's count is
+        # skipped by the gate it names, which is why the discrete fragment's
+        # own 582 does not fail here.
+        published = 0
+        for name, text in sites.items():
+            for i, line in blocks(text, name.endswith(".md")):
+                for m in re.finditer(r"(\d[\d,]*)\s+cases", line):
+                    if "check_pmf_accuracy" in line or "check_beta_accuracy" in line:
+                        continue
+                    if not ("check_gamma_accuracy.py" in line
+                            or "accuracy gate" in line
+                            or any(f in line for f in FAMILY_NAMES)
+                            or "the gamma family" in line):
+                        continue
+                    published += 1
+                    self.assertEqual(
+                        int(m.group(1).replace(",", "")), enforced,
+                        f"{name}:{i} publishes a case count that is not the "
+                        f"{enforced} the gate enforces; it has gone stale "
+                        f"against the grid")
         self.assertTrue(published, "no site publishes a case count at all")
-        for name in published:
-            self.assertIn(f"{enforced} cases", sites[name],
-                          f"{name} publishes a case count that is not the "
-                          f"{enforced} the gate enforces; it has gone stale "
-                          f"against the grid")
 
         # (2) nothing claims a bound over what is merely MEASURED
         for name, text in sites.items():
@@ -508,6 +594,47 @@ class Coverage(unittest.TestCase):
                              f"{name} states a parameter range again; three "
                              f"rounds falsified three successive versions of "
                              f"that form")
+
+        # (4) the one leg that is a property rather than a denylist: a claim
+        # line that names this family beside the bound must say whose
+        # enforcement it means. Round 5's P1 was a bound with NO qualifier at
+        # all -- `chi_squared_p_value`, an exact alias of `chi_squared_sf`,
+        # published a flat "below 2e-6" in a site already listed above, where
+        # the gate's own stdout reads 3.79e-6 at df 4e8 and 3.4e-3 at 1e9. The
+        # denylist legs cannot see a sentence nobody has written yet; this one
+        # can. `blocks()` windows a table row by itself and prose by paragraph,
+        # so a claim whose bound and qualifier sit on different lines is read
+        # whole.
+        for name, text in sites.items():
+            for i, block in blocks(text, name.endswith(".md")):
+                # Collapsed, because a prose claim wraps: this family's own
+                # changelog fragment breaks the line between
+                # `parity/check_gamma_accuracy.py` and `enforces`, and matching
+                # the raw text called its qualifier missing.
+                line = re.sub(r"\s+", " ", block)
+                if not BOUND.search(line):
+                    continue
+                if "check_pmf_accuracy" in line or "check_beta_accuracy" in line:
+                    continue          # a sibling gate's own bound
+                named = [f for f in FAMILY_NAMES + ("the gamma family",)
+                         if f in line]
+                # A block publishing a case count is this family's claim even
+                # when it names no export: the headline blockquote does not.
+                # Selecting on the family name ALONE let a mutant escape by
+                # deleting the qualifier, because the qualifier was also what
+                # put the block in scope. A count cannot be deleted without
+                # deleting the claim.
+                if not named and not re.search(r"(\d[\d,]*)\s+cases", line):
+                    continue
+                named = named or ["this family's case count"]
+                self.assertTrue(
+                    any(q in line for q in ("gate enforces",
+                                            "check_gamma_accuracy.py` enforces")),
+                    f"{name}:{i} states this family's 2e-6 bound beside "
+                    f"{named[0]} without saying it is what the gate ENFORCES. "
+                    f"A bare bound reads as universal and is false outside the "
+                    f"ceilings: 3.79e-6 at gamma_cdf(2e8, 2e8, 1), and 3.4e-3 "
+                    f"at chi_squared_p_value(1e9, 1e9)")
 
     def test_the_claim_site_list_is_complete(self) -> None:
         """`CLAIM_SITES` must name every file that publishes a bound.
@@ -535,13 +662,18 @@ class Coverage(unittest.TestCase):
         # its own bound and whose only "gamma" is `lgamma` inside the beta front
         # factor -- a false positive that would have trained a reader to ignore
         # this test.
-        exports = tuple(DOCUMENTED)
+        # A scratch probe left in `src/` would be read here too, since
+        # `--untracked` honours only .gitignore: delete probe files rather than
+        # letting one decide this test.
+        exports = FAMILY_NAMES
         for path in found:
             if path in CLAIM_SITES:
                 continue
             if path.startswith("parity/") or path.startswith("scripts/"):
                 continue          # the gates and their own tests
             text = (REPO / path).read_text()
+            if not BOUND.search(text):
+                continue          # matched only inside a longer number
             hit = [e for e in exports if e in text]
             if hit:
                 self.fail(f"{path} mentions 2e-6 and {', '.join(hit)} but is "

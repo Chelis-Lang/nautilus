@@ -98,7 +98,7 @@ table.
 |---|---|---|
 | `z_p_value_upper`, `z_p_value_two_sided` | 8.9e-8 | `Phi(-z)`, exact by standard-normal symmetry |
 | `t_p_value_upper`, `t_p_value_two_sided` | 1.2e-7 | `student_t_cdf(-t, df)`, exact by Student-t symmetry |
-| `chi_squared_p_value` | below 2e-6 | `chi_squared_sf`, which returns the upper regularized incomplete gamma `Q` directly, and inherits its bound; 4.2e-6 was this table's own figure for the f32 lane that preceded it |
+| `chi_squared_p_value` | below 2e-6 at every case the accuracy gate enforces, which reaches df 1e8 | `chi_squared_sf`, which returns the upper regularized incomplete gamma `Q` directly, and inherits its bound; 4.2e-6 was this table's own figure for the f32 lane that preceded it |
 
 The Student-t bound comes from `betai` below `df` of 1e7 and from the large-`df`
 expansion above it. It no longer grows with `df`: over a
