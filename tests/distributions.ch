@@ -796,9 +796,11 @@ def test_gamma_cdf_keeps_an_answer_the_f32_quotient_underflows_away() -> unit ! 
 -- there". At shape 1 and above the answer is at most the quotient itself --
 -- `P(a, t) <= t^a / Gamma(a+1) <= t` for `a >= 1` and `t < 1` -- and a
 -- quotient that underflowed in f32 is at most half f32's smallest subnormal.
--- So f32 carries none of the answer at any shape at or above 1, and 0.0 is
--- what the lane returns. `P(1, 1e-50)` is `1e-50` and `P(2, 1e-50)` is
--- `5e-101`.
+-- So f32 carries none of the answer at any shape at or above 1. The lane
+-- returns 0.0 everywhere in that half of the class except at the one tie
+-- argument the next test pins, where it returns the smallest subnormal --
+-- equally 100% relative error, since f32 has no value between them.
+-- `P(1, 1e-50)` is `1e-50` and `P(2, 1e-50)` is `5e-101`.
 def test_gamma_cdf_still_returns_zero_where_zero_is_the_answer() -> unit ! { Test } = {
   one = gamma_cdf(cast(1e-30, f32), cast(1.0, f32), cast(1e20, f32))
   two = gamma_cdf(cast(1e-30, f32), cast(2.0, f32), cast(1e20, f32))
@@ -826,8 +828,10 @@ def test_gamma_cdf_at_the_shape_one_tie_returns_the_subnormal() -> unit ! { Test
 -- this file asserted it could not. At shape 0.5 it genuinely cannot: `Q` is
 -- `1 - P` with a `P` of 1.1e-25, which is 1.0 in f32 whichever route computes
 -- it. But `P(a, x)` grows as `x^a`, so a small enough shape lifts it above
--- f32's resolution at 1.0 -- about 6e-8 -- and then the upper tail is
--- resolvable too and the f32 guard destroyed it as well:
+-- f32's resolution at 1.0 -- 2^-25, or 3.0e-8, because `1 - P` rounds to
+-- nearest and so leaves exactly 1.0 once `P` passes HALF the 6.0e-8 spacing
+-- below 1.0 -- and then the upper tail is resolvable too and the f32 guard
+-- destroyed it as well:
 -- `gamma_sf(1e-30, 0.01, 1e20)` returned 1.0 against a true 0.6819677, a
 -- relative error of 0.47, and `chi_squared_sf(1.4e-45, 0.02)` returned 1.0
 -- against a true 0.6444290, which is 0.55.
@@ -863,10 +867,11 @@ def test_gamma_sf_is_still_exactly_one_above_the_resolution_boundary() -> unit !
 -- subnormal halves to exactly 0.0, because the result is the midpoint between
 -- 0 and that subnormal and the tie rounds to even. So the defect reached a
 -- function whose scale no caller chooses, at exactly one `x` -- and at that
--- one `x` for every `df` below about 3, which is the part worth measuring.
--- The named witness is not the worst: `chi_squared_cdf(1.4e-45, 1)` discarded
--- 2.99e-23, while at `df = 0.1` the same `x` discarded 0.0057, a 0.57%
--- probability returned as exactly zero.
+-- one `x` for every `df` at or below 2, which is the part worth measuring.
+-- Measured: non-zero at `df` 0.1, 0.5, 1, 1.5, 1.9 and 2.0, and exactly 0.0
+-- from 2.1 upward. The named witness is not the worst:
+-- `chi_squared_cdf(1.4e-45, 1)` discarded 2.99e-23, while at `df = 0.1` the
+-- same `x` discarded 0.0057, a 0.57% probability returned as exactly zero.
 --
 -- The adjacent subnormal is the control: `2.8e-45 / 2` is `1.4e-45`, which is
 -- not zero, so that row returned the right answer before the fix and the right

@@ -61,8 +61,9 @@ That loss is about 6e-8, for any accuracy of the incomplete gamma. Use
 `sub(cast(1.0, f32), gamma_cdf(..))`.
 
 `gamma_sf` reads the same f64 standardised argument, and that matters at a
-small shape. `P` grows as `x^shape`, so a shape small enough to lift `P` above
-the 6e-8 just mentioned makes the upper tail resolvable too:
+small shape. `P` grows as `x^shape`, and once `P` passes `2^-25` -- about
+3.0e-8, which is half the 6e-8 just mentioned, because `1 - P` rounds to
+nearest -- the upper tail is resolvable too:
 `gamma_sf(1e-30, 0.01, 1e20)` is `0.6819677`, not `1.0`. There is no shape
 threshold to quote, because the boundary moves with the quotient -- at
 `x / scale` of 1e-50 the result differs from 1.0 up to shape 0.15 and is

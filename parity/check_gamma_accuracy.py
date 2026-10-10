@@ -247,12 +247,19 @@ UNDERFLOW_SCALE = 1e20
 # so `Q` is exactly 1.0 in f32 and only `gamma_cdf` can see the defect there.
 # 0.01 and 0.05 are where the UPPER tail loses as well, and an earlier version
 # of this block asserted that could not happen. `P(a, x)` grows as `x^a`, so a
-# small enough shape lifts it above f32's resolution at 1.0 -- about 6e-8 --
-# and then `1 - P` is resolvable too: `gamma_sf(1e-30, 0.01, 1e20)` returned
-# 1.0 against a true 0.6819677, a relative error of 0.47, and
-# `chi_squared_sf(1.4e-45, 0.02)` returned 1.0 against a true 0.6444290, a
-# relative error of 0.55 -- the worst in this family's grid in either
-# direction.
+# small enough shape lifts it above f32's resolution at 1.0 and then `1 - P` is
+# resolvable too: `gamma_sf(1e-30, 0.01, 1e20)` returned 1.0 against a true
+# 0.6819677, a relative error of 0.47, and `chi_squared_sf(1.4e-45, 0.02)`
+# returned 1.0 against a true 0.6444290, a relative error of 0.55 -- the worst
+# in this family's grid in either direction.
+#
+# **That resolution is 2^-25, not 2^-24.** The spacing below 1.0 is
+# 5.9604645e-08, but `1 - P` rounds to nearest, so it leaves exactly 1.0 once
+# `P` passes HALF of it: measured, `f32(1 - 2.9832e-08)` is 0.99999994 while
+# `f32(1 - 2.9773e-08)` is 1.0, and the tie 2^-25 itself rounds to 1.0. The
+# factor of two is load-bearing for this grid rather than cosmetic -- at shape
+# 0.15 and a quotient of 1e-50, `P` is 3.39e-08, which is below 2^-24 and
+# resolvable all the same.
 #
 # **There is no shape threshold to state**, because the boundary is set by the
 # quotient as well. Measured on this lane: at a quotient of 1e-50 the survival
@@ -270,7 +277,13 @@ UNDERFLOW_X = (1e-30, 1e-38)
 UNDERFLOW_SUBNORMAL_X = 1.4012984643248171e-45
 # `df/2` is the gamma shape, so these cover both regimes: 0.02 and 0.1 put the
 # shape at 0.01 and 0.05, where `chi_squared_sf` resolves, and 0.5 and 1.0 put
-# it at 0.25 and 0.5, where only `chi_squared_cdf` does.
+# it at 0.25 and 0.5, where only `chi_squared_cdf` does. A `df` above 2 would
+# detect nothing -- the shape is then above 1 and f32 cannot carry the answer
+# in either direction -- which is why the set stops at 1.0. The fix does still
+# change the answer AT `df = 2`, where the shape is exactly 1 and the return is
+# the smallest subnormal rather than zero; that one argument is pinned in
+# `tests/distributions.ch` rather than here, because its reference is below
+# f32's smallest normal and `add` would discard the row.
 UNDERFLOW_DF = (0.02, 0.1, 0.5, 1.0)
 
 
@@ -596,8 +609,11 @@ def cases() -> list[tuple[str, str, str, float, float]]:
                         allow_one=(export == "gamma_pdf"))
 
     # ---- the underflow rung on the standardised argument -----------------
-    # Every row here is a case the subject returned 0.0 at before
-    # nautilus#165, so this block is a detector and not only coverage. The
+    # Every row here is a case the subject got wrong before nautilus#165, so
+    # this block is a detector and not only coverage -- 0.0 for the two lower
+    # tails and 1.0 for the two upper ones, which is why the wording is not
+    # "returned 0.0": the survival rows this block gained in review returned
+    # 1.0, and an earlier version of this sentence had outlived them. The
     # `assert_quotient_underflows` call is what keeps it one: the rows are
     # chosen for a property of f32 arithmetic, and a later edit to a constant
     # above could leave them looking the same while probing nothing. A rung
@@ -609,12 +625,24 @@ def cases() -> list[tuple[str, str, str, float, float]]:
                 f"{f32(f32(x) / f32(scale))!r}, not 0.0, so it does not probe "
                 f"the region it exists for")
 
-    # Both directions are generated, and `add` drops the rows f32 cannot
-    # resolve: a survival reference at a shape of 0.25 or above is `1 - P` with
-    # a `P` of at most 3.5e-13, which is strictly below 1.0 as a double but
-    # exactly 1.0 once f32 holds it, so such a row cannot fail and is excluded
-    # by the `>= 1.0` test. The counts below are asserted per direction
-    # precisely because that filter is what decides them.
+    # Both directions are generated, and the survival rows at a shape of 0.25
+    # or above are KEPT AND INERT. Their reference is `1 - P` with a `P` of at
+    # most 3.5e-13, which is strictly below 1.0 as a double -- so `add`'s
+    # `>= 1.0` test does not fire -- and exactly 1.0 once f32 holds it, so the
+    # largest relative error they can report is that same 3.5e-13, six decades
+    # inside the bound. An earlier version of this comment claimed they were
+    # excluded; they are not, and a reviewer proved it by narrowing the shape
+    # set and watching the counts floor below stay silent.
+    #
+    # They are left in rather than filtered, because this gate already keeps 18
+    # such rows outside this block -- every `gamma_sf` and `chi_squared_sf` row
+    # at `z = -20` for a shape of 10 or more is in the same position -- and a
+    # filter applied to the rung alone would be a special case for four rows.
+    # What that costs is that the counts floor cannot see an emptied upper
+    # tail, so the leg that does is in
+    # `test_the_rung_probes_BOTH_tails`: it requires a survival shape at or
+    # below 0.05 for the gamma pair and a `df` at or below 0.1 for the
+    # chi-squared pair, which is where the upper tails are measured to lose.
     #
     # An earlier version of this block generated no survival rows at all, on
     # the ground that the defect was one-sided. It is not. That reasoning took
@@ -642,19 +670,19 @@ def cases() -> list[tuple[str, str, str, float, float]]:
     counts = {name: sum(1 for case in out[before:] if case[1] == name)
               for name in ("gamma_cdf", "gamma_sf",
                            "chi_squared_cdf", "chi_squared_sf")}
-    # One per export per direction is the floor that keeps all four detectors
-    # alive. Raising every shape to 1 or above empties the lower tails, because
-    # every reference then falls under f32's smallest normal; raising every
-    # shape past the resolution boundary empties the upper tails, because every
-    # survival reference then reads as exactly 1.0. Both edits leave the block
-    # looking intact.
+    # One row per export is the floor, and it is a weaker guard than it looks:
+    # raising every shape to 1 or above does empty the two lower tails, because
+    # every reference then falls under f32's smallest normal, but raising every
+    # shape past the resolution boundary does NOT empty the upper tails -- it
+    # leaves them full of the inert rows described above. The leg that catches
+    # that edit is the shape floor in `test_the_rung_probes_BOTH_tails`.
     if any(count < 1 for count in counts.values()):
         raise AccuracyError(
             f"the underflow rung contributed {counts}, and every one of the "
             f"four must be at least 1. A lower tail is emptied by a shape at "
             f"or above 1, where the reference falls under f32's smallest "
-            f"normal; an upper tail is emptied by a shape above the resolution "
-            f"boundary, where `1 - P` reads as exactly 1.0")
+            f"normal. An emptied UPPER tail does not reach here -- see "
+            f"test_the_rung_probes_BOTH_tails for that leg")
 
     # ---- the chi-squared trio of (x, df) ---------------------------------
     # `chi_squared_pdf(x, df)` is `gamma_pdf(x, df/2, 2)`. It belongs here

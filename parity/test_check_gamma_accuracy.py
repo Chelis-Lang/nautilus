@@ -431,7 +431,9 @@ class Coverage(unittest.TestCase):
         while `gamma_sf(1e-30, 0.02, 1e20)` returned 1.0 for a true 0.899.
 
         The survival rows exist at a small shape and only there, because `1 - P`
-        is resolvable in f32 only where `P` rises above about 6e-8. So this test
+        is resolvable in f32 only where `P` rises above 2^-25, about 3.0e-8 --
+        half the spacing below 1.0, because `1 - P` rounds to nearest. So this
+        test
         guards the direction that the shape set can silently empty.
         """
         for export in ("gamma_cdf", "gamma_sf"):
@@ -452,6 +454,15 @@ class Coverage(unittest.TestCase):
         # And the losing region has to be probed at a shape where it is known
         # to lose, not merely at some shape below 1: 0.05 loses at both ends of
         # UNDERFLOW_X, 0.25 loses at neither.
+        #
+        # **This is the only leg that sees an emptied upper tail**, so it has
+        # to cover both survival exports. The counts floor in `cases()` cannot:
+        # a survival row above the resolution boundary is still generated and
+        # still kept -- its reference is below 1.0 as a double and exactly 1.0
+        # in f32 -- so narrowing the shape set leaves the floor satisfied by
+        # rows that can never fail. A review round proved that by narrowing
+        # `UNDERFLOW_DF` to (0.5, 1.0) and watching `chi_squared_sf` keep one
+        # inert row while an earlier version of this test passed.
         sf_shapes = {arguments(case[2])[1] for case in self.spec
                      if case[1] == "gamma_sf"
                      and arguments(case[2])[2] == f32(UNDERFLOW_SCALE)}
@@ -461,6 +472,15 @@ class Coverage(unittest.TestCase):
             f"below 0.05, where the upper tail is measured to lose at every "
             f"`x` in UNDERFLOW_X. A shape that loses at one `x` and not the "
             f"other leaves half the rung inert")
+        chi_sf_dfs = {arguments(case[2])[1] for case in self.spec
+                      if case[1] == "chi_squared_sf"
+                      and arguments(case[2])[0] == f32(UNDERFLOW_SUBNORMAL_X)}
+        self.assertTrue(
+            any(df <= f32(0.1) for df in chi_sf_dfs),
+            f"chi_squared_sf's rung dfs are {sorted(chi_sf_dfs)}; none is at "
+            f"or below 0.1, where its upper tail is measured to lose. Its "
+            f"gamma shape is `df/2`, so a df of 0.5 puts the shape at 0.25, "
+            f"above the resolution boundary, and the row is inert")
 
     def test_the_underflow_rung_is_not_silently_narrowed(self) -> None:
         self.assertEqual(UNDERFLOW_SCALE, 1e20)

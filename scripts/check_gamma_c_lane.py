@@ -158,6 +158,14 @@ CASES = [
     # one-directional coverage of this region is the gap that round found.
     ("lane_sf_underflow", "gamma_sf(cast(1e-30, f32), cast(0.01, f32), cast(1e20, f32))"),
     ("lane_chi_sf_subnormal", "chi_squared_sf(cast(1.4e-45, f32), cast(0.02, f32))"),
+    # The shape-1 tie, as a cross-lane row rather than an anchor: its true
+    # value 7.0064923e-46 is exactly the 0-to-subnormal midpoint, so f32 has no
+    # correct value to anchor against and both neighbours are 100% relative
+    # error. What is checkable is that the three lanes agree, and the reason to
+    # check it is that the returned subnormal comes from `exp(log(t))` landing
+    # a hair above the tie -- a different libm could land below it and return
+    # 0.0. They agree here.
+    ("lane_chi_tie", "chi_squared_cdf(cast(1.4e-45, f32), cast(2.0, f32))"),
     # --- ordinary cross-lane rows, including both quantiles and both tails --
     ("lane_cdf_small", "gamma_cdf(cast(0.5, f32), cast(0.5, f32), cast(2.5, f32))"),
     ("lane_sf_tail", "gamma_sf(cast(120000.0, f32), cast(100000.0, f32), cast(1.0, f32))"),
@@ -189,9 +197,15 @@ CLOSED_FORMS = {
     # to even -- which is the whole reason this row exists.
     "lane_chi_subnormal": math.erf(math.sqrt(1.4012984643248171e-45 / 2.0)),
     # `Q(a, t) = 1 - P(a, t)`, and at these quotients `P` is its leading term
-    # `t^a / Gamma(a+1)` to far more digits than f32 keeps -- the next term is
-    # down by `a*t/(a+1)`, which is below 1e-47. `math.gamma` is stdlib, so
-    # this anchor needs no reference library either.
+    # `t^a / Gamma(a+1)`: the next series term is down by `a*t/(a+1)`, which is
+    # 9.9e-53 here, so truncating the series is not what limits this anchor.
+    # What limits it is that the expression below evaluates `0.01`, `1e-30` and
+    # `1e20` as doubles while the lane holds their f32 roundings -- measured
+    # against mpmath at the f32 arguments, these two anchors sit 1.19e-8 and
+    # 1.28e-8 away, about an eighth of an f32 ulp. Both still round to the same
+    # f32 as the true value, and CLOSED_TOL is 1e-6 against a mutant that
+    # misses by 4.7e-1, so the margin is 85x. `math.gamma` is stdlib, so this
+    # anchor needs no reference library either.
     "lane_sf_underflow": 1.0 - (1e-30 / 1e20) ** 0.01 / math.gamma(1.01),
     "lane_chi_sf_subnormal":
         1.0 - (1.4012984643248171e-45 / 2.0) ** 0.01 / math.gamma(1.01),

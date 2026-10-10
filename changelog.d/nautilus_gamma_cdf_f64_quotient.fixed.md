@@ -19,8 +19,13 @@ returns non-zero: at exactly that half-subnormal quotient,
 `7.0064923e-46` sits `2.5e-91` below the 0-to-subnormal midpoint. **Both
 answers are 100% relative error**, since f32 has no value between them, so
 this is a rounding direction at an unrepresentable quantity rather than a lost
-answer -- and it is lane-dependent, the value coming from `exp(log(t))` landing
-just above the tie. Pinned to the behaviour in `tests/distributions.ch`.
+answer. The value comes from `exp(log(t))` landing a hair above the tie, so
+another libm could land below it and return 0.0; **this workstation's three
+lanes agree**, measured -- eval, in-package C and cross-package C all return
+the subnormal, and `scripts/check_gamma_c_lane.py` now carries the argument as
+a cross-lane row for exactly that reason. It is pinned to the behaviour in
+`tests/distributions.ch` rather than argued from the arithmetic, because the
+arithmetic does not decide which neighbour a libm returns.
 
 **`chi_squared_cdf` was reachable too**, which the issue's own controls read as
 impossible: it fixes `scale = 2`, so `x / 2` cannot underflow for a normal `x`.
@@ -28,7 +33,8 @@ It can for a subnormal one -- the smallest f32 subnormal halves to exactly 0.0,
 because the quotient is the midpoint between zero and that subnormal and the tie
 rounds to even. `chi_squared_cdf(1.4e-45, 1)` returned `0.0` against a true
 `2.986794786e-23` and now returns `2.986795e-23`, 5.2e-8 relative. That is one
-`x`, but every `df` below about 3 at that `x`, and the named witness is the
+`x`, but every `df` at or below 2 at that `x` -- measured non-zero at 0.1, 0.5,
+1, 1.5, 1.9 and 2.0, and exactly 0.0 from 2.1 -- and the named witness is the
 mild one: at `df = 0.1` the same argument discarded `0.005674625` -- a 0.57%
 probability returned as exactly zero. The adjacent subnormal, `2.8e-45`,
 halves to a non-zero value and was correct before and after.
@@ -78,14 +84,17 @@ tail.
 they could not.** That claim took a maximum measured over the rung's own shape
 floor -- `P <= 3.5e-13` at shapes 0.25 and above, where `1 - P` is exactly 1.0
 in f32 whichever route computes it -- for a bound on the class. `P` grows as
-`x^shape`, so a small enough shape lifts it above f32's resolution at 1.0,
-about 6e-8, and then the upper tail is resolvable and the f32 guard destroyed
-it as well: `gamma_sf(1e-30, 0.01, 1e20)` returned `1.0` against a true
+`x^shape`, so a small enough shape lifts it above f32's resolution at 1.0 --
+2^-25, about 3.0e-8, since `1 - P` rounds to nearest and therefore leaves
+exactly 1.0 only while `P` stays under half the 6.0e-8 spacing below 1.0 -- and
+then the upper tail is resolvable and the f32 guard destroyed it as well: `gamma_sf(1e-30, 0.01, 1e20)` returned `1.0` against a true
 `0.6819677`, a relative error of **0.47**, and `chi_squared_sf(1.4e-45, 0.02)`
 returned `1.0` against a true `0.6444290`, a relative error of **0.55**. A
 red-team mutant that reinstated the f32 guards in `gamma_sf` alone passed all
 753 tests, the C lane, the parity goldens and the accuracy gate; against the
-rung as it now stands it fails the gate at nine rows and the test suite at one.
+rung as it now stands it fails the gate at eight rows -- `gamma_sf` at shapes
+0.01 and 0.05 across all three `x`, and `chi_squared_sf` at `df` 0.02 and 0.1
+-- plus the test suite at one and the C lane at one anchor.
 
 There is no shape threshold to state, because the boundary moves with the
 quotient: at `x / scale` of 1e-50 the survival function differs from 1.0 up to
