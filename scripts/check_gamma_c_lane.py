@@ -152,6 +152,12 @@ CASES = [
     # closed form at the smallest f32 subnormal, whose half is exactly zero.
     ("lane_cdf_underflow", "gamma_cdf(cast(1e-30, f32), cast(0.5, f32), cast(1e20, f32))"),
     ("lane_chi_subnormal", "chi_squared_cdf(cast(1.4e-45, f32), cast(1.0, f32))"),
+    # The survival direction, at the only shapes where f32 can resolve it. A
+    # mutant reinstating the f32 guard in `gamma_sf` ALONE was invisible to
+    # every gate in the repository while returning 1.0 for a true 0.682, so
+    # one-directional coverage of this region is the gap that round found.
+    ("lane_sf_underflow", "gamma_sf(cast(1e-30, f32), cast(0.01, f32), cast(1e20, f32))"),
+    ("lane_chi_sf_subnormal", "chi_squared_sf(cast(1.4e-45, f32), cast(0.02, f32))"),
     # --- ordinary cross-lane rows, including both quantiles and both tails --
     ("lane_cdf_small", "gamma_cdf(cast(0.5, f32), cast(0.5, f32), cast(2.5, f32))"),
     ("lane_sf_tail", "gamma_sf(cast(120000.0, f32), cast(100000.0, f32), cast(1.0, f32))"),
@@ -182,6 +188,13 @@ CLOSED_FORMS = {
     # -- it is the midpoint between zero and the subnormal and the tie rounds
     # to even -- which is the whole reason this row exists.
     "lane_chi_subnormal": math.erf(math.sqrt(1.4012984643248171e-45 / 2.0)),
+    # `Q(a, t) = 1 - P(a, t)`, and at these quotients `P` is its leading term
+    # `t^a / Gamma(a+1)` to far more digits than f32 keeps -- the next term is
+    # down by `a*t/(a+1)`, which is below 1e-47. `math.gamma` is stdlib, so
+    # this anchor needs no reference library either.
+    "lane_sf_underflow": 1.0 - (1e-30 / 1e20) ** 0.01 / math.gamma(1.01),
+    "lane_chi_sf_subnormal":
+        1.0 - (1.4012984643248171e-45 / 2.0) ** 0.01 / math.gamma(1.01),
 }
 # (name above the median, name below it). Both are inequalities, not values.
 MEDIAN_PAIRS = (("lane_median_hi_6", "lane_median_lo_6"),

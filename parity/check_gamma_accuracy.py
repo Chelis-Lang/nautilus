@@ -228,10 +228,12 @@ QUANTILE_SCALES_THIN = (1.0, 1e20)
 # **A shape below 1 is what makes the discarded answer representable**, and
 # that is why these shapes and not the ladder's: `P(a, x) ~ x^a / Gamma(a+1)`
 # as `x -> 0`, so at `a = 0.5` the answer is the square root of a quantity 50
-# decades under f32's floor and lands 20 decades over it. At `a >= 1` the true
-# answer underflows as well and 0.0 is correct, so no shape on the main ladder
-# -- which starts at 0.5 and is otherwise integral or larger -- can exhibit
-# this at all.
+# decades under f32's floor and lands 20 decades over it. At `a >= 1` the
+# answer is at most the quotient itself, which is at most half f32's smallest
+# subnormal in this region, so f32 carries none of it either way -- see the
+# shape-1 note in `tests/distributions.ch` for the one argument where the lane
+# returns that subnormal rather than zero. No shape on the main ladder, which
+# starts at 0.5 and is otherwise 1 or larger, can exhibit this.
 #
 # A new `SCALES` entry would have been the wrong shape of fix twice over. It
 # multiplies the whole eleven-shape, eleven-z grid for three exports to reach a
@@ -239,7 +241,26 @@ QUANTILE_SCALES_THIN = (1.0, 1e20)
 # any scale: that walk places `x` within twenty standard deviations of
 # `shape*scale`, where the quotient is about `shape`, never near zero.
 UNDERFLOW_SCALE = 1e20
-UNDERFLOW_SHAPES = (0.25, 0.5, 0.75)
+# Two regimes of shape, and the smaller two are not decoration.
+#
+# 0.25, 0.5 and 0.75 are where the LOWER tail loses: `P` is 3.5e-13 or below,
+# so `Q` is exactly 1.0 in f32 and only `gamma_cdf` can see the defect there.
+# 0.01 and 0.05 are where the UPPER tail loses as well, and an earlier version
+# of this block asserted that could not happen. `P(a, x)` grows as `x^a`, so a
+# small enough shape lifts it above f32's resolution at 1.0 -- about 6e-8 --
+# and then `1 - P` is resolvable too: `gamma_sf(1e-30, 0.01, 1e20)` returned
+# 1.0 against a true 0.6819677, a relative error of 0.47, and
+# `chi_squared_sf(1.4e-45, 0.02)` returned 1.0 against a true 0.6444290, a
+# relative error of 0.55 -- the worst in this family's grid in either
+# direction.
+#
+# **There is no shape threshold to state**, because the boundary is set by the
+# quotient as well. Measured on this lane: at a quotient of 1e-50 the survival
+# function differs from 1.0 up to shape 0.15 and is exactly 1.0 from 0.16; at
+# a quotient of 1.4e-65 it differs up to 0.11 and is exactly 1.0 from 0.12. So
+# the grid probes two shapes inside the losing region at both ends of
+# `UNDERFLOW_X` rather than naming a frontier.
+UNDERFLOW_SHAPES = (0.01, 0.05, 0.25, 0.5, 0.75)
 UNDERFLOW_X = (1e-30, 1e-38)
 # `chi_squared_cdf` fixes `scale = 2`, which reads as immune and is not. The
 # smallest f32 subnormal halves to exactly 0.0 -- the quotient is the midpoint
@@ -247,7 +268,10 @@ UNDERFLOW_X = (1e-30, 1e-38)
 # reached a function whose scale no caller chooses, at exactly one `x`. Its
 # `df` must be below 2 for the shape `df/2` to be below 1.
 UNDERFLOW_SUBNORMAL_X = 1.4012984643248171e-45
-UNDERFLOW_DF = (1.0, 0.5)
+# `df/2` is the gamma shape, so these cover both regimes: 0.02 and 0.1 put the
+# shape at 0.01 and 0.05, where `chi_squared_sf` resolves, and 0.5 and 1.0 put
+# it at 0.25 and 0.5, where only `chi_squared_cdf` does.
+UNDERFLOW_DF = (0.02, 0.1, 0.5, 1.0)
 
 
 class AccuracyError(Exception):
@@ -585,38 +609,52 @@ def cases() -> list[tuple[str, str, str, float, float]]:
                 f"{f32(f32(x) / f32(scale))!r}, not 0.0, so it does not probe "
                 f"the region it exists for")
 
-    # The two survival functions are deliberately absent, and the reason is a
-    # measurement rather than an oversight. Their reference here is `1 - P`
-    # with a `P` of at most 3.5e-13, which is strictly below 1.0 as a double
-    # -- so `add` would keep it -- and is exactly 1.0 once f32 holds it. Such a
-    # row cannot fail: its relative error is the 3.5e-13 the return type
-    # quantises away, nine decades inside the bound. Carrying four cases that
-    # cannot fail would misreport the rung's size, and the defect is one-sided
-    # for the same arithmetic reason. `gamma_sf`'s behaviour here is pinned in
-    # `tests/distributions.ch` instead, where an exact comparison against 1.0
-    # is the assertion that means something.
+    # Both directions are generated, and `add` drops the rows f32 cannot
+    # resolve: a survival reference at a shape of 0.25 or above is `1 - P` with
+    # a `P` of at most 3.5e-13, which is strictly below 1.0 as a double but
+    # exactly 1.0 once f32 holds it, so such a row cannot fail and is excluded
+    # by the `>= 1.0` test. The counts below are asserted per direction
+    # precisely because that filter is what decides them.
+    #
+    # An earlier version of this block generated no survival rows at all, on
+    # the ground that the defect was one-sided. It is not. That reasoning took
+    # a maximum measured over this rung's own shape floor -- `P <= 3.5e-13` at
+    # shapes 0.25 and up -- for a bound on the class, and a mutant reinstating
+    # the f32 guards in `gamma_sf` alone then passed every gate in the
+    # repository while returning 1.0 for a true 0.899.
     before = len(out)
     S = f32(UNDERFLOW_SCALE)
-    for shape in UNDERFLOW_SHAPES:
-        K = f32(shape)
-        for x in UNDERFLOW_X + (UNDERFLOW_SUBNORMAL_X,):
-            X = f32(x)
-            assert_quotient_underflows((X, K, S), X, S)
-            add("gamma_cdf", (X, K, S), reference_for("gamma_cdf", X, K, S), shape)
+    for export in ("gamma_cdf", "gamma_sf"):
+        for shape in UNDERFLOW_SHAPES:
+            K = f32(shape)
+            for x in UNDERFLOW_X + (UNDERFLOW_SUBNORMAL_X,):
+                X = f32(x)
+                assert_quotient_underflows((X, K, S), X, S)
+                add(export, (X, K, S), reference_for(export, X, K, S), shape)
     gamma_rows = len(out) - before
-    for df in UNDERFLOW_DF:
-        D = f32(df)
-        X = f32(UNDERFLOW_SUBNORMAL_X)
-        assert_quotient_underflows((X, D), X, 2.0)
-        add("chi_squared_cdf", (X, D), chi_reference("chi_squared_cdf", X, D), df)
+    for export in ("chi_squared_cdf", "chi_squared_sf"):
+        for df in UNDERFLOW_DF:
+            D = f32(df)
+            X = f32(UNDERFLOW_SUBNORMAL_X)
+            assert_quotient_underflows((X, D), X, 2.0)
+            add(export, (X, D), chi_reference(export, X, D), df)
     chi_rows = len(out) - before - gamma_rows
-    if gamma_rows < len(UNDERFLOW_SHAPES) or chi_rows < 1:
+    counts = {name: sum(1 for case in out[before:] if case[1] == name)
+              for name in ("gamma_cdf", "gamma_sf",
+                           "chi_squared_cdf", "chi_squared_sf")}
+    # One per export per direction is the floor that keeps all four detectors
+    # alive. Raising every shape to 1 or above empties the lower tails, because
+    # every reference then falls under f32's smallest normal; raising every
+    # shape past the resolution boundary empties the upper tails, because every
+    # survival reference then reads as exactly 1.0. Both edits leave the block
+    # looking intact.
+    if any(count < 1 for count in counts.values()):
         raise AccuracyError(
-            f"the underflow rung contributed {gamma_rows} gamma and {chi_rows} "
-            f"chi-squared usable cases; it is meant to contribute at least "
-            f"{len(UNDERFLOW_SHAPES)} and 1. Every row whose reference is "
-            f"under f32's smallest normal is dropped, so a shape raised to 1 "
-            f"or above empties this block")
+            f"the underflow rung contributed {counts}, and every one of the "
+            f"four must be at least 1. A lower tail is emptied by a shape at "
+            f"or above 1, where the reference falls under f32's smallest "
+            f"normal; an upper tail is emptied by a shape above the resolution "
+            f"boundary, where `1 - P` reads as exactly 1.0")
 
     # ---- the chi-squared trio of (x, df) ---------------------------------
     # `chi_squared_pdf(x, df)` is `gamma_pdf(x, df/2, 2)`. It belongs here

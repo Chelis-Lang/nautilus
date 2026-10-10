@@ -187,7 +187,9 @@ f32 and exact in f64 -- `gamma_cdf(1e-30, 0.5, 1e20)` and
 scale, because it places `x` within twenty standard deviations of
 `shape*scale`, where the quotient is about `shape`. Two of the rung's shapes
 are small enough that the *upper* tails resolve there as well, since `1 - P` is
-visible in f32 only once `P` passes `2^-25`, about 3.0e-8.
+visible in f32 only once `P` passes `2^-25`, about 3.0e-8 -- half the spacing
+below 1.0, because the subtraction rounds to nearest. Without them a guard
+reinstated on one direction alone would be invisible to every gate.
 
 **Outside that set, two regions are known to be wrong.** Both are in the
 quantiles and are described below.

@@ -387,9 +387,9 @@ class Coverage(unittest.TestCase):
         the failure mode this file exists to make loud.
         """
         rung = [case for case in self.spec
-                if case[1] == "gamma_cdf"
+                if case[1] in ("gamma_cdf", "gamma_sf")
                 and arguments(case[2])[2] == f32(UNDERFLOW_SCALE)]
-        self.assertTrue(rung, "no gamma_cdf case reaches UNDERFLOW_SCALE")
+        self.assertTrue(rung, "no gamma case reaches UNDERFLOW_SCALE")
         for shape in UNDERFLOW_SHAPES:
             matching = [case for case in rung
                         if arguments(case[2])[1] == f32(shape)]
@@ -409,7 +409,7 @@ class Coverage(unittest.TestCase):
         # The chi-squared half, where the scale is fixed at 2 and the only
         # underflowing `x` is the smallest subnormal.
         chi = [case for case in self.spec
-               if case[1] == "chi_squared_cdf"
+               if case[1] in ("chi_squared_cdf", "chi_squared_sf")
                and arguments(case[2])[0] == f32(UNDERFLOW_SUBNORMAL_X)]
         self.assertTrue(chi, "the subnormal chi-squared row reaches no case")
         for case in chi:
@@ -417,14 +417,56 @@ class Coverage(unittest.TestCase):
             self.assertEqual(f32(x / 2.0), 0.0, case[2])
             self.assertLess(f32(0.5) * df, 1.0,
                             f"{case[2]} has a gamma shape at or above 1, "
-                            f"where 0.0 is the correct answer and the row "
-                            f"cannot detect the defect")
+                            f"where f32 cannot carry the answer either way "
+                            f"and the row cannot detect the defect")
+
+    def test_the_rung_probes_BOTH_tails(self) -> None:
+        """Each of the four exports must keep a usable rung row.
+
+        The first version of this rung generated no survival rows, reasoning
+        that the defect was one-sided -- a maximum measured over the rung's own
+        shape floor, taken for a bound on the class. A red-team mutant then
+        reinstated the f32 guards in `gamma_sf` ALONE and passed the whole
+        repository: 753 tests, the C lane, the parity goldens and this gate,
+        while `gamma_sf(1e-30, 0.02, 1e20)` returned 1.0 for a true 0.899.
+
+        The survival rows exist at a small shape and only there, because `1 - P`
+        is resolvable in f32 only where `P` rises above about 6e-8. So this test
+        guards the direction that the shape set can silently empty.
+        """
+        for export in ("gamma_cdf", "gamma_sf"):
+            rows = [case for case in self.spec
+                    if case[1] == export
+                    and arguments(case[2])[2] == f32(UNDERFLOW_SCALE)]
+            self.assertTrue(
+                rows,
+                f"{export} has no underflow-rung row. For a survival function "
+                f"that means every shape in UNDERFLOW_SHAPES is above the "
+                f"resolution boundary, where `1 - P` reads as exactly 1.0 and "
+                f"a reinstated f32 guard is undetectable")
+        for export in ("chi_squared_cdf", "chi_squared_sf"):
+            rows = [case for case in self.spec
+                    if case[1] == export
+                    and arguments(case[2])[0] == f32(UNDERFLOW_SUBNORMAL_X)]
+            self.assertTrue(rows, f"{export} has no subnormal rung row")
+        # And the losing region has to be probed at a shape where it is known
+        # to lose, not merely at some shape below 1: 0.05 loses at both ends of
+        # UNDERFLOW_X, 0.25 loses at neither.
+        sf_shapes = {arguments(case[2])[1] for case in self.spec
+                     if case[1] == "gamma_sf"
+                     and arguments(case[2])[2] == f32(UNDERFLOW_SCALE)}
+        self.assertTrue(
+            any(shape <= f32(0.05) for shape in sf_shapes),
+            f"gamma_sf's rung shapes are {sorted(sf_shapes)}; none is at or "
+            f"below 0.05, where the upper tail is measured to lose at every "
+            f"`x` in UNDERFLOW_X. A shape that loses at one `x` and not the "
+            f"other leaves half the rung inert")
 
     def test_the_underflow_rung_is_not_silently_narrowed(self) -> None:
         self.assertEqual(UNDERFLOW_SCALE, 1e20)
-        self.assertEqual(UNDERFLOW_SHAPES, (0.25, 0.5, 0.75))
+        self.assertEqual(UNDERFLOW_SHAPES, (0.01, 0.05, 0.25, 0.5, 0.75))
         self.assertEqual(UNDERFLOW_X, (1e-30, 1e-38))
-        self.assertEqual(UNDERFLOW_DF, (1.0, 0.5))
+        self.assertEqual(UNDERFLOW_DF, (0.02, 0.1, 0.5, 1.0))
         # The smallest f32 subnormal, spelled exactly. The rung's chi-squared
         # half depends on `x / 2` being the midpoint between it and zero.
         self.assertEqual(f32(UNDERFLOW_SUBNORMAL_X), UNDERFLOW_SUBNORMAL_X)
@@ -628,8 +670,8 @@ class Coverage(unittest.TestCase):
            actually enforces. Round 4 noted nothing pinned 1626, so the figure
            would go stale the first time anyone added a grid rung -- which it
            did, at the nautilus#165 rung, and this test is what caught it.
-        2. No row claims a bound over what the gate MEASURES. It measures 1682
-           cases and enforces 1635; the 47 beyond-ceiling rows exist to measure
+        2. No row claims a bound over what the gate MEASURES. It measures 1702
+           cases and enforces 1655; the 47 beyond-ceiling rows exist to measure
            out-of-range growth, and five exports exceed 2e-6 there -- 3.79e-6 at
            `gamma_cdf(2e8, 2e8, 1)`, which the gate prints on every run. Five
            SKILL.md rows said "everywhere the gate measures" and were false
