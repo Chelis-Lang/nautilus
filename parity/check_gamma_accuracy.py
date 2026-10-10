@@ -77,7 +77,10 @@ relative resolution.
 
     uv run --project parity --frozen python parity/check_gamma_accuracy.py
 
-It runs about eleven minutes on a quiet workstation, over 1673 cases. Most of
+It evaluates 1894 cases. No wall-clock figure is given: every timing taken of
+this grid was on a box running other work, so the numbers in circulation for it
+(5:11, 10:49, 11 and 16:38 minutes, over three different grids) measure the load
+and not the grid. Time it yourself if you need a budget. Most of
 that is the compiler evaluating the series near the branch point at the top of
 the shape ladder, and about half of it arrived with the `scale` axis the quantile
 rows gained in review -- which is the axis that caught a 152x error, so the cost
@@ -183,57 +186,77 @@ Z_THIN = (-3.0, -1.0, 0.0, 1.0, 5.0)
 # rather than a gap. `test_every_scale_is_actually_probed` holds either way.
 SCALES = (1.0, 2.5, 0.0078125)
 SCALES_THIN = (1.0,)
-# The quantiles' documented lower bound on `q`, and the reason it exists.
+# The lowest `q` the quantile rows probe, and why it is this low.
 #
-# Below it `gamma_inv_cdf` is not accurate to 2e-6 for a shape in roughly
-# [1.9, 2.6]: Wilson-Hilferty's `s` goes negative there, the start is floored
-# to `gamma_inv_floor()`, the first Newton step overshoots by about 27 decades
-# and the 80-step budget is exhausted halving back. `gamma_inv_cdf(1e-5, 2, 1)`
-# returns 8.271806 against a true 0.00447881626 -- the wrong tail, and nothing
-# about 8.27 looks wrong to a caller. Measured identical on `0be29bb`, so it is
-# pre-existing and tracked separately; what this constant does is stop the
-# documents claiming a bound over it.
+# It was 1e-4, because below it `gamma_inv_cdf` was not accurate to 2e-6 for a
+# shape in roughly [1.9, 2.6]: Wilson-Hilferty's `s` goes negative there, the
+# start was floored to an absolute 1e-30, the first Newton step overshot by
+# about 27 decades and the 80-step budget went on halving back, so the answer
+# was a function of the step count rather than of `q`. `gamma_inv_cdf(1e-5, 2,
+# 1)` returned 8.271806 against a true 0.00447881626 -- the wrong tail, and
+# nothing about 8.27 looks wrong to a caller (nautilus#162).
 #
-# The region is patchy rather than a clean boundary -- shape 2.1 fails at
-# `q = 1e-5` and is correct at `3e-5` -- so the exclusion is stated on `q`,
-# which is checkable, and not on shape. At `q = 1e-4` twenty dense shapes from
-# 1.6 to 5.4 are all within 5.9e-8, and the upper tail is clean to
-# `q = 0.999999`.
-QUANTILE_FLOOR = 1e-4
-QUANTILES = (QUANTILE_FLOOR, 0.001, 0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 0.999)
-# Shapes where the floored Wilson-Hilferty start is reached, so the quantile
-# rows exercise that path rather than only the ordinary one. 1.25 is the shape
-# at which raising `gamma_inv_floor()` to the continued fraction's Lentz tiny
-# sent the result to +inf; without a row here the whole test suite, the C lane
-# and this gate all passed that mutation.
-QUANTILE_FLOOR_SHAPES = (1.1, 1.25, 1.5, 1.9, 2.0, 2.5)
+# The loop no longer has a start to floor or a budget to exhaust: it solves on
+# the unit-scale distribution in `u = log y`, starts from the small-`q`
+# asymptotic where Wilson-Hilferty degenerates, and maintains a straddling
+# bracket. So the floor is now a probing choice and not a bound, and it is set
+# where the measurement runs out rather than where the implementation does:
+# below about 1e-20 at a small shape the quantile itself falls under f32's
+# smallest normal and `add()` excludes the row, so a deeper `q` would add cost
+# and measure f32's quantisation. 1e-7 keeps three decades of the repaired
+# region inside the grid at every shape on the ladder.
+#
+# 1e-5 is here as well as 1e-7 because it is the region's worst measured case,
+# and because the region was patchy in a way a boundary cannot express: shape
+# 2.1 was 2.7e+03 relative at `q = 1e-5` and correct to 2.8e-10 at `3e-5`. A
+# grid that steps `q` by decades can straddle that without landing on it, so
+# the named rows below probe the exact pair.
+QUANTILE_FLOOR = 1e-7
+QUANTILES = (QUANTILE_FLOOR, 1e-5, 1e-4, 0.001, 0.01, 0.1, 0.25, 0.5, 0.75,
+             0.9, 0.99, 0.999)
+# Shapes where Wilson-Hilferty's cube is non-positive, so the quantile rows
+# exercise the asymptotic start rather than only the closed form. 1.25 is the
+# shape at which raising the old start floor to the continued fraction's Lentz
+# tiny sent the result to +inf; without a row here the whole test suite, the C
+# lane and this gate all passed that mutation. 0.0706 is round 3's witness: the
+# ladder below starts at 0.5, so nothing probed a shape under it until a review
+# said so.
+QUANTILE_FLOOR_SHAPES = (0.0706, 1.1, 1.25, 1.5, 1.9, 2.0, 2.1, 2.5)
+# The exact non-monotone pair in the region above, as named rows. Stated on `q`
+# at one shape rather than as another axis, because what it pins is that the
+# repair is not a decade-boundary effect.
+QUANTILE_PATCHY = ((2.1, 1e-5), (2.1, 3e-5), (2.0, 1e-5), (2.6, 1e-5))
 # Scales the quantile rows vary, and the reason this axis exists at all.
 #
 # Round 1 of review found the documented quantile bound false below `q = 1e-4`.
 # Round 2 found it false again at a large `scale`, by the same mechanism, on an
-# axis the grid did not vary: `gamma_inv_cdf(0.5, 2, 1e31)` is 3.0e-4 relative,
-# 152 times the bound, and `q = 0.5` was already in the set. The cause is that
-# `gamma_inv_floor()` is an ABSOLUTE 1e-30 floor applied to a DENSITY, whose
-# magnitude is about `1/(scale*sqrt(2*pi*shape))`; past a large enough scale the
-# true density falls under the floor, the Newton step divides by the floor
-# instead, and each step then removes only a fraction `pdf/floor` of the error.
+# axis the grid did not vary: `gamma_inv_cdf(0.5, 2, 1e31)` was 3.0e-4
+# relative, 152 times the bound, and `q = 0.5` was already in the set. The
+# cause was that the start floor was an ABSOLUTE 1e-30 applied to a DENSITY,
+# whose magnitude is about `1/(scale*sqrt(2*pi*shape))`; past a large enough
+# scale the true density fell under the floor, the step divided by the floor
+# instead, and each step then removed only a fraction `pdf/floor` of the error.
 #
 # A third round then falsified the narrowed bound a third time, on `shape`
 # downward: the range bounded shape only from above while this ladder starts at
-# 0.5, and `gamma_inv_cdf(1e-4, 0.07062688, 1e20)` has a relative error of
+# 0.5, and `gamma_inv_cdf(1e-4, 0.07062688, 1e20)` had a relative error of
 # 41.5 -- a ratio of 42.5, and the shape is spelled in full because `0.0706`
 # is a different f32 reading 43.7 -- with every parameter
 # inside the range as written. So adding axes to chase a range-shaped claim did
 # not work either, and the documents no longer state a range -- they state this
-# grid's measured result. This axis stays because it is the one that found the
-# round-2 error, not because a sentence quantifies over it.
-# The quantiles are clean from 1e-20 to 1e25 at every shape and `q` probed and
-# first exceed the bound at 1e27 (`gamma_inv_cdf(1e-4, 1e2, 1e27)` is 7.1e-6),
-# so the upper endpoint of 1e20 is seven decades inside the measured failure.
-# No failure exists at the small-scale end at all, so 1e-20 is a probing choice
+# grid's measured result.
+#
+# `scale` is now divided out before the iteration, so no constant inside it has
+# a magnitude a `scale` can move and the axis is inert by construction. The axis
+# stays, and 1e30 is added, precisely because "inert by construction" is the
+# kind of claim that needs a probe: 1e30 is two decades inside the region that
+# used to fail (`gamma_inv_cdf(1e-4, 1e2, 1e27)` was 7.1e-6) and still leaves
+# the product inside f32 at every shape on the ladder. The thin set trades 1e20
+# for 1e30 rather than adding to it, so the top two shapes cost the same.
+# No failure ever existed at the small-scale end, so 1e-20 is a probing choice
 # rather than a margin.
-QUANTILE_SCALES = (1e-20, 1.0, 2.5, 1e20)
-QUANTILE_SCALES_THIN = (1.0, 1e20)
+QUANTILE_SCALES = (1e-20, 1.0, 2.5, 1e20, 1e30)
+QUANTILE_SCALES_THIN = (1.0, 1e30)
 
 
 class AccuracyError(Exception):
@@ -622,26 +645,47 @@ def cases() -> list[tuple[str, str, str, float, float]]:
                 S = f32(scale)
                 add("gamma_inv_cdf", (Q, K, S),
                     float(mp_inv(K, Q)) * S, shape, allow_one=True)
-    # The documented `q` floor, at the shapes where the floored Wilson-Hilferty
-    # start is actually reached. A bound has to be probed AT its stated value or
-    # it cannot fail at its own boundary -- the same rule the ceilings follow,
-    # and the rule this gate's docstring names as the reason it exists.
+    # The lowest `q` the grid probes, at the shapes where Wilson-Hilferty's cube
+    # is non-positive and the asymptotic start is the one taken. A boundary has
+    # to be probed AT its stated value or it cannot fail at its own boundary --
+    # the same rule the ceilings follow, and the rule this gate's docstring
+    # names as the reason it exists.
     for shape in QUANTILE_FLOOR_SHAPES:
-        K, Q = f32(shape), f32(QUANTILE_FLOOR)
-        add("gamma_inv_cdf", (Q, K, f32(1.0)), float(mp_inv(K, Q)), shape,
-            allow_one=True)
-        # 0.001 as well, which is where raising `gamma_inv_floor()` to the
-        # Lentz tiny sent shape 1.25 to +inf.
+        K = f32(shape)
+        # The whole repaired band, not only its lowest point. Most of these
+        # shapes are off the ladder above -- it steps 0.5, 1, 2.5, 10 -- so
+        # without these rows the band is probed at one `q` per shape, and one
+        # point cannot show that a region three decades wide arrives.
+        for q in (QUANTILE_FLOOR, 1e-5, 1e-4, 0.001):
+            Q = f32(q)
+            add("gamma_inv_cdf", (Q, K, f32(1.0)), float(mp_inv(K, Q)), shape,
+                allow_one=True)
+        # 0.001 at scale 2 as well, which is where raising the old start floor
+        # to the Lentz tiny sent shape 1.25 to +inf.
         Q3 = f32(0.001)
-        add("gamma_inv_cdf", (Q3, K, f32(1.0)), float(mp_inv(K, Q3)), shape,
-            allow_one=True)
         add("gamma_inv_cdf", (Q3, K, f32(2.0)), float(mp_inv(K, Q3)) * 2.0, shape,
             allow_one=True)
         D = f32(2.0 * shape)
+        Q = f32(QUANTILE_FLOOR)
         add("chi_squared_inv_cdf", (Q, D), float(mp_inv(f32(0.5) * D, Q)) * 2.0,
             float(D), allow_one=True)
         add("chi_squared_inv_cdf", (Q3, D), float(mp_inv(f32(0.5) * D, Q3)) * 2.0,
             float(D), allow_one=True)
+
+    # The exact non-monotone pair the region was patchy across, and round 3's
+    # own small-shape witness at its own scale. A decade-stepped `q` axis can
+    # straddle `(2.1, 1e-5)` versus `(2.1, 3e-5)` without landing on either, and
+    # `(1e-4, 0.0706, 1e20)` combines a shape below the ladder with a scale the
+    # floor-shape rows do not vary, so neither is reachable from the axes above.
+    for shape, q in QUANTILE_PATCHY:
+        K, Q = f32(shape), f32(q)
+        add("gamma_inv_cdf", (Q, K, f32(1.0)), float(mp_inv(K, Q)), shape,
+            allow_one=True)
+    for q, shape, scale in ((1e-4, 0.0706, 1e20), (0.5, 2.0, 1e31),
+                            (0.5, 0.5, 1e32), (1e-4, 1.25, 1e35)):
+        K, Q, S = f32(shape), f32(q), f32(scale)
+        add("gamma_inv_cdf", (Q, K, S), float(mp_inv(K, Q)) * S, shape,
+            allow_one=True)
 
     ceiling, _ = DOCUMENTED["chi_squared_inv_cdf"]
     for df in shape_ladder(ceiling, BEYOND["chi_squared_inv_cdf"]):

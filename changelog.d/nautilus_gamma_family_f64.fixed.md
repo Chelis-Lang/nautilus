@@ -85,35 +85,37 @@ f32 `k + 1` had collapsed to zero. The sampling C-lane check that already
 existed covers keyed gamma-family *sampling*; none of these nine exports had
 C-lane coverage.
 
-The measured set, the two limits outside it, and the three regions known to be
-wrong are in [the precision appendix](docs/book/src/appendix/precision.md).
+The measured set and the one region known to be wrong are in [the precision appendix](docs/book/src/appendix/precision.md).
 
 **The documented accuracy claim states a measured set, not a parameter
-range.** Two regions are excluded from it, both the Newton step dividing by a
-floored density. For a shape in roughly [1.9, 2.6] at a quantile below 1e-4, `gamma_inv_cdf`'s Wilson-Hilferty start
-is floored, the first Newton step overshoots by about 27 decades, and the
-80-step budget is spent halving back: `gamma_inv_cdf(1e-5, 2, 1)` returns
-8.271806 against a true 0.0044788163, which is the 99.8th percentile rather than
-the 0.001st. That is pre-existing -- the values move about eleven f32 ulps
-across this change while the relative errors agree to three digits -- so it is
-tracked separately rather than fixed here.
+range.** Two regions were excluded from it when this change was written, both
+the Newton step dividing by a floored density. For a shape in roughly
+[1.9, 2.6] at a quantile below 1e-4, `gamma_inv_cdf`'s Wilson-Hilferty start
+was floored, the first Newton step overshot by about 27 decades, and the
+80-step budget went on halving back: `gamma_inv_cdf(1e-5, 2, 1)` returned
+8.271806 against a true 0.0044788163, which is the 99.8th percentile rather
+than the 0.001st. That was pre-existing -- the values move about eleven f32
+ulps across this change while the relative errors agree to three digits -- so
+it was tracked separately rather than fixed here, and nautilus#162 has since
+fixed it. Both excluded regions are gone and the grid now walks them; see
+`nautilus_gamma_quantile_bracket.fixed.md`.
 
 Three review rounds falsified three successive range-shaped versions of the
 documented bound, each on a different parameter the grid did not walk: `q`,
 then `scale`, then `shape` downward. The claim now reads "relative error is
-below 2e-6 at every one of the 1626 cases `parity/check_gamma_accuracy.py`
+below 2e-6 at every one of the 1847 cases `parity/check_gamma_accuracy.py`
 enforces", which is what the gate checks on every CI run and cannot be
 falsified by a point nobody measured. The appendix describes what that grid
-covers as a property of the instrument, and names the three regions outside it
-that are known wrong.
+covers as a property of the instrument, and names the one region outside it
+that is known wrong.
 
-The same floor fails from the other side at a large `scale`: it is absolute at
-1e-30 while a Gamma density is about `1/(scale*sqrt(2*pi*shape))`, so
-`gamma_inv_cdf(0.5, 2, 1e31)` is 3.0e-4 relative at a median. Also pre-existing:
+The same floor failed from the other side at a large `scale`: it was absolute
+at 1e-30 while a Gamma density is about `1/(scale*sqrt(2*pi*shape))`, so
+`gamma_inv_cdf(0.5, 2, 1e31)` was 3.0e-4 relative at a median. Also
+pre-existing:
 the returned values move by about eleven f32 ulps across this change
 (`gamma_inv_cdf(1e-5, 2, 1)` is 8.271817 before and 8.271806 after) while the
-relative errors agree to three digits, so this change neither causes it nor
-repairs it. "Bit-identical" was too strong and is not what was measured. Both are convergence limits rather than
-precision ones -- raising the budget from 80 to 4000 returns the correctly
-rounded answer at both witnesses -- and the quantile rows now vary `scale` so
-the bound cannot be stated over an axis the gate holds fixed.
+relative errors agree to three digits, so this change neither caused it nor
+repaired it. "Bit-identical" was too strong and is not what was measured. Both
+were convergence limits rather than precision ones, and the quantile rows now
+vary `scale` so the bound cannot be stated over an axis the gate holds fixed.

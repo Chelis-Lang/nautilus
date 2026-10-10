@@ -44,7 +44,7 @@ Two cases need separate guidance:
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions; the two families below are stated rather than estimated |
 | `poisson_pmf`, `binomial_pmf` | below 2e-6 up to `lambda` of 1e8 and `n` of 2e8 | Log space in f64; past that, limited by f64's spacing at `ln(k!)`, see the note below |
-| the gamma family, nine exports | below 2e-6 at every one of the 1626 cases the accuracy gate enforces | Incomplete gamma in f64; the note below describes what that grid covers, and the three regions outside it that are known wrong |
+| the gamma family, nine exports | below 2e-6 at every one of the 1847 cases the accuracy gate enforces | Incomplete gamma in f64; the note below describes what that grid covers, and the one region outside it that is known wrong |
 | Beta-family CDFs | below 2e-6 over a stated parameter range | `beta_cdf`, `f_cdf`, `binomial_cdf`; the range is part of the figure, see the note below |
 | `student_t_cdf` | below 2e-6 for every `df` | The incomplete beta below `df` of 1e7, the large-`df` expansion from 1e7 upward, see the note below |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
@@ -193,7 +193,7 @@ returned as f32. In f32 the error was 51% at `gamma_sf(1e5, 1e5, 1)` and 100%
 at shape 1e7, `gamma_pdf(5e7, 5e7, 1)` returned 1.0 against a true 5.6418958e-5,
 and `gamma_inv_cdf(0.5, 1e7, 1)` returned 5e29 against a true 1e7.
 
-> Relative error is below 2e-6 at **every one of the 1626 cases**
+> Relative error is below 2e-6 at **every one of the 1847 cases**
 > `parity/check_gamma_accuracy.py` enforces, on every CI run.
 
 That is a statement about a measured set, not about a parameter range, and the
@@ -232,50 +232,61 @@ guarantee beyond it: `shape` on a ladder from 0.5 to each export's ceiling
 it; `x` and `k` walked across `shape*scale` in units of the distribution's own
 standard deviation, from -20 to +20, plus both sides of the branch point
 exactly; `scale` over 1, 2.5 and 0.0078125 for the densities and CDFs, and
-1e-20, 1, 2.5 and 1e20 for the quantiles; `q` over ten values from 1e-4 to
-0.999. References come from an arbitrary-precision oracle and any whose value
-f32 cannot hold as a normal number is excluded.
+1e-20, 1, 2.5, 1e20 and 1e30 for the quantiles; `q` over twelve values from
+1e-7 to 0.999, with the band from 1e-7 to 1e-4 walked at the shapes where the
+quantile's asymptotic start is the one taken. References come from an
+arbitrary-precision oracle and any whose value f32 cannot hold as a normal
+number is excluded.
 
-**Outside that set, three regions are known to be wrong** and are tracked
-separately rather than bounded here. Two are in the quantiles and are described
-below. The third is the CDF: the parameter guards read the **f32** quotient
-`x / scale`, so when that quotient underflows, `gamma_cdf` returns exactly 0.0
-for an answer f32 can hold -- `gamma_cdf(1e-30, 0.25, 1e20)` is 0.0 against a
-true 3.49e-13, while the same call at `scale = 1` returns the correct 3.49e-8.
+**One region outside that set is known to be wrong** and is tracked separately
+rather than bounded here, and it is in the CDF rather than the quantiles: the
+parameter guards read the **f32** quotient `x / scale`, so when that quotient
+underflows, `gamma_cdf` returns exactly 0.0 for an answer f32 can hold --
+`gamma_cdf(1e-30, 0.25, 1e20)` is 0.0 against a true 3.49e-13, while the same
+call at `scale = 1` returns the correct 3.49e-8.
 
-Those two limits on the quantiles are one defect seen twice, and it is worth
-knowing which, because it tells you when to distrust a value. `gamma_inv_cdf`
-refines a closed-form start with at most 80 Newton steps, and each step divides
-by the density. Two things make that division useless.
+The quantiles had two of their own and no longer do. Both were one defect seen
+twice, and the shape of it is worth keeping, because it is the shape of a
+numerical answer that looks entirely plausible. `gamma_inv_cdf` refined a
+closed-form start with at most 80 Newton steps; each step divided by the
+density, floored at an **absolute** 1e-30, and a step that landed at or below
+zero was recovered by halving `x`. Below `q = 1e-4` for a shape in roughly
+[1.9, 2.6] the Wilson-Hilferty start's cube goes negative, so the start was
+floored, the first step overshot the root by about 27 decades, and 75 to 79 of
+the 80 steps went on halving back. `gamma_inv_cdf(1e-5, 2, 1)` returned
+8.271806 against a true 0.0044788163 -- the 99.8th percentile where the 0.001st
+was asked for -- and the values at neighbouring parameters were 1, 2 and 3
+times it, which is the signature: the answer was a function of how many
+halvings fitted in the budget, not of `q`. Above a `scale` of about 1e27 the
+same absolute floor was reached from the other side, since a Gamma density is
+about `1/(scale*sqrt(2*pi*shape))`, and `gamma_inv_cdf(0.5, 2, 1e31)` was
+3.0e-4 relative at the **median**, nowhere near a tail.
 
-Below `q = 1e-4` for a shape in roughly [1.9, 2.6], the Wilson-Hilferty start's
-cube goes negative, so the start is floored; the first Newton step then
-overshoots the root by about 27 decades and the budget is spent halving back.
-`gamma_inv_cdf(1e-5, 2, 1)` returns 8.271806 against a true 0.0044788163 -- the
-99.8th percentile where the 0.001st was asked for -- and
-`chi_squared_inv_cdf(1e-5, 4)` is the same point at `df/2`. The returned values
-at neighbouring parameters are 1, 2 and 3 times 8.271806, which is the signature:
-the answer is a function of how many halvings fitted in the budget, not of `q`.
+Neither was a precision limit, which is why neither was repaired by the f64
+work above: their values moved by about eleven f32 ulps across it and their
+relative errors agreed to three digits. They were convergence limits, and what
+removed them was removing the structures rather than raising the budget, which
+is still 80. `scale` is divided out before the solve, so no constant in it has
+a magnitude a scale can move. The start is the small-`q` asymptotic wherever
+Wilson-Hilferty's cube is non-positive. The halving is replaced by bisection
+inside a maintained bracket, so the iteration cannot leave the root's basin and
+an exhausted budget returns a point inside an interval that contains the root.
+No step count is published for this loop. Three figures for it were stated and
+falsified in review -- 13, then "4 on the grid and 35 anywhere", then the grid
+maximum turning out to be 5 and a wider sweep reaching the full budget -- each
+correct over its own sweep and wrong as written, because the cost is set by how
+far a clamped start sits from the root and no finite sweep bounds that. What
+holds without a sweep is that the loop exits on convergence, on a bracket
+narrower than its tolerance, or on the budget, and that the value it returns
+lies inside a bracket straddling the root on every one of those exits. A
+deep-tail argument at a small shape spends its steps bisecting, not diverging,
+and every such return measured is correct.
 
-Above `scale` of about 1e27 the same division fails from the other side. The
-floor on the density is absolute at 1e-30 while a Gamma density is about
-`1/(scale*sqrt(2*pi*shape))`, so past a large enough scale the true density
-falls under the floor and each step removes only a fraction of the error.
-`gamma_inv_cdf(0.5, 2, 1e31)` is 3.0e-4 relative, at a median -- nowhere near a
-tail, and nothing about the start is degenerate.
-
-Both are convergence limits and not precision limits: raising the budget from 80
-to 4000 returns the correctly rounded answer at both witnesses. Neither is
-affected by the f64 work described here. Their values move by about eleven f32
-ulps across it and their relative errors agree to three digits, so the f64 work
-neither causes nor repairs them.
-
-**Do not reach for the CDF as a substitute without checking the same
-parameters.** An earlier version of this note recommended solving
-`gamma_cdf(x, shape, scale) = q` instead, on the grounds that the CDF is
-accurate over fifty decades of `scale`. That was false, for the underflow
-reason given above. The CDF is accurate over the grid's own scale range; it is
-not a general escape from the quantile's limits.
+**The CDF is still not a general substitute for the quantile.** An earlier
+version of this note recommended solving `gamma_cdf(x, shape, scale) = q`
+instead, on the grounds that the CDF is accurate over fifty decades of `scale`.
+That was false then, for the underflow reason above, and it remains the one
+place where the CDF is the weaker of the two.
 
 `parity/check_gamma_accuracy.py` measures all nine exports on every CI run, at
 and beyond those ceilings and at the `q` floor, and fails if the bound is exceeded at any case it enforces.

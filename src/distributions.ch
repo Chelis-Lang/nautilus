@@ -850,71 +850,187 @@ def chi_squared_sf(x: f32, df: f32) -> f32 = {
 -- happens somewhere between 100 and 1000 at the median and somewhere between
 -- 1e3 and 1e4 in the 0.1% tails.
 --
--- The exit test is new and is a cost control rather than an accuracy one. 80
--- unconditional steps each cost a full CDF evaluation, which near the branch
--- point is tens of thousands of series terms; the loop reaches the f64 noise
--- floor of the CDF it is reading in about five. `1e-10` relative is the
--- stopping point because the floor itself is parameter-dependent -- the step
--- settles at about 3.5e-11 of `x` at `shape = 5e7` and 2.3e-12 at `shape =
--- 1e5` -- so a test tighter than the floor would never fire and would spend
--- the whole budget. 1e-10 is still 170x finer than the f32 return resolves.
--- The 80-step budget remains as the backstop for a non-converging case.
+-- The quantile solves `P(shape, y) = q` on the UNIT-scale distribution and
+-- multiplies by `scale` once at the end. `scale` is a pure dilation of this
+-- family -- the CDF is `P(shape, x/scale)` -- so dividing it out before the
+-- iteration is exact, and it is what makes a scale-dependent failure
+-- structurally impossible rather than merely further away. The step this loop
+-- used to take divided by an ABSOLUTE 1e-30 floor applied to a DENSITY, whose
+-- magnitude is about `1/(scale*sqrt(2*pi*shape))`: past a large enough scale
+-- the true density fell under the floor, the step divided by the floor
+-- instead, and each step then removed only the fraction `pdf/floor` of the
+-- error -- `gamma_inv_cdf(0.5, 2, 1e31)` was 3.0e-4 relative, 152x the bound
+-- (#162). No constant left in this loop has a magnitude a `scale` can
+-- move, so there is nothing for that argument to exhaust.
+--
+-- The variable is `u = log y`, for three reasons that turn out to be one. A
+-- quantile ranges over decades, so its natural step is multiplicative. The
+-- small-`q` start below IS a logarithm, so forming it in `u` needs no `exp`
+-- and cannot underflow on the way in. And `dP/du = y*pdf(y)`, which is
+-- exactly `gammainc_front`, so the derivative is a function this module
+-- already has and the quotient that needed a density floor is never formed.
+--
+-- The residual is taken on `log P` rather than on `P`. In the deep lower tail
+-- `P` is near-exponential in `u`, so Newton on `P` takes near-constant steps
+-- and creeps: 53 of the 80 steps at `q = 1e-38, shape = 100`. On `log P` the
+-- same region is near-linear, since `d(log P)/du` is `a - y` to leading
+-- order.
+--
+-- NO STEP COUNT IS PUBLISHED FOR THIS LOOP, and the omission is the result of
+-- three attempts rather than an oversight. A prototype figure of 13 was
+-- published and falsified; it was re-measured in this lane as "at most 4 on
+-- the gate's grid, 35 anywhere, never within 44 of the budget" and that was
+-- falsified too -- the grid maximum is 5 (`q = 0.999, shape = 0.5`) and a
+-- wider sweep reaches 80 of 80 at `q = 9e-25, shape = 0.075`, a shape sitting
+-- beside the grid's own smallest. Each figure was correct over the set that
+-- produced it and wrong as stated, because the cost of this loop is governed
+-- by how far the clamped start sits from the root and no finite sweep bounds
+-- that. The claim FORM is the defect, not the arithmetic.
+--
+-- What holds without a sweep: the budget is `gamma_inv_newton_max_i()`, the
+-- loop exits on convergence, on a bracket narrower than the tolerance, or on
+-- that budget, and whichever exit it takes the value returned lies inside a
+-- bracket that straddles the root. A deep-tail argument spends its steps
+-- bisecting rather than diverging -- when the start clamps to
+-- `gamma_inv_u_min()` the bracket is about one nat wide and halving it to the
+-- 1e-10 tolerance takes about 33 steps -- and every such return measured is
+-- correct. That is the property a caller depends on; the step count is not.
 def gamma_inv_newton_tol() -> f64 = cast(1e-10, f64)
--- Not `gammainc_tiny()`, and the difference is 270 decades of consequence.
--- That constant is the continued fraction's Lentz floor, where the only job is
--- to be small enough never to be reached by a real denominator. These two are
--- the smallest *starting point* and the smallest *derivative* the Newton loop
--- can usefully be handed, and both are reached: Wilson-Hilferty's `s` goes
--- negative for a small shape in the far lower tail -- `shape = 1.25, q = 0.001`
--- is one -- so the cube is floored and becomes the start. At 1e-30 the density
--- there is 1.8e-8, so the first Newton step overshoots the root by about six
--- decades and roughly twenty-three halvings of the `x_next <= 0` fallback
--- bring it back inside the 80-step budget. At 1e-300 the density underflows to
--- zero, the step is divided by the floor instead, and
--- `gamma_inv_cdf(0.001, 1.25, 2)` diverges to +inf from a value that was
--- correct to seven digits. The f32 lane used 1e-30 for both and this keeps it.
-def gamma_inv_floor() -> f64 = cast(1e-30, f64)
 def gamma_inv_newton_max_i() -> i64 = cast(80, i64)
-def gamma_inv_newton_step(target: f64, shape: f64, scale: f64, x: f64) -> (f64, bool) = {
-  cur = gammainc_p(shape, div(x, scale))
-  resid = sub(cur, target)
-  pdf_v = gamma_pdf_core(x, shape, scale)
-  floor_pdf = gamma_inv_floor()
-  pdf_safe = if lt(pdf_v, floor_pdf) then floor_pdf else pdf_v
-  step = div(resid, pdf_safe)
-  x_next_raw = sub(x, step)
-  x_next = if lte(x_next_raw, zero_d64()) then mul(cast(0.5, f64), x) else x_next_raw
-  settled = lt(fabs64_inner(sub(x_next, x)), mul(gamma_inv_newton_tol(), fabs64_inner(x)))
-  (x_next, settled)
+-- The window where `exp` is neither 0 nor +inf in f64. A start outside it is
+-- clamped to the edge rather than evaluated: the asymptotic below is a
+-- logarithm divided by `shape`, so a small shape in a deep tail sends it to
+-- -5037 at `q = 1e-7, shape = 0.0032`, where the root is genuinely below f64
+-- and the honest answer is the underflowed one. Clamping also bounds the
+-- widening below, which is what lets its cap be a provable number.
+def gamma_inv_u_min() -> f64 = cast(-745.0, f64)
+def gamma_inv_u_max() -> f64 = cast(709.0, f64)
+-- `P` and `dP/du` at `u = log y`, with both ends of the window given their
+-- limits directly instead of being reached through an `exp` that has already
+-- lost the value.
+def gamma_inv_p_at(shape: f64, u: f64) -> f64 = if lt(u, gamma_inv_u_min()) then zero_d64() else if gt(u, gamma_inv_u_max()) then one_d64() else gammainc_p(shape, exp(u))
+def gamma_inv_slope_at(shape: f64, u: f64) -> f64 = if or(lt(u, gamma_inv_u_min()), gt(u, gamma_inv_u_max())) then zero_d64() else gammainc_front(shape, exp(u))
+def gamma_inv_clamp_u(u: f64) -> f64 = if lt(u, gamma_inv_u_min()) then gamma_inv_u_min() else if gt(u, gamma_inv_u_max()) then gamma_inv_u_max() else u
+-- Wilson-Hilferty where its cube is positive, and the small-`q` asymptotic
+-- where it is not. `s` goes negative for a small shape in the far lower tail,
+-- and flooring the cube there is what put the start 27 decades from the root:
+-- at a floor of 1e-30 the density is about 1.8e-8, so the first step was
+-- `q/pdf ~ 5e24` and 75 to 79 of the 80 steps went on halving back down,
+-- leaving the answer a function of the step count rather than of `q`
+-- (`gamma_inv_cdf(1e-5, 2, 1)` returned 8.271806 for a true 0.0044788163 --
+-- the 99.8th percentile where the 0.001st was asked for).
+--
+-- `P(a, y) ~ y^a / Gamma(a+1)` as `y -> 0` is the leading term of the same
+-- series `gammap_core` sums, so inverting it is accurate exactly where
+-- Wilson-Hilferty degenerates, and its log is exact in `u` with no `exp`:
+-- `u = (log q + log_gamma(a+1)) / a`. AS 91 and Numerical Recipes both switch
+-- here. There is no threshold to be continuous across, because the two
+-- branches are separated by the sign of `s` and Wilson-Hilferty is not a
+-- start at all where `s <= 0`.
+def gamma_inv_start_u(q: f64, z: f64, shape: f64) -> f64 = {
+  inv_9k = div(one_d64(), mul(cast(9.0, f64), shape))
+  s = add(sub(one_d64(), inv_9k), mul(z, sqrt(inv_9k)))
+  if gt(s, zero_d64()) then gamma_inv_clamp_u(add(log(shape), mul(cast(3.0, f64), log(s)))) else gamma_inv_clamp_u(div(add(log(q), log_gamma(add(shape, one_d64()))), shape))
 }
-def gamma_inv_newton_chunk(target: f64, shape: f64, scale: f64, x: f64, i: i64, max_i: i64, steps: i64) -> (f64, i64, bool) = {
+-- A straddling bracket for the root, widened from the start by a DOUBLING
+-- step. `P` is increasing in `u`, so each endpoint is found by a sign test.
+-- Doubling rather than a fixed step is what makes the cap a guarantee instead
+-- of a hope: twelve steps span 4095 nats, the clamped start is inside a window
+-- 1454 nats wide, and the low end always terminates because `P` is 0 once
+-- `exp(u)` underflows while `q` is strictly positive. So the bracket cannot
+-- fail to close, at a cost of twelve `P` evaluations in the worst case and
+-- one or two in every case measured.
+def gamma_inv_widen_max() -> i64 = cast(12, i64)
+def gamma_inv_widen_lo(shape: f64, q: f64, u: f64, k: f64, n: i64) -> f64 = if lte(n, cast(0, i64)) then u else if lte(gamma_inv_p_at(shape, u), q) then u else gamma_inv_widen_lo(shape, q, sub(u, k), mul(k, cast(2.0, f64)), sub(n, cast(1, i64)))
+def gamma_inv_widen_hi(shape: f64, q: f64, u: f64, k: f64, n: i64) -> f64 = if lte(n, cast(0, i64)) then u else if gte(gamma_inv_p_at(shape, u), q) then u else gamma_inv_widen_hi(shape, q, add(u, k), mul(k, cast(2.0, f64)), sub(n, cast(1, i64)))
+-- One safeguarded step, carrying `(u, lo, hi, settled)`.
+--
+-- The current point is folded into the bracket FIRST, so `lo` and `hi` always
+-- straddle the root; a Newton candidate is taken only when it lands strictly
+-- inside, and the bisection that replaces it otherwise is what makes leaving
+-- the basin impossible. The old loop had no bracket: its only guard was
+-- `x_next <= 0 -> x/2`, which is a descent and not a safeguard, so a step out
+-- of the basin was recovered one halving at a time and the budget decided the
+-- answer. Here the budget decides only the width of the interval the answer is
+-- known to lie in.
+--
+-- Convergence is tested on the Newton STEP, before the membership test. Once
+-- the step falls below an ulp of `u` the candidate equals `u`, which equals
+-- the endpoint just folded in, so a strict membership test rejects a converged
+-- answer and the rest of the budget goes on bisecting an interval already
+-- 1e-16 wide: 34 steps instead of 3 at `q = 1e-5, shape = 2.1`. A step that
+-- small cannot leave a bracket wider than the tolerance, and an interval
+-- narrower than the tolerance ends the loop anyway, so accepting it is safe.
+def gamma_inv_step(shape: f64, q: f64, log_q: f64, u: f64, lo: f64, hi: f64) -> (f64, f64, f64, bool) = {
+  pv = gamma_inv_p_at(shape, u)
+  lo_next = if lt(pv, q) then u else lo
+  hi_next = if gt(pv, q) then u else hi
+  slope = gamma_inv_slope_at(shape, u)
+  usable = and(gt(slope, zero_d64()), gt(pv, zero_d64()))
+  step = if usable then div(mul(sub(log(pv), log_q), pv), slope) else zero_d64()
+  cand = sub(u, step)
+  converged = and(usable, lt(fabs64_inner(step), gamma_inv_newton_tol()))
+  inside = and(and(usable, gt(cand, lo_next)), lt(cand, hi_next))
+  u_next = if or(converged, inside) then cand else mul(cast(0.5, f64), add(lo_next, hi_next))
+  narrow = lt(sub(hi_next, lo_next), gamma_inv_newton_tol())
+  (u_next, lo_next, hi_next, or(converged, narrow))
+}
+def gamma_inv_chunk(shape: f64, q: f64, log_q: f64, u: f64, lo: f64, hi: f64, i: i64, max_i: i64, steps: i64) -> (f64, f64, f64, i64, bool) = {
   zero_i = cast(0, i64)
   one_i = cast(1, i64)
-  if or(gt(i, max_i), lte(steps, zero_i)) then (x, i, false) else {
-    st = gamma_inv_newton_step(target, shape, scale, x)
+  if or(gt(i, max_i), lte(steps, zero_i)) then (u, lo, hi, i, false) else {
+    st = gamma_inv_step(shape, q, log_q, u, lo, hi)
     i_next = add(i, one_i)
-    if st.1 then (st.0, i_next, true) else gamma_inv_newton_chunk(target, shape, scale, st.0, i_next, max_i, sub(steps, one_i))
+    if st.3 then (st.0, st.1, st.2, i_next, true) else gamma_inv_chunk(shape, q, log_q, st.0, st.1, st.2, i_next, max_i, sub(steps, one_i))
   }
 }
-def gamma_inv_newton_drive(target: f64, shape: f64, scale: f64, x: f64, i: i64, max_i: i64) -> f64 =
-  if gt(i, max_i) then x else {
-    st = gamma_inv_newton_chunk(target, shape, scale, x, i, max_i, gammainc_fanout_i())
-    if st.2 then st.0 else gamma_inv_newton_drive(target, shape, scale, st.0, st.1, max_i)
+def gamma_inv_drive(shape: f64, q: f64, log_q: f64, u: f64, lo: f64, hi: f64, i: i64, max_i: i64) -> f64 =
+  if gt(i, max_i) then u else {
+    st = gamma_inv_chunk(shape, q, log_q, u, lo, hi, i, max_i, gammainc_fanout_i())
+    if st.4 then st.0 else gamma_inv_drive(shape, q, log_q, st.0, st.1, st.2, st.3, max_i)
   }
+-- `shape` and `scale` are guarded here rather than left to produce a NaN
+-- downstream, and the guard requires each to be FINITE and positive rather
+-- than merely positive. Both halves of that are load-bearing and both were
+-- found by measurement rather than by reasoning.
+--
+-- With `scale` divided out of the solve, a zero `scale` would otherwise
+-- multiply a finite unit quantile and return 0 where the old lane returned
+-- NaN. The asymptotic start takes `log_gamma(shape + 1)`, which traps on a
+-- NaN shape instead of propagating it.
+--
+-- And an INFINITE shape passes a positivity test. Without the finiteness
+-- leg `gamma_inv_cdf(0.5, +inf, 1)` returned 0.0: `1/(9*inf)` is 0, so
+-- Wilson-Hilferty's `s` is 1 and `u0` is `log(inf)`, clamped to the top of
+-- the window; `P(inf, y)` is not a usable probability there, both widenings
+-- run to their caps, and the bisection settles on the low end at
+-- `exp(-3386)`. That is a plausible-looking lower-tail number returned for
+-- a median, which is the exact failure class #162 exists to remove,
+-- so re-introducing it at a degenerate input would have been a poor trade.
+-- NaN is what the pre-#162 lane returned for the case that actually regressed,
+-- `+inf` shape, and that is the whole warrant for choosing NaN here. It is NOT
+-- what it returned for all four: a `-inf` shape and a NaN shape both ABORTED
+-- the process on the base with the `cast_trunc` trap above, so for those two
+-- this is a new answer rather than a restored one. The limits a non-finite parameter arguably
+-- has -- `+inf` for an infinite shape at any interior `q` -- are deliberately
+-- NOT claimed here: that is a semantic decision about a degenerate input,
+-- and this change restores the previous answer rather than inventing a new
+-- one.
+-- Re-dilated in f64 and cast ONCE. Casting `exp(u)` to f32 first and
+-- multiplying in f32 loses a unit quantile smaller than f32's smallest
+-- normal before `scale` can bring it back into range:
+-- `gamma_inv_cdf(1e-4, 0.0706, 1e20)` has a unit root of 5.6e-57 and a
+-- true answer of 5.6e-37, and the premature cast returned 0.
 def gamma_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
-  if or(lt(q, zero_f()), gt(q, one_f())) then nan_d() else if lte(q, zero_f()) then zero_f() else if gte(q, one_f()) then pos_inf_d() else {
-    z = cast(normal_inv_cdf(q, zero_f(), one_f()), f64)
+  if or(neq(q, q), or(lt(q, zero_f()), gt(q, one_f()))) then nan_d() else if lte(q, zero_f()) then zero_f() else if gte(q, one_f()) then pos_inf_d() else if or(neq(shape, shape), or(lte(shape, zero_f()), eq(shape, pos_inf_d()))) then nan_d() else if or(neq(scale, scale), or(lte(scale, zero_f()), eq(scale, pos_inf_d()))) then nan_d() else {
+    q64 = cast(q, f64)
     shape64 = cast(shape, f64)
-    scale64 = cast(scale, f64)
-    inv_9k = div(one_d64(), mul(cast(9.0, f64), shape64))
-    sqrt_inv_9k = sqrt(inv_9k)
-    a = sub(one_d64(), inv_9k)
-    b = mul(z, sqrt_inv_9k)
-    s = add(a, b)
-    s_cubed = mul(s, mul(s, s))
-    wh_safe = if gt(s_cubed, gamma_inv_floor()) then s_cubed else gamma_inv_floor()
-    x0 = mul(shape64, mul(scale64, wh_safe))
-    cast(gamma_inv_newton_drive(cast(q, f64), shape64, scale64, x0, cast(1, i64), gamma_inv_newton_max_i()), f32)
+    z = cast(normal_inv_cdf(q, zero_f(), one_f()), f64)
+    u0 = gamma_inv_start_u(q64, z, shape64)
+    lo = gamma_inv_widen_lo(shape64, q64, u0, one_d64(), gamma_inv_widen_max())
+    hi = gamma_inv_widen_hi(shape64, q64, u0, one_d64(), gamma_inv_widen_max())
+    u = gamma_inv_drive(shape64, q64, log(q64), u0, lo, hi, cast(1, i64), gamma_inv_newton_max_i())
+    cast(mul(cast(scale, f64), exp(u)), f32)
   }
 def chi_squared_inv_cdf(q: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)

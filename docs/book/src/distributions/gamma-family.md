@@ -73,10 +73,35 @@ That loss is about 6e-8, for any accuracy of the incomplete gamma. Use
 
 **`gamma_inv_cdf(q: f32, shape: f32, scale: f32) -> f32`**
 
-Wilson-Hilferty initial guess refined by Newton's method on the f64 CDF and
-density, at most 80 iterations and stopping once a step moves the estimate by
-less than 1e-10 of itself. Returns 0 at q=0, +inf at q=1, NaN outside [0,1]. It
-inherits the large-shape limit below.
+Solves `P(shape, y) = q` on the unit-scale distribution and multiplies by
+`scale` once at the end, in f64. `scale` is a pure dilation of this family, so
+dividing it out is exact and the solve has no constant whose magnitude a scale
+can move. The variable is `u = ln y`, because a quantile ranges over decades;
+the derivative `dP/du` is the front factor `exp(shape*ln y - y - lgamma(shape))`
+the rest of this page already uses.
+
+The start is Wilson-Hilferty where its cube is positive and the small-`q`
+asymptotic `y ~ (q*Gamma(shape+1))^(1/shape)` where it is not -- the leading
+term of the same series, so it is accurate exactly where the closed form
+degenerates. From there it is Newton on `ln P`, safeguarded by a straddling
+bracket: a candidate that leaves the bracket is replaced by a bisection, so the
+iteration cannot leave the root's basin and an exhausted budget still returns a
+point inside an interval containing the root. At most 80 steps, stopping once a
+step moves `ln y` by less than 1e-10, on a bracket narrower than that
+tolerance, or on the budget -- and on whichever exit it takes, the value
+returned lies inside a bracket that straddles the root.
+
+No typical or maximum step count is quoted. Three successive figures for it
+were published and falsified here, each correct over the sweep that produced it
+and wrong as stated, because the cost is governed by how far a clamped start
+sits from the root and no finite sweep bounds that. A deep-tail argument at a
+small shape spends its budget bisecting a one-nat bracket rather than
+diverging, and every such return measured is correct.
+
+Returns 0 at q=0, +inf at q=1, and NaN for a `q` outside [0,1], a NaN `q`, or a
+`shape` or `scale` that is NaN, not positive, or infinite. An infinite shape is
+positive and is not NaN, so the finiteness leg is not redundant. It inherits the large-shape
+limit below.
 
 The refinement is not optional at a small shape and is not harmful at a large
 one. The closed form alone is 23% out at `gamma_inv_cdf(0.05, 1, 1)`, and the
@@ -87,12 +112,15 @@ f32. On that same f32 CDF the refinement was also worth a factor of 1001
 function it is handed and a biased CDF moves that root. The CDF is the fix;
 the loop stays.
 
-What the loop does not do is converge for every argument. Each of its steps
-divides by the density, floored at an absolute 1e-30, and there are two regions
-where that division is useless: `q` below 1e-4 at a shape near 2, where the
-start itself is floored, and a very large `scale`, where the density falls under
-the floor. In both the 80 steps are exhausted before the descent arrives. See
-[the precision appendix](../appendix/precision.md) for both regions.
+Two regions used not to converge, and both came from one pair of structures:
+each step divided by the density floored at an absolute 1e-30, and a step out
+of the basin was recovered by halving `x` once per iteration. Below `q = 1e-4`
+at a shape near 2 the start itself was floored and the budget went on halving
+back from 27 decades out; above a `scale` of about 1e27 the true density fell
+under the same absolute floor. Neither structure remains -- the floor is gone,
+the bracket replaced the halving, and `scale` is divided out -- and
+[the precision appendix](../appendix/precision.md) records what the grid now
+measures over both.
 
 **`gamma_sample[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]`**
 
