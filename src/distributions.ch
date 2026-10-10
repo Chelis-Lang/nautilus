@@ -876,15 +876,25 @@ def chi_squared_sf(x: f32, df: f32) -> f32 = {
 -- same region is near-linear, since `d(log P)/du` is `a - y` to leading
 -- order.
 --
--- Step counts, measured in THIS lane by instrumenting the loop counter rather
--- than in the prototype the algorithm was designed in: at most 4 steps over
--- the accuracy gate's own quantile grid (118 arguments), and up to 35 outside
--- it at a small shape in a deep tail -- `gamma_inv_cdf(1e-7, 0.0032, 1)` is
--- the worst found over 252 arguments. Those deep rows are correct; they are
--- bisections, not error. When the asymptotic start clamps to
--- `gamma_inv_u_min()` the bracket is about one nat wide and the loop bisects
--- it down to the 1e-10 tolerance, which is about 33 halvings. The budget is
--- never approached: the most observed is 36 of 80.
+-- NO STEP COUNT IS PUBLISHED FOR THIS LOOP, and the omission is the result of
+-- three attempts rather than an oversight. A prototype figure of 13 was
+-- published and falsified; it was re-measured in this lane as "at most 4 on
+-- the gate's grid, 35 anywhere, never within 44 of the budget" and that was
+-- falsified too -- the grid maximum is 5 (`q = 0.999, shape = 0.5`) and a
+-- wider sweep reaches 80 of 80 at `q = 9e-25, shape = 0.075`, a shape sitting
+-- beside the grid's own smallest. Each figure was correct over the set that
+-- produced it and wrong as stated, because the cost of this loop is governed
+-- by how far the clamped start sits from the root and no finite sweep bounds
+-- that. The claim FORM is the defect, not the arithmetic.
+--
+-- What holds without a sweep: the budget is `gamma_inv_newton_max_i()`, the
+-- loop exits on convergence, on a bracket narrower than the tolerance, or on
+-- that budget, and whichever exit it takes the value returned lies inside a
+-- bracket that straddles the root. A deep-tail argument spends its steps
+-- bisecting rather than diverging -- when the start clamps to
+-- `gamma_inv_u_min()` the bracket is about one nat wide and halving it to the
+-- 1e-10 tolerance takes about 33 steps -- and every such return measured is
+-- correct. That is the property a caller depends on; the step count is not.
 def gamma_inv_newton_tol() -> f64 = cast(1e-10, f64)
 def gamma_inv_newton_max_i() -> i64 = cast(80, i64)
 -- The window where `exp` is neither 0 nor +inf in f64. A start outside it is

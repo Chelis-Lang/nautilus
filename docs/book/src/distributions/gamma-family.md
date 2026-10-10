@@ -87,14 +87,20 @@ degenerates. From there it is Newton on `ln P`, safeguarded by a straddling
 bracket: a candidate that leaves the bracket is replaced by a bisection, so the
 iteration cannot leave the root's basin and an exhausted budget still returns a
 point inside an interval containing the root. At most 80 steps, stopping once a
-step moves `ln y` by less than 1e-10. Four steps is the most any argument on
-the accuracy gate's own quantile grid needs, and 35 the most found anywhere --
-at a small shape in a tail deeper than that grid probes, where the start clamps
-and the loop bisects a one-nat bracket down to the tolerance. Those are
-bisections rather than error, and the budget is never approached.
+step moves `ln y` by less than 1e-10, on a bracket narrower than that
+tolerance, or on the budget -- and on whichever exit it takes, the value
+returned lies inside a bracket that straddles the root.
+
+No typical or maximum step count is quoted. Three successive figures for it
+were published and falsified here, each correct over the sweep that produced it
+and wrong as stated, because the cost is governed by how far a clamped start
+sits from the root and no finite sweep bounds that. A deep-tail argument at a
+small shape spends its budget bisecting a one-nat bracket rather than
+diverging, and every such return measured is correct.
 
 Returns 0 at q=0, +inf at q=1, and NaN for a `q` outside [0,1], a NaN `q`, or a
-`shape` or `scale` that is NaN or not positive. It inherits the large-shape
+`shape` or `scale` that is NaN, not positive, or infinite. An infinite shape is
+positive and is not NaN, so the finiteness leg is not redundant. It inherits the large-shape
 limit below.
 
 The refinement is not optional at a small shape and is not harmful at a large

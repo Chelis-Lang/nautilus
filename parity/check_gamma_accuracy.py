@@ -77,7 +77,10 @@ relative resolution.
 
     uv run --project parity --frozen python parity/check_gamma_accuracy.py
 
-It runs twelve to seventeen minutes on a workstation, over 1894 cases. Most of
+It evaluates 1894 cases. No wall-clock figure is given: every timing taken of
+this grid was on a box running other work, so the numbers in circulation for it
+(5:11, 10:49, 11 and 16:38 minutes, over three different grids) measure the load
+and not the grid. Time it yourself if you need a budget. Most of
 that is the compiler evaluating the series near the branch point at the top of
 the shape ladder, and about half of it arrived with the `scale` axis the quantile
 rows gained in review -- which is the axis that caught a 152x error, so the cost

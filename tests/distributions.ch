@@ -1713,8 +1713,12 @@ def test_gamma_inv_cdf_keeps_a_subnormal_unit_root_through_the_dilation() -> uni
   -- a plausible-looking answer for a quantile this small.
   --
   -- This row also closes round 3 of nautilus#152's review, which found this
-  -- exact call 41x out: the shape ladder started at 0.5, so nothing probed a
-  -- shape below it.
+  -- exact call badly wrong: the shape ladder started at 0.5, so nothing probed
+  -- a shape below it. No ratio is quoted, deliberately -- that witness was
+  -- recorded at shape 0.07062688 and abbreviated to 0.0706, which is a
+  -- different f32 and therefore a different call, and the figures in
+  -- circulation for it differ by the shape AND by whether they are a plain
+  -- ratio or a relative error.
   v = gamma_inv_cdf(cast(0.0001, f32), cast(0.0706, f32), cast(1e20, f32))
   _ = assert_true(gt(v, cast(0.0, f32)), "gamma_inv_cdf(1e-4;0.0706,1e20) is not the 0 an f32 intermediate gives")
   assert_true(lt(dist_rel_err(v, cast(1.3076351e-37, f32)), cast(0.00001, f32)), "gamma_inv_cdf(1e-4;0.0706,1e20) = 1.3076351e-37")

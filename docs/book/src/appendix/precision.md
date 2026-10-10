@@ -271,11 +271,16 @@ a magnitude a scale can move. The start is the small-`q` asymptotic wherever
 Wilson-Hilferty's cube is non-positive. The halving is replaced by bisection
 inside a maintained bracket, so the iteration cannot leave the root's basin and
 an exhausted budget returns a point inside an interval that contains the root.
-Four steps is the most any argument on the gate's own quantile grid needs. The
-most found anywhere is 35, at a small shape in a tail deeper than the grid
-probes, where the clamped start leaves a one-nat bracket for the loop to bisect
-down to its tolerance; those returns are correct, and the closest any argument
-came to the budget was 36 of 80.
+No step count is published for this loop. Three figures for it were stated and
+falsified in review -- 13, then "4 on the grid and 35 anywhere", then the grid
+maximum turning out to be 5 and a wider sweep reaching the full budget -- each
+correct over its own sweep and wrong as written, because the cost is set by how
+far a clamped start sits from the root and no finite sweep bounds that. What
+holds without a sweep is that the loop exits on convergence, on a bracket
+narrower than its tolerance, or on the budget, and that the value it returns
+lies inside a bracket straddling the root on every one of those exits. A
+deep-tail argument at a small shape spends its steps bisecting, not diverging,
+and every such return measured is correct.
 
 **The CDF is still not a general substitute for the quantile.** An earlier
 version of this note recommended solving `gamma_cdf(x, shape, scale) = q`
