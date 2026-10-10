@@ -1659,6 +1659,35 @@ def test_gamma_inv_cdf_arrives_in_the_deep_lower_tail() -> unit ! { Test } = {
   _ = assert_true(lt(dist_rel_err(d, cast(0.0064480803, f32)), cast(1e-6, f32)), "gamma_inv_cdf(1e-6;2.5,1) = 0.0064480803")
   assert_true(lt(dist_rel_err(e, cast(0.008957633, f32)), cast(1e-6, f32)), "chi_squared_inv_cdf(1e-5, 4) = 0.008957633, twice the gamma quantile at df/2")
 }
+def test_gamma_inv_cdf_needs_its_bracket_at_a_large_shape_in_a_deep_tail() -> unit ! { Test } = {
+  -- The row that makes the bracket OBSERVABLE, and it exists because three
+  -- review rounds said the bracket was not.
+  --
+  -- Removing the bracket's membership test alone changes no value, and
+  -- replacing the asymptotic start with the old 1e-30 floor alone changes no
+  -- value, because each covers the other. Removing BOTH returns exactly 0.0
+  -- here -- against a correctly rounded 9959065 -- so the two together are
+  -- load-bearing even though neither is alone. Nothing in this suite caught
+  -- that: the accuracy gate's quantile floor is q = 1e-7, and the only other
+  -- shape-1e7 quantile row in this file sits at q = 0.5.
+  --
+  -- A deep q at a large shape is the regime that needs it: Wilson-Hilferty's
+  -- cube is non-positive, so the start is the asymptotic one, and the
+  -- bracket's doubling widening is what carries the iterate to the root from
+  -- there. Four rows rather than one, because a single point cannot show that
+  -- the whole band arrives.
+  a = gamma_inv_cdf(cast(1e-38, f32), cast(10000000.0, f32), cast(1.0, f32))
+  b = gamma_inv_cdf(cast(1e-25, f32), cast(10000000.0, f32), cast(1.0, f32))
+  c = gamma_inv_cdf(cast(1e-20, f32), cast(10000000.0, f32), cast(1.0, f32))
+  d = gamma_inv_cdf(cast(1e-10, f32), cast(10000000.0, f32), cast(1.0, f32))
+  e = gamma_inv_cdf(cast(1e-38, f32), cast(1000.0, f32), cast(1.0, f32))
+  _ = assert_true(gt(a, cast(1000000.0, f32)), "gamma_inv_cdf(1e-38;1e7,1) is not the 0.0 a floored start without a bracket returns")
+  _ = assert_true(lt(dist_rel_err(a, cast(9959065.0, f32)), cast(1e-6, f32)), "gamma_inv_cdf(1e-38;1e7,1) = 9959065")
+  _ = assert_true(lt(dist_rel_err(b, cast(9967083.0, f32)), cast(1e-6, f32)), "gamma_inv_cdf(1e-25;1e7,1) = 9967083")
+  _ = assert_true(lt(dist_rel_err(c, cast(9970738.0, f32)), cast(1e-6, f32)), "gamma_inv_cdf(1e-20;1e7,1) = 9970738")
+  _ = assert_true(lt(dist_rel_err(d, cast(9979897.0, f32)), cast(1e-6, f32)), "gamma_inv_cdf(1e-10;1e7,1) = 9979897")
+  assert_true(lt(dist_rel_err(e, cast(643.8262, f32)), cast(1e-6, f32)), "gamma_inv_cdf(1e-38;1e3,1) = 643.8262, not the 661.6069 a floored start with a linear-P residual returns")
+}
 def test_gamma_inv_cdf_is_monotone_across_the_repaired_band() -> unit ! { Test } = {
   -- The structural test, and the one that needs no reference value at all. A
   -- quantile is non-decreasing in `q` by definition, and a loop that ends

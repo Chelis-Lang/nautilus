@@ -1007,8 +1007,11 @@ def gamma_inv_drive(shape: f64, q: f64, log_q: f64, u: f64, lo: f64, hi: f64, i:
 -- `exp(-3386)`. That is a plausible-looking lower-tail number returned for
 -- a median, which is the exact failure class nautilus#162 exists to remove,
 -- so re-introducing it at a degenerate input would have been a poor trade.
--- NaN is what the pre-#162 lane returned for all four non-finite parameter
--- cases and is what these return. The limits a non-finite parameter arguably
+-- NaN is what the pre-#162 lane returned for the case that actually regressed,
+-- `+inf` shape, and that is the whole warrant for choosing NaN here. It is NOT
+-- what it returned for all four: a `-inf` shape and a NaN shape both ABORTED
+-- the process on the base with the `cast_trunc` trap above, so for those two
+-- this is a new answer rather than a restored one. The limits a non-finite parameter arguably
 -- has -- `+inf` for an infinite shape at any interior `q` -- are deliberately
 -- NOT claimed here: that is a semantic decision about a degenerate input,
 -- and this change restores the previous answer rather than inventing a new
