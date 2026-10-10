@@ -860,7 +860,7 @@ def chi_squared_sf(x: f32, df: f32) -> f32 = {
 -- the true density fell under the floor, the step divided by the floor
 -- instead, and each step then removed only the fraction `pdf/floor` of the
 -- error -- `gamma_inv_cdf(0.5, 2, 1e31)` was 3.0e-4 relative, 152x the bound
--- (nautilus#162). No constant left in this loop has a magnitude a `scale` can
+-- No constant left in this loop has a magnitude a `scale` can
 -- move, so there is nothing for that argument to exhaust.
 --
 -- The variable is `u = log y`, for three reasons that turn out to be one. A
@@ -1005,7 +1005,7 @@ def gamma_inv_drive(shape: f64, q: f64, log_q: f64, u: f64, lo: f64, hi: f64, i:
 -- the window; `P(inf, y)` is not a usable probability there, both widenings
 -- run to their caps, and the bisection settles on the low end at
 -- `exp(-3386)`. That is a plausible-looking lower-tail number returned for
--- a median, which is the exact failure class nautilus#162 exists to remove,
+-- a median, which is the exact failure class this change exists to remove,
 -- so re-introducing it at a degenerate input would have been a poor trade.
 -- NaN is what the pre-#162 lane returned for the case that actually regressed,
 -- `+inf` shape, and that is the whole warrant for choosing NaN here. It is NOT
