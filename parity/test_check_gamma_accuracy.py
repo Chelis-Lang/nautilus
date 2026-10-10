@@ -520,8 +520,15 @@ class Coverage(unittest.TestCase):
         file, or the gate itself.
         """
         import subprocess
+        # `--untracked` is load-bearing. Plain `git grep` searches tracked files
+        # only, so a NEW claim site is invisible to this test until it is
+        # staged -- which is exactly when a reviewer would be reading it. A peer
+        # reported the guard not firing on their new changelog fragment, and a
+        # planted untracked site naming both quantiles beside the bound passed
+        # cleanly. `--untracked` still honours .gitignore, so the parity venv
+        # and build artifacts stay out.
         found = subprocess.run(
-            ["git", "grep", "-l", "2e-6"], cwd=REPO,
+            ["git", "grep", "-l", "--untracked", "2e-6"], cwd=REPO,
             capture_output=True, text=True).stdout.split()
         # Matched on this family's EXPORT NAMES, not on the substring "gamma".
         # The looser form flagged the beta family's own changelog, whose 2e-6 is

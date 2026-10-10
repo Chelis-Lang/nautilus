@@ -204,15 +204,22 @@ gate did not actually walk. First `q`, where the grid stopped three decades
 above a failure region. Then `scale`, which the quantile rows did not vary at
 all. Then `shape` *downward*, because the range bounded it only from above
 while the grid's ladder starts at 0.5 -- `gamma_inv_cdf(1e-4, 0.07062688, 1e20)`
-is 41.5x out, with every parameter inside the range as written.
+returns 5.8421183e-36 against a reference of 1.3742135e-37, a **relative error
+of 41.5**, with every parameter inside the range as written.
 
-The shape in that witness is written out in full on purpose. `0.0706` is a
-*different* f32 from `0.07062688`, so abbreviating it changes the quantity: the
-same call at `0.0706` returns 5.8398956e-36 against a reference of
-1.3076e-37, which is 44.7x rather than 41.5x. A figure and the arguments it was
-measured at have to travel together. Neither shape is on this grid's ladder,
-whose smallest quantile rung is 0.5, which is why the witness is a historical
-note here and not a gate row.
+The shape is written out in full, and the two values are given rather than only
+their ratio, because two separate things move this figure and between them they
+span 41.5 to 44.7.
+
+`0.0706` is a *different* f32 from `0.07062688`, so abbreviating the shape
+changes the call: at `0.0706` it returns 5.8398956e-36 against a reference of
+1.3076352e-37. And "how far out" is ambiguous between the relative error
+`|v - ref| / ref` and the plain ratio `v / ref`, which differ by exactly 1.
+The four readings are 41.5 and 42.5 at the full shape, 43.7 and 44.7 at the
+abbreviated one. Quote the two values and the statistic, not the ratio alone.
+
+Neither shape is on this grid's ladder, whose smallest quantile rung is 0.5,
+which is why the witness is a historical note here and not a gate row.
 
 So the claim no longer asserts a region. It asserts what was measured, which
 cannot be falsified by a point nobody measured, and it leaves the region to the
