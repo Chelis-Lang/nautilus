@@ -78,6 +78,33 @@ FAMILY_NAMES = tuple(DOCUMENTED) + ("chi_squared_p_value",)
 # also names `chi_squared_p_value`, so the looser form reported a claim site
 # that publishes no claim.
 BOUND = re.compile(r"(?<![\d.])2e-6(?![\d])")
+CASE_COUNT = re.compile(r"(\d[\d,]*)\s+(?:measured\s+)?cases")
+
+
+def bounded_gamma_claim(line: str, enforced: int) -> bool:
+    """Accept only an identified finite gamma-family subset beside a bound."""
+    if "gate enforces" in line or "check_gamma_accuracy.py` enforces" in line:
+        return True
+    if re.search(rf"\b{enforced}\s+measured cases\b", line):
+        return True
+    # chi_squared_p_value is an exact alias of chi_squared_sf. Its book row
+    # names the sampled df ceiling instead of the aggregate family count.
+    return ("chi_squared_p_value" in line
+            and "measured gamma-family cases through df 1e8" in line
+            and DOCUMENTED["chi_squared_sf"][0] == 1e8)
+
+
+def gamma_case_count_claim(line: str) -> bool:
+    """Include the unnamed gamma blockquote, but skip sibling oracle counts."""
+    if "check_pmf_accuracy" in line or "check_beta_accuracy" in line:
+        return False
+    return ("check_gamma_accuracy.py" in line
+            or "accuracy gate" in line
+            or any(name in line for name in FAMILY_NAMES)
+            or "the gamma family" in line
+            or (line.lstrip().startswith(">")
+                and BOUND.search(line) is not None
+                and CASE_COUNT.search(line) is not None))
 
 
 def blocks(text: str, prose: bool = True):
@@ -556,13 +583,8 @@ class Coverage(unittest.TestCase):
         published = 0
         for name, text in sites.items():
             for i, line in blocks(text, name.endswith(".md")):
-                for m in re.finditer(r"(\d[\d,]*)\s+cases", line):
-                    if "check_pmf_accuracy" in line or "check_beta_accuracy" in line:
-                        continue
-                    if not ("check_gamma_accuracy.py" in line
-                            or "accuracy gate" in line
-                            or any(f in line for f in FAMILY_NAMES)
-                            or "the gamma family" in line):
+                for m in CASE_COUNT.finditer(line):
+                    if not gamma_case_count_claim(line):
                         continue
                     published += 1
                     self.assertEqual(
@@ -624,17 +646,43 @@ class Coverage(unittest.TestCase):
                 # deleting the qualifier, because the qualifier was also what
                 # put the block in scope. A count cannot be deleted without
                 # deleting the claim.
-                if not named and not re.search(r"(\d[\d,]*)\s+cases", line):
+                if not named and not CASE_COUNT.search(line):
                     continue
                 named = named or ["this family's case count"]
                 self.assertTrue(
-                    any(q in line for q in ("gate enforces",
-                                            "check_gamma_accuracy.py` enforces")),
+                    bounded_gamma_claim(line, enforced),
                     f"{name}:{i} states this family's 2e-6 bound beside "
-                    f"{named[0]} without saying it is what the gate ENFORCES. "
+                    f"{named[0]} without naming the finite measured subset. "
                     f"A bare bound reads as universal and is false outside the "
                     f"ceilings: 3.79e-6 at gamma_cdf(2e8, 2e8, 1), and 3.4e-3 "
                     f"at chi_squared_p_value(1e9, 1e9)")
+
+    def test_finite_claim_qualifier_negative_controls(self) -> None:
+        enforced = sum(1 for case in self.spec
+                       if case[3] <= DOCUMENTED[case[1]][0])
+        self.assertEqual(enforced, 1626)
+        self.assertEqual(len(self.spec), 1673)
+        headline = "> Relative error is below 2e-6 at 1626 measured cases."
+        self.assertTrue(gamma_case_count_claim(headline))
+        self.assertEqual(CASE_COUNT.findall(headline), ["1626"])
+        self.assertTrue(gamma_case_count_claim(
+            "> Relative error is below 2e-6 at 1673 measured cases."))
+        self.assertFalse(gamma_case_count_claim(
+            "Over the 582 cases of `parity/check_pmf_accuracy.py`"))
+        self.assertTrue(bounded_gamma_claim(
+            "below 2e-6 at 1626 measured cases", enforced))
+        self.assertTrue(bounded_gamma_claim(
+            "chi_squared_p_value below 2e-6 at the measured gamma-family "
+            "cases through df 1e8", enforced))
+        for unbounded in (
+            "gamma_cdf below 2e-6",
+            "gamma_cdf below 2e-6 at every measured case",
+            "gamma_cdf below 2e-6 at 1673 measured cases",
+            "chi_squared_p_value below 2e-6 at the measured gamma-family "
+            "cases through df 1e9",
+        ):
+            with self.subTest(unbounded=unbounded):
+                self.assertFalse(bounded_gamma_claim(unbounded, enforced))
 
     def test_the_claim_site_list_is_complete(self) -> None:
         """`CLAIM_SITES` must name every file that publishes a bound.
