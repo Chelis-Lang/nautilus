@@ -117,6 +117,11 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   the book and capability inventory reflect the new compiler and
   package versions. Public Nautilus function signatures do not change.
 
+- Build Nautilus 0.7.52 with Chelis 0.19.2. The nonpivoting tridiagonal solver
+  uses finite nonzero pivots without an absolute size floor and returns NaN
+  for zero or nonfinite pivots. Natural splines preserve the measured
+  small-scale cases within f32 range.
+
 ## [0.7.48] - 2026-10-06
 
 ### Changed
