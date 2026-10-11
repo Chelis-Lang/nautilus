@@ -38,7 +38,7 @@ mdBook in [`docs/book`](docs/book) is rendered from those chelis.ch pages.
 
 ## Install
 
-Nautilus 0.7.50 is built for Chelis 0.19.1. Install Chelis from the
+Nautilus 0.7.50 is built for Chelis 0.19.2. Install Chelis from the
 [official releases](https://chelis.ch/docs/chelis/install/), then install the
 Nautilus release into your local Reef registry. The release is public, so no
 token is needed:
@@ -48,7 +48,7 @@ chelis reef install --from-github Chelis-Lang/nautilus@v0.7.50
 ```
 
 Add Nautilus to your project's `reef.toml`, set the project's `compiler` pin
-to `"=0.19.1"`, and run `chelis reef build` from the project directory:
+to `"=0.19.2"`, and run `chelis reef build` from the project directory:
 
 ```toml
 [dependencies]

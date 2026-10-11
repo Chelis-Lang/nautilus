@@ -3,8 +3,8 @@
 This file records the upstream Chelis compiler issues that currently shape
 Nautilus: what each one blocks, how Nautilus works around it, and when to check
 it again. It describes the state at the current **pin**, the exact compiler
-release that `reef.toml` requires. Nautilus pins `chelis 0.19.1`
-(`compiler = "=0.19.1"`).
+release that `reef.toml` requires. Nautilus pins `chelis 0.19.2`
+(`compiler = "=0.19.2"`).
 
 ## How this file works
 
@@ -39,7 +39,7 @@ blocked` reports each probe as OK (still fails as pinned), FIX-DETECTED (now
 passes, so the upstream fix has landed and the workaround should be removed),
 or DRIFTED (fails with a different diagnostic, so the failure mode moved and
 needs investigation before the citation is reused). There are no executable
-blocked probes at the 0.19.1 pin. The remaining live entries require manual
+blocked probes at the 0.19.2 pin. The remaining live entries require manual
 probes in C host lowering or a full algorithm replacement;
 [`tests_blocked/README.md`](../tests_blocked/README.md) lists them and gives the
 recipes.
@@ -54,50 +54,6 @@ changelog claim is not a re-probe.
 
 **Re-probe cadence:** at every compiler pin bump and before every Nautilus
 release.
-
-- **The `chelis eval` lane has no tail-call elimination, and its depth limit
-  scales inversely with the recursive body's size** — `chelis#2471`
-  ([Chelis-Lang/chelis#2471](https://github.com/Chelis-Lang/chelis/issues/2471)).
-    - **Symptom:** a self-recursive function that is syntactically a tail call
-      still consumes a stack frame per step under `chelis eval --file`, and the
-      process dies with `fatal runtime error: stack overflow, aborting` and exit
-      134 rather than raising anything a Chelis caller can observe. The frame
-      budget depends on how large the recursive body is: a sixteen-binding body
-      aborts at about 136 frames where a single-expression body passes 1020.
-      The `chelis test` worker thread holds about 500 frames of the same shape,
-      so the same input can return a value under `chelis test` and kill the
-      process under `chelis eval`.
-    - **Affected Nautilus surface:** none as shipped. Every iterative
-      numerical kernel whose budget exceeds roughly a hundred steps is
-      constrained in how it may spend that budget.
-    - **Workaround:** the incomplete-beta continued fraction in
-      `src/distributions.ch` spends its 4096-iteration budget through three
-      levels of chunking — 16 single steps per chunk, 16 chunks per block, 16
-      blocks per driver call — so peak depth is about 48 frames rather than
-      4096. The chunking changes no arithmetic: the iteration sequence, the
-      convergence test and the result are the flat form's. Without it the
-      budget nautilus#143 requires could not be spent in this lane at all.
-    - **Reproducer:** on the *inlined* flat recursion that preceded the
-      chunking, `beta_cdf(cast(0.5, f32), cast(100000.0, f32),
-      cast(100000.0, f32))` needed 162 f32 iterations and aborted. **That
-      spelling no longer reproduces anything**: against the current f64 code a
-      flattened recursion returns at 1e5 and at 1e6, because delegating each
-      step to `betacf_step` leaves a thin frame. Use `a = 1e7` (726 f64
-      iterations), and see `tests_blocked/README.md`, which owns the recipe.
-      No blocked probe exists, because a probe of this cannot fail as a test —
-      it kills the process that would report the failure, which is the defect.
-      `tests_blocked/README.md` records it among the manual probes.
-    - **Pinned result:** at Chelis 0.19.1 the absent tail-call elimination and
-      the body-size-dependent limit both reproduce. With the chunking in place
-      every f32 parameter *evaluates* rather than killing the process, including
-      `beta_cdf(0.5, 3e38, 3e38)` — which returns a confident `1.0` against a
-      true 0.5, so this entry claims only that the process survives, not that the
-      answer is usable. The accuracy range is in
-      `docs/book/src/appendix/precision.md`.
-    - **Re-probe trigger:** every pin bump and the release resolving
-      chelis#2471. On pass, the chunking may be collapsed back to a flat
-      recursion, which would simplify `src/distributions.ch` substantially;
-      compare values bit-for-bit before doing so.
 
 - **Composed generic gradient helper loses runtime-extent binder provenance** —
   `chelis#2370`
@@ -119,12 +75,11 @@ release.
       `tests/curvefit_lm_jacobian_model_wrapper.ch`, so no bounded blocked
       probe exists yet.
     - **Pinned result:** both isolated row witnesses and the shipped
-      finite-difference recovery suite pass. At Chelis 0.19.1, replacing
-      `lm_jcol` with seeded-output gradients leaves five scalar-path
-      tests passing and fails all six multi-parameter recoveries with
-      `[05-HOST-1]`: the reached model's `to_list` has no numeric IR lowering.
-      This failure occurs before the runtime-extent provenance boundary,
-      so that boundary remains unverified.
+      finite-difference recovery suite pass. At Chelis 0.19.2, the
+      Nautilus-shaped map-built model still fails the exact-AD Jacobian probe
+      with `[05-HOST-1]`: the reached model's `to_list` has no numeric IR
+      lowering. This failure occurs before the runtime-extent provenance
+      boundary, so that boundary remains unverified.
     - **Re-probe trigger:** every pin bump and the release resolving
       chelis#2370. On pass, compare the full LM recovery trajectories before
       removing the finite-difference implementation.
@@ -195,7 +150,7 @@ release.
       `[prec: Float]` conversions, and no particular mechanism should be
       inferred from them.
     - **Workaround:** none needed for the shipped match shapes.
-    - **Pinned result:** at Chelis 0.19.1, the upstream Option and ADT
+    - **Pinned result:** at Chelis 0.19.2, the upstream Option and ADT
       `match` reproducers each fail `chelis build` with `inconsistent live
       owners`; the same block-bound owner in an `if` emits and compiles.
       Manual only because `chelis test` never enters C host lowering. The
@@ -206,7 +161,7 @@ release.
 - **Float-generic downstream C consumers still require full verification** —
   `chelis#2152`
   ([Chelis-Lang/chelis#2152](https://github.com/Chelis-Lang/chelis/issues/2152)).
-    - **Pinned result:** at Chelis 0.19.1, a library exporting
+    - **Pinned result:** at Chelis 0.19.2, a library exporting
       `apply_cast[prec: Float](g: prec -> prec, x: prec)` was built and
       installed into an isolated Reef store. Separate f32 and f64 consumers
       each built and linked with `chelis build`; both executables printed
@@ -236,75 +191,6 @@ release.
       Nautilus consumer builds, compiles, links, and runs at f32 and f64.
       The minimal reproducer passing does not establish that full result.
 
-- **`chelis eval --file` aborts the process after about 135 frames of a
-  let-heavy recursion** — `chelis#2471`
-  ([Chelis-Lang/chelis#2471](https://github.com/Chelis-Lang/chelis/issues/2471)).
-    - **Symptom:** `chelis eval --file` evaluates on the `main` thread, does no
-      tail-call elimination, and overflows its stack at a depth set by how many
-      bindings the recursive body holds: 136 frames for a sixteen-binding body,
-      past 1020 for a bare single-expression body with no bindings at all. The process dies with `fatal runtime
-      error: stack overflow` and exit 134, with no diagnostic a caller can
-      catch. Values do not matter: the same body at depth 135 returns whether
-      its arguments are finite or not. `chelis test` runs the same
-      sixteen-binding body to depth 500 on its `chelis-test-worker` thread and
-      reports an overflow there as a test failure rather than killing the
-      harness, so the two lanes disagree about whether a program runs. The
-      upstream issue's own round-1 comment also reports the absent tail-call
-      elimination, the inverse scaling with body size, and the lane difference,
-      though that comment states it is relaying one peer measurement rather
-      than offering independent corroboration.
-    - **Affected Nautilus surface, as narrowed here:** the two incomplete-gamma
-      recursions, now `gammainc_series_*` and `gammaq_cf_*` in
-      `src/distributions.ch`, and so `Nautilus.Distributions.gamma_cdf`,
-      `gamma_sf`, `gamma_pdf`, `chi_squared_cdf`, `chi_squared_sf`,
-      `chi_squared_pdf`, `gamma_inv_cdf`, `chi_squared_inv_cdf` and
-      `poisson_cdf`, and through them `Nautilus.Testing.chi_squared_p_value`
-      and `Nautilus.Stats.likelihood_ratio_p_value`. Each recursion carries a
-      65536-iteration budget, which as a flat recursion would cost 65536 frames
-      and so could not be spent in that lane at all.
-    - **Not covered, and still aborting:** `betacf_rec` in the same module
-      carries its own iteration budget with a fatter body. The rest of this
-      bullet predates the incomplete beta's move to f64 and its four named
-      probes no longer abort; it is corrected separately rather than here,
-      because nothing in this change touches that recursion. `chelis eval --file` on
-      `beta_cdf(0.5, 1e6, 1e6)`, `beta_cdf(0.5, 1e8, 1e8)`,
-      `f_cdf(1.0, 1e7, 1e7)` and `f_cdf(1.0, 1e8, 1e8)` each exit 134 at this
-      pin. `student_t_cdf`, `beta_cdf`, `f_cdf` and `binomial_cdf` all reach
-      it. This entry does not claim that surface is fixed.
-    - **Workaround:** both recursions spend their budget through four levels of
-      16-way chunking, so 65536 iterations cost about 64 frames. The chunking
-      exists only for the frame cost: it changes no arithmetic, and the
-      iteration sequence, the convergence test and the returned value are the
-      flat form's bit for bit at the same precision and tolerance. It is no
-      longer true that those match the ORIGINAL flat form -- the arithmetic
-      moved to f64 and the series' convergence test changed from a 1e-7 test
-      floored against 1.0 to a relative 1e-13, so the values differ from the
-      pre-f64 lane by design. The non-converged base case still returns the
-      partial sum.
-    - **Reproducer:** the upstream issue's. The Nautilus-level form is
-      `chelis eval --file` over a module binding
-      `gamma_cdf(2000.0f32, 2000.0f32, 1.0f32)`, which wants 330 series terms
-      at the current f64 tolerance. It wanted 187 under the former f32 lane, so
-      a reader comparing against an older copy of this entry should expect the
-      count to have risen rather than suspect a miscount.
-    - **Why `chelis test` cannot probe it:** the test lane holds about 500
-      frames of the same shape, so the chunked form's ~64 frames fit in either
-      lane and report a value. See [`tests_blocked/README.md`](../tests_blocked/README.md).
-    - **Pinned result:** at Chelis 0.19.0 and 0.19.1 the depth boundaries are
-      identical and deterministic over three repeats. With the chunked form,
-      `chelis eval --file src/exampledistributions.ch` prints
-      `example_gamma_cdf_degenerate_arguments = 11111.0`; against the flat form
-      the same command exits 134. That example is evaluated by the CI step that
-      runs `chelis eval --file` over `src/example*.ch`, which is the only gate
-      that observes the abort.
-    - **Re-probe trigger:** every pin bump, and any release touching eval-lane
-      stack sizing or tail calls. On a fix, the de-narrowing step is to replace
-      the four chunk levels with a single flat recursion over the same
-      arithmetic and confirm the example still prints `11111.0`. Note that a
-      flat form now needs 65536 frames rather than the 200 this entry was
-      written against, so a fix that merely raises the eval stack a little is
-      not enough to de-narrow it.
-
 ## Tracking
 
 ## Archived
@@ -312,11 +198,39 @@ release.
 **Re-probe cadence:** none. Revisit an entry only when a regression is
 reported or a live narrowing cites the archived behavior.
 
+- **[chelis#3419](https://github.com/Chelis-Lang/chelis/issues/3419)**, the gradient cotangent accumulation change delivered in [Chelis PR #3539](https://github.com/Chelis-Lang/chelis/pull/3539). The `spec/06 §2.4` rule forms the balanced tree from exactly the contributions, with no base leaf; the release note says this can change final bits for values with three or more contributions. Nautilus's `grad(erfinv_at)(0.5f64)` output is consistent with that change, though the exact attribution has not been isolated from an older compiler run. Re-probe with `uv run --no-project --python 3.12 python scripts/validate_book_examples.py`; it now passes with `d_erfinv = 1.1125848087047905` and the adjacent `d_j0` output unchanged. **Status: passed** at Chelis 0.19.2 after refreshing Nautilus's displayed output; this output is not evidence that Chelis violates the current gradient contract.
 - **`chelis#676`**, backward-DAG verification failure for `grad` through a
   model-capturing Jacobian wrapper. The generic and concrete witnesses pass at
   the pinned compiler as regression tests (`tests/curvefit_lm_jacobian_*.ch`); the
   full LM replacement is still blocked by chelis#2370 above.
-- **`chelis#1464`** (Nautilus's untaken-arm witness), an untaken scalar-`if`
+- **[chelis#2471](https://github.com/Chelis-Lang/chelis/issues/2471)**, evaluator stack overflow on deep recursion. Run the issue's `Box`/`loop`
+  program with `chelis eval --file` at depths 1,000, 10,000, and 65,536.
+  Expected and observed at Chelis 0.19.2: the first two return `a = 1002` and
+  `a = 10002`; the last reports `evaluation stack budget exhausted during a
+  function call` instead of aborting. The 4,096-step beta continued fraction
+  now uses a flat recursion with the same arithmetic order, tolerance, and
+  budget. Run `.venv/bin/python scripts/check_beta_c_lane.py --in-package-only`;
+  expected evidence is exact evaluator/C output agreement, a finite in-range
+  partial value for `beta_cdf(0.5, 1e11, 1e11)`, NaN for
+  `beta_cdf(0.5, 1e12, 1e12)`, and the four pinned symmetric values below.
+  **Status: passed** on this candidate: 17 evaluator values and the in-package
+  C executable agreed, including both exhausted-budget outcomes. This verifies
+  the 4,096-step beta path only; it does not claim unbounded evaluator stack
+  safety. The 65,536-step gamma
+  kernels remain chunked because that budget exceeds the evaluator's finite
+  stack limit.
+
+  [nautilus#163](https://github.com/Chelis-Lang/nautilus/issues/163) reports
+  four bounded symmetric probes. Run the same command above; these exact
+  outputs are pinned in both evaluator and C lanes: `beta_cdf(0.5, 1e6, 1e6)`
+  returns `0.5`, `beta_cdf(0.5, 1e8, 1e8)` returns `0.49999985`,
+  `f_cdf(1, 1e7, 1e7)` returns `0.49999997`, and `f_cdf(1, 1e8, 1e8)` returns
+  `0.5000001`. These calls complete without process abort at Chelis 0.19.2.
+  **Status: passed for these four calls only**; the wider parameter search and
+  error bound requested by the issue remain unmeasured.
+- **[chelis#2123](https://github.com/Chelis-Lang/chelis/issues/2123)**, finite float literals cannot bind through a precision variable if they overflow an admitted dtype. Nautilus bounds all Special precision binders to `{f32, f64}`. Run `chelis test tests_neg/special/f16_precision_neg.ch --expect neg` and `chelis test tests_neg/special/bf16_precision_neg.ch --expect neg`; expected diagnostics say the bound cannot be instantiated at the respective dtype. **Status: passed** at Chelis 0.19.2, including both probes in `chelis test tests_neg/ --expect neg` (32/32). [Nautilus#83](https://github.com/Chelis-Lang/nautilus/issues/83) remains open in the tracker, but the local narrowing it describes is already present in `src/special.ch` and remains intentional.
+- **[nautilus#127](https://github.com/Chelis-Lang/nautilus/issues/127)** tracks migration fallout from [Chelis PR #3020](https://github.com/Chelis-Lang/chelis/pull/3020)'s diagnostic wording and the shell-format change in [Chelis PR #2827](https://github.com/Chelis-Lang/chelis/pull/2827). Run `chelis test tests_neg/ --expect neg`; the expected evidence is the revised diagnostics for the nine named cases. **Status: passed, 32/32** at Chelis 0.19.2. The issue's release-publication prerequisite is not satisfied by this candidate PR; keep nautilus#127 open until a new compatible Nautilus artifact is published.
+- **[chelis#1464](https://github.com/Chelis-Lang/chelis/issues/1464)** (Nautilus's untaken-arm witness), an untaken scalar-`if`
   arm evaluated under `vmap` so that an overflowing arm poisoned the selected
   value. The `tests/masked_select/untaken_arm_overflow.ch` regression passes.
   The upstream issue remains
