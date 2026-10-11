@@ -33,32 +33,31 @@ Domain: `k` a non-negative integer value, `lambda >= 0` and finite.
 |---|---|---|
 | `lambda < 0` | NaN | NaN |
 | `lambda = 0` | 1 at k = 0, else 0 | 1 for every k >= 0 |
-| `lambda` NaN | NaN | stack overflow under `chelis eval` at the default 8 MB stack; NaN after `ulimit -s 65520` |
+| `lambda` NaN | NaN | NaN |
 | `k < 0` | 0 | 0 |
-| non-integer `k` | 0 | not rounded: interpolates between the neighboring counts |
+| non-integer `k` | 0 | not rounded: uses the continuous incomplete-gamma formula |
 
 The PMF works in log space, so large counts do not overflow a factorial, and
 it evaluates that log-space expression in f64 before returning an f32. The
 dominant term is `ln(Gamma(k + 1)) = ln(k!)`, which reaches 1.05e6 at
 `k = 1e5`; one f32 rounding of a quantity that size is an absolute error in
 an *exponent*, so it reaches the answer multiplied. In f32 the PMF was 5.2%
-high at `k = 1e5`, and above `k = 16777216` the `+ 1` vanished outright --
-the spacing of f32 values at 5e7 is 4 -- which left the normalising constant
+high at `k = 1e5`, and above `k = 16777216` the `+ 1` vanished because
+the spacing of f32 values at 5e7 is 4. This left the normalising constant
 computed for the wrong factorial and `poisson_pmf(5e7, 5e7)` returning 1.0.
 
-> Relative error stays below 2e-6 for `lambda` up to 1e8, for any result f32
-> can hold as a normal number.
+> Relative error is below 2e-6 at every measured normal-f32 Poisson case
+> through `lambda = 1e8`. The [precision guide](../appendix/precision.md)
+> lists the sampled `lambda` and `k` axes.
 
-The qualifier is not a hedge: below f32's smallest normal, 1.18e-38, the
-return type cannot carry the value and a relative bound measures f32's
-quantisation rather than this function. `poisson_pmf(42, 0.7)` returns 0
+Below f32's smallest normal, 1.18e-38, the return type cannot carry the
+value, so a relative comparison measures f32 quantisation. `poisson_pmf(42, 0.7)` returns 0
 against a true 1.1e-58.
 
-That range is a gate, not a sentence: `parity/check_pmf_accuracy.py` measures
-both PMFs against SciPy at and beyond the stated ceiling on every CI run.
-Above it the same mechanism keeps going and nothing in the result indicates
-it -- at `lambda = 1e9` the gate measures 3.8e-6, which is one f64 ulp of
-`ln(k!)` at that count. Note also that f32 cannot represent consecutive
+Measured cases compare the PMF with SciPy at and beyond the stated ceiling.
+Above it the same mechanism continues and nothing in the result indicates
+the growing error. At `lambda = 1e9` the measured error is 3.8e-6, one f64
+ulp of `ln(k!)` at that count. Note also that f32 cannot represent consecutive
 integers above 16777216 at all, so a count passed as an f32 above that is
 already on a grid coarser than 1.
 
@@ -70,7 +69,7 @@ in f32, `poisson_cdf(5e7, 5e7)` returned 6.731102e-4 against a true 0.50003761,
 and fixing the PMF did not touch it. It is now 0.50003755, which is one f32 ulp below the correctly rounded 0.5000376 and 1.2e-7 relative from exact.
 
 `k + 1` is formed in f64 as well. In f32 the increment vanished above
-`k = 16777216` -- the spacing of f32 values at 5e7 is 4 -- so the call
+`k = 16777216`, because the spacing of f32 values at 5e7 is 4. The call
 evaluated `Q(k, lambda)` rather than `Q(k + 1, lambda)` and came out short by
 exactly `poisson_pmf(k, lambda)`, which is 1.1e-4 of the answer at that count.
 
@@ -106,7 +105,8 @@ before reading `n` again, so a bad `n` does not produce NaN there.
 `binomial_cdf` forms `n - k`, `k + 1` and `1 - p` in f64 before computing the
 incomplete beta. In f32 the `+ 1` is lost once `k` reaches 16777216, because the
 spacing of f32 values there exceeds 1, and the result then describes a different
-distribution. Relative error stays below 2e-6 for `n` up to 1e8.
+distribution. The measured cases through `n = 1e8` have relative error
+below 2e-6; the [precision guide](../appendix/precision.md) states the sampled axes.
 
 `binomial_pmf` evaluates its whole log-space body in f64 for the reason given
 under `poisson_pmf`, and for one more: `ln C(n, k)` is a difference of three
@@ -117,16 +117,14 @@ rounding is an absolute error of 128 in an exponent. `binomial_pmf(5e7, 1e8,
 is a probability. The error was continuous in `n` rather than a cliff at
 16777216: 15% at `n = 2e5` and 59% at `n = 2e6`.
 
-> Relative error stays below 2e-6 for `n` up to 2e8, at every `p`, for any
-> result f32 can hold as a normal number.
+> Relative error is below 2e-6 at every measured normal-f32 binomial
+> case through `n = 2e8`. The [precision guide](../appendix/precision.md)
+> lists the sampled `n`, `p` and `k` axes.
 
-`p` is part of that claim because it is where the range was first measured
-wrongly: a grid that admitted only exactly-representable arguments dropped
-every skewed `p`, and a skewed `p` can be worse than `p = 0.5`. Which `p`
-is *worst* is a property of the grid rather than of the function, so no
-figure here names one. Above the ceiling the error grows with no signal in
-the result, as it does for `poisson_pmf`: at `n = 1e9` the gate measures
-3.5e-6.
+The measured `p` values include skewed probabilities as well as `p = 0.5`.
+Their errors vary with `p`, so a finite sample does not identify the worst
+probability for every `n`. Above the measured ceiling the error grows with no
+signal in the result: at `n = 1e9` the measured error is 3.5e-6.
 
 ## Pitfalls
 
@@ -135,9 +133,8 @@ the result, as it does for `poisson_pmf`: at `n = 1e9` the gate measures
   `binomial_cdf(3, 10, 0.3) = 0.6496107` and
   `binomial_cdf(4, 10, 0.3) = 0.8497316`, and is not P(X <= 3). Round a
   computed count with `floor` before the call.
-- A NaN argument does not give a clean NaN from `poisson_cdf`:
-  `poisson_cdf(NaN, lambda)` stops evaluation with
-  `numeric trap: domain in cast_trunc at i64`, and `poisson_cdf(k, NaN)`
-  exhausts the default stack. Check computed arguments for NaN first.
+- A NaN count stops `poisson_cdf` evaluation with
+  `numeric trap: domain in cast_trunc at i64`. A NaN `lambda` returns NaN.
+  Check computed arguments for NaN before the call.
 - For an upper tail, subtracting the CDF from 1 loses values below about
   6e-8. Neither family has a survival function.

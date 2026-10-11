@@ -7,34 +7,18 @@ Student's t.
 ## Gamma distribution
 
 Parameterized by `shape` (k) and `scale` (theta), SciPy's convention: the
-mean is `shape * scale`. Both must be positive and finite. No gamma function
-checks them. An invalid value returns a misleading number, NaN, or, under
-`chelis eval` at the default 8 MB stack, stops evaluation with
-`fatal runtime error: stack overflow, aborting`:
+mean is `shape * scale`. Both must be positive and finite. Validate computed parameters before
+calling these functions. A nonpositive shape can produce a misleading result
+from `gamma_pdf`; the CDF and inverse CDF return NaN for the cases below.
 
 | Call | Result |
 |---|---|
 | `gamma_pdf(1, 0, 1)` or `gamma_pdf(1, -1, 1)` | `0.0` |
-| `gamma_cdf(1, 0, 1)` or `gamma_cdf(1, -1, 1)` | `1.0` |
+| `gamma_cdf(1, 0, 1)` or `gamma_cdf(1, -1, 1)` | NaN |
 | `gamma_pdf(1, 2, 0)` or `gamma_pdf(1, 2, -1)` | NaN |
-| `gamma_cdf(1, 2, -1)` | `0.0` |
-| `gamma_cdf(1, 2, 0)` | stack overflow |
-| `gamma_inv_cdf(0.5, 0, 1)` | `0.0` |
-| `gamma_inv_cdf(0.5, -1, 1)` | `827180.6` |
-| `gamma_inv_cdf(0.5, 2, 0)` or `gamma_inv_cdf(0.5, 2, -1)` | stack overflow |
-
-The stack overflows came from the incomplete-gamma helpers, which recursed
-once per series or continued-fraction term. They now spend their budget through
-four levels of chunked recursion, so a long run costs about 64 stack frames
-rather than one per term, and a non-finite standardized argument is answered by
-a guard instead of running the budget out: neither a convergence test on a term
-nor one on a continued-fraction ratio can be satisfied by a NaN. Validate
-computed parameters before the call anyway.
-
-The measured results in the table above predate the degenerate-argument work
-and several of them are no longer what these calls return. They are tracked
-separately and are not corrected here, because nothing in this page's accuracy
-work changes them.
+| `gamma_cdf(1, 2, 0)` or `gamma_cdf(1, 2, -1)` | NaN |
+| `gamma_inv_cdf(0.5, 0, 1)` or `gamma_inv_cdf(0.5, -1, 1)` | NaN |
+| `gamma_inv_cdf(0.5, 2, 0)` or `gamma_inv_cdf(0.5, 2, -1)` | NaN |
 
 **`gamma_pdf(x: f32, shape: f32, scale: f32) -> f32`**
 
@@ -80,8 +64,8 @@ inherits the large-shape limit below.
 
 The refinement is not optional at a small shape and is not harmful at a large
 one. The closed form alone is 23% out at `gamma_inv_cdf(0.05, 1, 1)`, and the
-refined value there is the correctly rounded f32 -- a factor of about 4.0e7 on
-the current lane, and about 8.1e5 while the CDF underneath was computed in
+refined value there is the correctly rounded f32. That is a factor of about 4.0e7
+on this implementation, and about 8.1e5 while the CDF underneath was computed in
 f32. On that same f32 CDF the refinement was also worth a factor of 1001
 *against* you at shape 1000, because Newton converges on the root of the
 function it is handed and a biased CDF moves that root. The CDF is the fix;
@@ -142,8 +126,8 @@ magnitude is not a value a caller can mistake for an answer.
 The divergence and the quiet wrong values in the table above are one defect
 and not two. One error in the same exponent produces both: where a recursion
 converges it converges to a wrong value, and a little above the branch point
-the continued fraction stops converging at all. The density is the exception
-that proves the point -- it evaluates neither recursion, so it shows only the
+the continued fraction stops converging at all. The density isolates the same effect:
+it evaluates neither recursion, so it shows only the
 first behaviour, and `gamma_pdf(50035356, 50000000, 1)` returning 6.235149e27
 is that one error with nothing iterative involved.
 
@@ -157,7 +141,7 @@ its own expectation both land.
 `k + 1`, and both quantiles through the CDF and density inside their Newton
 step. `gamma_pdf` has the same cancellation in its own log-space body:
 `gamma_pdf(50000000, 50000000, 1)` returned exactly 1.0 in f32, against a true
-5.6418958e-5 -- a density above every value a Gamma(5e7, 1) density takes,
+5.6418958e-5, a density above every value a Gamma(5e7, 1) density takes,
 since that point is its maximum.
 
 f64 moves this limit rather than removing it. The floor is one f64 ulp of
@@ -184,8 +168,8 @@ Evaluated, the four functions return `pdf_at_2 = 0.27067056`,
 `median_shape_2 = 1.678347`, and `chi2_critical = 0.9499565`: 3.84 is the
 95% critical value of a chi-squared with one degree of freedom. All four are
 the correctly rounded f32 of their exact values. They moved by 4, 6, 8 and 1
-f32 ulps respectively when the family's internals went to f64 -- measured as
-bit-pattern distance, not estimated.
+f32 ulps respectively when the family's internals went to f64, measured as
+bit-pattern distance.
 
 ## Chi-squared distribution
 
@@ -193,16 +177,16 @@ All five functions delegate to the gamma distribution with
 shape = df/2 and scale = 2, so `df` must be positive and the gamma
 parameter rules above apply at shape df/2.
 
-**`chi_squared_pdf(x: f32, df: f32) -> f32`** -- via `gamma_pdf(x, df/2, 2)`
+**`chi_squared_pdf(x: f32, df: f32) -> f32`**: via `gamma_pdf(x, df/2, 2)`
 
-**`chi_squared_cdf(x: f32, df: f32) -> f32`** -- via `gamma_cdf(x, df/2, 2)`
+**`chi_squared_cdf(x: f32, df: f32) -> f32`**: via `gamma_cdf(x, df/2, 2)`
 
-**`chi_squared_sf(x: f32, df: f32) -> f32`** -- via `gamma_sf(x, df/2, 2)`.
+**`chi_squared_sf(x: f32, df: f32) -> f32`**: via `gamma_sf(x, df/2, 2)`.
 This function is the upper tail, which a goodness-of-fit test needs.
 `chi_squared_sf(40, 3)` is `1.07e-8`, but `1 - chi_squared_cdf(40, 3)` is
 exactly `0.0`. `Nautilus.Testing.chi_squared_p_value` is this function.
 
-**`chi_squared_inv_cdf(q: f32, df: f32) -> f32`** -- via `gamma_inv_cdf(q, df/2, 2)`
+**`chi_squared_inv_cdf(q: f32, df: f32) -> f32`**: via `gamma_inv_cdf(q, df/2, 2)`
 
 **`chi_squared_sample[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]`**
 
@@ -238,10 +222,11 @@ vanishes there.
 
 `betai`'s normalizing factor is a difference of log-gammas in `df`, so its error
 grows without bound and no working precision removes it; the expansion has no
-such term. Relative error stays below 2e-6 for **every** `df` from 1 upward,
-including an infinite one. `student_t_cdf(0, df)` is exactly 0.5 for every `df`,
-which is the correct value and not a symptom. The precision guide covers both
-forms and the beta family they share.
+such term. At the measured `t` and `df` cases through `df = 1e20`, relative
+error stays below 2e-6. An infinite `df` uses the normal distribution exactly.
+`student_t_cdf(0, df)` is exactly 0.5 for valid `df`, which is the correct
+value. The [precision guide](../appendix/precision.md) states the
+sampled axes for both forms and the beta family they share.
 
 **`student_t_sample[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]`**
 
