@@ -411,18 +411,15 @@ def gammainc_q(a: f64, x: f64) -> f64 = if lt(x, add(a, one_d64())) then sub(one
 -- The continued fraction also needs more than 200 iterations for a large
 -- min(a, b) -- first near 1.7e5, and consistently past about 4.2e5; the f32
 -- count is not monotone in the parameters, so there is no single threshold and
--- a bisection for one lands wherever it starts. The budget below is 4096, spent through
--- three levels of chunking: a chunk of 16 single steps, a block of 16 chunks,
--- and a driver of 16 blocks. Peak depth is about 48 frames rather than 4096,
--- because `chelis eval --file` evaluates on a bounded stack and aborts the
--- process outright when a recursion outruns it (see the eval-lane entry in
--- `docs/UPSTREAM_BUGS.md`, which cites the upstream issue by number).
+-- a bisection for one lands wherever it starts. Chelis 0.19.2 lets this
+-- 4096-step tail recursion run without the former process-aborting evaluator
+-- overflow. The arithmetic order, convergence test, and iteration budget stay
+-- the same as the chunked form.
 def zero_d64() -> f64 = cast(0.0, f64)
 def one_d64() -> f64 = cast(1.0, f64)
 def fabs64_inner(x: f64) -> f64 = if lt(x, zero_d64()) then neg(x) else x
 def betacf_tol() -> f64 = cast(1e-7, f64)
 def betacf_tiny() -> f64 = cast(1e-30, f64)
-def betacf_fanout_i() -> i64 = cast(16, i64)
 def betacf_max_m() -> i64 = cast(4096, i64)
 -- One Lentz iteration of the continued fraction for the incomplete beta.
 -- Returns the updated (c, d_inv, h) and whether the step met the tolerance.
@@ -457,28 +454,14 @@ def betacf_step(a: f64, b: f64, x: f64, c: f64, d: f64, h: f64, m: i64) -> (f64,
   converged = lt(delta_err, betacf_tol())
   (c2, d2_inv, h2, converged)
 }
-def betacf_chunk(a: f64, b: f64, x: f64, c: f64, d: f64, h: f64, m: i64, max_m: i64, steps: i64) -> (f64, f64, f64, i64, bool) = {
-  zero_i = cast(0, i64)
+def betacf_rec(a: f64, b: f64, x: f64, c: f64, d: f64, h: f64, m: i64, max_m: i64) -> (f64, bool) = {
   one_i = cast(1, i64)
-  if or(gt(m, max_m), lte(steps, zero_i)) then (c, d, h, m, false) else {
+  if gt(m, max_m) then (h, false) else {
     st = betacf_step(a, b, x, c, d, h, m)
     m_next = add(m, one_i)
-    if st.3 then (st.0, st.1, st.2, m_next, true) else betacf_chunk(a, b, x, st.0, st.1, st.2, m_next, max_m, sub(steps, one_i))
+    if st.3 then (st.2, true) else betacf_rec(a, b, x, st.0, st.1, st.2, m_next, max_m)
   }
 }
-def betacf_block(a: f64, b: f64, x: f64, c: f64, d: f64, h: f64, m: i64, max_m: i64, chunks: i64) -> (f64, f64, f64, i64, bool) = {
-  zero_i = cast(0, i64)
-  one_i = cast(1, i64)
-  if or(gt(m, max_m), lte(chunks, zero_i)) then (c, d, h, m, false) else {
-    st = betacf_chunk(a, b, x, c, d, h, m, max_m, betacf_fanout_i())
-    if st.4 then st else betacf_block(a, b, x, st.0, st.1, st.2, st.3, max_m, sub(chunks, one_i))
-  }
-}
-def betacf_drive(a: f64, b: f64, x: f64, c: f64, d: f64, h: f64, m: i64, max_m: i64) -> (f64, bool) =
-  if gt(m, max_m) then (h, false) else {
-    st = betacf_block(a, b, x, c, d, h, m, max_m, betacf_fanout_i())
-    if st.4 then (st.2, true) else betacf_drive(a, b, x, st.0, st.1, st.2, st.3, max_m)
-  }
 def betacf64(a: f64, b: f64, x: f64) -> (f64, bool) = {
   eps = betacf_tiny()
   one = one_d64()
@@ -487,7 +470,7 @@ def betacf64(a: f64, b: f64, x: f64) -> (f64, bool) = {
   d0_raw = sub(one, div(mul(qab, x), qap))
   d0 = if lt(fabs64_inner(d0_raw), eps) then eps else d0_raw
   d0_inv = div(one, d0)
-  betacf_drive(a, b, x, one, d0_inv, d0_inv, cast(1, i64), betacf_max_m())
+  betacf_rec(a, b, x, one, d0_inv, d0_inv, cast(1, i64), betacf_max_m())
 }
 def nan_d64() -> f64 = div(zero_d64(), zero_d64())
 def sqrt_2pi_d64() -> f64 = cast(2.5066282746310002, f64)

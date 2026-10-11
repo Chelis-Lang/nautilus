@@ -19,6 +19,7 @@ import unittest
 from check_beta_c_lane import (
     CASES,
     LaneError,
+    PINNED_VALUES,
     SYMMETRIC,
     SYM_TOL,
     check_anchors,
@@ -33,13 +34,18 @@ def seed() -> dict[str, str]:
     out = {name: f"0.{index + 1:06d}" for index, (name, _) in enumerate(CASES)}
     for name in SYMMETRIC:
         out[name] = "0.5"
-    out["lane_nan"] = "NaN"
+    out.update(PINNED_VALUES)
+    out["lane_beta_budget_in_range"] = "0.5"
+    out["lane_beta_budget_nan"] = "NaN"
     return out
 
 
 class Seed(unittest.TestCase):
     def test_every_case_has_a_distinct_value(self) -> None:
-        values_seen = [v for k, v in seed().items() if k not in SYMMETRIC and k != "lane_nan"]
+        values_seen = [v for k, v in seed().items()
+                       if k not in SYMMETRIC
+                       and k not in PINNED_VALUES
+                       and k not in {"lane_beta_budget_in_range", "lane_beta_budget_nan"}]
         self.assertEqual(len(values_seen), len(set(values_seen)),
                          "the seed must not repeat a value, or a mutation can be a no-op")
 
@@ -81,16 +87,30 @@ class RangeGuard(unittest.TestCase):
 
     def test_a_negative_probability_fires(self) -> None:
         bad = seed()
-        bad["lane_nan"] = "-0.41600209"   # what the raw computation produces there
+        bad["lane_beta_budget_nan"] = "-0.41600209"   # raw fraction result before the guard
         with self.assertRaises(LaneError) as caught:
             check_anchors(bad, "probe")
         self.assertIn("range guard", str(caught.exception))
 
     def test_an_in_range_number_where_nan_is_required_fires(self) -> None:
         bad = seed()
-        bad["lane_nan"] = "0.39412470"
+        bad["lane_beta_budget_nan"] = "0.39412470"
         with self.assertRaises(LaneError):
             check_anchors(bad, "probe")
+
+    def test_out_of_range_exhausted_value_fires(self) -> None:
+        bad = seed()
+        bad["lane_beta_budget_in_range"] = "1.1"
+        with self.assertRaises(LaneError) as caught:
+            check_anchors(bad, "probe")
+        self.assertIn("partial value in [0, 1]", str(caught.exception))
+
+    def test_nan_exhausted_value_fires(self) -> None:
+        bad = seed()
+        bad["lane_beta_budget_in_range"] = "NaN"
+        with self.assertRaises(LaneError) as caught:
+            check_anchors(bad, "probe")
+        self.assertIn("partial value in [0, 1]", str(caught.exception))
 
 
 class CrossLane(unittest.TestCase):

@@ -90,7 +90,9 @@ steps and variant table are in chelis#2152.
 The issue's 1,000-deep `Box`/`loop` program returns `a = 1002` under Chelis
 0.19.2. The same program at depth 10,000 returns `a = 10002`. At depth 65,536,
 `chelis eval --file` reports `evaluation stack budget exhausted during a
-function call` instead of aborting the process. Nautilus keeps its chunked
-gamma recursions because their iteration budgets reach 65,536 and exceed the
-evaluator's finite stack budget. The old process-abort failure is fixed; the
-finite budget is an explicit diagnostic now.
+function call` instead of aborting the process. The beta continued fraction
+now uses flat recursion at its 4,096-step budget; its evaluator and numerical
+parity are checked by `scripts/check_beta_c_lane.py`. Nautilus keeps its
+65,536-step gamma recursions chunked because that budget exceeds the evaluator's
+finite stack budget. The old process-abort failure is fixed; the finite budget
+is an explicit diagnostic now.

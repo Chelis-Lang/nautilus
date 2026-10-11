@@ -73,6 +73,12 @@ VALUE_RE = re.compile(r"^\s*(lane_\w+)\s*=\s*(\S+)\s*$", re.M)
 # anchors: both are 0.5 exactly, by symmetry, with no reference needed.
 CASES = [
     ("lane_sym_beta", "beta_cdf(cast(0.5, f32), cast(1e7, f32), cast(1e7, f32))"),
+    # These four values were recorded on the chunked implementation. Keep them
+    # exact while the 4096-step beta recurrence moves to a flat evaluator path.
+    ("lane_beta_issue163_1e6", "beta_cdf(cast(0.5, f32), cast(1e6, f32), cast(1e6, f32))"),
+    ("lane_beta_issue163_1e8", "beta_cdf(cast(0.5, f32), cast(1e8, f32), cast(1e8, f32))"),
+    ("lane_f_issue163_1e7", "f_cdf(cast(1.0, f32), cast(1e7, f32), cast(1e7, f32))"),
+    ("lane_f_issue163_1e8", "f_cdf(cast(1.0, f32), cast(1e8, f32), cast(1e8, f32))"),
     ("lane_sym_f", "f_cdf(cast(1.0, f32), cast(1e5, f32), cast(1e5, f32))"),
     ("lane_beta", "beta_cdf(cast(0.3, f32), cast(2.0, f32), cast(5.0, f32))"),
     ("lane_f", "f_cdf(cast(3.0, f32), cast(5.0, f32), cast(10.0, f32))"),
@@ -88,11 +94,20 @@ CASES = [
     ("lane_t_big_tail", "student_t_cdf(cast(-5.0, f32), cast(1e18, f32))"),
     ("lane_f_sat", "f_cdf(cast(1.0, f32), cast(1e8, f32), cast(1.0, f32))"),
     ("lane_binom_sat", "binomial_cdf(cast(0.0, f32), cast(1000000.0, f32), cast(1e-8, f32))"),
-    # the [0, 1] range guard
-    ("lane_nan", "beta_cdf(cast(0.5, f32), cast(1e12, f32), cast(1e12, f32))"),
+    # These cases exhaust the 4096-step fraction budget. Keep the evaluator
+    # and compiled-C lanes on the same public values, including the in-range
+    # partial result and the out-of-range NaN guard.
+    ("lane_beta_budget_in_range", "beta_cdf(cast(0.5, f32), cast(1e11, f32), cast(1e11, f32))"),
+    ("lane_beta_budget_nan", "beta_cdf(cast(0.5, f32), cast(1e12, f32), cast(1e12, f32))"),
 ]
 SYMMETRIC = {"lane_sym_beta", "lane_sym_f"}
-EXPECT_NAN = {"lane_nan"}
+EXPECT_NAN = {"lane_beta_budget_nan"}
+PINNED_VALUES = {
+    "lane_beta_issue163_1e6": "0.5",
+    "lane_beta_issue163_1e8": "0.49999985",
+    "lane_f_issue163_1e7": "0.49999997",
+    "lane_f_issue163_1e8": "0.5000001",
+}
 # f32 holds about 7 digits; the symmetry anchors are measured well inside this.
 SYM_TOL = 1e-5
 
@@ -147,7 +162,7 @@ def store_digest(root: Path) -> str:
 
 
 def check_anchors(got: dict[str, str], lane: str) -> None:
-    """The symmetry anchors and the NaN guard, which need no reference."""
+    """Check symmetry, bounded pinned values, and exhausted-budget behavior."""
     for name in SYMMETRIC:
         raw = got.get(name)
         if raw is None:
@@ -157,11 +172,26 @@ def check_anchors(got: dict[str, str], lane: str) -> None:
                 f"{lane}: {name} = {raw}, but it is 0.5 exactly by symmetry "
                 f"(tolerance {SYM_TOL})"
             )
-    raw = got.get("lane_nan")
+    raw = got.get("lane_beta_budget_nan")
     if raw is None or raw.lower() != "nan":
         raise LaneError(
-            f"{lane}: lane_nan = {raw}, expected NaN from the [0, 1] range guard"
+            f"{lane}: lane_beta_budget_nan = {raw}, expected NaN from the [0, 1] range guard"
         )
+    raw = got.get("lane_beta_budget_in_range")
+    try:
+        value = float(raw) if raw is not None else float("nan")
+    except ValueError:
+        value = float("nan")
+    if not (0.0 <= value <= 1.0):
+        raise LaneError(
+            f"{lane}: lane_beta_budget_in_range = {raw}, expected the exhausted-budget partial value in [0, 1]"
+        )
+    for name, expected in PINNED_VALUES.items():
+        raw = got.get(name)
+        if raw != expected:
+            raise LaneError(
+                f"{lane}: {name} = {raw}, expected the pre-flattening value {expected}"
+            )
 
 
 def compare(a: dict[str, str], b: dict[str, str], a_name: str, b_name: str) -> None:

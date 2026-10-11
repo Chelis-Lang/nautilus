@@ -865,7 +865,7 @@ does not buy were measured rather than assumed. They are recorded in
 | Fact | Evidence |
 |---|---|
 | Special's supported widths | Its f32 and f64 positive and parity suites pass. Separate-package C consumers of `erfinv` and `gamma` build and run at both widths; other Special exports have no complete C consumer matrix (chelis#2152). |
-| Unsupported Special precisions | All 67 Special binders are bounded by `{f32, f64}`. `gamma(5.5bf16)` and `bessel_j0(5.0f16)` are rejected at the call site by the negative tests, preventing the former misleading finite value and the latter NaN. The f32 and f64 positive and parity suites pass. The 35 explicit `f64` coefficient suffixes are retained for nautilus#83. | `@pin` |
+| Unsupported Special precisions | All 67 Special binders are bounded by `{f32, f64}`. `gamma(5.5bf16)` and `bessel_j0(5.0f16)` are rejected at the call site by the negative tests, preventing the former misleading finite value and the latter NaN. The f32 and f64 positive and parity suites pass. The 35 explicit `f64` coefficient suffixes preserve their source widths. | `@pin` |
 | Widening buys arithmetic, not accuracy | `tests/special_f64.ch` exercises both supported widths of Nautilus.Special. Six -- `gamma`, `log_gamma`, `beta`, `lbeta`, `ellipk`, `ellipe` -- reach f64-grade error on the measured domains. Other Nautilus approximations have function- and domain-specific limits; see the [precision appendix](book/src/appendix/precision.md). Chelis provides correctly rounded `erf` and `erfc` builtins directly. |
 
 ### Primitive and builtin families used by Nautilus

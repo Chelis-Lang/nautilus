@@ -1022,7 +1022,8 @@ def test_binomial_cdf_keeps_its_digits_at_both_ends_of_p() -> unit ! { Test } = 
   assert_true(lt(dist_rel_err(median, cast(0.50039893, f32)), tol), "binomial_cdf(5e5,1e6,0.5) = 0.50039893 (was 0.5787672)")
 }
 -- A regularised incomplete beta lies in [0,1], and two different things produce
--- a value outside that range. These four tests are the whole rule:
+-- a value outside that range. These checks cover the rule across the native
+-- suite and the direct evaluator/C budget lane:
 --  * a CONVERGED continued fraction that overshoots by a rounding is the right
 --    answer with a rounding on it, and is clamped to the boundary;
 --  * an ABANDONED one that lands outside has produced nothing, and becomes NaN;
@@ -1031,19 +1032,9 @@ def test_binomial_cdf_keeps_its_digits_at_both_ends_of_p() -> unit ! { Test } = 
 -- The first of these was wrong in review: the guard was an untoleranced
 -- `v < 0 || v > 1`, so it discarded correct answers for a small `a` with a large
 -- `b`, where the true value is 1.0 and f64 lands a few f32 ulps above it.
-def test_beta_cdf_out_of_range_result_is_nan_not_a_negative_probability() -> unit ! { Test } = {
-  v = beta_cdf(cast(0.5, f32), cast(1000000000000.0, f32), cast(1000000000000.0, f32))
-  assert_true(dist_is_nan(v), "beta_cdf(0.5,1e12,1e12) is NaN, not the -0.41600209 the computation produces")
-}
-def test_beta_cdf_exhausted_budget_still_returns_its_in_range_value() -> unit ! { Test } = {
-  -- 4096 iterations are not enough here, but the partial value is in range and
-  -- is kept. Converting an unspent budget to NaN was tried for the gamma family
-  -- in nautilus#140 and withdrawn: it discarded accurate values.
-  v = beta_cdf(cast(0.5, f32), cast(100000000000.0, f32), cast(100000000000.0, f32))
-  _ = assert_true(not(dist_is_nan(v)), "an exhausted budget is not by itself a NaN")
-  _ = assert_true(gte(v, cast(0.0, f32)), "and the value it returns is in range")
-  assert_true(lte(v, cast(1.0, f32)), "and the value it returns is in range")
-}
+-- The two 4096-step beta-budget cases live in scripts/check_beta_c_lane.py:
+-- its direct evaluator and compiled-C runs exercise the same public calls
+-- without the lower stack budget imposed by the test worker.
 def test_beta_cdf_rejects_nonpositive_parameters() -> unit ! { Test } = {
   a0 = beta_cdf(cast(0.5, f32), cast(0.0, f32), cast(3.0, f32))
   b0 = beta_cdf(cast(0.5, f32), cast(2.0, f32), cast(0.0, f32))

@@ -202,14 +202,34 @@ reported or a live narrowing cites the archived behavior.
   model-capturing Jacobian wrapper. The generic and concrete witnesses pass at
   the pinned compiler as regression tests (`tests/curvefit_lm_jacobian_*.ch`); the
   full LM replacement is still blocked by chelis#2370 above.
-- **`chelis#2471`**, evaluator stack overflow on deep recursion. The exact
-  1,000-deep `Box`/`loop` reproducer and a 10,000-deep version return under
-  Chelis 0.19.2. A 65,536-deep version reports
-  `evaluation stack budget exhausted during a function call` instead of
-  aborting. Nautilus retains chunking for its 65,536-iteration gamma
-  kernels because the evaluator still has a finite stack budget; the
-  process-abort failure is fixed.
-- **`chelis#1464`** (Nautilus's untaken-arm witness), an untaken scalar-`if`
+- **[chelis#2471](https://github.com/Chelis-Lang/chelis/issues/2471)**, evaluator stack overflow on deep recursion. Run the issue's `Box`/`loop`
+  program with `chelis eval --file` at depths 1,000, 10,000, and 65,536.
+  Expected and observed at Chelis 0.19.2: the first two return `a = 1002` and
+  `a = 10002`; the last reports `evaluation stack budget exhausted during a
+  function call` instead of aborting. The 4,096-step beta continued fraction
+  now uses a flat recursion with the same arithmetic order, tolerance, and
+  budget. Run `.venv/bin/python scripts/check_beta_c_lane.py --in-package-only`;
+  expected evidence is exact evaluator/C output agreement, a finite in-range
+  partial value for `beta_cdf(0.5, 1e11, 1e11)`, NaN for
+  `beta_cdf(0.5, 1e12, 1e12)`, and the four pinned symmetric values below.
+  **Status: passed** on this candidate: 17 evaluator values and the in-package
+  C executable agreed, including both exhausted-budget outcomes. This verifies
+  the 4,096-step beta path only; it does not claim unbounded evaluator stack
+  safety. The 65,536-step gamma
+  kernels remain chunked because that budget exceeds the evaluator's finite
+  stack limit.
+
+  [nautilus#163](https://github.com/Chelis-Lang/nautilus/issues/163) reports
+  four bounded symmetric probes. Run the same command above; these exact
+  outputs are pinned in both evaluator and C lanes: `beta_cdf(0.5, 1e6, 1e6)`
+  returns `0.5`, `beta_cdf(0.5, 1e8, 1e8)` returns `0.49999985`,
+  `f_cdf(1, 1e7, 1e7)` returns `0.49999997`, and `f_cdf(1, 1e8, 1e8)` returns
+  `0.5000001`. These calls complete without process abort at Chelis 0.19.2.
+  **Status: passed for these four calls only**; the wider parameter search and
+  error bound requested by the issue remain unmeasured.
+- **[chelis#2123](https://github.com/Chelis-Lang/chelis/issues/2123)**, finite float literals cannot bind through a precision variable if they overflow an admitted dtype. Nautilus bounds all Special precision binders to `{f32, f64}`. Run `chelis test tests_neg/special/f16_precision_neg.ch --expect neg` and `chelis test tests_neg/special/bf16_precision_neg.ch --expect neg`; expected diagnostics say the bound cannot be instantiated at the respective dtype. **Status: passed** at Chelis 0.19.2, including both probes in `chelis test tests_neg/ --expect neg` (32/32). [Nautilus#83](https://github.com/Chelis-Lang/nautilus/issues/83) remains open in the tracker, but the local narrowing it describes is already present in `src/special.ch` and remains intentional.
+- **[nautilus#127](https://github.com/Chelis-Lang/nautilus/issues/127)** tracks migration fallout from [Chelis PR #3020](https://github.com/Chelis-Lang/chelis/pull/3020)'s diagnostic wording and the shell-format change in [Chelis PR #2827](https://github.com/Chelis-Lang/chelis/pull/2827). Run `chelis test tests_neg/ --expect neg`; the expected evidence is the revised diagnostics for the nine named cases. **Status: passed, 32/32** at Chelis 0.19.2. The issue's release-publication prerequisite is not satisfied by this candidate PR; keep nautilus#127 open until a new compatible Nautilus artifact is published.
+- **[chelis#1464](https://github.com/Chelis-Lang/chelis/issues/1464)** (Nautilus's untaken-arm witness), an untaken scalar-`if`
   arm evaluated under `vmap` so that an overflowing arm poisoned the selected
   value. The `tests/masked_select/untaken_arm_overflow.ch` regression passes.
   The upstream issue remains
