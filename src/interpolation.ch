@@ -224,10 +224,8 @@ def spline_fit[m](xs: &tensor[m, f32], ys: &tensor[m, f32]) -> tensor[m, f32] =
 -- Horner is used below because it forms no power of t on its own, not because
 -- any measured row needs it.
 --
--- This does not rescue a fit that is already wrong. When the tridiagonal
--- diagonal falls below 1e-30, la_tridiag_solve substitutes 1 for the pivot
--- and the second derivatives come back the wrong size; evaluating that
--- polynomial in f64 reproduces the wrong answer faithfully.
+-- A wider segment calculation does not rescue a fit whose f32 second
+-- derivatives overflow or whose input gaps have lost significant digits.
 def spline_seg_val(prev_y: f32, yi: f32, prev_m: f32, mi: f32, h: f32, t: f32) -> f32 = {
   h_d = cast(h, f64)
   t_d = cast(t, f64)

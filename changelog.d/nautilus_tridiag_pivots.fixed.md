@@ -1,0 +1,1 @@
+`Nautilus.LinAlg.la_tridiag_solve` now uses finite nonzero elimination pivots at their actual magnitude and returns NaN for zero or nonfinite pivots. Natural cubic splines therefore preserve their fitted values for representable tiny positive knot gaps, subject to f32 range and rounding. The book now states the current numerical limits without retrospective probe history.

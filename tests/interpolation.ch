@@ -163,12 +163,12 @@ def test_spline_accepts_one_ulp_ascent() -> unit ! { Test } = {
   v = spline_eval(xs, ys, cast(0.5, f32))
   assert_true(not(interp_is_nan(v)), "a gap of +1.1920929e-7, one f32 ulp above 1.0, is accepted: the guard refuses non-increasing knots, not ill-conditioned ones")
 }
-def test_spline_accepts_a_gap_below_the_old_magnitude_threshold() -> unit ! { Test } = {
+def test_spline_accepts_tiny_positive_gap() -> unit ! { Test } = {
   xs = to_tensor([cast(0.0, f32), cast(1e-31, f32), cast(1.0, f32), cast(2.0, f32)])
   ys = to_tensor([cast(0.0, f32), cast(1.0, f32), cast(2.0, f32), cast(5.0, f32)])
   v = spline_eval(xs, ys, cast(0.5, f32))
-  _ = assert_true(not(interp_is_nan(v)), "a gap of 1e-31 is accepted, not refused: the deleted per-leg guards replaced anything under 1e-30 with a unit gap, and nothing else pins that this is now admitted rather than rejected")
-  assert_true(gt(v, cast(1e29, f32)), "and the real gap is used, so the result is huge rather than the 1.35 a substituted unit gap used to fabricate. This pins acceptance and the use of the gap, not accuracy: see the knot requirements in the book")
+  _ = assert_true(not(interp_is_nan(v)), "a positive gap of 1e-31 is accepted")
+  assert_true(gt(v, cast(1e29, f32)), "the large result reflects a unit jump across a tiny valid gap")
 }
 def test_spline_refuses_descent_at_small_knot_magnitude() -> unit ! { Test } = {
   xs = to_tensor([cast(0.0, f32), cast(0.001, f32), cast(0.0009999999, f32), cast(0.002, f32)])
@@ -221,36 +221,47 @@ def test_spline_equivariant_at_1em28() -> unit ! { Test } = {
   v = spline_eval(xs, ys, cast(1.5e-28, f32))
   assert_close(v, cast(2.2e-28, f32), cast(2.2e-33, f32), "and knots scaled by 1e-28 likewise, where the residue was 1.8889466e22 and the overflow was to +inf. This row and the 1e-26 one are what distinguish f64 arithmetic from merely rewriting the f32 polynomial in Horner form, which clears the 1e-24 row but still returns an infinity here")
 }
-def test_spline_equivariant_just_above_the_pivot_floor() -> unit ! { Test } = {
+def test_spline_equivariant_at_3em31() -> unit ! { Test } = {
   xs = to_tensor([cast(0.0, f32), cast(3e-31, f32), cast(6e-31, f32), cast(9e-31, f32)])
   ys = to_tensor([cast(0.0, f32), cast(3e-31, f32), cast(1.2e-30, f32), cast(2.7e-30, f32)])
   v = spline_eval(xs, ys, cast(4.5e-31, f32))
-  assert_close(v, cast(6.6e-31, f32), cast(6.6e-36, f32), "a gap of 3e-31 leaves every eliminated pivot above the 1e-30 below which la_tridiag_solve substitutes 1, so the fit is sound and the evaluator carries it. This is not the smallest such gap: for four knots the last eliminated pivot is 3.75h and the boundary is 2.667e-31, and the sibling test below sits under it")
+  assert_close(v, cast(6.6e-31, f32), cast(6.6e-36, f32), "four-knot spline value scales at a gap of 3e-31")
 }
-def test_spline_not_equivariant_just_below_the_pivot_floor() -> unit ! { Test } = {
+def test_spline_equivariant_at_2em31() -> unit ! { Test } = {
   xs = to_tensor([cast(0.0, f32), cast(2e-31, f32), cast(4e-31, f32), cast(6e-31, f32)])
   ys = to_tensor([cast(0.0, f32), cast(2e-31, f32), cast(8e-31, f32), cast(1.8e-30, f32)])
   v = spline_eval(xs, ys, cast(3e-31, f32))
-  assert_true(gt(interp_abs(sub(v, cast(4.4e-31, f32))), cast(4.4e-33, f32)), "and a gap of 2e-31 puts 4h at 8e-31, under the floor, so both interior pivots are substituted and the second derivatives come back as 12.0 instead of 1.2e31. This asserts only that equivariance fails, not any particular wrong value; 5e-31 is what it measured when written. It pins the boundary of the f64 evaluator's reach, which reproduces a wrong fit faithfully rather than repairing one. If the pivot floor is ever removed this assertion is expected to fail, and the pair above and below the floor should be re-measured rather than retuned")
+  assert_close(v, cast(4.4e-31, f32), cast(4.4e-36, f32), "a positive gap of 2e-31 gives the same natural spline value after scaling")
 }
--- The gap at which the solve's last eliminated pivot crosses 1e-30 depends on
--- the knot count. Forward elimination gives d[k] = 4 - 1/d[k-1] in units of h,
--- starting at 4, so the last interior pivot is 4h for three knots, 3.75h for
--- four, 3.7333h for five, and tends to (2 + sqrt 3)h = 3.7320508h. The
--- boundary therefore rises with knot count, from 2.5e-31 at three knots, and
--- no single count's figure is general. These two pin that for five knots,
--- where the correct ratio is 2.232143 rather than the four-knot 2.2.
-def test_spline_five_knot_threshold_is_above_the_four_knot_one() -> unit ! { Test } = {
+def test_spline_fit_and_eval_equivariant_at_1em31() -> unit ! { Test } = {
+  s = cast(1e-31, f32)
+  xs = to_tensor([cast(0.0, f32), s, mul(cast(2.0, f32), s), mul(cast(3.0, f32), s)])
+  ys = to_tensor([cast(0.0, f32), s, mul(cast(4.0, f32), s), mul(cast(9.0, f32), s)])
+  m = to_list(spline_fit(copy(xs), copy(ys)))
+  v = spline_eval(xs, ys, mul(cast(1.5, f32), s))
+  _ = assert_close(div(v, s), cast(2.2, f32), cast(0.000022, f32), "four-knot spline value scales with knots and values at 1e-31")
+  _ = assert_close(mul(index(m, cast(1, i64)), s), cast(2.4, f32), cast(0.000024, f32), "first interior moment scales inversely with the knot gap")
+  assert_close(mul(index(m, cast(2, i64)), s), cast(2.4, f32), cast(0.000024, f32), "second interior moment scales inversely with the knot gap")
+}
+def test_spline_preserves_large_value_from_real_tight_knot() -> unit ! { Test } = {
+  xs = to_tensor([cast(0.0, f32), cast(1e-20, f32), cast(1.0, f32), cast(2.0, f32)])
+  ys = to_tensor([cast(0.0, f32), cast(1.0, f32), cast(2.0, f32), cast(5.0, f32)])
+  v = spline_eval(xs, ys, cast(0.5, f32))
+  assert_close(div(v, cast(1e20, f32)), cast(0.16071428, f32), cast(2e-6, f32), "a unit jump across a tiny valid gap produces a real large spline value")
+}
+-- Five knots have a different natural-spline midpoint from four knots.
+-- Both small scales preserve that five-knot value.
+def test_spline_five_knot_small_scale_equivariance() -> unit ! { Test } = {
   s = cast(2.667e-31, f32)
   xs = to_tensor([cast(0.0, f32), s, mul(cast(2.0, f32), s), mul(cast(3.0, f32), s), mul(cast(4.0, f32), s)])
   ys = to_tensor([cast(0.0, f32), s, mul(cast(4.0, f32), s), mul(cast(9.0, f32), s), mul(cast(16.0, f32), s)])
   v = div(spline_eval(xs, ys, mul(cast(1.5, f32), s)), s)
-  assert_true(gt(interp_abs(sub(v, cast(2.232143, f32))), cast(0.000022, f32)), "five knots at the four-knot boundary gap of 2.667e-31 are not equivariant: 3.7333h is 9.956e-31 here, under the floor, and the ratio collapses to the four-knot 2.2 against a correct 2.232143. A page or comment quoting 2.667e-31 as the general threshold is wrong in the unsafe direction")
+  assert_close(v, cast(2.232143, f32), cast(0.000022, f32), "five knots preserve the natural spline value at a positive 2.667e-31 gap")
 }
-def test_spline_five_knot_equivariant_at_the_universal_bound() -> unit ! { Test } = {
+def test_spline_five_knot_equivariant_at_2p6795em31() -> unit ! { Test } = {
   s = cast(2.6795e-31, f32)
   xs = to_tensor([cast(0.0, f32), s, mul(cast(2.0, f32), s), mul(cast(3.0, f32), s), mul(cast(4.0, f32), s)])
   ys = to_tensor([cast(0.0, f32), s, mul(cast(4.0, f32), s), mul(cast(9.0, f32), s), mul(cast(16.0, f32), s)])
   v = div(spline_eval(xs, ys, mul(cast(1.5, f32), s)), s)
-  assert_close(v, cast(2.232143, f32), cast(0.000022, f32), "and 2.6795e-31 is equivariant for five knots. It sits just above 1e-30 over (2 + sqrt 3), which is 2.6794919e-31, and the margin is the point: the exact quotient is not safe, because nine knots at 2.6794919e-31 return 2.2253525 against a correct 2.2255154, outside this tolerance. Do not replace this literal with the exact quotient")
+  assert_close(v, cast(2.232143, f32), cast(0.000022, f32), "five-knot spline value scales at a gap of 2.6795e-31")
 }

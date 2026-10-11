@@ -196,6 +196,7 @@ def la_lu_bwd_step[n](lu: tensor[n, n, f32], x_acc: tensor[n, f32], i: i64, n_le
   correction = sub(x_new, x_ir)
   la_vec_saxpy(correction, x_acc, e_ir)
 }
+def la_tridiag_pivot(x: f32) -> f32 = if and(neq(x, cast(0.0, f32)), eq(sub(x, x), cast(0.0, f32))) then x else div(cast(0.0, f32), cast(0.0, f32))
 def la_tridiag_fwd_diag[n](lower: tensor[n, f32], diag_in: tensor[n, f32], upper: tensor[n, f32], n_len: i64) -> tensor[n, f32] = {
   tpl = to_tensor(map(fn (v: f32) -> cast(0.0, f32), to_list(diag_in)))
   fold(fn (dacc: tensor[n, f32], i: i64) -> {
@@ -206,8 +207,7 @@ def la_tridiag_fwd_diag[n](lower: tensor[n, f32], diag_in: tensor[n, f32], upper
     diag_im1 = inner_product(dacc, e_im1_diag)
     upper_im1 = inner_product(upper, e_im1_upper)
     diag_i = inner_product(dacc, e_i)
-    abs_d = if lt(diag_im1, cast(0.0, f32)) then neg(diag_im1) else diag_im1
-    safe_d = if lt(abs_d, cast(1e-30, f32)) then cast(1.0, f32) else diag_im1
+    safe_d = la_tridiag_pivot(diag_im1)
     w = div(lower_i, safe_d)
     new_diag_i = sub(diag_i, mul(w, upper_im1))
     corr_d = sub(new_diag_i, diag_i)
@@ -224,8 +224,7 @@ def la_tridiag_fwd_b[n](lower: tensor[n, f32], diag_f: tensor[n, f32], upper: te
     diag_im1 = inner_product(diag_f, e_im1_diag)
     b_im1 = inner_product(bacc, e_im1_b)
     b_i = inner_product(bacc, e_i)
-    abs_d = if lt(diag_im1, cast(0.0, f32)) then neg(diag_im1) else diag_im1
-    safe_d = if lt(abs_d, cast(1e-30, f32)) then cast(1.0, f32) else diag_im1
+    safe_d = la_tridiag_pivot(diag_im1)
     w = div(lower_i, safe_d)
     new_b_i = sub(b_i, mul(w, b_im1))
     corr_b = sub(new_b_i, b_i)
@@ -242,8 +241,7 @@ def la_tridiag_bwd[n](upper: tensor[n, f32], diag_f: tensor[n, f32], b_f: tensor
     diag_i = inner_product(diag_f, e_i)
     upper_i = inner_product(upper, e_i)
     x_ip1 = inner_product(x_acc, i |> add(cast(1, i64)) |> la_basis_n_f32(cast(1.0, f32), tpl))
-    abs_di = if lt(diag_i, cast(0.0, f32)) then neg(diag_i) else diag_i
-    safe_di = if lt(abs_di, cast(1e-30, f32)) then cast(1.0, f32) else diag_i
+    safe_di = la_tridiag_pivot(diag_i)
     is_last = eq(i, n_len_m1)
     rhs = if is_last then b_i else sub(b_i, mul(upper_i, x_ip1))
     x_i = div(rhs, safe_di)
