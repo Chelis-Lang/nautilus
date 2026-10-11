@@ -89,30 +89,11 @@ is below that value. Above that point, the result has no significant digits
 for some distance.
 
 The `1 - cdf` form gives `0.0` at `z = 6`, at a chi-squared statistic of `40`
-with 3 degrees of freedom, and at `t = 100` with 5 degrees of freedom. The
-table gives the worst relative error of the direct tail over a sweep of 265
-arguments where the result is a normal f32. The subnormal results follow the
-table.
-
-| Family | Worst relative error | Route |
-|---|---|---|
-| `z_p_value_upper`, `z_p_value_two_sided` | 8.9e-8 | `Phi(-z)`, exact by standard-normal symmetry |
-| `t_p_value_upper`, `t_p_value_two_sided` | 1.2e-7 | `student_t_cdf(-t, df)`, exact by Student-t symmetry |
-| `chi_squared_p_value` | below 2e-6 at the measured gamma-family cases through df 1e8 | `chi_squared_sf` returns the upper regularized incomplete gamma `Q` directly; calibrate other parameters against a reference |
-
-The Student-t bound comes from `betai` below `df` of 1e7 and from the large-`df`
-expansion above it. It no longer grows with `df`: over a
-406-point sweep the worst error is 1.15e-7 at `df = 1`, 9.1e-8 at `df = 2`,
-6.7e-8 at `df = 10` and 4.9e-8 at `df = 100`, with no result above 1e-6. It did
-grow with `df` while the incomplete beta was computed in f32, because the
-normalizing factor is a difference of log-gammas that grow with `df`. The figure
-is a sweep maximum rather than a bound: a denser sweep raised it once, so rely on
-the shape (flat in `df`, below 1e-6) and calibrate tolerances against a reference
-over the degrees of freedom your calculation uses.
-
-No p-value in the sweep is on a different side of 0.05, 0.01 or 0.001 than
-the `1 - cdf` form. Thus no test decision changes. The direct tail changes
-only the tail magnitudes that you can read.
+with 3 degrees of freedom, and at `t = 100` with 5 degrees of freedom. Use
+`z_p_value_upper` or `z_p_value_two_sided` for normal tails,
+`t_p_value_upper` or `t_p_value_two_sided` for Student-t tails, and
+`chi_squared_p_value` for chi-squared upper tails. Calibrate a decision
+threshold against a reference over the parameters your calculation uses.
 
 Two limits remain, and both come from f32, not from the algorithm:
 

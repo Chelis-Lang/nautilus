@@ -62,16 +62,7 @@ density, at most 80 iterations and stopping once a step moves the estimate by
 less than 1e-10 of itself. Returns 0 at q=0, +inf at q=1, NaN outside [0,1]. It
 inherits the large-shape limit below.
 
-The refinement is not optional at a small shape and is not harmful at a large
-one. The closed form alone is 23% out at `gamma_inv_cdf(0.05, 1, 1)`, and the
-refined value there is the correctly rounded f32. That is a factor of about 4.0e7
-on this implementation, and about 8.1e5 while the CDF underneath was computed in
-f32. On that same f32 CDF the refinement was also worth a factor of 1001
-*against* you at shape 1000, because Newton converges on the root of the
-function it is handed and a biased CDF moves that root. The CDF is the fix;
-the loop stays.
-
-What the loop does not do is converge for every argument. Each of its steps
+The loop does not converge for every argument. Each of its steps
 divides by the density, floored at an absolute 1e-30, and there are two regions
 where that division is useless: `q` below 1e-4 at a shape near 2, where the
 start itself is floored, and a very large `scale`, where the density falls under
@@ -90,68 +81,19 @@ finite numbers there, but they are not Gamma draws.
 
 ### Large shapes
 
-Every export that reaches the incomplete gamma shares one front factor,
-`exp(shape*ln(x) - x - lgamma(shape))`. Its exponent is a difference of three
-quantities each about `shape*ln(shape)`, and at `x = shape` what they leave is
-about `0.5*ln(shape/(2*pi))`: at shape 1e5 three terms of 1.1e6 collapse to
-4.84. An absolute error in an exponent is a multiplicative error in the result,
-so the accuracy of this whole family is set by one rounding of the largest term.
-In f32 that rounding is 0.125 at shape 1e5 and 1.0 at shape 1e6.
+Every export that reaches the incomplete gamma shares a front factor,
+`exp(shape*ln(x) - x - lgamma(shape))`. Near `x = shape*scale`, its exponent
+subtracts large terms to leave a small result. The front factor, series, and
+continued fraction run in f64 and return f32, but rounding in `lgamma(shape)`
+still limits accuracy at very large shapes. The series and continued fraction
+each have a 65,536-step limit. `chi_squared_cdf` and `chi_squared_sf` reach
+this computation at `df/2`; `poisson_cdf` reaches it at `k+1`.
 
-The front factor, the series and the continued fraction are now computed in
-f64 and returned as f32. At `x = shape`, scale 1, against the exact regularized
-incomplete gamma:
-
-| shape | `gamma_cdf` in f32 | relative error | `gamma_cdf` now | exact |
-|---|---|---|---|---|
-| 100 | 0.5132978 | 1.9e-6 | 0.5132988 | 0.513298798 |
-| 1000 | 0.5043488 | 2.8e-4 | 0.5042052 | 0.504205244 |
-| 10000 | 0.47919172 | 4.4% | 0.5013298 | 0.501329808 |
-| 100000 | 0.24656442 | 51% | 0.5004205 | 0.500420522 |
-| 1000000 | 0.029631412 | 94% | 0.500133 | 0.500132981 |
-| 10000000 | 1.9999999e-7 | 100% | 0.5000421 | 0.500042052 |
-| 50000000 | 0.9993269 | 100% | 0.5000188 | 0.500018806 |
-
-Every value in the fourth column is within two f32 ulps of the fifth, so what
-remains is the rounding of the return type rather than of the computation.
-
-The second column stays inside [0, 1] at every one of those shapes, which made
-the error hard to notice, but that was a property of `x = shape` and not of the
-f32 lane. A little above the branch point at a large shape the continued
-fraction diverged outright: `gamma_cdf(50007070, 50000000, 1)` returned
-**-5.7809985e23** against a true 0.8413766, and `gamma_pdf(50035356, 50000000,
-1)` returned 6.235149e27 against a true 2.1e-10. A negative probability of that
-magnitude is not a value a caller can mistake for an answer.
-
-The divergence and the quiet wrong values in the table above are one defect
-and not two. One error in the same exponent produces both: where a recursion
-converges it converges to a wrong value, and a little above the branch point
-the continued fraction stops converging at all. The density isolates the same effect:
-it evaluates neither recursion, so it shows only the
-first behaviour, and `gamma_pdf(50035356, 50000000, 1)` returning 6.235149e27
-is that one error with nothing iterative involved.
-
-Away from the branch point in the other direction the f32 lane was accurate,
-which is the rest of why this was easy to miss: `gamma_cdf(10500, 10000, 1)`
-was 2.8e-8 relative while the same shape at `x = shape` was 4.4e-2. The failure is specifically at `x` near
-`shape*scale`, which is where `poisson_cdf(k, k)` and a chi-squared statistic at
-its own expectation both land.
-
-`chi_squared_cdf` and `chi_squared_sf` reach this at `df / 2`, `poisson_cdf` at
-`k + 1`, and both quantiles through the CDF and density inside their Newton
-step. `gamma_pdf` has the same cancellation in its own log-space body:
-`gamma_pdf(50000000, 50000000, 1)` returned exactly 1.0 in f32, against a true
-5.6418958e-5, a density above every value a Gamma(5e7, 1) density takes,
-since that point is its maximum.
-
-f64 moves this limit rather than removing it. The floor is one f64 ulp of
-`lgamma(shape)`, which crosses f32's own resolution at around shape 3.3e7 and
-reaches about 4.8e-7 by shape 2e8. The iteration budget is the other limit, and
-it is now 65536 rather than 200: at the branch point the series needs 2197
-terms at shape 1e5 and 45662 at 5e7, so the budget carries it past shape 1e8.
-[The precision appendix](../appendix/precision.md) states what is measured
-inside both limits, describes the grid that measures it, and names the regions
-outside it that are known wrong.
+For the measured PDF/CDF cases through shape `5e7` and quantile cases through
+shape `1e7`, relative error is below 2e-6. These are sampled ranges, not a
+bound on every argument between their points. [The precision appendix](../appendix/precision.md)
+gives the sampled axes and known limits. Calibrate other shapes and tails
+against a reference.
 
 ```chelis
 module Nautilus.BookGammaFamily
@@ -166,10 +108,7 @@ def chi2_critical() -> f32 = chi_squared_cdf(cast(3.84, f32), cast(1.0, f32))
 Evaluated, the four functions return `pdf_at_2 = 0.27067056`,
 `cdf_at_2 = 0.48658288` (shape 1, scale 3, so 1 - e^(-2/3)),
 `median_shape_2 = 1.678347`, and `chi2_critical = 0.9499565`: 3.84 is the
-95% critical value of a chi-squared with one degree of freedom. All four are
-the correctly rounded f32 of their exact values. They moved by 4, 6, 8 and 1
-f32 ulps respectively when the family's internals went to f64, measured as
-bit-pattern distance.
+95% critical value of a chi-squared with one degree of freedom.
 
 ## Chi-squared distribution
 

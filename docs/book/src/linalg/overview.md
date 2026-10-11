@@ -66,9 +66,10 @@ precision. `to_tensor` builds a matrix from a list of rows.
 
 In `la_tridiag_solve`, row `i` of the matrix is `lower[i]`, `diag[i]`,
 `upper[i]` in columns `i-1`, `i`, `i+1`; `lower[0]` and `upper[n-1]` are
-ignored. It does not pivot. A pivot with magnitude below 1e-30 is replaced by
-1.0, which avoids a division by zero and returns a wrong answer instead, so
-use it on diagonally dominant systems such as spline fits.
+ignored. It does not pivot. A zero or nonfinite elimination pivot returns
+NaN; a small nonzero pivot is used as given. Use it on diagonally dominant
+systems such as spline fits. Other systems may need row exchanges that this
+solver cannot perform.
 
 ## Notes
 

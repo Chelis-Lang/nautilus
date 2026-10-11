@@ -52,12 +52,11 @@ returns +inf. A negative rate gives negative values:
 `-1.7182819`.
 
 The CDF complements in f64, and for a `rate * x` in the half-open interval
-from 0 up to 1/16 it sums a Maclaurin series for `1 - exp(-rate * x)` rather
-than subtracting. A negative `rate * x` stays on the subtraction, where the
-series would diverge. A small `x` therefore
-keeps its digits: `exponential_cdf(1e-8, 1.0)` is 1e-8 and
-`exponential_cdf(1e-20, 1.0)` is 1e-20, where the subtraction returned 0. The
-[precision guide](../appendix/precision.md) states the error over the range.
+from 0 up to 1/16 it sums a Maclaurin series for `1 - exp(-rate * x)`.
+A negative `rate * x` uses the subtraction branch. For small positive `x`,
+`exponential_cdf(1e-8, 1.0)` is 1e-8 and
+`exponential_cdf(1e-20, 1.0)` is 1e-20. The
+[precision guide](../appendix/precision.md) states the measured range.
 
 ## LogNormal
 
@@ -111,11 +110,9 @@ before the parameters are read: x < 0 gives 0, and q = 0 or q = 1 gives 0 or
 for shape < 1.
 
 `weibull_cdf` forms both `(x/scale)^shape` and its complement in f64, and
-below a `(x/scale)^shape` of 1/16 it sums a Maclaurin series for `1 - exp(-t)`
-rather than subtracting; `shape` and `scale` are positive here, so the
-argument is never negative. `weibull_cdf(1e-8, 2.0, 1.0)` is therefore 1e-16
-rather than 0. The [precision guide](../appendix/precision.md) states the
-error over the range.
+below a `(x/scale)^shape` of 1/16 it sums a Maclaurin series for `1 - exp(-t)`.
+With positive `shape` and `scale`, `weibull_cdf(1e-8, 2.0, 1.0)` is 1e-16.
+The [precision guide](../appendix/precision.md) states the measured range.
 
 ## Beta
 
