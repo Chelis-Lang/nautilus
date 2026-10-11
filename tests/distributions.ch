@@ -703,10 +703,9 @@ def test_normal_upper_tail_reflects_the_mean_not_only_the_point() -> unit ! { Te
 -- degenerate `scale` or a non-finite `x` produced a non-finite standardised
 -- argument `xs = x / scale`, took the `gammaq` branch, and never satisfied the
 -- continued fraction's convergence test. The recursion then spent its whole
--- 200-iteration budget, which the `chelis eval` lane cannot afford: see
--- the eval-lane entry in `docs/UPSTREAM_BUGS.md` (chelis#2471). The guards below
--- are the ones `weibull_cdf`, `gamma_pdf` and `gamma_inv_cdf` already use in
--- this module, and they agree with SciPy on every row.
+-- 200-iteration budget. The guards below are the ones `weibull_cdf`,
+-- `gamma_pdf` and `gamma_inv_cdf` already use in this module, and they agree
+-- with SciPy on every row.
 def test_gamma_cdf_rejects_a_nonpositive_scale() -> unit ! { Test } = {
   z = gamma_cdf(cast(1.0, f32), cast(2.0, f32), cast(0.0, f32))
   n = gamma_cdf(cast(1.0, f32), cast(2.0, f32), cast(-1.0, f32))
