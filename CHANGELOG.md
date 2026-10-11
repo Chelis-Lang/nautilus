@@ -112,6 +112,11 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   limitations stay the same. The Greeks guide now shows Gamma from nested
   `grad`, which the evaluator computes correctly.
 
+- Build Nautilus 0.7.51 with Chelis 0.19.2. The incomplete-beta continued
+  fraction uses the same 4,096-step budget with fewer evaluator stack frames;
+  the book and capability inventory reflect the new compiler and
+  package versions. Public Nautilus function signatures do not change.
+
 ## [0.7.48] - 2026-10-06
 
 ### Changed

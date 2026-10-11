@@ -43,10 +43,10 @@ Two cases need separate guidance:
 | `bessel_k0`, `k1` | f32 | Polynomial/log + asymptotic, crossover 2.0 |
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions; the two families below are stated rather than estimated |
-| `poisson_pmf`, `binomial_pmf` | below 2e-6 up to `lambda` of 1e8 and `n` of 2e8 | Log space in f64; past that, limited by f64's spacing at `ln(k!)`, see the note below |
-| the gamma family, nine exports | below 2e-6 at every one of the 1626 cases the accuracy gate enforces | Incomplete gamma in f64; the note below describes what that grid covers, and the three regions outside it that are known wrong |
-| Beta-family CDFs | below 2e-6 over a stated parameter range | `beta_cdf`, `f_cdf`, `binomial_cdf`; the range is part of the figure, see the note below |
-| `student_t_cdf` | below 2e-6 for every `df` | The incomplete beta below `df` of 1e7, the large-`df` expansion from 1e7 upward, see the note below |
+| `poisson_pmf`, `binomial_pmf` | below 2e-6 at measured cases through `lambda` of 1e8 and `n` of 2e8 | Log space in f64; the note below states the sampled axes and limits |
+| the gamma family, nine exports | below 2e-6 at 1626 measured cases | Incomplete gamma in f64; the note below describes the sampled axes and three known failure regions outside them |
+| Beta-family CDFs | below 2e-6 at measured cases through parameter 1e8 | `beta_cdf`, `f_cdf`, `binomial_cdf`; the note below states the sampled axes |
+| `student_t_cdf` | below 2e-6 at measured cases through `df` 1e20 | The incomplete beta below `df` of 1e7 and a large-`df` expansion above it |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
 | `normal_inv_cdf` | ~1e-7 | Acklam rational via `erfinv` |
 
@@ -105,7 +105,7 @@ larger than 5. `airy_bi` has the same limitation but is less affected
 because it grows exponentially for positive x where the asymptotic
 branch covers it.
 
-### The beta family holds below 2e-6 over a stated parameter range
+### Beta-family accuracy across measured cases
 
 `beta_cdf`, `f_cdf` and `binomial_cdf` all compute the regularized incomplete
 beta, and `student_t_cdf` does too below `df` of 1e7. Its normalizing factor is
@@ -114,16 +114,21 @@ is a difference of large quantities whose rounding error grows with the
 parameters. The incomplete beta is computed in f64 and returned as f32, which
 keeps that error small over a wide range but not an unlimited one.
 
-> Relative error stays below 2e-6 when every parameter you pass is at least 1 and
-> the largest is at most 1e8. `student_t_cdf` has no upper limit: it holds below
-> 2e-6 for every `df` from 1 upward, including an infinite one.
+> Relative error is below 2e-6 at the measured cases for `beta_cdf`,
+> `f_cdf` and `binomial_cdf` through caller parameter 1e8, and for
+> `student_t_cdf` through `df` 1e20.
 
-The range applies to `a` and `b` for `beta_cdf`, to `d1` and `d2` for `f_cdf`, to
-`df` for `student_t_cdf`, and to `n` for `binomial_cdf`. The upper limit is the
-one the incomplete beta imposes, and `student_t_cdf` is the one member of the
-family that can leave it behind, for the reason below.
+The beta measurements vary `a` and `b` or `d1` and `d2` from 1 through 1e8,
+probe CDF values across the domain and around the incomplete-beta branch
+boundary, and include symmetric and skewed parameter pairs. The binomial
+measurements vary `n` from 10 through 1e8, `p` at 0.01, 0.3, 0.5 and 0.9 and
+around its branch boundary, and `k` at fractions of `n` and `n - 1`. The
+Student-t measurements vary `df` from 1 through 1e20, `t` from -11 through 3,
+and probe both sides of the branch boundary and the handover at `df = 1e7`.
+These are sampled axes, not a guarantee for every point between them. An
+infinite `df` uses the standard normal distribution exactly.
 
-Outside the range the error grows in both directions, and nothing in the result
+Outside the measured parameter limits the error can grow in both directions, and nothing in the result
 indicates it. Below 1, a small shape parameter amplifies the same cancellation:
 `beta_cdf(0.9, 0.5, 1e-4)` errs by about 2e-6 and `beta_cdf(0.9, 0.5, 1e-10)` by
 183%. A large and a small parameter together are worse than either alone, so
@@ -162,7 +167,7 @@ inside the bound. The threshold also introduces a discontinuity, and it is
 small: across the two adjacent representable `df` either side, the two results
 are never more than two f32 ulps apart, one ulp at most of the `t` tested and
 two in the far tail. And `student_t_cdf(0, df)` is
-exactly 0.5 for every `df`, which is the right answer and not a symptom; the
+exactly 0.5 for every valid `df`, which is the right answer; the
 expansion's correction term vanishes at `t = 0`.
 
 A regularized incomplete beta lies in [0, 1]. A converged computation that
@@ -193,40 +198,15 @@ returned as f32. In f32 the error was 51% at `gamma_sf(1e5, 1e5, 1)` and 100%
 at shape 1e7, `gamma_pdf(5e7, 5e7, 1)` returned 1.0 against a true 5.6418958e-5,
 and `gamma_inv_cdf(0.5, 1e7, 1)` returned 5e29 against a true 1e7.
 
-> Relative error is below 2e-6 at **every one of the 1626 cases**
-> `parity/check_gamma_accuracy.py` enforces, on every CI run.
+> Relative error is below 2e-6 at every one of 1626 measured cases.
 
-That is a statement about a measured set, not about a parameter range, and the
-difference is the whole point of how it is worded. Three review rounds
-falsified three earlier versions of this sentence, every one of them in the
-same way: each stated a range, and each range quantified over a parameter the
-gate did not actually walk. First `q`, where the grid stopped three decades
-above a failure region. Then `scale`, which the quantile rows did not vary at
-all. Then `shape` *downward*, because the range bounded it only from above
-while the grid's ladder starts at 0.5 -- `gamma_inv_cdf(1e-4, 0.07062688, 1e20)`
-returns 5.8421183e-36 against a reference of 1.3742135e-37, a **relative error
-of 41.5**, with every parameter inside the range as written.
+This describes measured cases, not every parameter in a range. In particular,
+`gamma_inv_cdf(1e-4, 0.07062688, 1e20)` returns 5.8421183e-36 against a
+reference of 1.3742135e-37, a relative error of 41.5. Its shape is below the
+smallest quantile shape in the measured set, 0.5. The full shape matters:
+`0.0706` is a different f32 and changes the result.
 
-The shape is written out in full, and the two values are given rather than only
-their ratio, because two separate things move this figure and between them they
-span 41.5 to 44.7.
-
-`0.0706` is a *different* f32 from `0.07062688`, so abbreviating the shape
-changes the call: at `0.0706` it returns 5.8398956e-36 against a reference of
-1.3076352e-37. And "how far out" is ambiguous between the relative error
-`|v - ref| / ref` and the plain ratio `v / ref`, which differ by exactly 1.
-The four readings are 41.5 and 42.5 at the full shape, 43.7 and 44.7 at the
-abbreviated one. Quote the two values and the statistic, not the ratio alone.
-
-Neither shape is on this grid's ladder, whose smallest quantile rung is 0.5,
-which is why the witness is a historical note here and not a gate row.
-
-So the claim no longer asserts a region. It asserts what was measured, which
-cannot be falsified by a point nobody measured, and it leaves the region to the
-grid rather than to a sentence that drifts from it.
-
-**What the grid covers**, as a description of the instrument and not a
-guarantee beyond it: `shape` on a ladder from 0.5 to each export's ceiling
+**The measured set covers:** `shape` on a ladder from 0.5 to each export's ceiling
 (5e7 for the gamma trio, `df` 1e8 for the chi-squared trio, `lambda` 5e7 for
 `poisson_cdf`, `shape` 1e7 and `df` 2e7 for the quantiles) and one rung past
 it; `x` and `k` walked across `shape*scale` in units of the distribution's own
@@ -236,11 +216,10 @@ exactly; `scale` over 1, 2.5 and 0.0078125 for the densities and CDFs, and
 0.999. References come from an arbitrary-precision oracle and any whose value
 f32 cannot hold as a normal number is excluded.
 
-**Outside that set, three regions are known to be wrong** and are tracked
-separately rather than bounded here. Two are in the quantiles and are described
+**Outside that set, three regions are known to be wrong.** Two are in the quantiles and are described
 below. The third is the CDF: the parameter guards read the **f32** quotient
 `x / scale`, so when that quotient underflows, `gamma_cdf` returns exactly 0.0
-for an answer f32 can hold -- `gamma_cdf(1e-30, 0.25, 1e20)` is 0.0 against a
+for an answer f32 can hold. `gamma_cdf(1e-30, 0.25, 1e20)` is 0.0 against a
 true 3.49e-13, while the same call at `scale = 1` returns the correct 3.49e-8.
 
 Those two limits on the quantiles are one defect seen twice, and it is worth
@@ -251,8 +230,8 @@ by the density. Two things make that division useless.
 Below `q = 1e-4` for a shape in roughly [1.9, 2.6], the Wilson-Hilferty start's
 cube goes negative, so the start is floored; the first Newton step then
 overshoots the root by about 27 decades and the budget is spent halving back.
-`gamma_inv_cdf(1e-5, 2, 1)` returns 8.271806 against a true 0.0044788163 -- the
-99.8th percentile where the 0.001st was asked for -- and
+`gamma_inv_cdf(1e-5, 2, 1)` returns 8.271806 against a true 0.0044788163,
+the 99.8th percentile where the 0.001st was asked for, and
 `chi_squared_inv_cdf(1e-5, 4)` is the same point at `df/2`. The returned values
 at neighbouring parameters are 1, 2 and 3 times 8.271806, which is the signature:
 the answer is a function of how many halvings fitted in the budget, not of `q`.
@@ -261,7 +240,7 @@ Above `scale` of about 1e27 the same division fails from the other side. The
 floor on the density is absolute at 1e-30 while a Gamma density is about
 `1/(scale*sqrt(2*pi*shape))`, so past a large enough scale the true density
 falls under the floor and each step removes only a fraction of the error.
-`gamma_inv_cdf(0.5, 2, 1e31)` is 3.0e-4 relative, at a median -- nowhere near a
+`gamma_inv_cdf(0.5, 2, 1e31)` is 3.0e-4 relative at a median, far from a
 tail, and nothing about the start is degenerate.
 
 Both are convergence limits and not precision limits: raising the budget from 80
@@ -271,15 +250,12 @@ ulps across it and their relative errors agree to three digits, so the f64 work
 neither causes nor repairs them.
 
 **Do not reach for the CDF as a substitute without checking the same
-parameters.** An earlier version of this note recommended solving
-`gamma_cdf(x, shape, scale) = q` instead, on the grounds that the CDF is
-accurate over fifty decades of `scale`. That was false, for the underflow
-reason given above. The CDF is accurate over the grid's own scale range; it is
-not a general escape from the quantile's limits.
+parameters.** Solving `gamma_cdf(x, shape, scale) = q` can fail for the
+underflow reason given above. The CDF is accurate over the measured scale
+values; it is not a general escape from the quantile's limits.
 
-`parity/check_gamma_accuracy.py` measures all nine exports on every CI run, at
-and beyond those ceilings and at the `q` floor, and fails if the bound is exceeded at any case it enforces.
-Its grid walks `x` across `shape*scale` in units of the distribution's own
+The measured cases cover all nine exports at and beyond those ceilings and at
+the `q` floor. The grid walks `x` across `shape*scale` in units of the distribution's own
 standard deviation, because that is the only place the cancellation is total:
 the broken f32 lane was 2.8e-8 relative at `gamma_cdf(10500, 10000, 1)` while
 being 4.4e-2 at `gamma_cdf(10000, 10000, 1)`.
@@ -328,25 +304,24 @@ One f32 ulp is about 1.2e-7 relative wherever the result lies, so a factor of
 **How large the error can be** is a different question, and a single argument
 cannot answer it. The error is a rounding, so it oscillates: at shape 2e8 this
 same measurement gives 1.1e-8, two roundings having cancelled, while the worst
-over a neighbourhood of that shape is 3.5e-7 -- thirty times larger at the
-same shape. Only the second is a bound, which is why the accuracy gate measures
+over a neighbourhood of that shape is 3.5e-7, thirty times larger at the
+same shape. Only the second estimates an envelope, so measure
 a neighbourhood rather than a point. Its worst cases sit at 1.2x and 0.7x of
 one f64 ulp of `lgamma(shape)`, so that quantity is the envelope.
 
 Read neither table as a function of the shape, and read both as measurements
-recorded once rather than as values anything enforces: the only gated claim here
-is the quotable bound above. Calibrate against a reference over the parameters
+recorded once: the measured-case claim is the bound above. Calibrate against a reference over the parameters
 your own calculation visits.
 
 One trap if you measure this yourself. A printed f32 read back as a double is
-not the f32 it denotes -- round-tripping guarantees that rounding the double to
-f32 recovers the value, not that the double equals it -- and the gap is about
+not the f32 it denotes. Round-tripping guarantees that rounding the double to
+f32 recovers the value; the double itself differs by about
 3e-8 relative. At the 1e-7 level that chooses the leading digit of your answer.
 Round the parsed value to f32 before comparing.
 
 The second limit is the iteration budget, which is 65536. At the branch point
 the series needs 2197 terms at shape 1e5 and 45662 at 5e7, so it is a
-square-root scaling rather than a formula -- those are 6.9 and 6.5 times the
+square-root scaling: those are 6.9 and 6.5 times the
 square root of the shape. The budget carries the series past shape 1e8, with
 exhaustion crossing at about 1.049e8, and beyond that it returns an
 unconverged partial sum. Past that point the budget dominates and the rounding floor can no
@@ -368,39 +343,36 @@ count itself never overflows anything.
 
 Both evaluate that expression in f64 and return an f32. In f32 the error was
 5.2% at `poisson_pmf(1e5, 1e5)` and 15% at `binomial_pmf(1e5, 2e5, 0.5)`, and
-above `k = 16777216` the `+ 1` in `k + 1` vanished -- the spacing of f32
-values at 5e7 is 4 -- so `binomial_pmf(5e7, 1e8, 0.5)` returned `inf` and
+above `k = 16777216` the `+ 1` in `k + 1` vanished because the spacing of f32
+values at 5e7 is 4. `binomial_pmf(5e7, 1e8, 0.5)` returned `inf` and
 `poisson_pmf(5e7, 5e7)` returned 1.0. Neither is a probability, which is the
 cheapest way to notice the defect but not its boundary: the error was
 continuous in the parameter rather than a cliff at 2^24, already 0.13% at
 `binomial_pmf(1e3, 2e3, 0.5)` and 5.4e-6 at `binomial_pmf(100, 200, 0.5)`.
 
-The same bound now applies one dtype up, and it is a gate rather than a
-sentence:
+The f64 calculation improves the measured accuracy of both PMFs:
 
-> Relative error stays below 2e-6 for `lambda` up to 1e8 and for `n` up to
-> 2e8, at every `p`, for any result f32 can hold as a normal number.
+> Relative error is below 2e-6 at every measured normal-f32 case through
+> `lambda = 1e8` for `poisson_pmf` and `n = 2e8` for `binomial_pmf`.
 
-`parity/check_pmf_accuracy.py` measures both functions against SciPy on every
-CI run, at and beyond those ceilings, and fails if the bound is exceeded
-inside the range. The last clause matters: below f32's smallest normal the
-return type cannot carry the value at all, and a relative bound there would
-measure f32's quantisation rather than this function.
+The Poisson cases sample `lambda` from 0.5 through 1e8. At each value they
+probe integer `k` at offsets from -20 to +20 standard deviations around the
+mean, plus 0, 1, twice the mean and ten times the mean. The binomial cases
+sample `n` from 10 through 2e8. They probe fractions of `n` at `p = 0.5`,
+and the mode, both endpoints, and offsets from -5 to +5 standard deviations
+for `p` values from 1e-7 to 0.999999, including 0.5. The measured set also
+includes cases beyond both ceilings. References below f32's smallest normal
+are excluded because relative error there measures output quantisation.
 
-One f64 ulp of `ln(k!)` is 3.81e-6 at `k = 1e9`, and the gate measures 3.8e-6
-for `poisson_pmf` and 3.5e-6 for `binomial_pmf` there -- within that one
+One f64 ulp of `ln(k!)` is 3.81e-6 at `k = 1e9`, and the measured error is 3.8e-6
+for `poisson_pmf` and 3.5e-6 for `binomial_pmf` there, within that one
 rounding, so the remaining error is a property of the dtype rather than
 something a better algorithm would remove. Nothing in the result signals it,
 so outside the range calibrate against a reference over your own parameters.
 
-Eight rows are additionally pinned by name against SciPy references in
-`tests/distributions.ch`, from `k = 1e3` to `k = 5e7`. `p` is part of the
-claim, not an afterthought: a first version of the gate's grid admitted only
-exactly-representable arguments, which silently discarded every skewed `p`
-and left the large-`n` figure resting on `p = 0.5` alone. **Which parameters
-are worst is a property of the grid, not of the function**, so no figure here
-names one -- the error is rounding-driven and its maximum over a continuum is
-not findable by evaluating finitely many points.
+The error is rounding-driven and oscillates with the parameters. No finite
+sample identifies the maximum over a continuum. Calibrate a tolerance against
+a reference over the parameters your calculation uses.
 
 Note also that f32 cannot represent consecutive integers above 16777216, so a
 count passed as an f32 above that is already on a grid coarser than 1. If your

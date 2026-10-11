@@ -129,10 +129,10 @@ Parameterized by shape parameters `a` and `b`, both positive.
 `a <= 0` or `b <= 0` returns NaN. At x = 0 the PDF is 0 for a > 1, `b` for
 a = 1, and +inf for a < 1; x = 1 mirrors this with `b`.
 
-The incomplete beta is computed in f64 and returned as f32. Relative error stays
-below 2e-6 while `a` and `b` are both at least 1 and the larger is at most 1e8,
-and grows outside that range in both directions. The precision guide states the
-range and what happens beyond it.
+The incomplete beta is computed in f64 and returned as f32. At the measured
+cases with `a` and `b` from 1 through 1e8, relative error was below 2e-6.
+These samples do not establish a bound between their points. The precision
+guide states the sampled axes and observed failures outside those limits.
 
 ## F distribution
 
@@ -150,12 +150,12 @@ are accepted.
 
 Both `d1*x / (d1*x + d2)` and its complement `d2 / (d1*x + d2)` are formed in f64,
 so a small `d2` beside a large `d1*x` keeps its digits instead of rounding the
-argument to 1. Relative error stays below 2e-6 while `d1` and `d2` are both at
-least 1 and the larger is at most 1e8, and grows outside that range in both
-directions: `f_cdf(0.5, 2e8, 0.5)` errs by about 2e-6 and
-`f_cdf(0.5, 1e8, 1e-3)` by 2.5e-5. The
-[precision guide](../appendix/precision.md) states the range for every export in
-this family.
+argument to 1. At the measured cases with `d1` and `d2` from 1 through 1e8,
+relative error was below 2e-6; this does not establish a bound between samples.
+Observed cases beyond those limits include `f_cdf(0.5, 2e8, 0.5)`, with about
+2e-6 relative error, and `f_cdf(0.5, 1e8, 1e-3)`, with about 2.5e-5. The
+[precision guide](../appendix/precision.md) states the sampled axes for
+each export in this family.
 
 ## Pitfalls
 
