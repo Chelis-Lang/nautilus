@@ -125,6 +125,11 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - Build Nautilus 0.7.53 with Chelis 0.19.2. The precision guide and discrete
   distributions page state the exact f64 `k + 1` boundary for f32 counts.
 
+- Build Nautilus 0.7.54 with Chelis 0.19.2. Gamma-family distribution
+  functions use a faster approximation near large shapes. Natural-spline
+  evaluation preserves representable subnormal results by retaining f64
+  moments through the final value.
+
 ## [0.7.48] - 2026-10-06
 
 ### Changed
