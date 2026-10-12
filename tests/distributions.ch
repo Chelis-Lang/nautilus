@@ -1515,10 +1515,10 @@ def test_gamma_large_shape_transition_keeps_both_small_tails() -> unit ! { Test 
   upper_outside = gamma_sf(cast(101581.140625, f32), shape, scale)
   _ = assert_true(lt(lower_outside, lower_inside), "lower gamma tail increases across the transition")
   _ = assert_true(lt(upper_outside, upper_inside), "upper gamma tail decreases across the transition")
-  _ = assert_true(lt(dist_rel_err(lower_inside, cast(2.86680727684e-7, f32)), cast(2e-6, f32)), "lower tail inside the large-shape transition")
-  _ = assert_true(lt(dist_rel_err(lower_outside, cast(2.50998070724e-7, f32)), cast(2e-6, f32)), "lower tail outside the large-shape transition")
-  _ = assert_true(lt(dist_rel_err(upper_inside, cast(3.71237915842e-7, f32)), cast(2e-6, f32)), "upper tail inside the large-shape transition")
-  assert_true(lt(dist_rel_err(upper_outside, cast(3.2632843256e-7, f32)), cast(2e-6, f32)), "upper tail outside the large-shape transition")
+  _ = assert_true(lt(dist_rel_err(lower_inside, cast(2.86680727684e-7, f32)), cast(1e-6, f32)), "lower tail inside the large-shape transition")
+  _ = assert_true(lt(dist_rel_err(lower_outside, cast(2.50998070724e-7, f32)), cast(1e-6, f32)), "lower tail outside the large-shape transition")
+  _ = assert_true(lt(dist_rel_err(upper_inside, cast(3.71237915842e-7, f32)), cast(1e-6, f32)), "upper tail inside the large-shape transition")
+  assert_true(lt(dist_rel_err(upper_outside, cast(3.2632843256e-7, f32)), cast(1e-6, f32)), "upper tail outside the large-shape transition")
 }
 def test_gamma_large_shape_quantiles_are_accurate_and_ordered() -> unit ! { Test } = {
   shape = cast(10000000.0, f32)
@@ -1528,9 +1528,9 @@ def test_gamma_large_shape_quantiles_are_accurate_and_ordered() -> unit ! { Test
   upper = gamma_inv_cdf(cast(0.999, f32), shape, scale)
   _ = assert_true(lt(lower, median), "the lower gamma quantile precedes the median")
   _ = assert_true(lt(median, upper), "the gamma median precedes the upper quantile")
-  _ = assert_true(lt(dist_rel_err(lower, cast(9988243.71403, f32)), cast(2e-6, f32)), "large-shape lower quantile")
-  _ = assert_true(lt(dist_rel_err(median, cast(9999999.66667, f32)), cast(2e-6, f32)), "large-shape median")
-  assert_true(lt(dist_rel_err(upper, cast(10009775.0346, f32)), cast(2e-6, f32)), "large-shape upper quantile")
+  _ = assert_true(lt(dist_rel_err(lower, cast(9988243.71403, f32)), cast(1e-6, f32)), "large-shape lower quantile")
+  _ = assert_true(lt(dist_rel_err(median, cast(9999999.66667, f32)), cast(1e-6, f32)), "large-shape median")
+  assert_true(lt(dist_rel_err(upper, cast(10009775.0346, f32)), cast(1e-6, f32)), "large-shape upper quantile")
 }
 def test_gamma_large_shape_invalid_inputs_remain_nan() -> unit ! { Test } = {
   invalid_scale = gamma_cdf(cast(100000.0, f32), cast(100000.0, f32), cast(-1.0, f32))
