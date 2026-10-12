@@ -11,7 +11,7 @@ f64, and `Nautilus.Rolling` is f64 over `List[f64]`; every other module works
 in f32. Section 6 lists every export with its
 signature and a stability label. The one export outside those tables,
 `Nautilus.Core.version`, returns the exact package-version string
-(`"0.7.52"` in this source checkout).
+(`"0.7.53"` in this source checkout).
 
 ## 2. Import Patterns
 
@@ -325,7 +325,7 @@ package-version string, is the one export not listed here.
 | `student_t_cdf` | `(t: f32, df: f32) -> f32` | `stable` | Via regularized incomplete beta (betai) in f64 below `df` of 1e7; from 1e7 upward, the large-`df` expansion `Phi(t) - phi(t)(t^3+t)/(4 df)`, also in f64. Relative error below 2e-6 for every `df` from 1 upward including infinite, enforced over the axis to 1e20 by `parity/check_beta_accuracy.py`. `student_t_cdf(0, df)` is exactly 0.5 for all `df`, which is correct |
 | `student_t_sample` | `[n](k: key, template: tensor[n, f32], df: f32) -> tensor[n, f32]` | `alpha` | Explicit key; independent normal and chi-squared tensors; df >= 2 |
 | `poisson_pmf` | `(k: f32, lambda: f32) -> f32` | `stable` | k as f32 (integer-valued), discrete PMF; log-space body evaluated in f64 internally; relative error below 2e-6 for `lambda` up to 1e8, enforced by `parity/check_pmf_accuracy.py`; past that it is bounded by one f64 ulp of ln(k!), 3.81e-6 at 1e9, where the gate measures 3.8e-6 |
-| `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | `stable` | `Q(k+1, lambda)` directly, with `k+1` formed in f64 so the increment survives above k = 2^24; inherits the gamma family's accuracy, below 2e-6 at every case the gate enforces, which reaches lambda 5e7 |
+| `poisson_cdf` | `(k: f32, lambda: f32) -> f32` | `stable` | `Q(k+1, lambda)` directly, with `k+1` formed in f64; the increment is exact for non-negative integer `k < 2^53` and rounds back at `k = 2^53`; inherits the gamma family's accuracy, below 2e-6 at every case the gate enforces, which reaches lambda 5e7 |
 | `binomial_pmf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | k, n as f32 (integer-valued), discrete PMF; log-space body evaluated in f64 internally; relative error below 2e-6 for `n` up to 2e8 at every `p`, enforced by `parity/check_pmf_accuracy.py`; past that it is bounded by one f64 ulp of ln(n!), 3.81e-6 at 1e9, where the gate measures 3.5e-6 |
 | `binomial_cdf` | `(k: f32, n: f32, p: f32) -> f32` | `stable` | Via regularized incomplete beta (betai), evaluated in f64 internally; `n-k` and `k+1` formed in f64; relative error below 2e-6 for `n` up to 1e8 |
 | `beta_pdf` | `(x: f32, a: f32, b: f32) -> f32` | `stable` | a, b > 0 |
