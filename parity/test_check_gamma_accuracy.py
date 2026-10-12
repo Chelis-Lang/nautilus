@@ -800,8 +800,15 @@ class Coverage(unittest.TestCase):
         headline = "> Relative error is below 2e-6 at 1655 measured cases."
         self.assertTrue(gamma_case_count_claim(headline))
         self.assertEqual(CASE_COUNT.findall(headline), ["1655"])
+        # 1702 is this grid's MEASURED count, and the control's point is that
+        # publishing it where the enforced count belongs must be rejected --
+        # main's version used its own 1673 for the same purpose, so carrying
+        # that number across the rebase would have left an arbitrary wrong
+        # value rather than the live confusable one.
         self.assertTrue(gamma_case_count_claim(
             "> Relative error is below 2e-6 at 1702 measured cases."))
+        self.assertFalse(bounded_gamma_claim(
+            "below 2e-6 at 1702 measured cases", enforced))
         self.assertFalse(gamma_case_count_claim(
             "Over the 582 cases of `parity/check_pmf_accuracy.py`"))
         self.assertTrue(bounded_gamma_claim(

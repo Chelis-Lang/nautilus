@@ -85,7 +85,7 @@ f32 `k + 1` had collapsed to zero. The sampling C-lane check that already
 existed covers keyed gamma-family *sampling*; none of these nine exports had
 C-lane coverage.
 
-The measured set, the two limits outside it, and the three regions known to be
+The measured set, the two limits outside it, and the two regions known to be
 wrong are in [the precision appendix](docs/book/src/appendix/precision.md).
 
 **The documented accuracy claim states a measured set, not a parameter
