@@ -246,17 +246,18 @@ The error is driven by rounding, so it oscillates in every parameter and no
 finite set of sample points locates its maximum. Calibrate tolerances against a
 reference over the parameters your calculation actually uses.
 
-### The discrete PMFs are limited by the size of `ln(k!)`, not by the count
+### Large-count discrete PMFs
 
 `poisson_pmf` and `binomial_pmf` are exponentials of a log-space expression
 whose dominant term is `ln(Gamma(k + 1)) = ln(k!)`. An absolute error in that
 term is a *multiplicative* error in the answer, and `ln(k!)` grows without
 bound: 1.05e6 at `k = 1e5` and 1.74e9 at `k = 1e8`. The precision of the
-arithmetic that forms it therefore sets the accuracy of the result, and the
-count itself never overflows anything.
+arithmetic that forms it therefore limits the accuracy of the result. The
+formula avoids forming the factorial itself.
 
 Both evaluate that expression in f64 and return f32. The `k + 1` term is
-formed in f64 so the increment is retained for every representable f32 count.
+formed in f64. For non-negative integer `k` below `2^53`, that increment is
+exact; at `k = 2^53`, adding 1 rounds back to `k`.
 
 > Relative error is below 2e-6 at every measured normal-f32 case through
 > `lambda = 1e8` for `poisson_pmf` and `n = 2e8` for `binomial_pmf`.

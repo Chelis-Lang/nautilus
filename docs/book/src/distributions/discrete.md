@@ -56,8 +56,9 @@ counts and rates you use. At `lambda = 1e9`, one measured relative error is
 
 The CDF does not sum PMF terms; it evaluates the incomplete gamma function,
 which inherits the [large-shape limit](gamma-family.md#large-shapes) at shape
-`k + 1`. It forms that increment in f64, where it survives for every f32
-count. `poisson_cdf(5e7, 5e7)` returns `0.50003755` against a reference
+`k + 1`. It forms that increment in f64, which retains it for non-negative
+integer `k` below `2^53`. At `k = 2^53`, adding 1 rounds back to `k`.
+`poisson_cdf(5e7, 5e7)` returns `0.50003755` against a reference
 `0.50003761`.
 
 The CDF reads the incomplete gamma as the upper tail `Q` rather than as
