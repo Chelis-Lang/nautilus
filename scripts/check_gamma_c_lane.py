@@ -136,6 +136,10 @@ CASES = [
     # --- the k + 1 gap anchor ----------------------------------------------
     ("lane_pois_big", "poisson_cdf(cast(5e7, f32), cast(5e7, f32))"),
     ("lane_sf_big", "gamma_sf(cast(5e7, f32), cast(5e7, f32), cast(1.0, f32))"),
+    ("lane_cdf_transition_inside", "gamma_cdf(cast(98426.859375, f32), cast(100000.0, f32), cast(1.0, f32))"),
+    ("lane_cdf_transition_outside", "gamma_cdf(cast(98418.859375, f32), cast(100000.0, f32), cast(1.0, f32))"),
+    ("lane_sf_transition_inside", "gamma_sf(cast(101573.140625, f32), cast(100000.0, f32), cast(1.0, f32))"),
+    ("lane_sf_transition_outside", "gamma_sf(cast(101581.140625, f32), cast(100000.0, f32), cast(1.0, f32))"),
     # --- ordinary cross-lane rows, including both quantiles and both tails --
     ("lane_cdf_small", "gamma_cdf(cast(0.5, f32), cast(0.5, f32), cast(2.5, f32))"),
     ("lane_sf_tail", "gamma_sf(cast(120000.0, f32), cast(100000.0, f32), cast(1.0, f32))"),

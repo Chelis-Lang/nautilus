@@ -10,9 +10,10 @@ the implementation and those sentences. Its sibling
 family was found false in a different place in each of two review rounds while
 it was prose.
 
-**The error has one mechanism and it sets the shape of the grid.** Every one of
-these exports is `exp` of a log-space front factor,
-`a*log(x) - x - log_gamma(a)`, multiplied by a series or a continued fraction.
+**The grid crosses the point where the incomplete gamma is hardest to
+evaluate.** Outside the large-parameter window, the series and continued
+fraction use a log-space front factor,
+`a*log(x) - x - log_gamma(a)`.
 At `x = a` the three terms of that exponent are each about `a*log(a)` and what
 they leave is about `0.5*log(a/(2*pi))`: 1.1e6 collapsing to 4.84 at
 `a = 1e5`. An absolute error in an exponent is a *multiplicative* error in the
@@ -77,12 +78,8 @@ relative resolution.
 
     uv run --project parity --frozen python parity/check_gamma_accuracy.py
 
-It runs about eleven minutes on a quiet workstation, over 1673 cases. Most of
-that is the compiler evaluating the series near the branch point at the top of
-the shape ladder, and about half of it arrived with the `scale` axis the quantile
-rows gained in review -- which is the axis that caught a 152x error, so the cost
-is bought. Running two copies at once makes both much slower than that; the
-grid is CPU-bound and the probe file is shared.
+The grid contains 1673 cases. Run one copy at a time because the generated
+probe file is shared.
 
 It lives under `parity/` because it imports SciPy, and this repository confines
 external-oracle libraries to that directory: `scripts/check_oracle_isolation.py`
@@ -121,19 +118,12 @@ F32_MIN_NORMAL = 1.1754943508222875e-38
 # chi-squared ones (whose gamma shape is `df / 2`), and `lambda` for
 # `poisson_cdf` (whose gamma shape is `k + 1`, so its `k` axis is uncapped).
 #
-# Two ceilings and not one, because the quantile costs about six times the CDF.
-# The series the CDF spends near the branch point costs 45662 terms at
-# `shape = 5e7`, against a 65536 budget, and
-# `gamma_inv_cdf` pays that once per Newton step. 1e7 is where the quantile's
-# grid stays inside a tolerable run time, so that is what its row claims; the
-# CDFs claim 5e7. Neither ceiling is the point at which the answer becomes
-# wrong: it is the point past which nothing here measures it.
+# The quantile grid has a lower ceiling because each Newton step evaluates the
+# CDF and density. A ceiling marks the tested range, not an accuracy cliff.
 #
-# The bound matches the beta sibling's deliberately. Both families fail through
-# one f64 rounding of a log-gamma front factor, so the number that bounds one
-# should bound the other, and a reader comparing the two documents should not
-# have to work out whether a difference is meaningful. It carries headroom over
-# the measurement for the reason in the docstring.
+# The bound matches the beta sibling's and carries headroom over the sampled
+# error for the reason in the docstring. The PDF and the fallback incomplete-
+# gamma routes still depend on the f64 log-gamma front factor.
 DOCUMENTED = {
     "gamma_cdf": (5e7, 2e-6),
     "gamma_sf": (5e7, 2e-6),
@@ -146,14 +136,8 @@ DOCUMENTED = {
     "chi_squared_inv_cdf": (2e7, 2e-6),
 }
 
-# Probed past each ceiling as well, so the run reports what the out-of-range
-# growth actually is instead of leaving the documents' claim about it
-# unmeasured. These rows exercise budget exhaustion and not only the rounding.
-# Each is past its ceiling and past the point where the subject's own
-# 65536-term budget is exhausted, which crosses just past shape 1e8 -- 64035
-# terms at 1e8 and 65576 at 1.05e8. The series needs
-# a square-root number of terms at the branch point. A decade past would not
-# demonstrate anything more and the reference's cost is linear in those terms.
+# Probe past each ceiling to catch accuracy drift, including budget effects
+# outside the documented range.
 BEYOND = {
     "gamma_cdf": 2e8, "gamma_sf": 2e8, "gamma_pdf": 2e8,
     "chi_squared_cdf": 4e8, "chi_squared_sf": 4e8, "chi_squared_pdf": 4e8,
@@ -162,13 +146,11 @@ BEYOND = {
 }
 
 # `x` is walked in units of the distribution's own standard deviation about its
-# own mean. The branch point `x = shape*scale` sits at z = 0 and is where both
-# the cancellation and the iteration cost peak, so it is always visited.
+# own mean. The branch point `x = shape*scale` sits at z = 0 and is always
+# visited.
 Z_WALK = (-20.0, -8.0, -5.0, -3.0, -1.0, 0.0, 1.0, 3.0, 5.0, 8.0, 20.0)
-# Above this shape the series costs tens of thousands of terms per case, so the
-# walk is thinned rather than the ladder truncated: the ceiling has to be
-# probed at its stated value (lesson 1 above) and a thinner walk there still
-# straddles the branch point.
+# The high-shape walk is thinner but still probes the branch point and both
+# sides of it at the stated ceiling.
 THIN_ABOVE = 1e6
 Z_THIN = (-3.0, -1.0, 0.0, 1.0, 5.0)
 # Three scales, so the standardisation `x / scale` is exercised rather than
@@ -176,8 +158,7 @@ Z_THIN = (-3.0, -1.0, 0.0, 1.0, 5.0)
 # isolates the front factor from the division; 2.5 does not, so between them
 # they separate a division error from a front-factor one.
 #
-# Above `THIN_ABOVE` only `scale = 1` is used, for the same cost reason the
-# walk is thinned there. The scales are a property of the standardisation,
+# Above `THIN_ABOVE` only `scale = 1` is used. Scales exercise standardisation,
 # which is one division and does not interact with the shape, so probing all
 # three at eleven shapes and one at the top four is coverage of the same thing
 # rather than a gap. `test_every_scale_is_actually_probed` holds either way.
@@ -549,11 +530,8 @@ def cases() -> list[tuple[str, str, str, float, float]]:
                     # shape, so the `< 1` exclusion does not apply to it.
                     add(export, (X, K, S), reference_for(export, X, K, S), shape,
                         allow_one=(export == "gamma_pdf"))
-                # The branch point itself, exactly, at both of its sides. The
-                # implementation sends `x < shape*scale + scale` to the series
-                # and the rest to the continued fraction, so these two cases
-                # are the only ones guaranteed to exercise each route against
-                # the other at the same parameters.
+                # Probe the branch point and adjacent f32 inputs at the same
+                # parameters.
                 for X in (f32(mean), f32(mean + S), f32(mean - S)):
                     if X <= 0.0:
                         continue
