@@ -122,6 +122,9 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   for zero or nonfinite pivots. Natural splines preserve the measured
   small-scale cases within f32 range.
 
+- Build Nautilus 0.7.53 with Chelis 0.19.2. The precision guide and discrete
+  distributions page state the exact f64 `k + 1` boundary for f32 counts.
+
 ## [0.7.48] - 2026-10-06
 
 ### Changed

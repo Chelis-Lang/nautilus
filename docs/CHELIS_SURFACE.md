@@ -829,7 +829,7 @@ round-trip witness. `chelis deep`/`surf` are the CLI views; `spec/02`
 
 | Item | Value |
 |---|---|
-| Source package version | Nautilus `0.7.52` |
+| Source package version | Nautilus `0.7.53` |
 | Pinned compiler | `chelis 0.19.2` (`reef.toml`: `=0.19.2`) |
 | Bundled standard library | `chelis-std 0.4.0`, compiler-bound to `=0.19.2` in the regenerated local `reef.lock` (ignored build output) |
 
