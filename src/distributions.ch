@@ -209,7 +209,8 @@ def student_t_pdf(x: f32, df: f32) -> f32 = {
   exp(log_pdf)
 }
 -- The regularised incomplete gamma is evaluated in f64 and returned as f32.
--- Both routes below share one front factor, `exp(a*log(x) - x - log_gamma(a))`,
+-- The series and continued fraction share a front factor,
+-- `exp(a*log(x) - x - log_gamma(a))`,
 -- whose exponent is a difference of large quantities that very nearly cancel.
 -- At `a = x = 1e5` the three terms are each about 1.1e6 and the exponent they
 -- leave is 4.84, where one f32 rounding of the largest is 0.125. An absolute
@@ -221,7 +222,8 @@ def student_t_pdf(x: f32, df: f32) -> f32 = {
 -- same defect one function family over that `betai` had below; see the comment
 -- there and `docs/book/src/distributions/beta-family.md`.
 --
--- f64 moves that cliff rather than removing it. The floor is one f64 ulp of
+-- For those routes, f64 moves that cliff rather than removing it. The floor
+-- is one f64 ulp of
 -- `log_gamma(a)`, which is quantised and so steps at binade boundaries rather
 -- than growing smoothly: 2.3e-10 at `a = 1e5`, 3.0e-8 at 1e7, 1.19e-7 at 5e7
 -- and 4.8e-7 at 2e8. That crosses f32's own resolution -- one f32 ulp is about
@@ -241,7 +243,8 @@ def student_t_pdf(x: f32, df: f32) -> f32 = {
 -- `docs/book/src/appendix/precision.md` states the measured set this bounds
 -- and `parity/check_gamma_accuracy.py` is its gate.
 --
--- Both budgets are far larger than the f32 lane's 200, because f32 could not
+-- Outside the bounded asymptotic window below, both budgets are far larger
+-- than the f32 lane's 200, because f32 could not
 -- have spent more usefully and f64 can. Measured iteration counts at the
 -- branch point `x = a`, where both routes are slowest. Measured with the
 -- constants below: the series needs 2197 terms at `a = 1e5` and 45662 at
@@ -395,11 +398,32 @@ def gammaq_core(a: f64, x: f64) -> f64 =
   }
 -- `x < a + 1` is the series' domain and the rest is the continued fraction's.
 -- Each route computes the tail it owns and the other is its complement, so the
--- subtraction is never the one that cancels: a small `P` is reached through
--- the series directly and a small `Q` through the continued fraction, which is
--- the arrangement #137 and #139 settled for this family.
-def gammainc_p(a: f64, x: f64) -> f64 = if lt(x, add(a, one_d64())) then gammap_core(a, x) else sub(one_d64(), gammaq_core(a, x))
-def gammainc_q(a: f64, x: f64) -> f64 = if lt(x, add(a, one_d64())) then sub(one_d64(), gammap_core(a, x)) else gammaq_core(a, x)
+-- Outside the large-parameter window, a small `P` is reached through the
+-- series directly and a small `Q` through the continued fraction. Within the
+-- window, both tails exceed the f64 cancellation floor.
+-- DLMF 8.12's uniform large-parameter form avoids tens of thousands of
+-- series terms near x = a. The five-standard-deviation window keeps both
+-- complementary tails large enough for f64 subtraction.
+def gammainc_asymptotic_window(a: f64, x: f64) -> bool = and(gte(a, cast(100000.0, f64)), lte(fabs64_inner(sub(x, a)), mul(cast(5.0, f64), sqrt(a))))
+def gammainc_asymptotic_eta(mu: f64) -> f64 =
+  if lt(fabs64_inner(mu), cast(0.0001, f64)) then {
+    mu2 = mul(mu, mu)
+    mul(mu, add(sub(one_d64(), div(mu, cast(3.0, f64))), mul(div(cast(7.0, f64), cast(36.0, f64)), mu2)))
+  } else {
+    radius = sqrt(mul(cast(2.0, f64), sub(mu, log(add(one_d64(), mu)))))
+    if lt(mu, zero_d64()) then neg(radius) else radius
+  }
+def gammainc_asymptotic_c0(mu: f64, eta: f64) -> f64 = if lt(fabs64_inner(mu), cast(0.0001, f64)) then add(neg(div(one_d64(), cast(3.0, f64))), div(mu, cast(12.0, f64))) else sub(div(one_d64(), mu), div(one_d64(), eta))
+def gammainc_asymptotic_q(a: f64, x: f64) -> f64 = {
+  mu = div(sub(x, a), a)
+  eta = gammainc_asymptotic_eta(mu)
+  root_a = sqrt(a)
+  z = mul(eta, root_a)
+  correction = div(mul(exp(neg(mul(cast(0.5, f64), mul(z, z)))), gammainc_asymptotic_c0(mu, eta)), mul(sqrt_2pi_d64(), root_a))
+  add(standard_normal_cdf(neg(z)), correction)
+}
+def gammainc_p(a: f64, x: f64) -> f64 = if gammainc_asymptotic_window(a, x) then sub(one_d64(), gammainc_asymptotic_q(a, x)) else if lt(x, add(a, one_d64())) then gammap_core(a, x) else sub(one_d64(), gammaq_core(a, x))
+def gammainc_q(a: f64, x: f64) -> f64 = if gammainc_asymptotic_window(a, x) then gammainc_asymptotic_q(a, x) else if lt(x, add(a, one_d64())) then sub(one_d64(), gammap_core(a, x)) else gammaq_core(a, x)
 -- The regularised incomplete beta is evaluated in f64 and returned as f32.
 -- `betai`'s front factor is `exp(lgamma(a+b) - lgamma(a) - lgamma(b)
 -- + a*ln x + b*ln(1-x))`, whose exponent is a difference of large quantities:

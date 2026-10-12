@@ -1,0 +1,1 @@
+Near a large gamma shape, the gamma and chi-squared CDFs, survival functions, and inverse CDFs, plus `poisson_cdf`, use a uniform incomplete-gamma approximation. This avoids long series and continued-fraction runs within five standard deviations of the shape; the existing methods apply elsewhere.
