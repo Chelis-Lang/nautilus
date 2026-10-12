@@ -173,27 +173,18 @@ segment yourself: on `[xs[i], xs[i+1]]`, with `h = xs[i+1] - xs[i]` and
     y = ys[i] + b*t + (M[i]/2)*t^2 + ((M[i+1] - M[i]) / (6*h))*t^3
     b = (ys[i+1] - ys[i]) / h - h * (2*M[i] + M[i+1]) / 6
 
-which is the formula `spline_eval` uses, though it evaluates it in f64 and
-returns f32. In f32 the two are not interchangeable at extreme knot
-magnitudes, because `t^2` and `t^3` leave the f32 exponent range while the
-coefficients they multiply are still in it, and the product can leave it even
-when both factors are inside. A hand-rolled f32 version of this
-formula drops the quadratic term for a gap near 1e-24, returning
-`a + b*t` rather than the curve, and returns NaN for a gap near 1e-26. It also
-breaks at the top of the range: `t^3` overflows f32 once `t` passes about
-7e12, and `t` is the distance from the left knot, so how large the knots may
-be depends on where the query sits in its segment. Compute it in f64 and
-return f32, as `spline_eval` does, or keep the knots and the values at
-ordinary magnitudes.
-On the knots above, segment 1
+`spline_eval` fits and evaluates in f64, then returns f32. The public
+`spline_fit` result stores M in f32, so its moments can overflow even when
+`spline_eval` returns a finite value. If evaluating from M yourself, use f64
+arithmetic: the powers of `t` and their coefficients can underflow or overflow
+in f32 at extreme knot magnitudes. On the knots above, segment 1
 (`h = 2`, `M = -1.5, -1.5`) gives `b = 1.5` and, at x = 2 (`t = 1`),
 `2 + 1.5 - 0.75 = 2.75`, the `spline_eval` result.
 
 Knot requirements:
 
-- `xs` strictly ascending, as for `linear_interp_sorted`, and here it is
-  enforced: a repeated or descending knot is refused, as described above.
-  Merge duplicate knots before fitting rather than relying on a result.
+- `xs` strictly ascending. A repeated or descending knot returns NaN.
+  Merge duplicate knots before fitting.
 - Two knots give the straight line through them; one knot gives its value
   everywhere.
 - A positive gap is used as given, even when it is tiny. Knots
@@ -201,7 +192,6 @@ Knot requirements:
   at x = 0.5: a unit value change across the first gap creates a large
   slope and a large natural-spline value. This is not a value to clip.
 - `spline_fit` returns f32 second derivatives. At extreme gaps or value
-  magnitudes, the required second derivatives or intermediate slopes can
-  exceed f32's range and produce NaN or infinity. A finite result does not
-  certify accuracy. Rescale the coordinates and values or use a wider
+  magnitudes, those derivatives can exceed f32's range. A finite result does
+  not certify accuracy. Rescale the coordinates and values or use a wider
   precision method when the data span extreme magnitudes.
