@@ -214,6 +214,9 @@ jobs:
       - name: chelis test (negative contracts)
         run: chelis test tests_neg/ --expect neg
 
+      - name: Prove interpolation endpoint properties
+        run: python3 scripts/check_properties.py
+
       # nautilus#85: Nautilus.Rolling's warm-up and min_periods must match
       # pandas. The goldens are committed, so this step needs the compiler but
       # not pandas; `parity/rolling_goldens.py` regenerates them manually.
