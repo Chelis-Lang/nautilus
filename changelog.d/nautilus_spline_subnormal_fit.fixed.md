@@ -1,0 +1,1 @@
+`spline_eval` keeps natural-spline moments in f64 through segment evaluation, allowing representable subnormal results even when the public f32 `spline_fit` moments overflow. `spline_fit` uses the same f64 internal solve before returning f32 moments.
