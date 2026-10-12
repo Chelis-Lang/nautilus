@@ -78,7 +78,7 @@ relative resolution.
 
     uv run --project parity --frozen python parity/check_gamma_accuracy.py
 
-The grid contains 1673 cases. Run one copy at a time because the generated
+The grid contains 1702 cases. Run one copy at a time because the generated
 probe file is shared.
 
 It lives under `parity/` because it imports SciPy, and this repository confines

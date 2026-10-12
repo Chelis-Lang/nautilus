@@ -795,17 +795,17 @@ class Coverage(unittest.TestCase):
     def test_finite_claim_qualifier_negative_controls(self) -> None:
         enforced = sum(1 for case in self.spec
                        if case[3] <= DOCUMENTED[case[1]][0])
-        self.assertEqual(enforced, 1626)
-        self.assertEqual(len(self.spec), 1673)
-        headline = "> Relative error is below 2e-6 at 1626 measured cases."
+        self.assertEqual(enforced, 1655)
+        self.assertEqual(len(self.spec), 1702)
+        headline = "> Relative error is below 2e-6 at 1655 measured cases."
         self.assertTrue(gamma_case_count_claim(headline))
-        self.assertEqual(CASE_COUNT.findall(headline), ["1626"])
+        self.assertEqual(CASE_COUNT.findall(headline), ["1655"])
         self.assertTrue(gamma_case_count_claim(
-            "> Relative error is below 2e-6 at 1673 measured cases."))
+            "> Relative error is below 2e-6 at 1702 measured cases."))
         self.assertFalse(gamma_case_count_claim(
             "Over the 582 cases of `parity/check_pmf_accuracy.py`"))
         self.assertTrue(bounded_gamma_claim(
-            "below 2e-6 at 1626 measured cases", enforced))
+            "below 2e-6 at 1655 measured cases", enforced))
         self.assertTrue(bounded_gamma_claim(
             "chi_squared_p_value below 2e-6 at the measured gamma-family "
             "cases through df 1e8", enforced))

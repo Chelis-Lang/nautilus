@@ -41,7 +41,7 @@ Two cases need separate guidance:
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions; the two families below are stated rather than estimated |
 | `poisson_pmf`, `binomial_pmf` | below 2e-6 at measured cases through `lambda` of 1e8 and `n` of 2e8 | Log space in f64; the note below states the sampled axes and limits |
-| the gamma family, nine exports | below 2e-6 at 1626 measured cases | Incomplete gamma in f64; the note below describes the sampled axes and two known failure regions outside them |
+| the gamma family, nine exports | below 2e-6 at 1655 measured cases | Incomplete gamma in f64; the note below describes the sampled axes and two known failure regions outside them |
 | Beta-family CDFs | below 2e-6 at measured cases through parameter 1e8 | `beta_cdf`, `f_cdf`, `binomial_cdf`; the note below states the sampled axes |
 | `student_t_cdf` | below 2e-6 at measured cases through `df` 1e20 | The incomplete beta below `df` of 1e7 and a large-`df` expansion above it |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
@@ -162,7 +162,7 @@ the whole family, and the size of that rounding grows with the shape.
 The front factor, series, and continued fraction are computed in f64 and
 returned as f32.
 
-> Relative error is below 2e-6 at every one of 1626 measured cases.
+> Relative error is below 2e-6 at every one of 1655 measured cases.
 
 This describes measured cases, not every parameter in a range. In particular,
 `gamma_inv_cdf(1e-4, 0.07062688, 1e20)` returns 5.8421183e-36 against a
