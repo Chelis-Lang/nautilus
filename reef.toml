@@ -1,7 +1,7 @@
 schema = "3"
 [package]
 name = "nautilus"
-version = "0.7.53"
+version = "0.7.54"
 compiler = "=0.19.2"
 module_prefix = "Nautilus"
 resolver = "2"
