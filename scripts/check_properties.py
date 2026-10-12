@@ -12,9 +12,16 @@ CASES = (
     ("properties/interpolation.ch", 0, {"hermite_left_endpoint": "passed", "hermite_right_endpoint": "passed"}),
     ("proof_controls/hermite_wrong.ch", 1, {"hermite_left_returns_right": "failed"}),
 )
+DOMAIN = "forall(x0: f32, x1: f32, y0: f32, y1: f32, m0: f32, m1: f32) where x1 > x0: "
+CALL = "Nautilus.Interpolation.cubic_hermite(x0, x1, y0, y1, m0, m1, {})"
+GOALS = {
+    "hermite_left_endpoint": DOMAIN + f"({CALL.format('x0')} == y0)",
+    "hermite_right_endpoint": DOMAIN + f"({CALL.format('x1')} == y1)",
+    "hermite_left_returns_right": DOMAIN + f"({CALL.format('x0')} == y1)",
+}
 
 
-def validate_records(records: list[dict], expected: dict[str, str]) -> None:
+def validate_records(records: list[dict], expected: dict[str, str], goals: dict[str, str]) -> None:
     properties = {record["name"]: record for record in records if record.get("kind") == "property"}
     summaries = [record for record in records if record.get("kind") == "summary"]
     if set(properties) != set(expected) or len(summaries) != 1:
@@ -27,6 +34,8 @@ def validate_records(records: list[dict], expected: dict[str, str]) -> None:
         raise ValueError(f"incomplete property summary: {summary}")
     for name, wanted_status in expected.items():
         result = properties[name]
+        if result.get("goal") != goals[name]:
+            raise ValueError(f"{name} proves a different goal: {result.get('goal')}")
         if (result.get("status"), result.get("proof_tier"), result.get("samples"), result.get("arith_model")) != (
             wanted_status, "smt", 0, "real"
         ):
@@ -54,7 +63,7 @@ def main() -> int:
         if run.returncode != expected_exit:
             raise RuntimeError(f"{path}: exit {run.returncode}, expected {expected_exit}\n{run.stdout}\n{run.stderr}")
         records = [json.loads(line) for line in run.stdout.splitlines() if line]
-        validate_records(records, expected)
+        validate_records(records, expected, {name: GOALS[name] for name in expected})
         print(f"{path}: {', '.join(expected)} checked by SMT")
     return 0
 
