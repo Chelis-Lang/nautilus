@@ -3,7 +3,7 @@
 Create the `demo` project with module prefix `Demo` using
 [Reef and packages](https://chelis.ch/docs/chelis/reef/), then add Nautilus as described in
 [Installation](installation.md). Set `reef.toml`
-to pin Chelis 0.19.4 and list Nautilus 0.7.55 as a dependency. Replace
+to pin Chelis 0.19.4 and list Nautilus 0.7.56 as a dependency. Replace
 `src/main.ch` with this program:
 
 ```chelis-fragment
