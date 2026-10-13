@@ -1,0 +1,1 @@
+Pin the compiler and workflow installers to Chelis 0.19.3, refresh the managed agent and capability surfaces, and revalidate numerical, C consumer, and upstream-blocker behavior against the published toolchain.
