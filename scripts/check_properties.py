@@ -50,6 +50,41 @@ def validate_records(records: list[dict], expected: dict[str, str], goals: dict[
             raise ValueError(f"{name} refuted without a counterexample")
 
 
+def validate_source_graph(graph: object, property_file: str, property_module: str,
+                          targets: dict[str, tuple[str, str, str]]) -> None:
+    """Require the exact compiler-owned property-to-export declarations and edges."""
+    if not isinstance(graph, dict) or graph.get("status") != "complete":
+        raise ValueError("complete compiler dependency graph required")
+    declarations, edges = graph.get("declarations"), graph.get("edges")
+    if not isinstance(declarations, list) or not isinstance(edges, list):
+        raise ValueError("malformed dependency graph")
+    if not all(isinstance(d, dict) and isinstance(d.get("id"), str) for d in declarations):
+        raise ValueError("malformed declaration")
+    ids = [d["id"] for d in declarations]
+    if len(ids) != len(set(ids)):
+        raise ValueError("duplicate declaration IDs")
+    pairs = set()
+    for edge in edges:
+        if not isinstance(edge, dict) or edge.get("from") not in ids or edge.get("to") not in ids:
+            raise ValueError("edge has unknown declaration endpoints")
+        pairs.add((edge["from"], edge["to"]))
+
+    def exact(kind: str, module: str, name: str, source: str) -> str:
+        matches = [d for d in declarations if d.get("kind") == kind
+                   and d.get("package") == "nautilus" and d.get("module") == module
+                   and d.get("name") == name and isinstance(d.get("source"), dict)
+                   and d["source"].get("file") == source]
+        if len(matches) != 1:
+            raise ValueError(f"{module}.{name}: expected one exact declaration, got {len(matches)}")
+        return matches[0]["id"]
+
+    for name, (module, function, source) in targets.items():
+        origin = exact("property", property_module, name, property_file)
+        target = exact("function", module, function, source)
+        if (origin, target) not in pairs:
+            raise ValueError(f"{name}: missing direct edge to {module}.{function}")
+
+
 def main() -> int:
     for path, expected_exit, expected in CASES:
         run = subprocess.run(
@@ -64,6 +99,12 @@ def main() -> int:
             raise RuntimeError(f"{path}: exit {run.returncode}, expected {expected_exit}\n{run.stdout}\n{run.stderr}")
         records = [json.loads(line) for line in run.stdout.splitlines() if line]
         validate_records(records, expected, {name: GOALS[name] for name in expected})
+        summary = next(record for record in records if record.get("kind") == "summary")
+        module = ("Nautilus.Properties.Interpolation" if path.startswith("properties/")
+                  else "Nautilus.Proof_controls.Hermite_wrong")
+        validate_source_graph(summary.get("dependency_graph"), path, module,
+                              {name: ("Nautilus.Interpolation", "cubic_hermite", "src/interpolation.ch")
+                               for name in expected})
         print(f"{path}: {', '.join(expected)} checked by SMT")
     return 0
 
