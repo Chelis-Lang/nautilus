@@ -8,6 +8,7 @@
 | `tests/` | native Chelis tests (`chelis test tests/`) |
 | `tests_neg/` | programs that must fail to compile, each with the diagnostic it must produce |
 | `tests_blocked/` | compiler compatibility fixtures |
+| `properties/` | SMT claims about exported functions; `proof_controls/` contains false claims expected to refute |
 | `parity/` | SciPy/NumPy parity checks, an isolated uv project with reviewed goldens |
 | `docs/book/` | the Nautilus book (mdBook), rendered from the chelis.ch docs |
 | `docs/` | maintainer guide, release notes, and the Chelis capability inventory |
@@ -46,6 +47,7 @@ cp hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
 |---|---|---|
 | Native tests | `chelis test tests/ --timeout 600 --jobs auto` | Identities, invariants, solver recovery, tensor paths, edge cases, and callability, written in Chelis |
 | Negative tests | `chelis test tests_neg/ --expect neg` | Each `tests_neg/<area>/<name>.ch` must fail to compile with the diagnostic on line 1 of its `.expect` file |
+| Property proofs | `.venv/bin/python scripts/check_properties.py` | Proves the Hermite endpoint claims at SMT over the reals and refutes a swapped-endpoint control |
 | Blocked probes | `chelis test tests_blocked/ --expect blocked` | Reproducers of open upstream compiler issues. Each must keep failing the way its `.expect` file says. See [`tests_blocked/README.md`](../tests_blocked/README.md) |
 | SciPy parity | `uv run --project parity --frozen python parity/run_parity.py --strict` | Selected Special and Distributions functions against reviewed SciPy/NumPy goldens. See [`parity/README.md`](../parity/README.md) |
 | Rolling pandas parity | `uv run --no-project --python 3.12 python scripts/check_rolling_parity.py` | `Nautilus.Rolling`'s warm-up and `min_periods` against reviewed pandas goldens. Needs the pinned compiler but not pandas; success is `ROLLING PARITY: PASS` |
@@ -68,6 +70,7 @@ chelis reef build
 for example in src/example*.ch; do chelis eval --file "$example"; done
 chelis test tests/ --timeout 600 --jobs auto
 chelis test tests_neg/ --expect neg
+.venv/bin/python scripts/check_properties.py
 chelis test tests_blocked/ --expect blocked      # when probes exist
 uv sync --project parity --frozen
 uv run --project parity --frozen python parity/run_parity.py --strict
