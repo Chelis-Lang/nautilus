@@ -1,3 +1,3 @@
 module Nautilus.Core
 export (version)
-def version() -> string = "0.7.55"
+def version() -> string = "0.7.56"
