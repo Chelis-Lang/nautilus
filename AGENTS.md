@@ -5,7 +5,7 @@ to this file so Claude-style and Codex-style entry points do not drift.
 
 ## Repo Identity
 
-<!-- BEGIN CHELIS MANAGED BLOCK: agents-inheritance chelis@0.19.2 (sha256:d08ed03e8919145f) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: agents-inheritance chelis@0.19.4 (sha256:99cf5de08974e857) -->
 # Chelis Agent Contract
 
 Keep this file concise and relevant to every agent working in this repository.
@@ -86,7 +86,7 @@ function of those inputs, and feedback that varies between identical runs is a d
 
 ## Subagents
 
-[`docs/investigations/agent_contract_rationale.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.2/docs/investigations/agent_contract_rationale.md)
+[`docs/investigations/agent_contract_rationale.md`](https://github.com/Chelis-Lang/chelis/blob/v0.19.4/docs/investigations/agent_contract_rationale.md)
 holds the measurements behind these rules.
 
 - Every subagent prompt names the delivery mechanism and the complete expected report.
@@ -196,10 +196,10 @@ links and edit routes for compiler files absent from Nautilus.
 
 Code-form `spec/` and `docs/book/` paths in the retained Chelis text name
 files in the pinned compiler source, not this repository. Read the pinned
-[project context](https://github.com/Chelis-Lang/chelis/blob/v0.19.2/spec/00-context.md),
-[canonical reference](https://github.com/Chelis-Lang/chelis/blob/v0.19.2/spec/design/chelis_canonical_reference.md),
-[Surf syntax spec](https://github.com/Chelis-Lang/chelis/blob/v0.19.2/spec/02-surf-syntax.md),
-and [backend guide](https://github.com/Chelis-Lang/chelis/blob/v0.19.2/docs/book/src/backends.md).
+[project context](https://github.com/Chelis-Lang/chelis/blob/v0.19.4/spec/00-context.md),
+[canonical reference](https://github.com/Chelis-Lang/chelis/blob/v0.19.4/spec/design/chelis_canonical_reference.md),
+[Surf syntax spec](https://github.com/Chelis-Lang/chelis/blob/v0.19.4/spec/02-surf-syntax.md),
+and [backend guide](https://github.com/Chelis-Lang/chelis/blob/v0.19.4/docs/book/src/backends.md).
 
 <!-- shell-local:exclude:begin -->
 <!-- ### Red Team Rounds -->

@@ -1,4 +1,4 @@
-module Nautilus.ProofControls.LiteratureWrong
+module Nautilus.Proof_controls.Literature_wrong
 import Nautilus.Distributions (uniform_cdf, uniform_inv_cdf)
 import Nautilus.Interpolation (cubic_hermite)
 @property uniform_cdf_upper_wrong forall(lo: f32, hi: f32) where hi > lo:

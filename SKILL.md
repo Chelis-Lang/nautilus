@@ -11,7 +11,7 @@ f64, and `Nautilus.Rolling` is f64 over `List[f64]`; every other module works
 in f32. Section 6 lists every export with its
 signature and a stability label. The one export outside those tables,
 `Nautilus.Core.version`, returns the exact package-version string
-(`"0.7.54"` in this source checkout).
+(`"0.7.55"` in this source checkout).
 
 ## 2. Import Patterns
 

@@ -1,0 +1,1 @@
+Build Nautilus 0.7.55 with Chelis 0.19.4 and its bundled standard library. Include the imported Hermite and uniform-distribution properties and their false controls, and expose the package version consistently.

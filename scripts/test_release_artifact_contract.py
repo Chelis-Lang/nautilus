@@ -19,11 +19,14 @@ from scripts import check_release_artifacts as artifacts
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def raw_tar(extra: list[tarfile.TarInfo]) -> bytes:
+def raw_tar(
+    extra: list[tarfile.TarInfo],
+    manifest: bytes = b'[package]\nname = "fixture"\nversion = "1.0.0"\n',
+) -> bytes:
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode="w") as bundle:
         for name, payload in (
-            ("reef.toml", b'[package]\nname = "fixture"\nversion = "1.0.0"\n'),
+            ("reef.toml", manifest),
             ("reef.lock", b"version = 1\n"),
         ):
             member = tarfile.TarInfo(name)
@@ -251,6 +254,37 @@ class ReleaseArtifactContractTests(unittest.TestCase):
             artifacts.validate_tar_bytes(raw_tar([core, stats])),
             ["reef.toml", "reef.lock", "src/core.ch", "src/stats.ch"],
         )
+
+    def test_structured_tar_contract_binds_additional_sources_to_manifest(self) -> None:
+        manifest = (
+            b'[package]\nname = "fixture"\nversion = "1.0.0"\n'
+            b'additional_sources = ["properties", "proof_controls"]\n'
+        )
+        members = [
+            tarfile.TarInfo("src/core.ch"),
+            tarfile.TarInfo("properties/interpolation.ch"),
+            tarfile.TarInfo("proof_controls/hermite_wrong.ch"),
+        ]
+        self.assertEqual(
+            artifacts.validate_tar_bytes(raw_tar(members, manifest)),
+            ["reef.toml", "reef.lock", *(member.name for member in members)],
+        )
+        with self.assertRaisesRegex(RuntimeError, "unexpected source-archive member"):
+            artifacts.validate_tar_bytes(raw_tar(members))
+        with self.assertRaisesRegex(RuntimeError, "native-code member"):
+            artifacts.validate_tar_bytes(
+                raw_tar(members + [tarfile.TarInfo("proof_controls/native.so")], manifest)
+            )
+
+    def test_structured_tar_contract_rejects_unsafe_source_declaration(self) -> None:
+        manifest = (
+            b'[package]\nname = "fixture"\nversion = "1.0.0"\n'
+            b'additional_sources = ["../escape"]\n'
+        )
+        with self.assertRaisesRegex(RuntimeError, "unsafe additional source"):
+            artifacts.validate_tar_bytes(
+                raw_tar([tarfile.TarInfo("src/core.ch")], manifest)
+            )
 
     def test_structured_tar_contract_rejects_non_regular_source_members(self) -> None:
         cases = [

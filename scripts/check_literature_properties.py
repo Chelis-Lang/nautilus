@@ -7,6 +7,8 @@ import json
 import subprocess
 from pathlib import Path
 
+from check_properties import validate_source_graph
+
 
 ROOT = Path(__file__).resolve().parent.parent
 PASSING = {
@@ -76,6 +78,19 @@ def prove(path: str, expected_names: set[str], expected_returncode: int) -> list
     records = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
     properties = [record for record in records if record.get("kind") == "property"]
     assert {record["name"] for record in properties} == expected_names, properties
+    summaries = [record for record in records if record.get("kind") == "summary"]
+    assert len(summaries) == 1 and len(properties) == len(expected_names), records
+    module = ("Nautilus.Properties.Literature" if path.startswith("properties/")
+              else "Nautilus.Proof_controls.Literature_wrong")
+    targets = {}
+    for name in expected_names:
+        if name.startswith("uniform_cdf"):
+            targets[name] = ("Nautilus.Distributions", "uniform_cdf", "src/distributions.ch")
+        elif name.startswith("uniform_inverse"):
+            targets[name] = ("Nautilus.Distributions", "uniform_inv_cdf", "src/distributions.ch")
+        else:
+            targets[name] = ("Nautilus.Interpolation", "cubic_hermite", "src/interpolation.ch")
+    validate_source_graph(summaries[0].get("dependency_graph"), path, module, targets)
     for record in properties:
         validate_goal(record)
     return properties
