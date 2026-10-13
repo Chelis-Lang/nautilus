@@ -2,8 +2,8 @@
 
 Each Nautilus release is a GitHub Release tagged `vX.Y.Z` with three assets:
 
-- `nautilus-X.Y.Z.chb`: the Reef package envelope (about 30 KB)
-- `nautilus-X.Y.Z.tar.zst`: the source archive (about 30 KB)
+- `nautilus-X.Y.Z.chb`: the Reef package envelope
+- `nautilus-X.Y.Z.tar.zst`: the source archive
 - `nautilus-X.Y.Z.sha256`: a SHA-256 manifest covering both payloads
 
 The version and the exact Chelis compiler a release was built with are both
@@ -62,7 +62,8 @@ trust boundary cannot provide that guarantee.
 The `.chb` is a Zstandard-compressed envelope that holds the desugared,
 type-checked AST, module exports, type signatures, effects, and the dependency
 list. It contains no native code. The `.tar.zst` holds `reef.toml`, `reef.lock`,
-and every `src/*.ch` file. Chelis canonicalizes archive member order, paths,
+every `src/*.ch` file, and the `.ch` files under the directories declared in
+`reef.toml`'s `additional_sources`. Chelis canonicalizes archive member order, paths,
 modes, ownership, and timestamps, and the `.chb` embeds the archive digest.
 
 The compiler toolchain itself is platform-specific: Chelis ships separate

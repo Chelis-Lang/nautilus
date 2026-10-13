@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import tomllib
 from pathlib import Path, PurePosixPath
 
 
@@ -50,7 +51,35 @@ def package_identity(manifest: Path) -> tuple[str, str]:
     return name.group(1), version.group(1)
 
 
-def validate_member_names(names: list[str]) -> None:
+def additional_source_roots(manifest: bytes) -> tuple[tuple[str, ...], ...]:
+    try:
+        package = tomllib.loads(manifest.decode("utf-8"))["package"]
+        declared = package.get("additional_sources", [])
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError, KeyError, TypeError) as error:
+        raise RuntimeError(f"invalid source-archive reef.toml: {error}") from error
+    if not isinstance(declared, list):
+        raise RuntimeError("source-archive additional_sources must be an array")
+    roots: list[tuple[str, ...]] = []
+    for raw in declared:
+        if not isinstance(raw, str):
+            raise RuntimeError(f"unsafe additional source declaration: {raw!r}")
+        path = PurePosixPath(raw)
+        if (
+            not raw
+            or path.is_absolute()
+            or path.as_posix() != raw
+            or ".." in path.parts
+            or "\\" in raw
+            or not path.parts
+        ):
+            raise RuntimeError(f"unsafe additional source declaration: {raw!r}")
+        roots.append(path.parts)
+    return tuple(roots)
+
+
+def validate_member_names(
+    names: list[str], additional_roots: tuple[tuple[str, ...], ...] = ()
+) -> None:
     if len(names) != len(set(names)):
         raise RuntimeError("source archive contains duplicate member names")
     required = {"reef.toml", "reef.lock"}
@@ -64,12 +93,16 @@ def validate_member_names(names: list[str]) -> None:
     source_count = 0
     for raw in names:
         path = PurePosixPath(raw)
-        if path.is_absolute() or ".." in path.parts:
+        if path.is_absolute() or ".." in path.parts or path.as_posix() != raw:
             raise RuntimeError(f"unsafe source-archive member: {raw}")
         if raw in required:
             continue
-        if len(path.parts) == 2 and path.parts[0] == "src" and path.suffix == ".ch":
-            source_count += 1
+        if path.suffix == ".ch" and any(
+            len(path.parts) > len(root) and path.parts[: len(root)] == root
+            for root in (("src",), *additional_roots)
+        ):
+            if path.parts[0] == "src":
+                source_count += 1
             continue
         if path.suffix.lower() in NATIVE_SUFFIXES:
             raise RuntimeError(
@@ -174,17 +207,30 @@ def validate_tar_bytes(raw_tar: bytes) -> list[str]:
     try:
         with tarfile.open(fileobj=io.BytesIO(raw_tar), mode="r:") as bundle:
             members = bundle.getmembers()
+            non_files = [
+                f"{member.name} ({member.type!r})"
+                for member in members
+                if not member.isfile()
+            ]
+            if non_files:
+                raise RuntimeError(
+                    f"source archive contains non-regular member(s): {non_files}"
+                )
+            names = [member.name for member in members]
+            if len(names) != len(set(names)):
+                raise RuntimeError("source archive contains duplicate member names")
+            manifest = next(
+                (member for member in members if member.name == "reef.toml"), None
+            )
+            if manifest is None:
+                raise RuntimeError("source archive misses required member(s): ['reef.toml']")
+            source = bundle.extractfile(manifest)
+            if source is None:
+                raise RuntimeError("cannot read source-archive reef.toml")
+            additional_roots = additional_source_roots(source.read())
     except tarfile.TarError as error:
         raise RuntimeError(f"invalid source tar stream: {error}") from error
-    non_files = [
-        f"{member.name} ({member.type!r})" for member in members if not member.isfile()
-    ]
-    if non_files:
-        raise RuntimeError(
-            f"source archive contains non-regular member(s): {non_files}"
-        )
-    names = [member.name for member in members]
-    validate_member_names(names)
+    validate_member_names(names, additional_roots)
     return names
 
 
