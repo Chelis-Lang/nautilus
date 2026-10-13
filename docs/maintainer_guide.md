@@ -53,9 +53,19 @@ cp hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
 | Rolling pandas parity | `uv run --no-project --python 3.12 python scripts/check_rolling_parity.py` | `Nautilus.Rolling`'s warm-up and `min_periods` against reviewed pandas goldens. Needs the pinned compiler but not pandas; success is `ROLLING PARITY: PASS` |
 | Rolling C lane | `uv run --no-project --python 3.12 python scripts/check_rolling_c_lane.py` | Builds all 34 `Nautilus.Rolling` exports with `chelis build` twice: in-package plus the emitted clang line, and from a separate package in a throwaway Reef store (`--in-package-only` skips the second). Success is `ROLLING C LANE: PASS` |
 | Gamma-family C parity | `uv run --no-project --python 3.12 python scripts/check_gamma_sampling_c_lane.py` | Builds a keyed gamma, chi-squared, and Student-t consumer and requires its compiled C output to match `chelis eval` exactly; success is `GAMMA SAMPLING C LANE: PASS` |
+| Literature properties | `uv run --no-project --python 3.12 python scripts/check_literature_properties.py` | Proves imported uniform CDF and inverse bounds and cubic Hermite nonovershoot under explicit slope guards, and requires four false claims to yield SMT counterexamples |
 
 `tests/` must never contain Python, and SciPy, NumPy, or other oracle libraries
 may be imported only under `parity/`. CI enforces both rules.
+
+The Hermite guards in `properties/literature.ch` require increasing abscissas,
+monotone ordinates, and endpoint slopes with the same sign and magnitude no
+larger than three times the secant slope. They give a sufficient monotonicity
+region for one segment, following the slope
+analysis of [Fritsch and Carlson (1980)](https://doi.org/10.1137/0717021).
+The proof record reports real arithmetic; it does not certify rounded `f32`
+execution. `proof_controls/literature_wrong.ch` keeps the unrestricted-slope
+overshoot counterexample executable.
 
 ## Local gate
 
