@@ -22,10 +22,13 @@ GOALS = {
 
 
 def validate_records(records: list[dict], expected: dict[str, str], goals: dict[str, str]) -> None:
-    properties = {record["name"]: record for record in records if record.get("kind") == "property"}
+    property_records = [record for record in records if record.get("kind") == "property"]
     summaries = [record for record in records if record.get("kind") == "summary"]
-    if set(properties) != set(expected) or len(summaries) != 1:
-        raise ValueError(f"property/summary set differs from expected: {set(properties)}, {len(summaries)} summaries")
+    if len(records) != len(expected) + 1 or len(property_records) != len(expected) or len(summaries) != 1:
+        raise ValueError("expected exactly one record per property, one summary, and no other records")
+    properties = {record["name"]: record for record in property_records}
+    if set(properties) != set(expected):
+        raise ValueError(f"property set differs from expected: {set(properties)}")
     summary = summaries[0]
     if (summary.get("total") != len(expected) or summary.get("errors") != 0
             or summary.get("unsupported") != 0

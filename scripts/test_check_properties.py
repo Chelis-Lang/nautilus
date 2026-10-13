@@ -7,14 +7,34 @@ from check_properties import validate_records, validate_source_graph
 
 
 class PropertyGateTests(unittest.TestCase):
-    def test_accepts_one_proved_property(self) -> None:
-        records = [
+    def valid_records(self) -> list[dict]:
+        return [
             {"kind": "property", "name": "p", "goal": "bound claim", "status": "passed", "proof_tier": "smt", "samples": 0,
              "arith_model": "real", "qualifiers": ["real_arithmetic"],
              "assumptions": [{"non_vacuity": {"status": "established"}}]},
             {"kind": "summary", "total": 1, "passed": 1, "failed": 0, "errors": 0, "unsupported": 0},
         ]
-        validate_records(records, {"p": "passed"}, {"p": "bound claim"})
+
+    def test_accepts_one_proved_property(self) -> None:
+        validate_records(self.valid_records(), {"p": "passed"}, {"p": "bound claim"})
+
+    def test_rejects_duplicate_property_record(self) -> None:
+        records = self.valid_records()
+        records.insert(1, copy.deepcopy(records[0]))
+        with self.assertRaises(ValueError):
+            validate_records(records, {"p": "passed"}, {"p": "bound claim"})
+
+    def test_rejects_extra_nonproperty_record(self) -> None:
+        records = self.valid_records()
+        records.insert(1, {"kind": "diagnostic", "message": "unexpected output"})
+        with self.assertRaises(ValueError):
+            validate_records(records, {"p": "passed"}, {"p": "bound claim"})
+
+    def test_rejects_multiple_summaries(self) -> None:
+        records = self.valid_records()
+        records.append(copy.deepcopy(records[-1]))
+        with self.assertRaises(ValueError):
+            validate_records(records, {"p": "passed"}, {"p": "bound claim"})
 
     def test_rejects_a_replaced_goal(self) -> None:
         records = [
