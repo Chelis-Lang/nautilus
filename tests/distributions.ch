@@ -1579,7 +1579,8 @@ def test_gamma_pdf_is_a_density_at_a_large_shape() -> unit ! { Test } = {
   -- same front factor: `(k - 1)*log(x)` and `log_gamma(k)` are each about
   -- 1.1e6 at `k = x = 1e5`. In f32 it returned exactly 1.0 at `k = 5e7` --
   -- above every value a Gamma(5e7, 1) density takes, since the maximum of
-  -- that density IS this point. `gamma_inv_cdf` reads it as its derivative.
+  -- that density IS this point. `gamma_inv_cdf` READ it as its derivative
+  -- before the quantile moved to `ln P`; it now reads `gammainc_front`.
   a = gamma_pdf(cast(50000000.0, f32), cast(50000000.0, f32), cast(1.0, f32))
   b = gamma_pdf(cast(100000.0, f32), cast(100000.0, f32), cast(1.0, f32))
   _ = assert_true(lt(a, cast(0.001, f32)), "gamma_pdf(5e7;5e7,1) is not the 1.0 the f32 body returned")
@@ -1746,7 +1747,6 @@ def test_gamma_inv_cdf_returns_nan_for_a_nan_parameter() -> unit ! { Test } = {
   infinite_shape = gamma_inv_cdf(cast(0.5, f32), div(cast(1.0, f32), cast(0.0, f32)), cast(1.0, f32))
   infinite_df = chi_squared_inv_cdf(cast(0.5, f32), div(cast(1.0, f32), cast(0.0, f32)))
   infinite_scale = gamma_inv_cdf(cast(0.5, f32), cast(2.0, f32), div(cast(1.0, f32), cast(0.0, f32)))
-  largest_finite_shape = gamma_inv_cdf(cast(0.5, f32), cast(3.4e38, f32), cast(1.0, f32))
   nan_shape = gamma_inv_cdf(cast(0.5, f32), div(cast(0.0, f32), cast(0.0, f32)), cast(1.0, f32))
   nan_scale = gamma_inv_cdf(cast(0.5, f32), cast(2.0, f32), div(cast(0.0, f32), cast(0.0, f32)))
   nan_q = gamma_inv_cdf(div(cast(0.0, f32), cast(0.0, f32)), cast(2.0, f32), cast(1.0, f32))
@@ -1758,13 +1758,25 @@ def test_gamma_inv_cdf_returns_nan_for_a_nan_parameter() -> unit ! { Test } = {
   -- run to their caps and the bisection settles on the low end. A
   -- plausible-looking lower-tail number returned for a median is the exact
   -- failure class this change exists to remove, so the guard requires FINITE
-  -- and positive rather than positive. The largest finite f32 shape is here
-  -- too, because a finiteness guard that rejects one decade too early would
-  -- pass every other row in this test.
+  -- and positive rather than positive.
+  --
+  -- A `gamma_inv_cdf(0.5, 3.4e38, 1)` row was here, to show the guard does not
+  -- reject a finite shape one decade early. It is REMOVED on cost: measured at
+  -- about 130 s of CPU, because above a shape of roughly 4.3e9 the incomplete
+  -- gamma's series hits its 65536-term budget on every Newton step, so the cost
+  -- is flat and lowering the shape buys nothing. At that price it made the
+  -- whole file exceed `chelis test`'s 30 s per-test default, so a bare
+  -- `chelis test tests/` reported a failure while CI's `--timeout 600` passed --
+  -- a trap for the next reader, for one narrow mutant.
+  --
+  -- What is given up, stated rather than glossed: a THRESHOLD-style guard, say
+  -- `gt(shape, 1e38)`, would now pass. The shipped guard is an exact
+  -- `eq(shape, pos_inf_d())` with no threshold in it, and that a finite shape
+  -- is accepted is already proved at 1e7 by
+  -- `test_gamma_inv_cdf_survives_a_large_shape`.
   _ = assert_true(neq(infinite_shape, infinite_shape), "gamma_inv_cdf with an infinite shape is NaN, not the 0.0 a clamped start gave")
   _ = assert_true(neq(infinite_df, infinite_df), "chi_squared_inv_cdf with an infinite df is NaN")
   _ = assert_true(neq(infinite_scale, infinite_scale), "gamma_inv_cdf with an infinite scale is NaN")
-  _ = assert_true(lt(dist_rel_err(largest_finite_shape, cast(3.4e38, f32)), cast(1e-6, f32)), "gamma_inv_cdf(0.5;3.4e38,1) is the shape itself, so the finiteness guard does not reject a finite one")
   _ = assert_true(neq(nan_shape, nan_shape), "gamma_inv_cdf with a NaN shape is NaN and does not trap")
   _ = assert_true(neq(nan_scale, nan_scale), "gamma_inv_cdf with a NaN scale is NaN")
   _ = assert_true(neq(nan_q, nan_q), "gamma_inv_cdf with a NaN q is NaN")
@@ -1958,14 +1970,15 @@ def test_gamma_inv_cdf_at_the_shape_where_the_start_is_asymptotic() -> unit ! { 
   -- It USED to be floored there, and the floor became the Newton start; now the
   -- sign of `s` selects the small-`q` asymptotic start instead, and there is no
   -- floor on the cube to raise. Shape 1.25 is the `s <= 0` case -- `s` is
-  -- -0.010218 at `q = 1e-3` and -0.197685 at `q = 1e-4` -- so these two rows
+  -- -0.010219 at `q = 1e-3` and -0.197695 at `q = 1e-4`, computed from the
+  -- f32 `z` this lane's own `normal_inv_cdf` returns (-3.0902355 and
+  -- -3.7190497) rather than from an f64 reference, which gives -0.010218 and
+  -- -0.197685 and is not what the solve is handed -- so these two rows
   -- exercise the branch that replaced the floor. They were written when the
   -- floor existed, because raising it from 1e-30 to the continued fraction's
   -- 1e-300 Lentz tiny sent both to +inf while the whole test suite, the C-lane
   -- harness and the accuracy gate all passed. That mutation is no longer
-  -- performable; the rows are kept as value pins on the branch, which is what
-  -- they were
-  -- missing.
+  -- performable; the rows are kept as value pins on the branch they exercise.
   a = gamma_inv_cdf(cast(0.001, f32), cast(1.25, f32), cast(2.0, f32))
   b = gamma_inv_cdf(cast(0.0001, f32), cast(1.25, f32), cast(2.0, f32))
   _ = assert_true(lt(a, cast(1.0, f32)), "gamma_inv_cdf(0.001;1.25,2) is finite and small, not the +inf a raised floor gave")

@@ -28,7 +28,7 @@ four levels of 16-way chunking, so peak recursion depth is about 64 frames.
 nautilus#152's list of affected exports. `gamma_pdf(5e7, 5e7, 1)` returned
 exactly 1.0 against a true 5.6418958e-5 -- a density above every value a
 Gamma(5e7, 1) density takes, since that point is its maximum. It is fixed here
-because `gamma_inv_cdf` reads it as its Newton derivative, so the quantile
+because `gamma_inv_cdf` read it as its Newton derivative at the time, so the quantile
 inherited the error from the density as well as from the CDF.
 
 `poisson_cdf` formed `k + 1` in f32, where the increment vanishes above

@@ -175,8 +175,10 @@ def lognormal_sample[n](k: key, template: tensor[n, f32], mu: f32, sigma: f32) -
 -- `gamma_pdf(1e5, 1e5, 1)` was 5.2e-2 relative and `gamma_pdf(5e7, 5e7, 1)`
 -- returned exactly 1.0 against a true 5.64e-5 -- a density above every value
 -- a Gamma(5e7, 1) density takes. It is evaluated in f64 and returned as f32.
--- `gamma_inv_cdf`'s Newton step reads this as its derivative, so the quantile
--- inherited the error from here as well as from `gamma_cdf`.
+-- `gamma_inv_cdf`'s Newton step READ this as its derivative, so the quantile
+-- inherited the error from here as well as from `gamma_cdf`. It no longer does:
+-- the quantile solves in `ln y` and reads `gammainc_front` instead, so no
+-- density quotient is formed on that path.
 def gamma_pdf_core(x: f64, shape: f64, scale: f64) -> f64 = {
   lx = log(x)
   lscale = log(scale)
