@@ -1628,8 +1628,10 @@ def test_poisson_cdf_small_left_tail_is_unmoved() -> unit ! { Test } = {
   assert_true(lt(dist_rel_err(v, cast(6.450153e-12, f32)), cast(0.00001, f32)), "poisson_cdf(10, 50) = 6.450153e-12")
 }
 def test_gamma_inv_cdf_survives_a_large_shape() -> unit ! { Test } = {
-  -- The quantile is Wilson-Hilferty refined by Newton's method on the CDF and
-  -- the density. Newton converges on the root of the function it is given, so
+  -- The quantile WAS Wilson-Hilferty refined by Newton's method on the CDF and
+  -- the density; it now solves in `ln y` with the residual on `ln P`, so no
+  -- density quotient is formed. Newton converges on the root of the function it
+  -- is given either way, so
   -- a biased CDF moved the root it found: this returned 5e29 at shape 1e7 and
   -- 3308722.5 at shape 1e6, against true values near the shape itself.
   a = gamma_inv_cdf(cast(0.5, f32), cast(10000000.0, f32), cast(1.0, f32))
@@ -1951,13 +1953,18 @@ def test_gamma_inv_cdf_holds_at_the_former_q_floor() -> unit ! { Test } = {
   _ = assert_true(lt(dist_rel_err(a, cast(0.014209238, f32)), cast(0.00001, f32)), "gamma_inv_cdf(1e-4;2,1) = 0.014209238")
   assert_true(lt(dist_rel_err(b, cast(0.028418476, f32)), cast(0.00001, f32)), "chi_squared_inv_cdf(1e-4, 4) = 0.028418476, twice the gamma quantile at df/2")
 }
-def test_gamma_inv_cdf_at_the_shape_where_the_start_is_floored() -> unit ! { Test } = {
-  -- Wilson-Hilferty's `s` goes negative for a small shape in the lower tail,
-  -- so `s^3` is floored and the floor becomes the Newton start. Shape 1.25 is
-  -- the case that caught a regression during this change: with the floor
-  -- raised from 1e-30 to the continued fraction's 1e-300 Lentz tiny, both of
-  -- these returned +inf, and the whole test suite, the C-lane harness and the
-  -- accuracy gate all passed it. These two rows are the guard that was
+def test_gamma_inv_cdf_at_the_shape_where_the_start_is_asymptotic() -> unit ! { Test } = {
+  -- Wilson-Hilferty's `s` goes negative for a small shape in the lower tail.
+  -- It USED to be floored there, and the floor became the Newton start; now the
+  -- sign of `s` selects the small-`q` asymptotic start instead, and there is no
+  -- floor on the cube to raise. Shape 1.25 is the `s <= 0` case -- `s` is
+  -- -0.010218 at `q = 1e-3` and -0.197685 at `q = 1e-4` -- so these two rows
+  -- exercise the branch that replaced the floor. They were written when the
+  -- floor existed, because raising it from 1e-30 to the continued fraction's
+  -- 1e-300 Lentz tiny sent both to +inf while the whole test suite, the C-lane
+  -- harness and the accuracy gate all passed. That mutation is no longer
+  -- performable; the rows are kept as value pins on the branch, which is what
+  -- they were
   -- missing.
   a = gamma_inv_cdf(cast(0.001, f32), cast(1.25, f32), cast(2.0, f32))
   b = gamma_inv_cdf(cast(0.0001, f32), cast(1.25, f32), cast(2.0, f32))

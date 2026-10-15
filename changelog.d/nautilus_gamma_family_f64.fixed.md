@@ -114,10 +114,11 @@ The same floor failed from the other side at a large `scale`: it was absolute
 at 1e-30 while a Gamma density is about `1/(scale*sqrt(2*pi*shape))`, so
 `gamma_inv_cdf(0.5, 2, 1e31)` was 3.0e-4 relative at a median. Also
 pre-existing:
-the returned values move by about eleven f32 ulps across this change
-(`gamma_inv_cdf(1e-5, 2, 1)` is 8.271817 before and 8.271806 after) while the
-relative errors agree to three digits, so this change neither causes it nor
-repairs it. "Bit-identical" was too strong and is not what was measured. Both are convergence limits rather than
-precision ones -- raising the budget from 80 to 4000 returns the correctly
-rounded answer at both witnesses -- and the quantile rows now vary `scale` so
+the returned values moved by about eleven f32 ulps across this change
+(`gamma_inv_cdf(1e-5, 2, 1)` was 8.271817 before and 8.271806 after) while the
+relative errors agreed to three digits, so this change neither caused it nor
+repaired it. "Bit-identical" was too strong and is not what was measured. Both
+were convergence limits rather than precision ones -- raising the budget from
+80 to 4000 returned the correctly rounded answer at both witnesses -- and the
+quantile rows now vary `scale` so
 the bound cannot be stated over an axis the gate holds fixed.

@@ -840,8 +840,13 @@ def chi_squared_sf(x: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_sf(x, half_df, two_f())
 }
--- The quantile is a Wilson-Hilferty closed form refined by Newton's method on
--- the CDF, and the refinement now runs in f64 on the f64 CDF and density.
+-- The quantile WAS a Wilson-Hilferty closed form refined by Newton's method on
+-- the CDF and density, both in f64. It now solves on the unit-scale
+-- distribution in `u = ln y` with the residual on `ln P`, takes the small-`q`
+-- asymptotic start wherever Wilson-Hilferty's cube is non-positive, and reads
+-- `gammainc_front` as its derivative rather than forming a density quotient.
+-- The block below describes that solve; this line is kept only so the earlier
+-- description is not left standing as the current one.
 --
 -- The loop stays, and its own measurement is why. Against `gammaincinv`, with
 -- the f32 CDF underneath it, the refinement was worth 41856x at `shape = 1`
