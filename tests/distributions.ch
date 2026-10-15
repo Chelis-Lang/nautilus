@@ -1935,14 +1935,17 @@ def test_chi_squared_pdf_at_a_large_df() -> unit ! { Test } = {
   _ = assert_true(lt(dist_rel_err(a, cast(0.0006307826, f32)), cast(0.00001, f32)), "chi_squared_pdf(2e5, 2e5) = 0.0006307826")
   assert_true(lt(dist_rel_err(b, cast(0.000028209479, f32)), cast(0.00001, f32)), "chi_squared_pdf(1e8, 1e8) = 2.8209479e-5")
 }
-def test_gamma_inv_cdf_holds_at_the_documented_q_floor() -> unit ! { Test } = {
-  -- 1e-4 is the documented lower bound on `q` for both quantiles, and a bound
-  -- has to be tested AT its boundary. Shape 2 is where the excluded region
-  -- below this floor is worst: `gamma_inv_cdf(1e-5, 2, 1)` returns 8.271806
-  -- against a true 0.0044788163, the 99.8th percentile instead of the
-  -- 0.001st. That is pre-existing and tracked separately. At the floor itself
-  -- the same shape is correct to one f32 ulp, which is what makes the floor
-  -- the honest place to put the claim.
+def test_gamma_inv_cdf_holds_at_the_former_q_floor() -> unit ! { Test } = {
+  -- 1e-4 WAS the documented lower bound on `q` for both quantiles, and these
+  -- two rows were written to test that bound at its boundary. No document
+  -- states it now: this change drops the accuracy gate's floor to 1e-7 and the
+  -- appendix publishes `q` over thirteen values from there, so the rows survive
+  -- as ordinary value pins at a shape and quantile that used to be the edge of
+  -- a known-wrong region. `gamma_inv_cdf(1e-5, 2, 1)` returned 8.271806 against
+  -- a true 0.0044788163 -- the 99.8th percentile instead of the 0.001st -- and
+  -- returns the correctly rounded value now;
+  -- `test_gamma_inv_cdf_arrives_in_the_deep_lower_tail` is where that is
+  -- pinned.
   a = gamma_inv_cdf(cast(0.0001, f32), cast(2.0, f32), cast(1.0, f32))
   b = chi_squared_inv_cdf(cast(0.0001, f32), cast(4.0, f32))
   _ = assert_true(lt(dist_rel_err(a, cast(0.014209238, f32)), cast(0.00001, f32)), "gamma_inv_cdf(1e-4;2,1) = 0.014209238")

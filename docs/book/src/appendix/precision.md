@@ -190,9 +190,10 @@ exactly; `scale` over 1, 2.5 and 0.0078125 for the densities and CDFs, and
 come from an arbitrary-precision oracle and any whose value f32 cannot hold as
 a normal number is excluded.
 
-The quantiles' shape ladder starts at 0.5, but two smaller shapes are probed by
-name -- 0.0706 and 2.1 among the shapes where the solve takes its asymptotic
-start -- so the smallest quantile shape measured is 0.0706 rather than 0.5.
+The quantiles' shape ladder starts at 0.5, but nine shapes are probed by name
+besides it -- 0.0706, 1.1, 1.25, 1.5, 1.9, 2.0, 2.1, 2.5 and 2.6, which are
+where the solve takes its asymptotic start and where the repaired region was
+patchy -- so the smallest quantile shape measured is 0.0706 rather than 0.5.
 
 The four CDFs and survival functions carry one rung off that walk: a far lower
 tail at a shape below 1, where the standardised argument `x / scale` is zero in
