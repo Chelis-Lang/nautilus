@@ -101,7 +101,7 @@ tracked separately rather than fixed here.
 Three review rounds falsified three successive range-shaped versions of the
 documented bound, each on a different parameter the grid did not walk: `q`,
 then `scale`, then `shape` downward. The claim now reads "relative error is
-below 2e-6 at every one of the 1655 cases `parity/check_gamma_accuracy.py`
+below 2e-6 at every one of the 1876 cases `parity/check_gamma_accuracy.py`
 enforces", which is what the gate checks on every CI run and cannot be
 falsified by a point nobody measured. The appendix describes what that grid
 covers as a property of the instrument, and names the two regions outside it

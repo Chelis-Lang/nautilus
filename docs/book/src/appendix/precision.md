@@ -41,7 +41,7 @@ Two cases need separate guidance:
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions; the two families below are stated rather than estimated |
 | `poisson_pmf`, `binomial_pmf` | below 2e-6 at measured cases through `lambda` of 1e8 and `n` of 2e8 | Log space in f64; the note below states the sampled axes and limits |
-| the gamma family, nine exports | below 2e-6 at 1655 measured cases | Incomplete gamma in f64; the note below describes the sampled axes and two known failure regions outside them |
+| the gamma family, nine exports | below 2e-6 at 1876 measured cases | Incomplete gamma in f64; the note below describes the sampled axes, and no failure region outside them remains |
 | Beta-family CDFs | below 2e-6 at measured cases through parameter 1e8 | `beta_cdf`, `f_cdf`, `binomial_cdf`; the note below states the sampled axes |
 | `student_t_cdf` | below 2e-6 at measured cases through `df` 1e20 | The incomplete beta below `df` of 1e7 and a large-`df` expansion above it |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
@@ -162,7 +162,7 @@ the whole family, and the size of that rounding grows with the shape.
 The front factor, series, and continued fraction are computed in f64 and
 returned as f32.
 
-> Relative error is below 2e-6 at every one of 1655 measured cases.
+> Relative error is below 2e-6 at every one of 1876 measured cases.
 
 This describes measured cases, not every parameter in a range. In particular,
 `gamma_inv_cdf(1e-4, 0.07062688, 1e20)` returns 5.8421183e-36 against a
@@ -191,37 +191,39 @@ visible in f32 only once `P` passes `2^-25`, about 3.0e-8 -- half the spacing
 below 1.0, because the subtraction rounds to nearest. Without them a guard
 reinstated on one direction alone would be invisible to every gate.
 
-**Outside that set, two regions are known to be wrong.** Both are in the
-quantiles and are described below.
+**No failure region outside that set remains known.** The CDF's f32 `x / scale`
+quotient was the last one, and it is repaired; the two that were the
+quantiles' are described below as history, because the shape of them is worth
+keeping.
 
-Those two limits on the quantiles are one defect seen twice, and it is worth
-knowing which, because it tells you when to distrust a value. `gamma_inv_cdf`
-refines a closed-form start with at most 80 Newton steps, and each step divides
-by the density. Two things make that division useless.
+The quantiles had two regions of their own and no longer do. Both were one
+defect seen twice, and the shape of it is worth keeping because it is the shape
+of a numerical answer that looks entirely plausible. `gamma_inv_cdf` refined a
+closed-form start with at most 80 Newton steps; each step divided by the
+density, floored at an **absolute** 1e-30, and a step landing at or below zero
+was recovered by halving `x`.
 
-Below `q = 1e-4` for a shape in roughly [1.9, 2.6], the Wilson-Hilferty start's
-cube goes negative, so the start is floored; the first Newton step then
-overshoots the root by about 27 decades and the budget is spent halving back.
-`gamma_inv_cdf(1e-5, 2, 1)` returns 8.271806 against a true 0.0044788163,
-the 99.8th percentile where the 0.001st was asked for, and
-`chi_squared_inv_cdf(1e-5, 4)` is the same point at `df/2`. The returned values
-at neighbouring parameters are 1, 2 and 3 times 8.271806, which is the signature:
-the answer is a function of how many halvings fitted in the budget, not of `q`.
+Below `q = 1e-4` for a shape in roughly [1.9, 2.6] the Wilson-Hilferty start's
+cube goes negative, so the start was floored, the first step overshot the root
+by about 27 decades, and the budget went on halving back.
+`gamma_inv_cdf(1e-5, 2, 1)` returned 8.271806 against a true 0.0044788163 --
+the 99.8th percentile where the 0.001st was asked for -- and the values at
+neighbouring parameters were 1, 2 and 3 times it, which is the signature: the
+answer was a function of how many halvings fitted in the budget, not of `q`.
+Above a `scale` of about 1e27 the same absolute floor was reached from the other
+side, since a Gamma density is about `1/(scale*sqrt(2*pi*shape))`, and
+`gamma_inv_cdf(0.5, 2, 1e31)` was 3.0e-4 relative at the **median**.
 
-Above `scale` of about 1e27 the same division fails from the other side. The
-floor on the density is absolute at 1e-30 while a Gamma density is about
-`1/(scale*sqrt(2*pi*shape))`, so past a large enough scale the true density
-falls under the floor and each step removes only a fraction of the error.
-`gamma_inv_cdf(0.5, 2, 1e31)` is 3.0e-4 relative at a median, far from a
-tail, and nothing about the start is degenerate.
+Neither was a precision limit, which is why a wider working precision did not
+repair either. They were convergence limits, and what removed them was removing
+the structures rather than raising the budget, which is still 80: `scale` is
+divided out before the solve, the start is the small-`q` asymptotic wherever
+Wilson-Hilferty's cube is non-positive, and the halving is replaced by bisection
+inside a maintained bracket.
 
-Both are convergence limits of the 80-step Newton refinement. A wider
-working precision alone does not extend that iteration budget.
-
-**Do not reach for the CDF as a substitute without checking the same
-parameters.** The CDF is accurate over the measured scale values, which is not
-the same as accurate over the quantile's range; it is not a general escape from
-the quantile's limits.
+**The CDF is not a general substitute for the quantile.** The CDF is accurate
+over the measured scale values, which is not the same as accurate over the
+quantile's range.
 
 For your own calibration, check the reference in the tails and at the
 parameters you use. A match near the mean does not establish tail accuracy.
