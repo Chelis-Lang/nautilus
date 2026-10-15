@@ -75,7 +75,7 @@ chi-squared subnormal at `df` 0.02, 0.1, 0.5 and 1. It is a separate block rathe
 gate's `x` walk cannot reach the region at any scale -- it places `x` within
 twenty standard deviations of `shape*scale`, where the quotient is about
 `shape` -- and because a fourth scale would multiply the whole grid for three
-exports to reach one corner. The gate now enforces 1655 cases of 1702
+exports to reach one corner. The gate now enforces 1876 cases of 1923
 measured, and its three new unit tests fail if a constant edit leaves the rung
 looking intact while its quotient no longer underflows, or empties either
 tail.

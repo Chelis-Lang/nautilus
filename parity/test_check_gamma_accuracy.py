@@ -34,6 +34,7 @@ from parity.check_gamma_accuracy import (
     MP_DPS,
     QUANTILE_FLOOR,
     QUANTILE_FLOOR_SHAPES,
+    QUANTILE_PATCHY,
     QUANTILE_SCALES,
     QUANTILE_SCALES_THIN,
     DOCUMENTED,
@@ -69,6 +70,7 @@ CLAIM_SITES = (
     # read by the completeness test below only if it also names the bound, and
     # this one deliberately does not.
     "changelog.d/nautilus_gamma_cdf_f64_quotient.fixed.md",
+    "changelog.d/nautilus_gamma_quantile_bracket.fixed.md",
     # Not this family's own fragment, but it published a claim about
     # `poisson_cdf`'s accuracy that #152 falsified. The completeness test below
     # is what found it, after four review rounds had not.
@@ -500,21 +502,44 @@ class Coverage(unittest.TestCase):
             self.assertLess(f32(0.5) * f32(df), 1.0)
 
     def test_the_quantile_set_is_not_silently_narrowed(self) -> None:
-        self.assertEqual(QUANTILES, (QUANTILE_FLOOR, 0.001, 0.01, 0.1, 0.25,
-                                     0.5, 0.75, 0.9, 0.99, 0.999))
-        self.assertEqual(QUANTILE_FLOOR, 1e-4)
-        self.assertEqual(QUANTILE_FLOOR_SHAPES, (1.1, 1.25, 1.5, 1.9, 2.0, 2.5))
-        self.assertEqual(QUANTILE_SCALES, (1e-20, 1.0, 2.5, 1e20))
-        self.assertEqual(QUANTILE_SCALES_THIN, (1.0, 1e20))
+        self.assertEqual(QUANTILES, (QUANTILE_FLOOR, 1e-5, 1e-4, 0.001, 0.01,
+                                     0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 0.999))
+        self.assertEqual(QUANTILE_FLOOR, 1e-7)
+        self.assertEqual(QUANTILE_FLOOR_SHAPES,
+                         (0.0706, 1.1, 1.25, 1.5, 1.9, 2.0, 2.1, 2.5))
+        self.assertEqual(QUANTILE_PATCHY,
+                         ((2.1, 1e-5), (2.1, 3e-5), (2.0, 1e-5), (2.6, 1e-5)))
+        self.assertEqual(QUANTILE_SCALES, (1e-20, 1.0, 2.5, 1e20, 1e30))
+        self.assertEqual(QUANTILE_SCALES_THIN, (1.0, 1e30))
+
+    def test_the_q_axis_still_reaches_the_repaired_region(self) -> None:
+        """nautilus#162's region, as a membership test rather than a constant.
+
+        Pinning the tuple above stops it being narrowed by edit. This stops it
+        being narrowed by refactor: whatever the tuple's spelling, the grid has
+        to keep probing inside the band the repair opened -- the three decades
+        from 1e-7 to 1e-4 where the floored start used to put the answer in the
+        wrong tail -- at the shapes where that start was taken.
+        """
+        probed = {(arguments(c[2])[1], arguments(c[2])[0]) for c in self.spec
+                  if c[1] == "gamma_inv_cdf"}
+        for shape in (1.9, 2.0, 2.1, 2.5):
+            band = [q for s, q in probed
+                    if s == f32(shape) and f32(1e-7) <= q <= f32(1e-4)]
+            self.assertGreaterEqual(
+                len(band), 3,
+                f"shape {shape} is probed at only {len(band)} q in "
+                f"[1e-7, 1e-4]; nautilus#162's region needs the depth")
 
     def test_the_documented_q_floor_is_probed_AT_its_value(self) -> None:
         """The same rule as the ceilings, on the other axis.
 
-        The documents exclude `q` below `QUANTILE_FLOOR` because the quantile's
-        Newton descent does not converge there for a shape near 2. An excluded
-        boundary still has to be measured AT the boundary, or the claim cannot
-        fail at its own edge -- which is how the first version of this gate came
-        to assert a bound that was false three decades below its smallest `q`.
+        `QUANTILE_FLOOR` is the lowest `q` the grid probes. It is no longer an
+        exclusion -- nautilus#162 removed the start floor and the step budget
+        that made the quantile wrong below it -- but a grid's lowest value still
+        has to be measured AT that value, or the measurement cannot fail at its
+        own edge. That is how the first version of this gate came to assert a
+        bound which was false three decades below its smallest `q`.
         """
         for export in QUANTILE_EXPORTS:
             at = [case for case in self.spec
@@ -524,8 +549,11 @@ class Coverage(unittest.TestCase):
                                 f"{QUANTILE_FLOOR:.0e}, its documented floor")
 
     def test_no_case_is_generated_below_the_documented_q_floor(self) -> None:
-        # The documents make no claim below the floor, so a row there would be
-        # the gate asserting something nothing stands behind.
+        # Not because a claim stops there -- the documents state this grid's
+        # measured result, not a range -- but because below about 1e-20 at a
+        # small shape the quantile itself falls under f32's smallest normal, so
+        # a deeper row would measure f32's quantisation. The floor is where the
+        # MEASUREMENT runs out, and a row outside it is a row nothing adjudicates.
         for export in QUANTILE_EXPORTS:
             below = [case[2] for case in self.spec
                      if case[1] == export
@@ -533,10 +561,11 @@ class Coverage(unittest.TestCase):
             self.assertEqual(below, [], f"{export} probes below its floor")
 
     def test_the_floored_wilson_hilferty_shapes_are_probed(self) -> None:
-        # Shapes where `s**3` goes negative and the start is floored. Without a
-        # row here, raising `gamma_inv_floor()` to the continued fraction's
-        # Lentz tiny passed the whole test suite, the C lane and this gate
-        # while sending `gamma_inv_cdf(0.001, 1.25, 2)` to +inf.
+        # Shapes where `s**3` goes non-positive, so the asymptotic start is the
+        # one taken rather than the closed form. Without a row here, raising the
+        # old start floor to the continued fraction's Lentz tiny passed the
+        # whole test suite, the C lane and this gate while sending
+        # `gamma_inv_cdf(0.001, 1.25, 2)` to +inf.
         probed = {arguments(case[2])[1] for case in self.spec
                   if case[1] == "gamma_inv_cdf"}
         for shape in QUANTILE_FLOOR_SHAPES:
@@ -690,8 +719,8 @@ class Coverage(unittest.TestCase):
            actually enforces. Round 4 noted nothing pinned 1626, so the figure
            would go stale the first time anyone added a grid rung -- which it
            did, at the nautilus#165 rung, and this test is what caught it.
-        2. No row claims a bound over what the gate MEASURES. It measures 1702
-           cases and enforces 1655; the 47 beyond-ceiling rows exist to measure
+        2. No row claims a bound over what the gate MEASURES. It measures 1923
+           cases and enforces 1876; the 47 beyond-ceiling rows exist to measure
            out-of-range growth, and five exports exceed 2e-6 there -- 3.79e-6 at
            `gamma_cdf(2e8, 2e8, 1)`, which the gate prints on every run. Five
            SKILL.md rows said "everywhere the gate measures" and were false
@@ -795,31 +824,31 @@ class Coverage(unittest.TestCase):
     def test_finite_claim_qualifier_negative_controls(self) -> None:
         enforced = sum(1 for case in self.spec
                        if case[3] <= DOCUMENTED[case[1]][0])
-        self.assertEqual(enforced, 1655)
-        self.assertEqual(len(self.spec), 1702)
-        headline = "> Relative error is below 2e-6 at 1655 measured cases."
+        self.assertEqual(enforced, 1876)
+        self.assertEqual(len(self.spec), 1923)
+        headline = "> Relative error is below 2e-6 at 1876 measured cases."
         self.assertTrue(gamma_case_count_claim(headline))
-        self.assertEqual(CASE_COUNT.findall(headline), ["1655"])
-        # 1702 is this grid's MEASURED count, and the control's point is that
+        self.assertEqual(CASE_COUNT.findall(headline), ["1876"])
+        # 1923 is this grid's MEASURED count, and the control's point is that
         # publishing it where the enforced count belongs must be rejected --
         # main's version used its own 1673 for the same purpose, so carrying
         # that number across the rebase would have left an arbitrary wrong
         # value rather than the live confusable one.
         self.assertTrue(gamma_case_count_claim(
-            "> Relative error is below 2e-6 at 1702 measured cases."))
+            "> Relative error is below 2e-6 at 1923 measured cases."))
         self.assertFalse(bounded_gamma_claim(
-            "below 2e-6 at 1702 measured cases", enforced))
+            "below 2e-6 at 1923 measured cases", enforced))
         self.assertFalse(gamma_case_count_claim(
             "Over the 582 cases of `parity/check_pmf_accuracy.py`"))
         self.assertTrue(bounded_gamma_claim(
-            "below 2e-6 at 1655 measured cases", enforced))
+            "below 2e-6 at 1876 measured cases", enforced))
         self.assertTrue(bounded_gamma_claim(
             "chi_squared_p_value below 2e-6 at the measured gamma-family "
             "cases through df 1e8", enforced))
         for unbounded in (
             "gamma_cdf below 2e-6",
             "gamma_cdf below 2e-6 at every measured case",
-            "gamma_cdf below 2e-6 at 1673 measured cases",
+            "gamma_cdf below 2e-6 at 1923 measured cases",
             "chi_squared_p_value below 2e-6 at the measured gamma-family "
             "cases through df 1e9",
         ):
