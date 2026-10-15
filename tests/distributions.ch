@@ -726,8 +726,12 @@ def test_gamma_sf_rejects_the_same_parameters() -> unit ! { Test } = {
 }
 def test_gamma_cdf_at_positive_infinity_is_one() -> unit ! { Test } = {
   -- The limit, not a guard against a crash: F(+inf) = 1 and its survival
-  -- function is 0. A finite `x` with a tiny `scale` overflows `xs` to +inf and
-  -- has to land on the same answer, which is why the guard reads `xs`.
+  -- function is 0. A finite `x` with a tiny `scale` has to land on the same
+  -- answer, which it does because the standardised argument is what reaches
+  -- `gammap_core`/`gammaq_core`, and those decide a `+inf` themselves. The
+  -- quotient is formed in f64, so for f32 arguments the third row below no
+  -- longer overflows it -- `1e30 / 1e-30` is 1e60 -- and the answer is
+  -- computed rather than asserted. It is still 1.0.
   inf_x = div(cast(1.0, f32), cast(0.0, f32))
   c = gamma_cdf(inf_x, cast(2.0, f32), cast(1.0, f32))
   s = gamma_sf(inf_x, cast(2.0, f32), cast(1.0, f32))
@@ -765,6 +769,134 @@ def test_chi_squared_inherits_the_guards() -> unit ! { Test } = {
   _ = assert_true(neq(zc, zc), "chi_squared_cdf(5,0) is NaN like SciPy, not 1.0")
   _ = assert_true(neq(zs, zs), "chi_squared_sf(5,0) is NaN, not 0.0")
   assert_true(neq(nc, nc), "chi_squared_cdf(5,-1) is NaN")
+}
+-- nautilus#165: `gamma_cdf` and `gamma_sf` tested the f32 quotient `x / scale`
+-- in front of a body that evaluates the f64 one, so a quotient that underflowed
+-- to zero in f32 took the `xs <= 0` clause and returned 0.0 -- from a lane whose
+-- own f64 quotient was exact. A shape below 1 is what makes the discarded answer
+-- representable: `P(a, x) ~ x^a / Gamma(a+1)` as `x -> 0`, so at `a = 0.5` the
+-- answer is the square root of a quantity 50 decades below f32's floor and sits
+-- 20 decades above it. The three f32 tests are gone; `gammap_core` and
+-- `gammaq_core` decide a NaN, a `+inf` and a non-positive `x` at their own
+-- entry, in f64, and to the same limits.
+--
+-- References are the regularised incomplete gamma at 50 decimal digits
+-- (mpmath), rounded once to f32. Each of these returned exactly 0.0 before the
+-- fix, so every row here is a detector and not only a pin.
+def test_gamma_cdf_keeps_an_answer_the_f32_quotient_underflows_away() -> unit ! { Test } = {
+  a = gamma_cdf(cast(1e-30, f32), cast(0.5, f32), cast(1e20, f32))
+  b = gamma_cdf(cast(1e-30, f32), cast(0.25, f32), cast(1e20, f32))
+  c = gamma_cdf(cast(1e-38, f32), cast(0.5, f32), cast(1e20, f32))
+  _ = assert_true(gt(a, cast(0.0, f32)), "gamma_cdf(1e-30;0.5,1e20) is strictly positive")
+  _ = assert_true(lt(dist_rel_err(a, cast(1.1283791e-25, f32)), cast(1e-6, f32)), "gamma_cdf(1e-30;0.5,1e20) = 1.1283791e-25, not 0.0")
+  _ = assert_true(lt(dist_rel_err(b, cast(3.4888227e-13, f32)), cast(1e-6, f32)), "gamma_cdf(1e-30;0.25,1e20) = 3.4888227e-13, not 0.0")
+  assert_true(lt(dist_rel_err(c, cast(1.1283791e-29, f32)), cast(1e-6, f32)), "gamma_cdf(1e-38;0.5,1e20) = 1.1283791e-29, not 0.0")
+}
+-- The complement, and the reason the fix is not "return something non-zero
+-- there". At shape 1 and above the answer is at most the quotient itself --
+-- `P(a, t) <= t^a / Gamma(a+1) <= t` for `a >= 1` and `t < 1` -- and a
+-- quotient that underflowed in f32 is at most half f32's smallest subnormal.
+-- So f32 carries none of the answer at any shape at or above 1. The lane
+-- returns 0.0 everywhere in that half of the class except at the one tie
+-- argument the next test pins, where it returns the smallest subnormal --
+-- equally 100% relative error, since f32 has no value between them.
+-- `P(1, 1e-50)` is `1e-50` and `P(2, 1e-50)` is `5e-101`.
+def test_gamma_cdf_still_returns_zero_where_zero_is_the_answer() -> unit ! { Test } = {
+  one = gamma_cdf(cast(1e-30, f32), cast(1.0, f32), cast(1e20, f32))
+  two = gamma_cdf(cast(1e-30, f32), cast(2.0, f32), cast(1e20, f32))
+  _ = assert_close(one, cast(0.0, f32), cast(0.0, f32), "gamma_cdf(1e-30;1,1e20) = 0; P(1,1e-50) = 1e-50 is below f32")
+  assert_close(two, cast(0.0, f32), cast(0.0, f32), "gamma_cdf(1e-30;2,1e20) = 0; P(2,1e-50) = 5e-101 is further below it")
+}
+-- The one argument in that class where the return is NOT zero, pinned because
+-- the sentence above would otherwise read as a universal it cannot support.
+-- At the largest quotient the class admits -- exactly half the smallest f32
+-- subnormal, which is what `1.4e-45 / 2` is -- the shape-1 answer
+-- `P(1, t) = 1 - exp(-t)` sits below `t` by `2.5e-91`, so `t` itself is the
+-- 0-to-subnormal midpoint and the exact answer lies a hair below it. Nearest
+-- is 0.0, by that hair; the lane returns the subnormal, half an ulp away in
+-- the other direction. **Both are 100% relative error**, since f32 has no
+-- value between them, so this is a rounding direction at an unrepresentable
+-- quantity and not a lost answer. Pinned to the behaviour rather than argued
+-- from the arithmetic, because it is lane-dependent: the value comes from
+-- `exp(log(t))` landing just above the tie, and another libm may return 0.0.
+def test_gamma_cdf_at_the_shape_one_tie_returns_the_subnormal() -> unit ! { Test } = {
+  v = chi_squared_cdf(cast(1.4e-45, f32), cast(2.0, f32))
+  _ = assert_true(eq(v, cast(1.4e-45, f32)), "chi_squared_cdf(1.4e-45,2) is exactly f32's smallest subnormal; the true 7.0064923e-46 is the midpoint below it")
+  assert_true(gt(v, cast(0.0, f32)), "and strictly positive, where the f32 guard returned 0.0")
+}
+-- The survival function loses to the same quotient, and an earlier version of
+-- this file asserted it could not. At shape 0.5 it genuinely cannot: `Q` is
+-- `1 - P` with a `P` of 1.1e-25, which is 1.0 in f32 whichever route computes
+-- it. But `P(a, x)` grows as `x^a`, so a small enough shape lifts it above
+-- f32's resolution at 1.0 -- 2^-25, or 3.0e-8, because `1 - P` rounds to
+-- nearest and so leaves exactly 1.0 once `P` passes HALF the 6.0e-8 spacing
+-- below 1.0 -- and then the upper tail is resolvable too and the f32 guard
+-- destroyed it as well:
+-- `gamma_sf(1e-30, 0.01, 1e20)` returned 1.0 against a true 0.6819677, a
+-- relative error of 0.47, and `chi_squared_sf(1.4e-45, 0.02)` returned 1.0
+-- against a true 0.6444290, which is 0.55.
+--
+-- **There is no shape threshold here, because the boundary moves with the
+-- quotient.** Measured in this lane: at `x / scale` of 1e-50 the survival
+-- function differs from 1.0 up to shape 0.15 and is exactly 1.0 from 0.16; at
+-- 1.4e-65 it differs up to 0.11 and is exactly 1.0 from 0.12. So this pins the
+-- pair either side of one measured boundary rather than naming a frontier, and
+-- the gate's rung carries the same two regimes.
+def test_gamma_sf_keeps_the_upper_tail_the_f32_quotient_destroyed() -> unit ! { Test } = {
+  a = gamma_sf(cast(1e-30, f32), cast(0.01, f32), cast(1e20, f32))
+  b = gamma_sf(cast(1e-30, f32), cast(0.05, f32), cast(1e20, f32))
+  c = chi_squared_sf(cast(1.4e-45, f32), cast(0.1, f32))
+  _ = assert_true(lt(a, cast(1.0, f32)), "gamma_sf(1e-30;0.01,1e20) is strictly below 1")
+  _ = assert_true(lt(dist_rel_err(a, cast(0.6819677, f32)), cast(1e-6, f32)), "gamma_sf(1e-30;0.01,1e20) = 0.6819677, not 1.0")
+  _ = assert_true(lt(dist_rel_err(b, cast(0.99675167, f32)), cast(1e-6, f32)), "gamma_sf(1e-30;0.05,1e20) = 0.99675167, not 1.0")
+  assert_true(lt(dist_rel_err(c, cast(0.9943254, f32)), cast(1e-6, f32)), "chi_squared_sf(1.4e-45,0.1) = 0.9943254, not 1.0")
+}
+-- The other side of that boundary, and the reason the test above cannot be
+-- written as an inequality over all small shapes: at shape 0.25 and above the
+-- same quotient leaves `Q` at exactly 1.0, and a repair that moved it would be
+-- wrong. These two tests together are what a mutant reinstating the f32 guard
+-- in `gamma_sf` alone has to satisfy, and it cannot.
+def test_gamma_sf_is_still_exactly_one_above_the_resolution_boundary() -> unit ! { Test } = {
+  s = gamma_sf(cast(1e-30, f32), cast(0.25, f32), cast(1e20, f32))
+  t = gamma_sf(cast(1e-30, f32), cast(0.5, f32), cast(1e20, f32))
+  _ = assert_close(s, cast(1.0, f32), cast(0.0, f32), "gamma_sf(1e-30;0.25,1e20) = 1 exactly")
+  assert_close(t, cast(1.0, f32), cast(0.0, f32), "gamma_sf(1e-30;0.5,1e20) = 1 exactly")
+}
+-- `chi_squared_cdf` fixes `scale = 2`, which looks immune -- `x / 2` cannot
+-- underflow for a normal `x`. It can for a subnormal one: the smallest f32
+-- subnormal halves to exactly 0.0, because the result is the midpoint between
+-- 0 and that subnormal and the tie rounds to even. So the defect reached a
+-- function whose scale no caller chooses, at exactly one `x` -- and at that
+-- one `x` for every `df` at or below 2, which is the part worth measuring.
+-- Measured: non-zero at `df` 0.1, 0.5, 1, 1.5, 1.9 and 2.0, and exactly 0.0
+-- from 2.1 upward. The named witness is not the worst:
+-- `chi_squared_cdf(1.4e-45, 1)` discarded 2.99e-23, while at `df = 0.1` the
+-- same `x` discarded 0.0057, a 0.57% probability returned as exactly zero.
+--
+-- The adjacent subnormal is the control: `2.8e-45 / 2` is `1.4e-45`, which is
+-- not zero, so that row returned the right answer before the fix and the right
+-- answer after it. A fixture that moved both would not have isolated anything.
+def test_chi_squared_cdf_keeps_the_subnormal_argument_it_used_to_discard() -> unit ! { Test } = {
+  lo = chi_squared_cdf(cast(1.4e-45, f32), cast(1.0, f32))
+  hi = chi_squared_cdf(cast(2.8e-45, f32), cast(1.0, f32))
+  small_df = chi_squared_cdf(cast(1.4e-45, f32), cast(0.1, f32))
+  _ = assert_true(gt(lo, cast(0.0, f32)), "chi_squared_cdf(1.4e-45,1) is strictly positive")
+  _ = assert_true(lt(dist_rel_err(lo, cast(2.986795e-23, f32)), cast(1e-6, f32)), "chi_squared_cdf(1.4e-45,1) = 2.986795e-23, not 0.0")
+  _ = assert_true(lt(dist_rel_err(hi, cast(4.2239658e-23, f32)), cast(1e-6, f32)), "chi_squared_cdf(2.8e-45,1) = 4.2239658e-23, unchanged by the fix")
+  assert_true(lt(dist_rel_err(small_df, cast(0.005674625, f32)), cast(1e-6, f32)), "chi_squared_cdf(1.4e-45,0.1) = 0.005674625; the worst of the class, not the named one")
+}
+-- An infinite `scale` is a degenerate answer the fix reaches through the
+-- quotient rather than through a guard, and nothing pinned it before. `x /
+-- +inf` is 0 for every finite `x`, so the CDF is 0 and the survival function
+-- 1 -- which is also what a mutant guarding on `x` instead of the quotient
+-- would get wrong in the `x = +inf` row above.
+def test_gamma_cdf_at_an_infinite_scale() -> unit ! { Test } = {
+  c = gamma_cdf(cast(5.0, f32), cast(2.0, f32), div(cast(1.0, f32), cast(0.0, f32)))
+  s = gamma_sf(cast(5.0, f32), cast(2.0, f32), div(cast(1.0, f32), cast(0.0, f32)))
+  n = gamma_cdf(div(cast(1.0, f32), cast(0.0, f32)), cast(2.0, f32), div(cast(1.0, f32), cast(0.0, f32)))
+  _ = assert_close(c, cast(0.0, f32), cast(0.0, f32), "gamma_cdf(5;2,+inf) = 0 exactly")
+  _ = assert_close(s, cast(1.0, f32), cast(0.0, f32), "gamma_sf(5;2,+inf) = 1 exactly")
+  assert_true(neq(n, n), "gamma_cdf(+inf;2,+inf) is NaN; inf/inf is indeterminate and the quotient says so")
 }
 -- nautilus#140, second half: the guards stop the *degenerate* inputs reaching
 -- the recursions, but an ordinary large `shape` reaches them too, needing more
@@ -1564,11 +1696,19 @@ def test_gamma_cdf_away_from_the_branch_point_is_unmoved() -> unit ! { Test } = 
   assert_close(v, cast(0.9999996, f32), cast(1e-6, f32), "gamma_cdf(1.05e4;1e4,1) = 0.9999996, as it already was")
 }
 def test_gamma_cdf_guards_still_decide_before_the_f64_body() -> unit ! { Test } = {
-  -- The guards nautilus#140 settled read the f32 `x / scale` and still run in
-  -- front of the widened body, so the f64 quotient cannot move a boundary.
-  -- The last row is the one that would move if it did: `1e38 / 1e-10`
-  -- overflows f32 to infinity and is answered as `x = +inf` is, while in f64
-  -- it is a finite 1e48.
+  -- The `shape` and `scale` guards nautilus#140 settled still run in front of
+  -- the widened body. The ones on the standardised argument do not: they used
+  -- to read the f32 `x / scale`, and nautilus#165 removed them in favour of
+  -- the f64 tests `gammap_core` and `gammaq_core` already make, because
+  -- reading the quotient at f32 while answering at f64 discarded a
+  -- representable lower tail.
+  --
+  -- The last row is what that removal could have moved, and did not: `1e38 /
+  -- 1e-10` overflows f32 to infinity, where the old guard answered 1.0
+  -- outright, while in f64 it is a finite 1e48 that the continued fraction
+  -- evaluates. Both are 1.0, so the boundary nautilus#140 described is
+  -- preserved -- it is now a statement about the f64 quotient, which no pair
+  -- of finite f32 arguments can overflow.
   degenerate_shape = gamma_cdf(cast(1.0, f32), cast(0.0, f32), cast(1.0, f32))
   negative_scale = gamma_cdf(cast(1.0, f32), cast(1.0, f32), cast(-1.0, f32))
   negative_x = gamma_cdf(cast(-1.0, f32), cast(1.0, f32), cast(1.0, f32))
@@ -1578,7 +1718,7 @@ def test_gamma_cdf_guards_still_decide_before_the_f64_body() -> unit ! { Test } 
   _ = assert_true(neq(negative_scale, negative_scale), "gamma_cdf with a negative scale is NaN")
   _ = assert_close(negative_x, cast(0.0, f32), cast(1e-7, f32), "gamma_cdf below the support is 0")
   _ = assert_true(neq(nan_scale, nan_scale), "gamma_cdf with a NaN scale is NaN")
-  assert_close(overflowing_quotient, cast(1.0, f32), cast(1e-7, f32), "a finite x whose f32 x/scale overflows answers as x = +inf does")
+  assert_close(overflowing_quotient, cast(1.0, f32), cast(1e-7, f32), "a finite x whose f32 x/scale would overflow still answers 1.0, now through the f64 body rather than a guard")
 }
 def test_gamma_sf_and_pdf_guards_still_decide_before_the_f64_body() -> unit ! { Test } = {
   degenerate_shape = gamma_sf(cast(1.0, f32), cast(-1.0, f32), cast(1.0, f32))

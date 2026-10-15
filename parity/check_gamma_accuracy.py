@@ -78,7 +78,7 @@ relative resolution.
 
     uv run --project parity --frozen python parity/check_gamma_accuracy.py
 
-The grid contains 1673 cases. Run one copy at a time because the generated
+The grid contains 1702 cases. Run one copy at a time because the generated
 probe file is shared.
 
 It lives under `parity/` because it imports SciPy, and this repository confines
@@ -215,6 +215,76 @@ QUANTILE_FLOOR_SHAPES = (1.1, 1.25, 1.5, 1.9, 2.0, 2.5)
 # rather than a margin.
 QUANTILE_SCALES = (1e-20, 1.0, 2.5, 1e20)
 QUANTILE_SCALES_THIN = (1.0, 1e20)
+# The CDF rung where the standardised argument `x / scale` is zero in f32 and
+# exact in f64, and the reason it is a separate block rather than a `SCALES`
+# entry.
+#
+# `gamma_cdf` and `gamma_sf` used to test that quotient in f32 in front of a
+# body that evaluates it in f64, so an underflowing quotient took the
+# `xs <= 0` clause and returned exactly 0.0 -- for an answer f32 holds
+# comfortably. `gamma_cdf(1e-30, 0.5, 1e20)` returned 0.0 against a true
+# 1.128379e-25 (nautilus#165).
+#
+# **A shape below 1 is what makes the discarded answer representable**, and
+# that is why these shapes and not the ladder's: `P(a, x) ~ x^a / Gamma(a+1)`
+# as `x -> 0`, so at `a = 0.5` the answer is the square root of a quantity 50
+# decades under f32's floor and lands 20 decades over it. At `a >= 1` the
+# answer is at most the quotient itself, which is at most half f32's smallest
+# subnormal in this region, so f32 carries none of it either way -- see the
+# shape-1 note in `tests/distributions.ch` for the one argument where the lane
+# returns that subnormal rather than zero. No shape on the main ladder, which
+# starts at 0.5 and is otherwise 1 or larger, can exhibit this.
+#
+# A new `SCALES` entry would have been the wrong shape of fix twice over. It
+# multiplies the whole eleven-shape, eleven-z grid for three exports to reach a
+# region that is one corner, and the corner is not reachable from `Z_WALK` at
+# any scale: that walk places `x` within twenty standard deviations of
+# `shape*scale`, where the quotient is about `shape`, never near zero.
+UNDERFLOW_SCALE = 1e20
+# Two regimes of shape, and the smaller two are not decoration.
+#
+# 0.25, 0.5 and 0.75 are where the LOWER tail loses: `P` is 3.5e-13 or below,
+# so `Q` is exactly 1.0 in f32 and only `gamma_cdf` can see the defect there.
+# 0.01 and 0.05 are where the UPPER tail loses as well, and an earlier version
+# of this block asserted that could not happen. `P(a, x)` grows as `x^a`, so a
+# small enough shape lifts it above f32's resolution at 1.0 and then `1 - P` is
+# resolvable too: `gamma_sf(1e-30, 0.01, 1e20)` returned 1.0 against a true
+# 0.6819677, a relative error of 0.47, and `chi_squared_sf(1.4e-45, 0.02)`
+# returned 1.0 against a true 0.6444290, a relative error of 0.55 -- the worst
+# in this family's grid in either direction.
+#
+# **That resolution is 2^-25, not 2^-24.** The spacing below 1.0 is
+# 5.9604645e-08, but `1 - P` rounds to nearest, so it leaves exactly 1.0 once
+# `P` passes HALF of it: measured, `f32(1 - 2.9832e-08)` is 0.99999994 while
+# `f32(1 - 2.9773e-08)` is 1.0, and the tie 2^-25 itself rounds to 1.0. The
+# factor of two is load-bearing for this grid rather than cosmetic -- at shape
+# 0.15 and a quotient of 1e-50, `P` is 3.39e-08, which is below 2^-24 and
+# resolvable all the same.
+#
+# **There is no shape threshold to state**, because the boundary is set by the
+# quotient as well. Measured on this lane: at a quotient of 1e-50 the survival
+# function differs from 1.0 up to shape 0.15 and is exactly 1.0 from 0.16; at
+# a quotient of 1.4e-65 it differs up to 0.11 and is exactly 1.0 from 0.12. So
+# the grid probes two shapes inside the losing region at both ends of
+# `UNDERFLOW_X` rather than naming a frontier.
+UNDERFLOW_SHAPES = (0.01, 0.05, 0.25, 0.5, 0.75)
+UNDERFLOW_X = (1e-30, 1e-38)
+# `chi_squared_cdf` fixes `scale = 2`, which reads as immune and is not. The
+# smallest f32 subnormal halves to exactly 0.0 -- the quotient is the midpoint
+# between 0 and that subnormal, and the tie rounds to even -- so the defect
+# reached a function whose scale no caller chooses, at exactly one `x`. Its
+# `df` must be below 2 for the shape `df/2` to be below 1.
+UNDERFLOW_SUBNORMAL_X = 1.4012984643248171e-45
+# `df/2` is the gamma shape, so these cover both regimes: 0.02 and 0.1 put the
+# shape at 0.01 and 0.05, where `chi_squared_sf` resolves, and 0.5 and 1.0 put
+# it at 0.25 and 0.5, where only `chi_squared_cdf` does. A `df` above 2 would
+# detect nothing -- the shape is then above 1 and f32 cannot carry the answer
+# in either direction -- which is why the set stops at 1.0. The fix does still
+# change the answer AT `df = 2`, where the shape is exactly 1 and the return is
+# the smallest subnormal rather than zero; that one argument is pinned in
+# `tests/distributions.ch` rather than here, because its reference is below
+# f32's smallest normal and `add` would discard the row.
+UNDERFLOW_DF = (0.02, 0.1, 0.5, 1.0)
 
 
 class AccuracyError(Exception):
@@ -537,6 +607,82 @@ def cases() -> list[tuple[str, str, str, float, float]]:
                         continue
                     add(export, (X, K, S), reference_for(export, X, K, S), shape,
                         allow_one=(export == "gamma_pdf"))
+
+    # ---- the underflow rung on the standardised argument -----------------
+    # Every row here is a case the subject got wrong before nautilus#165, so
+    # this block is a detector and not only coverage -- 0.0 for the two lower
+    # tails and 1.0 for the two upper ones, which is why the wording is not
+    # "returned 0.0": the survival rows this block gained in review returned
+    # 1.0, and an earlier version of this sentence had outlived them. The
+    # `assert_quotient_underflows` call is what keeps it one: the rows are
+    # chosen for a property of f32 arithmetic, and a later edit to a constant
+    # above could leave them looking the same while probing nothing. A rung
+    # that no longer underflows is a broken rung, not a passing one.
+    def assert_quotient_underflows(args: tuple, x: float, scale: float) -> None:
+        if f32(f32(x) / f32(scale)) != 0.0:
+            raise AccuracyError(
+                f"the underflow rung's {args} has an f32 quotient of "
+                f"{f32(f32(x) / f32(scale))!r}, not 0.0, so it does not probe "
+                f"the region it exists for")
+
+    # Both directions are generated, and the survival rows at a shape of 0.25
+    # or above are KEPT AND INERT. Their reference is `1 - P` with a `P` of at
+    # most 3.5e-13, which is strictly below 1.0 as a double -- so `add`'s
+    # `>= 1.0` test does not fire -- and exactly 1.0 once f32 holds it, so the
+    # largest relative error they can report is that same 3.5e-13, six decades
+    # inside the bound. An earlier version of this comment claimed they were
+    # excluded; they are not, and a reviewer proved it by narrowing the shape
+    # set and watching the counts floor below stay silent.
+    #
+    # They are left in rather than filtered, because this gate already keeps 18
+    # such rows outside this block -- every `gamma_sf` and `chi_squared_sf` row
+    # at `z = -20` for a shape of 10 or more is in the same position -- and a
+    # filter applied to the rung alone would be a special case for four rows.
+    # What that costs is that the counts floor cannot see an emptied upper
+    # tail, so the leg that does is in
+    # `test_the_rung_probes_BOTH_tails`: it requires a survival shape at or
+    # below 0.05 for the gamma pair and a `df` at or below 0.1 for the
+    # chi-squared pair, which is where the upper tails are measured to lose.
+    #
+    # An earlier version of this block generated no survival rows at all, on
+    # the ground that the defect was one-sided. It is not. That reasoning took
+    # a maximum measured over this rung's own shape floor -- `P <= 3.5e-13` at
+    # shapes 0.25 and up -- for a bound on the class, and a mutant reinstating
+    # the f32 guards in `gamma_sf` alone then passed every gate in the
+    # repository while returning 1.0 for a true 0.899.
+    before = len(out)
+    S = f32(UNDERFLOW_SCALE)
+    for export in ("gamma_cdf", "gamma_sf"):
+        for shape in UNDERFLOW_SHAPES:
+            K = f32(shape)
+            for x in UNDERFLOW_X + (UNDERFLOW_SUBNORMAL_X,):
+                X = f32(x)
+                assert_quotient_underflows((X, K, S), X, S)
+                add(export, (X, K, S), reference_for(export, X, K, S), shape)
+    gamma_rows = len(out) - before
+    for export in ("chi_squared_cdf", "chi_squared_sf"):
+        for df in UNDERFLOW_DF:
+            D = f32(df)
+            X = f32(UNDERFLOW_SUBNORMAL_X)
+            assert_quotient_underflows((X, D), X, 2.0)
+            add(export, (X, D), chi_reference(export, X, D), df)
+    chi_rows = len(out) - before - gamma_rows
+    counts = {name: sum(1 for case in out[before:] if case[1] == name)
+              for name in ("gamma_cdf", "gamma_sf",
+                           "chi_squared_cdf", "chi_squared_sf")}
+    # One row per export is the floor, and it is a weaker guard than it looks:
+    # raising every shape to 1 or above does empty the two lower tails, because
+    # every reference then falls under f32's smallest normal, but raising every
+    # shape past the resolution boundary does NOT empty the upper tails -- it
+    # leaves them full of the inert rows described above. The leg that catches
+    # that edit is the shape floor in `test_the_rung_probes_BOTH_tails`.
+    if any(count < 1 for count in counts.values()):
+        raise AccuracyError(
+            f"the underflow rung contributed {counts}, and every one of the "
+            f"four must be at least 1. A lower tail is emptied by a shape at "
+            f"or above 1, where the reference falls under f32's smallest "
+            f"normal. An emptied UPPER tail does not reach here -- see "
+            f"test_the_rung_probes_BOTH_tails for that leg")
 
     # ---- the chi-squared trio of (x, df) ---------------------------------
     # `chi_squared_pdf(x, df)` is `gamma_pdf(x, df/2, 2)`. It belongs here

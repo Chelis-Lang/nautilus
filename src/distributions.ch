@@ -806,29 +806,32 @@ def student_t_cdf(t: f32, df: f32) -> f32 =
     half_bi = mul(half_f(), bi)
     if gte(t, zero_f()) then sub(one_f(), half_bi) else half_bi
   }
--- A non-positive `shape` or `scale` is not a distribution, and a non-finite
--- `x` is a limit rather than a point to integrate to, so both are decided
--- before the standardised argument `xs` reaches either recursion.
--- These are the guards `gamma_pdf`, `gamma_inv_cdf` and `weibull_cdf` already
--- use, and they agree with SciPy. The guards read `xs`, not `x`, so a finite
--- `x` whose `x / scale` overflows lands on the same answer as `x = +inf`.
--- The three guards read the f32 `xs` and the body reads an f64 one. That is
--- deliberate: the guards are the ones #140 settled, including the clause above
--- that a finite `x` whose f32 `x / scale` overflows answers as `x = +inf`
--- does, and widening the quotient would quietly move that boundary. The f64
--- quotient the body uses carries the digits the recursion needs.
-def gamma_cdf(x: f32, shape: f32, scale: f32) -> f32 =
-  if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else {
-    xs = div(x, scale)
-    xs64 = div(cast(x, f64), cast(scale, f64))
-    if neq(xs, xs) then nan_d() else if lte(xs, zero_f()) then zero_f() else if eq(xs, pos_inf_d()) then one_f() else cast(gammainc_p(cast(shape, f64), xs64), f32)
-  }
-def gamma_sf(x: f32, shape: f32, scale: f32) -> f32 =
-  if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else {
-    xs = div(x, scale)
-    xs64 = div(cast(x, f64), cast(scale, f64))
-    if neq(xs, xs) then nan_d() else if lte(xs, zero_f()) then one_f() else if eq(xs, pos_inf_d()) then zero_f() else cast(gammainc_q(cast(shape, f64), xs64), f32)
-  }
+-- A non-positive `shape` or `scale` is not a distribution, so it is decided
+-- here. The standardised argument is not: `xs64` goes to the recursion
+-- whatever it is, because `gammap_core` and `gammaq_core` already decide a
+-- NaN, a `+inf` and a non-positive `x` in f64 at their own entry, and they
+-- decide them to the same limits a guard here would have returned. A second
+-- copy of those three tests in front of them cannot add an answer. What it can
+-- do is take the test at a narrower precision than the answer, which is what
+-- it did: the guards used to read the f32 quotient `x / scale`, and when that
+-- quotient underflowed to zero the `xs <= 0` clause returned 0.0 from a lane
+-- whose f64 quotient was exact. `gamma_cdf(1e-30, 0.5, 1e20)` returned 0.0 for
+-- a true 1.128379e-25 -- twenty decades above f32's floor, and reachable only
+-- below shape 1, where `P(a, x) ~ x^a / Gamma(a+1)` lifts the answer far above
+-- the quotient that produced it (#165). Deleting the duplicate is what
+-- makes that class impossible rather than one precision further away.
+--
+-- The clause #140 settled is preserved and is now a statement about the f64
+-- quotient: a finite `x` whose `x / scale` overflows lands on the same answer
+-- as `x = +inf`, because `+inf` is what reaches the core. No f32 argument pair
+-- can reach it -- `3.4e38 / 1.4e-45` is 2.4e83, and the quotient of two finite
+-- f32s neither overflows nor underflows in f64 -- so the boundary it describes
+-- has moved out of the f32 signature rather than moved within it. `x = +inf`
+-- with `scale = +inf` is still NaN, by the quotient rather than by a guard.
+-- These remain the guards `gamma_pdf`, `gamma_inv_cdf` and `weibull_cdf` use
+-- for `shape` and `scale`, and they agree with SciPy.
+def gamma_cdf(x: f32, shape: f32, scale: f32) -> f32 = if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else cast(gammainc_p(cast(shape, f64), div(cast(x, f64), cast(scale, f64))), f32)
+def gamma_sf(x: f32, shape: f32, scale: f32) -> f32 = if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else cast(gammainc_q(cast(shape, f64), div(cast(x, f64), cast(scale, f64))), f32)
 def chi_squared_cdf(x: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_cdf(x, half_df, two_f())
