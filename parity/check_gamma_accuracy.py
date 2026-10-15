@@ -233,8 +233,8 @@ QUANTILE_PATCHY = ((2.1, 1e-5), (2.1, 3e-5), (2.0, 1e-5), (2.6, 1e-5))
 # for 1e30 rather than adding to it, so the top two shapes cost the same.
 # No failure ever existed at the small-scale end, so 1e-20 is a probing choice
 # rather than a margin.
-QUANTILE_SCALES = (1e-20, 1.0, 2.5, 1e20)
-QUANTILE_SCALES_THIN = (1.0, 1e20)
+QUANTILE_SCALES = (1e-20, 1.0, 2.5, 1e20, 1e30)
+QUANTILE_SCALES_THIN = (1.0, 1e30)
 # The CDF rung where the standardised argument `x / scale` is zero in f32 and
 # exact in f64, and the reason it is a separate block rather than a `SCALES`
 # entry.
@@ -305,8 +305,6 @@ UNDERFLOW_SUBNORMAL_X = 1.4012984643248171e-45
 # `tests/distributions.ch` rather than here, because its reference is below
 # f32's smallest normal and `add` would discard the row.
 UNDERFLOW_DF = (0.02, 0.1, 0.5, 1.0)
-QUANTILE_SCALES = (1e-20, 1.0, 2.5, 1e20, 1e30)
-QUANTILE_SCALES_THIN = (1.0, 1e30)
 
 
 class AccuracyError(Exception):

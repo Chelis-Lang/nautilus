@@ -164,11 +164,20 @@ returned as f32.
 
 > Relative error is below 2e-6 at every one of 1876 measured cases.
 
-This describes measured cases, not every parameter in a range. In particular,
-`gamma_inv_cdf(1e-4, 0.07062688, 1e20)` returns 5.8421183e-36 against a
-reference of 1.3742135e-37, a relative error of 41.5. Its shape is below the
-smallest quantile shape in the measured set, 0.5. The full shape matters:
-`0.0706` is a different f32 and changes the result.
+This describes measured cases, not every parameter in a range, and that
+distinction is not weakened by the absence of a counter-example. The one this
+page used to carry has been repaired: `gamma_inv_cdf(1e-4, 0.07062688, 1e20)`
+returned 5.8421183e-36 against a reference of 1.3742135e-37, a relative error
+of 41.5, and now returns that reference exactly. No argument is currently known
+to exceed the bound, inside the measured set or outside it -- the largest figure
+the gate reports anywhere, including its beyond-ceiling rows, is 5.92e-07. That
+is a statement about what has been measured and looked for, not a guarantee
+over the parameter space.
+
+One detail of that repaired example is worth keeping, because it is a property
+of f32 and not of this family: the full shape matters. `0.0706` is a different
+f32 from `0.07062688` and gives a different answer, 1.3076351e-37 against
+1.3742135e-37, so a figure quoted for one is not a figure for the other.
 
 **The measured set covers:** `shape` on a ladder from 0.5 to each export's ceiling
 (5e7 for the gamma trio, `df` 1e8 for the chi-squared trio, `lambda` 5e7 for
@@ -176,9 +185,14 @@ smallest quantile shape in the measured set, 0.5. The full shape matters:
 it; `x` and `k` walked across `shape*scale` in units of the distribution's own
 standard deviation, from -20 to +20, plus both sides of the branch point
 exactly; `scale` over 1, 2.5 and 0.0078125 for the densities and CDFs, and
-1e-20, 1, 2.5 and 1e20 for the quantiles; `q` over ten values from 1e-4 to
-0.999. References come from an arbitrary-precision oracle and any whose value
-f32 cannot hold as a normal number is excluded.
+1e-20, 1, 2.5, 1e20 and 1e30 for the quantiles, with named rows at 2, 1e31,
+1e32 and 1e35 besides; `q` over thirteen values from 1e-7 to 0.999. References
+come from an arbitrary-precision oracle and any whose value f32 cannot hold as
+a normal number is excluded.
+
+The quantiles' shape ladder starts at 0.5, but two smaller shapes are probed by
+name -- 0.0706 and 2.1 among the shapes where the solve takes its asymptotic
+start -- so the smallest quantile shape measured is 0.0706 rather than 0.5.
 
 The four CDFs and survival functions carry one rung off that walk: a far lower
 tail at a shape below 1, where the standardised argument `x / scale` is zero in

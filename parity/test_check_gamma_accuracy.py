@@ -848,7 +848,7 @@ class Coverage(unittest.TestCase):
         for unbounded in (
             "gamma_cdf below 2e-6",
             "gamma_cdf below 2e-6 at every measured case",
-            "gamma_cdf below 2e-6 at 1894 measured cases",
+            "gamma_cdf below 2e-6 at 1923 measured cases",
             "chi_squared_p_value below 2e-6 at the measured gamma-family "
             "cases through df 1e9",
         ):
