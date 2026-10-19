@@ -1,8 +1,8 @@
 schema = "3"
 [package]
 name = "nautilus"
-version = "0.7.56"
-compiler = "=0.19.4"
+version = "0.7.57"
+compiler = "=0.21.0"
 module_prefix = "Nautilus"
 additional_sources = ["properties", "proof_controls"]
 resolver = "2"
