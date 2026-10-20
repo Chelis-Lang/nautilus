@@ -41,7 +41,7 @@ Two cases need separate guidance:
 | `airy_ai`, `airy_bi` | f32 for \|x\| <= 5 | See large-negative-x note below |
 | Distribution CDFs | ~1e-5 to 1e-7 | Depends on underlying special functions; the two families below are stated rather than estimated |
 | `poisson_pmf`, `binomial_pmf` | below 2e-6 at measured cases through `lambda` of 1e8 and `n` of 2e8 | Log space in f64; the note below states the sampled axes and limits |
-| the gamma family, nine exports | below 2e-6 at 1876 measured cases | Incomplete gamma in f64; the note below describes the sampled axes, and no failure region outside them remains |
+| the gamma family, nine exports | below 2e-6 at 1876 measured cases | Incomplete gamma in f64; the note below describes the sampled axes and limits |
 | Beta-family CDFs | below 2e-6 at measured cases through parameter 1e8 | `beta_cdf`, `f_cdf`, `binomial_cdf`; the note below states the sampled axes |
 | `student_t_cdf` | below 2e-6 at measured cases through `df` 1e20 | The incomplete beta below `df` of 1e7 and a large-`df` expansion above it |
 | `normal_cdf` | below 1 ulp for a standard normal, larger for a shifted point (see below) | Chelis `standard_normal_cdf` on `(x-mean)/std` |
@@ -164,20 +164,14 @@ returned as f32.
 
 > Relative error is below 2e-6 at every one of 1876 measured cases.
 
-This describes measured cases, not every parameter in a range, and that
-distinction is not weakened by the absence of a counter-example. The one this
-page used to carry has been repaired: `gamma_inv_cdf(1e-4, 0.07062688, 1e20)`
-returned 5.8421183e-36 against a reference of 1.3742135e-37, a relative error
-of 41.5, and now returns that reference exactly. No argument is currently known
-to exceed the bound, inside the measured set or outside it -- the largest figure
-the gate reports anywhere, including its beyond-ceiling rows, is 5.92e-07. That
-is a statement about what has been measured and looked for, not a guarantee
-over the parameter space.
+This describes measured cases, not every parameter in a range. Calibrate
+against a reference over the parameter space your calculation uses.
 
-One detail of that repaired example is worth keeping, because it is a property
-of f32 and not of this family: the full shape matters. `0.0706` is a different
-f32 from `0.07062688` and gives a different answer, 1.3076351e-37 against
-1.3742135e-37, so a figure quoted for one is not a figure for the other.
+The full f32 input matters. For example,
+`gamma_inv_cdf(1e-4, 0.07062688, 1e20)` gives 1.3742135e-37, while
+`gamma_inv_cdf(1e-4, 0.0706, 1e20)` gives 1.3076351e-37. The two shapes are
+different f32 values, so an accuracy measurement for one does not describe
+the other.
 
 **The measured set covers:** `shape` on a ladder from 0.5 to each export's ceiling
 (5e7 for the gamma trio, `df` 1e8 for the chi-squared trio, `lambda` 5e7 for
@@ -192,8 +186,7 @@ a normal number is excluded.
 
 The quantiles' shape ladder starts at 0.5, but nine shapes are probed by name
 besides it -- 0.0706, 1.1, 1.25, 1.5, 1.9, 2.0, 2.1, 2.5 and 2.6, which are
-where the solve takes its asymptotic start and where the repaired region was
-patchy -- so the smallest quantile shape measured is 0.0706 rather than 0.5.
+near the transition to the asymptotic start -- so the smallest quantile shape measured is 0.0706 rather than 0.5.
 
 The four CDFs and survival functions carry one rung off that walk: a far lower
 tail at a shape below 1, where the standardised argument `x / scale` is zero in
@@ -203,38 +196,16 @@ scale, because it places `x` within twenty standard deviations of
 `shape*scale`, where the quotient is about `shape`. Two of the rung's shapes
 are small enough that the *upper* tails resolve there as well, since `1 - P` is
 visible in f32 only once `P` passes `2^-25`, about 3.0e-8 -- half the spacing
-below 1.0, because the subtraction rounds to nearest. Without them a guard
-reinstated on one direction alone would be invisible to every gate.
+below 1.0, because the subtraction rounds to nearest. These cases exercise lower-tail behavior that the standard-deviation walk
+does not reach.
 
-**No failure region outside that set remains known.** The CDF's f32 `x / scale`
-quotient was the last one, and it is repaired; the two that were the
-quantiles' are described below as history, because the shape of them is worth
-keeping.
-
-The quantiles had two regions of their own and no longer do. Both were one
-defect seen twice, and the shape of it is worth keeping because it is the shape
-of a numerical answer that looks entirely plausible. `gamma_inv_cdf` refined a
-closed-form start with at most 80 Newton steps; each step divided by the
-density, floored at an **absolute** 1e-30, and a step landing at or below zero
-was recovered by halving `x`.
-
-Below `q = 1e-4` for a shape in roughly [1.9, 2.6] the Wilson-Hilferty start's
-cube goes negative, so the start was floored, the first step overshot the root
-by about 27 decades, and the budget went on halving back.
-`gamma_inv_cdf(1e-5, 2, 1)` returned 8.271806 against a true 0.0044788163 --
-the 99.8th percentile where the 0.001st was asked for -- and the values at
-neighbouring parameters were 1, 2 and 3 times it, which is the signature: the
-answer was a function of how many halvings fitted in the budget, not of `q`.
-Above a `scale` of about 1e27 the same absolute floor was reached from the other
-side, since a Gamma density is about `1/(scale*sqrt(2*pi*shape))`, and
-`gamma_inv_cdf(0.5, 2, 1e31)` was 3.0e-4 relative at the **median**.
-
-Neither was a precision limit, which is why a wider working precision did not
-repair either. They were convergence limits, and what removed them was removing
-the structures rather than raising the budget, which is still 80: `scale` is
-divided out before the solve, the start is the small-`q` asymptotic wherever
-Wilson-Hilferty's cube is non-positive, and the halving is replaced by bisection
-inside a maintained bracket.
+`gamma_inv_cdf` solves on the unit-scale distribution in `u = ln y`,
+using a residual on `ln P`. It uses a small-`q` asymptotic start when the
+Wilson-Hilferty cube is non-positive, maintains a bracket, and bisects when
+a Newton step leaves that bracket. The iteration budget is 80. Multiplying
+by `scale` once at the end avoids scale-dependent density floors in the
+solve. Convergence and reference accuracy still need to be checked over the
+arguments your calculation uses.
 
 **The CDF is not a general substitute for the quantile.** The CDF is accurate
 over the measured scale values, which is not the same as accurate over the
