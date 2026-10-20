@@ -185,19 +185,20 @@ come from an arbitrary-precision oracle and any whose value f32 cannot hold as
 a normal number is excluded.
 
 The quantiles' shape ladder starts at 0.5, but nine shapes are probed by name
-besides it -- 0.0706, 1.1, 1.25, 1.5, 1.9, 2.0, 2.1, 2.5 and 2.6, which are
-near the transition to the asymptotic start -- so the smallest quantile shape measured is 0.0706 rather than 0.5.
+besides it: 0.0706, 1.1, 1.25, 1.5, 1.9, 2.0, 2.1, 2.5 and 2.6, near the
+transition to the asymptotic start. The smallest quantile shape measured is
+0.0706 rather than 0.5.
 
 The four CDFs and survival functions carry one rung off that walk: a far lower
 tail at a shape below 1, where the standardised argument `x / scale` is zero in
-f32 and exact in f64 -- `gamma_cdf(1e-30, 0.5, 1e20)` and
+f32 and exact in f64, such as `gamma_cdf(1e-30, 0.5, 1e20)` and
 `chi_squared_cdf(1.4e-45, 1)` among them. The walk cannot reach it at any
 scale, because it places `x` within twenty standard deviations of
 `shape*scale`, where the quotient is about `shape`. Two of the rung's shapes
 are small enough that the *upper* tails resolve there as well, since `1 - P` is
-visible in f32 only once `P` passes `2^-25`, about 3.0e-8 -- half the spacing
-below 1.0, because the subtraction rounds to nearest. These cases exercise lower-tail behavior that the standard-deviation walk
-does not reach.
+visible in f32 only once `P` passes `2^-25`, about 3.0e-8 (half the spacing
+below 1.0, because the subtraction rounds to nearest). These cases exercise
+lower-tail behavior that the standard-deviation walk does not reach.
 
 `gamma_inv_cdf` solves on the unit-scale distribution in `u = ln y`,
 using a residual on `ln P`. It uses a small-`q` asymptotic start when the
