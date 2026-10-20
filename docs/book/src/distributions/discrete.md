@@ -46,9 +46,10 @@ in f32, so the input type cannot represent every consecutive count there.
 > through `lambda = 1e8`. The [precision guide](../appendix/precision.md)
 > lists the sampled `lambda` and `k` axes.
 
-Below f32's smallest normal, 1.18e-38, the return type cannot carry the
-value, so a relative comparison measures f32 quantisation. `poisson_pmf(42, 0.7)` returns 0
-against a true 1.1e-58.
+Below f32's smallest normal, about 1.18e-38, results have subnormal
+precision, so relative error includes output quantisation. Values below
+about 7.0e-46 round to zero. `poisson_pmf(42, 0.7)` returns 0 against a
+true 1.1e-58.
 
 Outside the measured range, calibrate the PMF against a reference for the
 counts and rates you use. At `lambda = 1e9`, one measured relative error is
