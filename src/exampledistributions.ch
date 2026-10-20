@@ -24,17 +24,10 @@ def example_gamma_cdf_degenerate_arguments() -> f32 = {
   r5 = if lt(abs(sub(large_df, cast(0.50297356, f32))), cast(0.001, f32)) then cast(10000.0, f32) else cast(0.0, f32)
   add(add(add(add(r1, r2), r3), r4), r5)
 }
--- A regression that returned the incomplete beta to f32, or that flattened its
--- chunked recursion, is invisible to `chelis test`: that lane's worker holds
--- about 500 frames, so a flat recursion completes there. `chelis eval --file`
--- holds far fewer and aborts the whole process instead, and CI's step that
--- evaluates `src/example*.ch` is the only gate that observes it. So this
--- detector lives in an example module rather than in `tests/`.
--- Each case contributes one decimal digit, so one f32 says which hold. Expect
--- 11111.0; before the incomplete beta moved to f64 the first two cases aborted
--- the process and the rest returned 10 (f_cdf 1.0 for a true 0.317,
--- student_t 0.5 for a true 0.841,
--- binomial 1.0 for a true 0.990).
+-- Evaluate the large-parameter cases in the file-evaluation lane, whose stack
+-- behavior differs from the test workers. Chunked continued-fraction recursion
+-- keeps the deep cases within the evaluator's stack budget.
+-- Each successful case contributes one decimal digit. Expected: 11111.0.
 def example_beta_family_large_parameters() -> f32 = {
   tol = cast(0.00001, f32)
   -- 0.5 exactly, by symmetry; needs 726 and 1564 f64 continued-fraction

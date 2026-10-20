@@ -61,11 +61,11 @@ That loss is about 6e-8, for any accuracy of the incomplete gamma. Use
 `sub(cast(1.0, f32), gamma_cdf(..))`.
 
 `gamma_sf` reads the same f64 standardised argument, and that matters at a
-small shape. `P` grows as `x^shape`, and once `P` passes `2^-25` -- about
-3.0e-8, which is half the 6e-8 just mentioned, because `1 - P` rounds to
-nearest -- the upper tail is resolvable too:
+small shape. `P` grows as `x^shape`, and once `P` passes `2^-25` (about
+3.0e-8, half the 6e-8 just mentioned, because `1 - P` rounds to
+nearest), the upper tail is resolvable too:
 `gamma_sf(1e-30, 0.01, 1e20)` is `0.6819677`, not `1.0`. There is no shape
-threshold to quote, because the boundary moves with the quotient -- at
+threshold to quote, because the boundary moves with the quotient. At
 `x / scale` of 1e-50 the result differs from 1.0 up to shape 0.15 and is
 exactly 1.0 from 0.16, and at 1.4e-65 it differs only up to 0.11.
 
@@ -79,22 +79,20 @@ can move. The variable is `u = ln y`, because a quantile ranges over decades;
 already describes.
 
 The start is Wilson-Hilferty where its cube is positive and the small-`q`
-asymptotic `y ~ (q*Gamma(shape+1))^(1/shape)` where it is not -- the leading
+asymptotic `y ~ (q*Gamma(shape+1))^(1/shape)` where it is not, using the leading
 term of the same series, so it is accurate exactly where the closed form
 degenerates. From there it is Newton on `ln P`, safeguarded by a straddling
 bracket: a candidate that leaves the bracket is replaced by a bisection, so the
 iteration cannot leave the root's basin, and the loop exits on convergence, on
-a bracket narrower than its 1e-10 tolerance, or on the 80-step budget -- on
+a bracket narrower than its 1e-10 tolerance, or on the 80-step budget. On
 every exit the value returned lies inside a bracket containing the root.
 
-No typical or maximum step count is quoted. Three figures for it were published
-and falsified in review, each correct over the sweep that produced it and wrong
-as written, because the cost is governed by how far a clamped start sits from
-the root and no finite sweep bounds that.
+The iteration count depends on the distance between the clamped start and
+the root. A sampled maximum does not bound the cost for every argument.
 
 Returns 0 at q=0, +inf at q=1, and NaN for a `q` outside [0,1], a NaN `q`, or a
-`shape` or `scale` that is NaN, not positive, or infinite -- an infinite shape is
-positive and is not NaN, so the finiteness leg is not redundant. It inherits the
+`shape` or `scale` that is NaN, not positive, or infinite. An infinite shape is
+positive and is not NaN, so finiteness requires a separate check. It inherits the
 large-shape limit below.
 
 **`gamma_sample[n](k: key, template: tensor[n, f32], shape: f32, scale: f32) -> tensor[n, f32]`**
