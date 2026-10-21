@@ -119,12 +119,9 @@ def normal_pdf(x: f32, mean: f32, std: f32) -> f32 = {
   denom = mul(std, sqrt_2pi_f())
   div(e, denom)
 }
--- `standard_normal_cdf` is the Chelis builtin `Phi`, an erfc-based graph with a
--- Veltkamp/Dekker correction for the rounding of `-x/sqrt(2)`. The previous
--- spelling `0.5 * (1 + erf(z))` cancelled as `erf(z)` approached `-1`: its
--- absolute error was about `0.5 * ulp(1.0)` however accurate `erf` was, so it
--- returned exactly `0.0` for every standardized point below about `-6` and
--- carried no significant digits below about `-5.3`.
+-- Chelis standard_normal_cdf uses an erfc-based graph with a correction for
+-- rounding -x/sqrt(2), preserving the negative tail without subtracting erf
+-- from 1. Standardization still rounds in the caller's f32 precision.
 def normal_cdf(x: f32, mean: f32, std: f32) -> f32 = standard_normal_cdf(div(sub(x, mean), std))
 def normal_inv_cdf(q: f32, mean: f32, std: f32) -> f32 =
   if or(lt(q, zero_f()), gt(q, one_f())) then nan_d() else if lte(q, zero_f()) then neg(pos_inf_d()) else if gte(q, one_f()) then pos_inf_d() else {
@@ -169,16 +166,10 @@ def lognormal_sample[n](k: key, template: tensor[n, f32], mu: f32, sigma: f32) -
   z = normal_sample(k, template, mu, sigma)
   exp(z)
 }
--- The density's log-space body has the same cancellation the incomplete gamma
--- does, for the same reason: `(k - 1)*log(x)` and `log_gamma(k)` are each
--- about 1.1e6 at `k = x = 1e5` and the exponent they leave is -6.67. In f32
--- `gamma_pdf(1e5, 1e5, 1)` was 5.2e-2 relative and `gamma_pdf(5e7, 5e7, 1)`
--- returned exactly 1.0 against a true 5.64e-5 -- a density above every value
--- a Gamma(5e7, 1) density takes. It is evaluated in f64 and returned as f32.
--- `gamma_inv_cdf`'s Newton step READ this as its derivative, so the quantile
--- inherited the error from here as well as from `gamma_cdf`. It no longer does:
--- the quantile solves in `ln y` and reads `gammainc_front` instead, so no
--- density quotient is formed on that path.
+-- The log-space density uses f64 to limit cancellation between
+-- `(shape - 1)*log(x)`, `x/scale`, and `log_gamma(shape)`, and returns f32.
+-- The quantile uses `gammainc_front` in log coordinates instead of a density
+-- quotient, so this density calculation does not set its Newton derivative.
 def gamma_pdf_core(x: f64, shape: f64, scale: f64) -> f64 = {
   lx = log(x)
   lscale = log(scale)
@@ -261,16 +252,10 @@ def student_t_pdf(x: f32, df: f32) -> f32 = {
 -- process outright when a recursion outruns it (see the eval-lane entry in
 -- `docs/UPSTREAM_BUGS.md`, which cites the upstream issue by number).
 --
--- The series tolerance is relative to the running sum, and the f32 lane's was
--- not. It compared the term against `max(|sum|, 1.0)`, and that floor made the
--- test absolute wherever the sum fell below 1. The sum is `P(a, x)` divided by
--- the front factor, which is 1.8e-4 at `a = 5e7`, so a nominal 1e-7 bought a
--- relative 5.6e-4 there. Near the branch point the tail is also about
--- `sqrt(a)` times its last term rather than comparable to it, so a tolerance
--- buys `tol*sqrt(a)` of relative accuracy and not `tol`: 1e-7 measured 1.8e-4
--- at `a = 5e7` in f64 too. 1e-13 is what keeps the truncation inside one f32
--- ulp across the documented range, and the two tolerances are deliberately
--- separate numbers so the continued fraction's can move without the series'.
+-- The series tolerance is relative to the running sum. Near the branch point,
+-- the uncomputed tail is about sqrt(a) times its last term; size the tolerance
+-- for that amplification. Keep series and continued-fraction tolerances
+-- separate so each convergence criterion can be calibrated independently.
 def gammainc_series_tol() -> f64 = cast(1e-13, f64)
 def gammainc_cf_tol() -> f64 = cast(1e-13, f64)
 def gammainc_tiny() -> f64 = cast(1e-300, f64)
@@ -357,27 +342,10 @@ def gammaq_cf_drive(a: f64, b: f64, c: f64, d: f64, h: f64, i: i64, max_i: i64) 
     st = gammaq_cf_super(a, b, c, d, h, i, max_i, gammainc_fanout_i())
     if st.5 then st.3 else gammaq_cf_drive(a, st.0, st.1, st.2, st.3, st.4, max_i)
   }
--- The two cores guard a non-finite `x` before entering their recursions, and
--- that guard is a cost control rather than a new answer. Neither the series'
--- `|term| < tol*|sum|` nor the continued fraction's `|delta - 1| < tol` can be
--- satisfied by a NaN, so a NaN argument spends the whole 65536-step budget and
--- returns the NaN it would have returned anyway -- and `gamma_inv_cdf` pays
--- that 80 times over. The f32 lane's budget was 200, so the same inputs were
--- cheap there. `gamma_inv_cdf(0.5, 1, 0)` is the reachable case: its
--- Wilson-Hilferty start is 0 when `scale` is 0, and `0 / 0` is the `x` that
--- arrives here. The answers are the limits, which are what the lane already
--- returned by propagation.
--- The front factor is formed BEFORE the recursion and a non-finite one
--- short-circuits, which is a cost control and changes no value: the product of
--- a NaN front factor with any sum is that NaN. Two paths reach it. A `+inf`
--- shape makes `1/a` exactly zero, so the running sum stays exactly zero and
--- the relative convergence test `|term| < tol*|sum|` can never fire -- the f32
--- lane's absolute-floored test converged at step one, so this is a cost the
--- f64 lane introduced, and `gamma_cdf(1, +inf, 1)` spent all 65536 terms to
--- return the NaN it returns immediately now. A NaN shape traps inside
--- `log_gamma`, and forming the front factor first means it traps before the
--- budget is spent rather than after: the trap itself is unchanged and is
--- tracked elsewhere.
+-- Handle non-finite x before recursion: NaN cannot satisfy either relative
+-- convergence test, and +inf and non-positive x have direct limiting answers.
+-- Form the front factor first and return a NaN factor before spending the
+-- 65536-step budget. A NaN shape follows log_gamma's error behavior.
 def gammap_core(a: f64, x: f64) -> f64 =
   if neq(x, x) then nan_d64() else if eq(x, div(one_d64(), zero_d64())) then one_d64() else if lte(x, zero_d64()) then zero_d64() else {
     front = gammainc_front(a, x)
@@ -526,8 +494,7 @@ def betai_finish(v: f64, converged: bool) -> f64 = if or(lt(v, zero_d64()), gt(v
 -- and the one that could not would otherwise lose it: `x` saturates to 1.0 for
 -- `f_cdf` once d2 is small beside d1*x, and the guard below would then answer
 -- 1.0 for a distribution whose true value is nowhere near 1. `student_t_cdf`
--- saturated the same way once df reached 2^24 and no longer reaches this
--- function at all above `student_t_normal_df`, which is below that; its `omx`
+-- uses the normal expansion above `student_t_normal_df`; below it, its `omx`
 -- is still exact rather than subtracted, because the two arguments share one
 -- denominator and there is no reason to spend the digits.
 def betai_core(a: f64, b: f64, x: f64, omx: f64) -> f64 =
@@ -561,15 +528,9 @@ def is_integer_f32(x: f32) -> bool = {
   xi = cast(cast_trunc(x, i64), f32)
   eq(x, xi)
 }
--- The log-space body is evaluated in f64 and the result returned as f32.
--- `log_gamma(k + 1)` is `log(k!)`, which reaches 1.05e6 at k = 1e5 and 8.36e8
--- at k = 5e7. One f32 ulp at 1.05e6 is 0.125, an absolute error in an
--- exponent and hence a multiplicative error in the result: `poisson_pmf(1e5,
--- 1e5)` was 5.2% high. Above k = 2^24 the `+ 1` vanishes outright
--- (`ulp(5e7)` is 4), so the normalising constant was `log(k!)` for the wrong
--- factorial and `poisson_pmf(5e7, 5e7)` returned 1.0 against a true
--- 5.6418952e-05. Forming `k + 1` in f64 fixes the second; evaluating the
--- whole exponent there fixes the first, which is the larger term below 2^24.
+-- Form the log-space PMF in f64, including k + 1 in log_gamma(k + 1),
+-- then round once to f32. The log-factorial grows with k, so rounding in
+-- the exponent limits the final relative accuracy.
 def poisson_pmf(k: f32, lambda: f32) -> f32 =
   if lt(lambda, zero_f()) then nan_d() else if lt(k, zero_f()) then zero_f() else if not(is_integer_f32(k)) then zero_f() else if eq(lambda, zero_f()) then if eq(k, zero_f()) then one_f() else zero_f() else {
     k64 = cast(k, f64)
@@ -580,42 +541,17 @@ def poisson_pmf(k: f32, lambda: f32) -> f32 =
     log_pmf = sub(sub(k_lk, lambda64), lg_k1)
     exp(log_pmf) |> cast(f32)
   }
--- `P(X <= k) = Q(k+1, lambda)`, the upper regularised incomplete gamma, which
--- is what `gamma_sf` returns. The earlier spelling `1 - gamma_cdf(lambda,
--- k+1, 1)` subtracted a value near `1.0` from `1.0`, so the whole left tail
--- arrived as `0.0`: `poisson_cdf(10, 50)` returned zero against a true
--- `6.4501529e-12`. `gamma_sf`'s branch point is the one this needs -- a small
--- `P(X <= k)` means `lambda >> k + 1`, which is exactly where `gamma_sf`
--- evaluates the continued fraction directly instead of complementing.
--- `k + 1` is formed in f64 and the upper regularised incomplete gamma is
--- entered directly, rather than going through `gamma_sf`'s f32 signature. In
--- f32 the `+ 1` is lost outright above `k = 2^24`, which made
--- `poisson_cdf(5e7, 5e7)` evaluate `Q(5e7, 5e7)` instead of `Q(5e7 + 1, 5e7)`:
--- the difference between them is `poisson_pmf(5e7, 5e7) = 5.64e-5`, so the
--- answer was short by 1.1e-4 of itself. That was invisible underneath the
--- front-factor error this change removes -- the same call was 99.87% wrong
--- before -- and it is the whole residual once the front factor is fixed. It is
--- the site #146 named and then narrowed away from, so it is repaired here,
--- where the export is already being moved.
--- The three guards that remain are `gamma_sf`'s own, specialised to `scale =
--- 1`: with that scale the standardised argument is `lambda` exactly, in f32
--- and in f64 alike, so specialising them changes no boundary.
+-- P(X <= k) = Q(k+1, lambda), the upper regularized incomplete gamma.
+-- Evaluate it directly to avoid subtracting a CDF near 1 from 1.
+-- Form k + 1 in f64: f32 cannot preserve that increment above 2^24.
 def poisson_cdf(k: f32, lambda: f32) -> f32 =
   if lt(lambda, zero_f()) then nan_d() else if lt(k, zero_f()) then zero_f() else if eq(lambda, zero_f()) then one_f() else if neq(lambda, lambda) then nan_d() else if eq(lambda, pos_inf_d()) then zero_f() else {
     k_plus_one = add(cast(k, f64), one_d64())
     cast(gammainc_q(k_plus_one, cast(lambda, f64)), f32)
   }
--- The log-space body is evaluated in f64 and the result returned as f32, for
--- the reason recorded above `poisson_pmf` and one more: `log_choose` is a
--- difference of three log-factorials, so its f32 error is bounded by the
--- *largest* of them rather than by the answer. At n = 1e8,
--- `log_gamma(n + 1)` is 1.74e9, where one f32 rounding is an absolute error
--- of 128 in the exponent -- a factor of e^128. `binomial_pmf(5e7, 1e8, 0.5)`
--- returned `inf`, and `binomial_pmf(2e7, 4e7, 0.5)` returned 1.0; neither is
--- a probability. The three log-gammas and the `(n - k) * log(1 - p)` term
--- rounded independently, which is how the result left [0, 1] rather than
--- merely drifting. The error is continuous in n, not a cliff at 2^24: it was
--- already 15% at n = 2e5 and 59% at n = 2e6.
+-- Compute the log-binomial coefficient and log-probability in f64, then
+-- return f32. Cancellation between three large log-factorials sets a
+-- parameter-dependent accuracy limit; see the public precision guide.
 def binomial_pmf(k: f32, n: f32, p: f32) -> f32 =
   if or(lt(k, zero_f()), gt(k, n)) then zero_f() else if not(is_integer_f32(k)) then zero_f() else if not(is_integer_f32(n)) then nan_d() else if or(lt(p, zero_f()), gt(p, one_f())) then nan_d() else if eq(p, zero_f()) then if eq(k, zero_f()) then one_f() else zero_f() else if eq(p, one_f()) then if eq(k, n) then one_f() else zero_f() else {
     k64 = cast(k, f64)
@@ -633,11 +569,8 @@ def binomial_pmf(k: f32, n: f32, p: f32) -> f32 =
     log_pmf = add(add(log_choose, k_lp), nmk_l1mp)
     exp(log_pmf) |> cast(f32)
   }
--- `n - k` and `k + 1` are formed in f64, not in f32 and then widened. In
--- f32 the `+ 1` vanishes for k >= 2^24 (ulp(5e7) is 4), which turned
--- `binomial_cdf(5e7, 1e8, 0.5)` into the symmetric `I(0.5; 5e7, 5e7)` --
--- exactly 0.5 -- instead of `I(0.5; 5e7, 5e7+1)` = 0.50003989, an error of
--- 8e-5 at an ordinary sample size. `n - k` loses its low bits the same way.
+-- Form n - k and k + 1 in f64 before the incomplete beta call so the
+-- increment remains distinct when the f32 count spacing exceeds 1.
 def binomial_cdf(k: f32, n: f32, p: f32) -> f32 =
   if or(lt(p, zero_f()), gt(p, one_f())) then nan_d() else if lt(k, zero_f()) then zero_f() else if gte(k, n) then one_f() else {
     a = sub(cast(n, f64), cast(k, f64))
@@ -726,65 +659,14 @@ def weibull_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
     factor = exp(exp_arg)
     mul(scale, factor)
   }
--- Above `student_t_normal_df` the beta route is replaced by the t
--- distribution's own large-`df` expansion, because no amount of precision
--- rescues it there. `betai_core`'s front factor is
--- `exp(lgamma(a+b) - lgamma(a) - lgamma(b) + ...)` with `a = df/2`, and the
--- absolute error of that exponent is about one f64 ulp of the largest
--- log-gamma: `lgamma(5e8)` is 9.5e9, where one ulp is 1.9e-6, so the result
--- carries a multiplicative error of that order. The error is an absolute one
--- in an *exponent*, so it grows without bound in `df` and widening the
--- arithmetic only moves the onset. Measured on the beta route, worst over a
--- `t` axis of -0.5 to -11 and +1: 1.1e-7 at `df = 1e7`, 1.2e-6 at 1e8,
--- 9.1e-6 at 1e9, 1.9e-4 at 1e11, 2.3e-3 at 1e12, 2.6 at 1e14, 1.1e1 at 1e16
--- and 2.6e27 at 1e20. The peak sits at `t = -sqrt(3)`, the continued
--- fraction's branch boundary, where the upper branch returns `1 - val`: a
--- relative error on `val` becomes `(1 - I)/I` times as large on `I = 2 F(t)`,
--- which is 11.0 there. That figure is the algebra, not a measurement: the
--- boundary is measurably worse than its neighbours in `t`, but the ratio you
--- get depends on which neighbour and which `df` you pick, so no single
--- measured multiple belongs here.
--- At `t = 1` alone it reads 2.9e-7 at `df = 1e9`, 7.1e-5 at 1e12, 9.6e-2 at
--- 1e14 and 41% from 1e16 up, because `student_t_cdf(1, 1e16)` returned exactly
--- 0.5 -- the value the
--- function also returns at `t = 0`, so the answer was indistinguishable from
--- a real one. The left tail was worse than that 0.5 suggests:
--- `student_t_cdf(-5, 1e18)` returned 0.49981025 against a true 2.8665157e-7,
--- and `student_t_cdf(-8, 1e18)` returned 0.0. `df = inf` returned 0.5 too.
--- Saturation of `x = df/(df+t*t)` to exactly 1.0 near `df = 2^53` is a second
--- and much later cause; the cancellation above already dominates at `df = 1e14`,
--- where `x` is not saturated for any `|t| > 0.09`.
---
--- The expansion is `F_df(t) = Phi(t) - phi(t)(t^3 + t)/(4 df) + O(df^-2)`.
--- The `1/df` term is not a refinement that could be dropped: without it the
--- limit's own relative error at `t = -11` is 3.7e-4 at `df = 1e7` and 3.7e-5
--- at 1e8, falling only as `1/df`, so it first reaches 2e-6 around
--- `df = 1.9e9`. The beta route's worst over the same `t` axis passes 2e-6
--- between `df = 3e8` and 5e8. A plain `Phi(t)` branch therefore has no
--- threshold that holds the documented bound anywhere.
---
--- The threshold is 1e7 because by there the expansion has reached the beta
--- route's own noise floor. It is NOT a crossing: the beta
--- route's worst is flat rounding noise through this region -- 1.3e-7 at
--- `df = 1e6`, 1.2e-7 at 5e6, 1.5e-7 at 9e6, 1.1e-7 at 1e7, 2.0e-7 at 2e7,
--- 1.5e-7 at 3e7 -- so no exact crossing point is identifiable, and a grid that
--- claimed one would be reading its own spacing. The expansion is 8.6e-8 at
--- `df = 1e7` and improves as `1/df^2` from there, so both forms sit about 20x
--- inside the bound at the handover.
---
--- That handover is not free. Just above the threshold, at `|t|` of 11 and
--- beyond, the expansion is less accurate than the beta route was, by about a
--- factor of three at `(t = -11, df = 1e7)` and by more in the far tail. All
--- of it stays well inside 2e-6, and the beta route's own error at those `df`
--- is about to rise through it, but the figures above are worst cases over
--- `|t| <= 11` and not a uniform improvement at every point.
---
--- `t*t < 1600` is a domain test, not a tolerance. `phi(t)` is exactly 0.0 in
--- f64 for `|t| >= 38.7` and `Phi(t)` is 0.0 or 1.0 there, so the correction
--- cannot change a finite answer above that; the test exists so that
--- `t = +-inf` yields the correction's limit of 0 rather than the
--- indeterminate `0 * inf`, which would make NaN of a CDF the beta route got
--- right. A NaN `t` still reaches `standard_normal_cdf` and still returns NaN.
+-- For large df, use Phi(t) - phi(t)*(t^3+t)/(4*df). Keeping the 1/df
+-- correction preserves tail accuracy near the handover; the expansion's
+-- omitted term is O(df^-2). The incomplete-beta formula below the threshold
+-- has cancellation in its log-gamma normalization that grows with df.
+-- The threshold and accuracy measurements are documented in the precision
+-- guide; neither approximation has a uniform relative-error bound in t.
+-- Restrict the correction to t*t < 1600: beyond it the f64 density is zero,
+-- and forming zero times an infinite polynomial would produce NaN.
 def student_t_normal_df() -> f32 = cast(10000000.0, f32)
 def student_t_normal_limit(t: f32, df: f32) -> f32 = {
   t64 = cast(t, f64)
@@ -808,30 +690,11 @@ def student_t_cdf(t: f32, df: f32) -> f32 =
     half_bi = mul(half_f(), bi)
     if gte(t, zero_f()) then sub(one_f(), half_bi) else half_bi
   }
--- A non-positive `shape` or `scale` is not a distribution, so it is decided
--- here. The standardised argument is not: `xs64` goes to the recursion
--- whatever it is, because `gammap_core` and `gammaq_core` already decide a
--- NaN, a `+inf` and a non-positive `x` in f64 at their own entry, and they
--- decide them to the same limits a guard here would have returned. A second
--- copy of those three tests in front of them cannot add an answer. What it can
--- do is take the test at a narrower precision than the answer, which is what
--- it did: the guards used to read the f32 quotient `x / scale`, and when that
--- quotient underflowed to zero the `xs <= 0` clause returned 0.0 from a lane
--- whose f64 quotient was exact. `gamma_cdf(1e-30, 0.5, 1e20)` returned 0.0 for
--- a true 1.128379e-25 -- twenty decades above f32's floor, and reachable only
--- below shape 1, where `P(a, x) ~ x^a / Gamma(a+1)` lifts the answer far above
--- the quotient that produced it (#165). Deleting the duplicate is what
--- makes that class impossible rather than one precision further away.
---
--- The clause #140 settled is preserved and is now a statement about the f64
--- quotient: a finite `x` whose `x / scale` overflows lands on the same answer
--- as `x = +inf`, because `+inf` is what reaches the core. No f32 argument pair
--- can reach it -- `3.4e38 / 1.4e-45` is 2.4e83, and the quotient of two finite
--- f32s neither overflows nor underflows in f64 -- so the boundary it describes
--- has moved out of the f32 signature rather than moved within it. `x = +inf`
--- with `scale = +inf` is still NaN, by the quotient rather than by a guard.
--- These remain the guards `gamma_pdf`, `gamma_inv_cdf` and `weibull_cdf` use
--- for `shape` and `scale`, and they agree with SciPy.
+-- Reject non-positive shape or scale here. Form x/scale in f64 and let the
+-- incomplete-gamma cores handle its NaN, +inf, and non-positive cases there.
+-- A finite f32 quotient can underflow before the lower-tail CDF does:
+-- gamma_cdf(1e-30, 0.5, 1e20) is about 1.128379e-25. Any quotient of finite
+-- nonzero f32 values fits in f64, so the wider division preserves that tail.
 def gamma_cdf(x: f32, shape: f32, scale: f32) -> f32 = if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else cast(gammainc_p(cast(shape, f64), div(cast(x, f64), cast(scale, f64))), f32)
 def gamma_sf(x: f32, shape: f32, scale: f32) -> f32 = if or(lte(shape, zero_f()), lte(scale, zero_f())) then nan_d() else cast(gammainc_q(cast(shape, f64), div(cast(x, f64), cast(scale, f64))), f32)
 def chi_squared_cdf(x: f32, df: f32) -> f32 = {
@@ -842,76 +705,13 @@ def chi_squared_sf(x: f32, df: f32) -> f32 = {
   half_df = mul(half_f(), df)
   gamma_sf(x, half_df, two_f())
 }
--- The quantile WAS a Wilson-Hilferty closed form refined by Newton's method on
--- the CDF and density, both in f64. It now solves on the unit-scale
--- distribution in `u = ln y` with the residual on `ln P`, takes the small-`q`
--- asymptotic start wherever Wilson-Hilferty's cube is non-positive, and reads
--- `gammainc_front` as its derivative rather than forming a density quotient.
--- The block below describes that solve; this line is kept only so the earlier
--- description is not left standing as the current one.
---
--- The loop stays, and its own measurement is why. Against `gammaincinv`, with
--- the f32 CDF underneath it, the refinement was worth 41856x at `shape = 1`
--- and about 8.1e5 at `q = 0.05, shape = 1`, where the closed form is weak;
--- above the bracket it was 1001x *worse* at `shape = 1e3` and returned 5e29 at
--- `shape = 1e7`. Both of those are one defect: Newton converges on the root of
--- the function it is given, so a biased CDF moves the root it finds, and the
--- closed form happened to be nearer the true quantile than that moved root
--- was. Removing the loop would have traded a large-shape error for a
--- small-shape one five orders of magnitude bigger. Fixing the CDF fixes the
--- loop, and no threshold is introduced, so there is no shape at which this
--- function changes method and nothing here to be continuous across.
---
--- The crossover above is a bracket and not a located boundary: the sweep that
--- found it stepped `shape` by decades, so what it establishes is that the flip
--- happens somewhere between 100 and 1000 at the median and somewhere between
--- 1e3 and 1e4 in the 0.1% tails.
---
--- The quantile solves `P(shape, y) = q` on the UNIT-scale distribution and
--- multiplies by `scale` once at the end. `scale` is a pure dilation of this
--- family -- the CDF is `P(shape, x/scale)` -- so dividing it out before the
--- iteration is exact, and it is what makes a scale-dependent failure
--- structurally impossible rather than merely further away. The step this loop
--- used to take divided by an ABSOLUTE 1e-30 floor applied to a DENSITY, whose
--- magnitude is about `1/(scale*sqrt(2*pi*shape))`: past a large enough scale
--- the true density fell under the floor, the step divided by the floor
--- instead, and each step then removed only the fraction `pdf/floor` of the
--- error -- `gamma_inv_cdf(0.5, 2, 1e31)` was 3.0e-4 relative, 152x the bound
--- (#162). No constant left in this loop has a magnitude a `scale` can
--- move, so there is nothing for that argument to exhaust.
---
--- The variable is `u = log y`, for three reasons that turn out to be one. A
--- quantile ranges over decades, so its natural step is multiplicative. The
--- small-`q` start below IS a logarithm, so forming it in `u` needs no `exp`
--- and cannot underflow on the way in. And `dP/du = y*pdf(y)`, which is
--- exactly `gammainc_front`, so the derivative is a function this module
--- already has and the quotient that needed a density floor is never formed.
---
--- The residual is taken on `log P` rather than on `P`. In the deep lower tail
--- `P` is near-exponential in `u`, so Newton on `P` takes near-constant steps
--- and creeps: 53 of the 80 steps at `q = 1e-38, shape = 100`. On `log P` the
--- same region is near-linear, since `d(log P)/du` is `a - y` to leading
--- order.
---
--- NO STEP COUNT IS PUBLISHED FOR THIS LOOP, and the omission is the result of
--- three attempts rather than an oversight. A prototype figure of 13 was
--- published and falsified; it was re-measured in this lane as "at most 4 on
--- the gate's grid, 35 anywhere, never within 44 of the budget" and that was
--- falsified too -- the grid maximum is 5 (`q = 0.999, shape = 0.5`) and a
--- wider sweep reaches 80 of 80 at `q = 9e-25, shape = 0.075`, a shape sitting
--- beside the grid's own smallest. Each figure was correct over the set that
--- produced it and wrong as stated, because the cost of this loop is governed
--- by how far the clamped start sits from the root and no finite sweep bounds
--- that. The claim FORM is the defect, not the arithmetic.
---
--- What holds without a sweep: the budget is `gamma_inv_newton_max_i()`, the
--- loop exits on convergence, on a bracket narrower than the tolerance, or on
--- that budget, and whichever exit it takes the value returned lies inside a
--- bracket that straddles the root. A deep-tail argument spends its steps
--- bisecting rather than diverging -- when the start clamps to
--- `gamma_inv_u_min()` the bracket is about one nat wide and halving it to the
--- 1e-10 tolerance takes about 33 steps -- and every such return measured is
--- correct. That is the property a caller depends on; the step count is not.
+-- Solve P(shape, y) = q on the unit-scale distribution in u = log(y),
+-- and multiply by scale once at the end. The log-coordinate slope dP/du is
+-- gammainc_front, so the Newton step needs no absolute density floor.
+-- The residual uses log(P): in the deep lower tail it is nearly linear in u.
+-- A maintained bracket contains each accepted step; a step outside it uses
+-- bisection. Exit on convergence, a narrow bracket, or the iteration budget.
+-- Iteration counts depend on the inputs; a sampled maximum is not a bound.
 def gamma_inv_newton_tol() -> f64 = cast(1e-10, f64)
 def gamma_inv_newton_max_i() -> i64 = cast(80, i64)
 -- The window where `exp` is neither 0 nor +inf in f64. A start outside it is
@@ -928,14 +728,9 @@ def gamma_inv_u_max() -> f64 = cast(709.0, f64)
 def gamma_inv_p_at(shape: f64, u: f64) -> f64 = if lt(u, gamma_inv_u_min()) then zero_d64() else if gt(u, gamma_inv_u_max()) then one_d64() else gammainc_p(shape, exp(u))
 def gamma_inv_slope_at(shape: f64, u: f64) -> f64 = if or(lt(u, gamma_inv_u_min()), gt(u, gamma_inv_u_max())) then zero_d64() else gammainc_front(shape, exp(u))
 def gamma_inv_clamp_u(u: f64) -> f64 = if lt(u, gamma_inv_u_min()) then gamma_inv_u_min() else if gt(u, gamma_inv_u_max()) then gamma_inv_u_max() else u
--- Wilson-Hilferty where its cube is positive, and the small-`q` asymptotic
--- where it is not. `s` goes negative for a small shape in the far lower tail,
--- and flooring the cube there is what put the start 27 decades from the root:
--- at a floor of 1e-30 the density is about 1.8e-8, so the first step was
--- `q/pdf ~ 5e24` and 75 to 79 of the 80 steps went on halving back down,
--- leaving the answer a function of the step count rather than of `q`
--- (`gamma_inv_cdf(1e-5, 2, 1)` returned 8.271806 for a true 0.0044788163 --
--- the 99.8th percentile where the 0.001st was asked for).
+-- Use Wilson-Hilferty where its cube is positive and the small-q asymptotic
+-- otherwise. The asymptotic starts in log coordinates and preserves deep
+-- tails without forming an underflowed initial value.
 --
 -- `P(a, y) ~ y^a / Gamma(a+1)` as `y -> 0` is the leading term of the same
 -- series `gammap_core` sums, so inverting it is accurate exactly where
@@ -960,24 +755,9 @@ def gamma_inv_start_u(q: f64, z: f64, shape: f64) -> f64 = {
 def gamma_inv_widen_max() -> i64 = cast(12, i64)
 def gamma_inv_widen_lo(shape: f64, q: f64, u: f64, k: f64, n: i64) -> f64 = if lte(n, cast(0, i64)) then u else if lte(gamma_inv_p_at(shape, u), q) then u else gamma_inv_widen_lo(shape, q, sub(u, k), mul(k, cast(2.0, f64)), sub(n, cast(1, i64)))
 def gamma_inv_widen_hi(shape: f64, q: f64, u: f64, k: f64, n: i64) -> f64 = if lte(n, cast(0, i64)) then u else if gte(gamma_inv_p_at(shape, u), q) then u else gamma_inv_widen_hi(shape, q, add(u, k), mul(k, cast(2.0, f64)), sub(n, cast(1, i64)))
--- One safeguarded step, carrying `(u, lo, hi, settled)`.
---
--- The current point is folded into the bracket FIRST, so `lo` and `hi` always
--- straddle the root; a Newton candidate is taken only when it lands strictly
--- inside, and the bisection that replaces it otherwise is what makes leaving
--- the basin impossible. The old loop had no bracket: its only guard was
--- `x_next <= 0 -> x/2`, which is a descent and not a safeguard, so a step out
--- of the basin was recovered one halving at a time and the budget decided the
--- answer. Here the budget decides only the width of the interval the answer is
--- known to lie in.
---
--- Convergence is tested on the Newton STEP, before the membership test. Once
--- the step falls below an ulp of `u` the candidate equals `u`, which equals
--- the endpoint just folded in, so a strict membership test rejects a converged
--- answer and the rest of the budget goes on bisecting an interval already
--- 1e-16 wide: 34 steps instead of 3 at `q = 1e-5, shape = 2.1`. A step that
--- small cannot leave a bracket wider than the tolerance, and an interval
--- narrower than the tolerance ends the loop anyway, so accepting it is safe.
+-- Incorporate the current point into the bracket, then accept a Newton
+-- candidate only inside it; otherwise bisect. Test convergence before strict
+-- membership, since rounding can make a converged candidate equal an endpoint.
 def gamma_inv_step(shape: f64, q: f64, log_q: f64, u: f64, lo: f64, hi: f64) -> (f64, f64, f64, bool) = {
   pv = gamma_inv_p_at(shape, u)
   lo_next = if lt(pv, q) then u else lo
@@ -1006,38 +786,9 @@ def gamma_inv_drive(shape: f64, q: f64, log_q: f64, u: f64, lo: f64, hi: f64, i:
     st = gamma_inv_chunk(shape, q, log_q, u, lo, hi, i, max_i, gammainc_fanout_i())
     if st.4 then st.0 else gamma_inv_drive(shape, q, log_q, st.0, st.1, st.2, st.3, max_i)
   }
--- `shape` and `scale` are guarded here rather than left to produce a NaN
--- downstream, and the guard requires each to be FINITE and positive rather
--- than merely positive. Both halves of that are load-bearing and both were
--- found by measurement rather than by reasoning.
---
--- With `scale` divided out of the solve, a zero `scale` would otherwise
--- multiply a finite unit quantile and return 0 where the old lane returned
--- NaN. The asymptotic start takes `log_gamma(shape + 1)`, which traps on a
--- NaN shape instead of propagating it.
---
--- And an INFINITE shape passes a positivity test. Without the finiteness
--- leg `gamma_inv_cdf(0.5, +inf, 1)` returned 0.0: `1/(9*inf)` is 0, so
--- Wilson-Hilferty's `s` is 1 and `u0` is `log(inf)`, clamped to the top of
--- the window; `P(inf, y)` is not a usable probability there, both widenings
--- run to their caps, and the bisection settles on the low end at
--- `exp(-3386)`. That is a plausible-looking lower-tail number returned for
--- a median, which is the exact failure class #162 exists to remove,
--- so re-introducing it at a degenerate input would have been a poor trade.
--- NaN is what the pre-#162 lane returned for the case that actually regressed,
--- `+inf` shape, and that is the whole warrant for choosing NaN here. It is NOT
--- what it returned for all four: a `-inf` shape and a NaN shape both ABORTED
--- the process on the base with the `cast_trunc` trap above, so for those two
--- this is a new answer rather than a restored one. The limits a non-finite parameter arguably
--- has -- `+inf` for an infinite shape at any interior `q` -- are deliberately
--- NOT claimed here: that is a semantic decision about a degenerate input,
--- and this change restores the previous answer rather than inventing a new
--- one.
--- Re-dilated in f64 and cast ONCE. Casting `exp(u)` to f32 first and
--- multiplying in f32 loses a unit quantile smaller than f32's smallest
--- normal before `scale` can bring it back into range:
--- `gamma_inv_cdf(1e-4, 0.0706, 1e20)` has a unit root of 5.6e-57 and a
--- true answer of 5.6e-37, and the premature cast returned 0.
+-- At interior q, require finite positive shape and scale and return NaN
+-- otherwise. Re-dilate the unit quantile in f64 before the final f32 cast:
+-- a small unit quantile can be below f32's range while its scaled value fits.
 def gamma_inv_cdf(q: f32, shape: f32, scale: f32) -> f32 =
   if or(neq(q, q), or(lt(q, zero_f()), gt(q, one_f()))) then nan_d() else if lte(q, zero_f()) then zero_f() else if gte(q, one_f()) then pos_inf_d() else if or(neq(shape, shape), or(lte(shape, zero_f()), eq(shape, pos_inf_d()))) then nan_d() else if or(neq(scale, scale), or(lte(scale, zero_f()), eq(scale, pos_inf_d()))) then nan_d() else {
     q64 = cast(q, f64)
