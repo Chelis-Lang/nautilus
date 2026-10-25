@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.58] - 2026-10-25
+
+### Changed
+
+- Build Nautilus with Chelis 0.22.1 and its matching standard-library metadata.
+- Clarify the precision guide and distribution algorithm comments, and remove an empty issue-draft directory.
+
 ## [Unreleased]
 
 ### Fixed
