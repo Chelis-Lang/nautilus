@@ -2,7 +2,7 @@ schema = "3"
 [package]
 name = "nautilus"
 version = "0.7.58"
-compiler = "=0.22.0"
+compiler = "=0.22.1"
 module_prefix = "Nautilus"
 additional_sources = ["properties", "proof_controls"]
 resolver = "2"

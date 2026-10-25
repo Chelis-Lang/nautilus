@@ -73,7 +73,7 @@ release.
       `tests/curvefit_lm_jacobian_generic_dims.ch` and
       `tests/curvefit_lm_jacobian_model_wrapper.ch`, so no bounded blocked
       probe exists yet.
-    - **Pinned result:** at Chelis 0.22.0, both isolated row witnesses and the
+    - **Pinned result:** at Chelis 0.22.1, both isolated row witnesses and the
       shipped finite-difference recovery suite pass. In an isolated package
       copy, adding a seeded-output `grad` row to `lm_nparam_step`'s normal
       equation vector at zero weight leaves five scalar-path tests passing
@@ -120,7 +120,7 @@ release.
       is added, whether or not it reaches the call. An `if`-selected or
       returned function value is a distinct sub-shape failing with `no target
       ABI representation` rather than `[04-TOT-2]`.
-    - **Pinned result:** at Chelis 0.22.0, the isolated `probe_sum` / `probe`
+    - **Pinned result:** at Chelis 0.22.1, the isolated `probe_sum` / `probe`
       / `probe_use` module above still fails `chelis build` with `[04-TOT-2]`;
       adding an unrelated nullary definition makes the same module build.
       The shipped closed-tag Rolling implementation builds in and across
@@ -154,7 +154,7 @@ release.
       `[prec: Float]` conversions, and no particular mechanism should be
       inferred from them.
     - **Workaround:** none needed for the shipped match shapes.
-    - **Pinned result:** at Chelis 0.22.0, the upstream Option and ADT
+    - **Pinned result:** at Chelis 0.22.1, the upstream Option and ADT
       `match` reproducers each fail `chelis build` with `inconsistent live
       owners`; the same block-bound owner in an `if` emits and compiles.
       Manual only because `chelis test` never enters C host lowering. The
@@ -165,7 +165,7 @@ release.
 - **Float-generic downstream C consumers still require full verification** —
   `chelis#2152`
   ([Chelis-Lang/chelis#2152](https://github.com/Chelis-Lang/chelis/issues/2152)).
-    - **Pinned result:** at Chelis 0.22.0, an isolated library exporting
+    - **Pinned result:** at Chelis 0.22.1, an isolated library exporting
       a Float-generic scalar `cast(numel(v), prec)` and a function-parameter
       wrapper with a same-dtype cast builds and installs into a temporary
       registry. Separate f32 and f64 consumers build and execute, printing
@@ -179,7 +179,7 @@ release.
     - **Special control:** `Nautilus.Special` uses `{f32, f64}`. The package
       build and its positive/parity suites pass. Separate-package C consumers
       of `erfinv` and `gamma` build, link, and run at f32 and f64, with
-      compiled output equal to evaluation at Chelis 0.22.0; the remaining
+      compiled output equal to evaluation at Chelis 0.22.1; the remaining
       exports have no complete C consumer matrix.
     - **Why no automated gate catches it:** the dependent compile in
       `scripts/check_release_artifacts.py` runs `chelis reef build`, never

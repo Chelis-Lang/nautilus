@@ -8,7 +8,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Build Nautilus with the published Chelis compiler and its matching standard-library metadata.
+- Build Nautilus with Chelis 0.22.1 and its matching standard-library metadata.
 - Clarify the precision guide and distribution algorithm comments, and remove an empty issue-draft directory.
 
 ## [Unreleased]

@@ -44,7 +44,7 @@ the current verdicts.
   Replacing the finite-difference Jacobian in `src/curvefit.ch` with exact AD
   must pass the six multi-parameter recovery tests in `tests/curvefit.ch`.
   The isolated Jacobian-row witnesses pass, so they test a smaller
-  boundary. With Chelis 0.22.0, the isolated Jacobian rows pass. Adding a
+  boundary. With Chelis 0.22.1, the isolated Jacobian rows pass. Adding a
   seeded-output `grad` row to the generic LM step at zero weight still fails
   all six multi-parameter recoveries at host `to_list` lowering, before the
   provenance boundary. The provenance condition remains unverified.
