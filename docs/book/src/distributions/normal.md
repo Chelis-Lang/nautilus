@@ -100,5 +100,5 @@ probs = tensor(shape=[3], data=[0.15865526, 0.5, 0.9750021])
 quants = tensor(shape=[5], data=[-inf, -1.9598264, 0.0, inf, NaN])
 ```
 
-`normal_inv_cdf_t` applies the scalar boundary rules lane by lane: -inf at
+`normal_inv_cdf_t` applies the scalar boundary rules element by element: -inf at
 0, +inf at 1, and NaN outside [0, 1].
