@@ -19,7 +19,7 @@ measure the complete function as well as the surrounding expression.
   the measurement. Most Nautilus modules compute in f32; a direct comparison
   with an f64 library also compares precision.
 - Time the generated C path for a compiled workload. CLI startup and calls
-  from a host-language test harness can dominate short calculations.
+  from a host-language test program can dominate short calculations.
 - Measure both small and representative large inputs. The fastest choice
   can change when dispatch overhead stops dominating the work.
 

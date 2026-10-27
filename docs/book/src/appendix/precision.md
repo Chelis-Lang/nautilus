@@ -180,9 +180,9 @@ it; `x` and `k` walked across `shape*scale` in units of the distribution's own
 standard deviation, from -20 to +20, plus both sides of the branch point
 exactly; `scale` over 1, 2.5 and 0.0078125 for the densities and CDFs, and
 1e-20, 1, 2.5, 1e20 and 1e30 for the quantiles, with named rows at 2, 1e31,
-1e32 and 1e35 besides; `q` over thirteen values from 1e-7 to 0.999. References
-come from an arbitrary-precision oracle and any whose value f32 cannot hold as
-a normal number is excluded.
+1e32 and 1e35 besides; `q` over thirteen values from 1e-7 to 0.999. Reference
+values come from arbitrary-precision evaluation, and any whose value f32 cannot
+hold as a normal number is excluded.
 
 The quantiles' shape ladder starts at 0.5, but nine shapes are probed by name
 besides it: 0.0706, 1.1, 1.25, 1.5, 1.9, 2.0, 2.1, 2.5 and 2.6, near the
