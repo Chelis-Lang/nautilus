@@ -44,15 +44,15 @@ Nautilus release into your local Reef registry. The release is public, so no
 token is needed:
 
 ```sh
-chelis reef install --from-github Chelis-Lang/nautilus@v0.7.58
+chelis reef install --from-github Chelis-Lang/nautilus@v0.7.59
 ```
 
 Add Nautilus to your project's `reef.toml`, set the project's `compiler` pin
-to `"=0.22.1"`, and run `chelis reef build` from the project directory:
+to `"=0.23.1"`, and run `chelis reef build` from the project directory:
 
 ```toml
 [dependencies]
-nautilus = { version = "0.7.58" }
+nautilus = { version = "0.7.59" }
 ```
 
 The book's
