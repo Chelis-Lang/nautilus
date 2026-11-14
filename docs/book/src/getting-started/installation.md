@@ -1,28 +1,29 @@
 # Installation
 
 Nautilus is a Reef package. Install Chelis from the
-[official releases](https://chelis.ch/docs/chelis/install/), using the compiler version
-required by the Nautilus release.
+[official releases](https://chelis.ch/docs/chelis/install/). Nautilus 0.7.59 needs
+Chelis 0.23.1.
 
-Install the Nautilus release into your local Reef registry. The release is
-public, so no token is needed:
+After Nautilus 0.7.59 is available as a public GitHub release, install it into
+your local Reef registry. This direct download needs no GitHub token:
 
 ```sh
-chelis reef install --from-github Chelis-Lang/nautilus@v0.7.58
+chelis reef install --from-github Chelis-Lang/nautilus@v0.7.59
 ```
 
-The command prints `Installed nautilus 0.7.58` and stores the package under
-`~/.chelis/reef/packages/nautilus/0.7.58/`.
+Reef stores this package under `~/.chelis/reef/packages/nautilus/0.7.59/`.
 
-Add Nautilus to your project's `[dependencies]` table in `reef.toml`:
+Set the compiler pin and Nautilus dependency in your project's `reef.toml`:
 
 ```toml
+[package]
+compiler = "=0.23.1"
+
 [dependencies]
-nautilus = { version = "0.7.58" }
+nautilus = { version = "0.7.59" }
 ```
 
-Set your project's `compiler` pin to the exact compiler version required by
-the installed Nautilus package. From the project directory, run:
+From the project directory, run:
 
 ```sh
 chelis reef build

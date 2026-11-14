@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.59] - 2026-11-14
+
+### Changed
+
+- Build with Chelis 0.23.1 and its standard-library metadata.
+- Refresh compiler guidance and canonical installation instructions.
+
 ## [0.7.58] - 2026-10-25
 
 ### Changed

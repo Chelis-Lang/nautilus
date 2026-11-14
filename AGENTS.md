@@ -5,7 +5,7 @@ to this file so Claude-style and Codex-style entry points do not drift.
 
 ## Repo Identity
 
-<!-- BEGIN CHELIS MANAGED BLOCK: agents-inheritance chelis@0.22.1 (sha256:924e3299fac3b737) -->
+<!-- BEGIN CHELIS MANAGED BLOCK: agents-inheritance chelis@0.23.1 (sha256:04b2eb76b913b7bf) -->
 # Chelis Agent Contract
 
 Keep this file concise and relevant to every agent working in this repository.
@@ -86,7 +86,7 @@ function of those inputs, and feedback that varies between identical runs is a d
 
 ## Subagents
 
-[`docs/investigations/agent_contract_rationale.md`](https://github.com/Chelis-Lang/chelis/blob/v0.22.1/docs/investigations/agent_contract_rationale.md)
+[`docs/investigations/agent_contract_rationale.md`](https://github.com/Chelis-Lang/chelis/blob/v0.23.1/docs/investigations/agent_contract_rationale.md)
 holds the measurements behind these rules.
 
 - Every subagent prompt names the delivery mechanism and the complete expected report.
@@ -110,11 +110,8 @@ holds the measurements behind these rules.
   here, not a certified safe width, and it is a separate budget from the CPU one above.
 - Every spawn names its model tier and says in one clause why that tier fits: the
   expensive tier for judgement whose errors are costly to detect, the cheap tier for
-  mechanical work such as waiting on CI, polling, or transcribing a result. The
-  orchestrator states its own context size in the message that announces a spawn.
-- Every brief states a numeric report-length budget, and a numeric context budget except
-  for red-team rounds. An agent that will exceed its context budget says so and returns
-  what it has.
+  mechanical work such as waiting on CI, polling, or transcribing a result.
+- Every brief states a numeric report-length budget.
 - A brief says which facts the orchestrator has already verified, against what head, and
   that the agent must not re-derive them, and it names what the agent still has to
   establish itself.
@@ -196,10 +193,10 @@ links and edit routes for compiler files absent from Nautilus.
 
 Code-form `spec/` and `docs/book/` paths in the retained Chelis text name
 files in the pinned compiler source, not this repository. Read the pinned
-[project context](https://github.com/Chelis-Lang/chelis/blob/v0.22.1/spec/00-context.md),
-[canonical reference](https://github.com/Chelis-Lang/chelis/blob/v0.22.1/spec/design/chelis_canonical_reference.md),
-[Surf syntax spec](https://github.com/Chelis-Lang/chelis/blob/v0.22.1/spec/02-surf-syntax.md),
-and [backend guide](https://github.com/Chelis-Lang/chelis/blob/v0.22.1/docs/book/src/backends.md).
+[project context](https://github.com/Chelis-Lang/chelis/blob/v0.23.1/spec/00-context.md),
+[canonical reference](https://github.com/Chelis-Lang/chelis/blob/v0.23.1/spec/design/chelis_canonical_reference.md),
+[Surf syntax spec](https://github.com/Chelis-Lang/chelis/blob/v0.23.1/spec/02-surf-syntax.md),
+and [backend guide](https://github.com/Chelis-Lang/chelis/blob/v0.23.1/docs/book/src/backends.md).
 
 <!-- shell-local:exclude:begin -->
 <!-- ### Red Team Rounds -->
